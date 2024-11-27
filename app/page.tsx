@@ -1,16 +1,16 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { DiscIcon as Discord, MessageSquare, Radio, Signal, Share2 } from 'lucide-react'
+import { DiscIcon as Discord, MessageSquare, Radio, Signal, Share2, MessageCircle } from 'lucide-react'
 import Link from "next/link"
 
 export default function Home() {
   return (
     <div className="min-h-screen bg-background">
-      <header className="px-4 lg:px-6 h-16 flex items-center border-b">
+      <header className="px-4 lg:px-6 h-16 flex items-center border-b justify-center">
         <Link className="flex items-center justify-center" href="/">
-          <Radio className="h-6 w-6 mr-2" />
-          <span className="font-bold">ATL.chat</span>
+          <MessageCircle className="h-6 w-6 mr-2" />
+          <span className="font-bold">atl.chat</span>
         </Link>
       </header>
       <main className="container mx-auto px-4 py-16">
@@ -20,7 +20,7 @@ export default function Home() {
             Join our vibrant Linux community across multiple chat platforms
           </p>
           <Button asChild size="lg" className="mt-4">
-            <Link href="https://discord.gg/your-invite-link">
+            <Link href="https://discord.gg/linux">
               <Discord className="mr-2 h-5 w-5" />
               Join our Discord
             </Link>
@@ -29,7 +29,7 @@ export default function Home() {
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center">
+              <CardTitle className="flex items-center text-primary-foreground">
                 <MessageSquare className="h-5 w-5 mr-2" />
                 IRC
               </CardTitle>
@@ -37,12 +37,12 @@ export default function Home() {
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground mb-4">Connect via your favorite IRC client</p>
-              <code className="bg-muted px-2 py-1 rounded text-sm">irc.atl.chat/6697 #general</code>
+              <code className="bg-background text-primary-foreground px-2 py-1 rounded text-sm">irc.atl.chat/6697 #general</code>
             </CardContent>
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center">
+              <CardTitle className="flex items-center text-primary-foreground">
                 <Share2 className="h-5 w-5 mr-2" />
                 XMPP
               </CardTitle>
@@ -50,12 +50,12 @@ export default function Home() {
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground mb-4">Join our XMPP chatroom</p>
-              <code className="bg-muted px-2 py-1 rounded text-sm">general@muc.atl.chat</code>
+              <code className="bg-background text-primary-foreground px-2 py-1 rounded text-sm">general@muc.atl.chat</code>
             </CardContent>
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center">
+              <CardTitle className="flex items-center text-primary-foreground">
                 <Signal className="h-5 w-5 mr-2" />
                 Signal
               </CardTitle>
@@ -63,25 +63,22 @@ export default function Home() {
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground mb-4">Join our Signal group</p>
-              <Button variant="secondary" className="w-full">Request Invite</Button>
+              <code className="bg-background text-primary-foreground px-2 py-1 rounded text-sm">https://signal.atl.chat</code>
             </CardContent>
           </Card>
         </div>
         <div className="mt-16 text-center">
-          <h2 className="text-2xl font-bold mb-4">Coming Soon</h2>
+          <h2 className="text-2xl font-bold mb-4">Someday Maybe?</h2>
           <div className="flex justify-center gap-4 flex-wrap">
-            <Badge variant="secondary" className="text-sm">Mastodon</Badge>
-            <Badge variant="secondary" className="text-sm">Matrix</Badge>
+            <Badge variant="outline" className="text-sm">Mastodon</Badge>
+            <Badge variant="outline" className="text-sm">Matrix</Badge>
           </div>
         </div>
       </main>
-      <footer className="border-t py-6 md:py-0">
-        <div className="container flex flex-col items-center justify-between gap-4 md:h-16 md:flex-row">
-          <p className="text-sm text-muted-foreground">
+      <footer className="border-t border-secondary/50 p-4">
+        <div className="flex flex-row items-center justify-center h-8">
+          <p className="text-sm text-muted-foreground text-balance text-center">
             © {new Date().getFullYear()} All Things Linux. All rights reserved.
-          </p>
-          <p className="text-sm text-muted-foreground">
-            Built with ❤️
           </p>
         </div>
       </footer>
