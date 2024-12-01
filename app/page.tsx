@@ -1,19 +1,19 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { DiscIcon as Discord, MessageSquare, Radio, Signal, Share2, MessageCircle } from 'lucide-react'
+import { DiscIcon as Discord, MessageSquare, Signal, Share2, MessageCircle } from 'lucide-react'
 import Link from "next/link"
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="flex flex-col min-h-screen bg-background">
       <header className="px-4 lg:px-6 h-16 flex items-center border-b justify-center">
         <Link className="flex items-center justify-center" href="/">
           <MessageCircle className="h-6 w-6 mr-2" />
           <span className="font-bold">atl.chat</span>
         </Link>
       </header>
-      <main className="container mx-auto px-4 py-16">
+      <main className="flex-grow container mx-auto px-4 py-16">
         <div className="flex flex-col items-center text-center space-y-4 mb-16">
           <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl">Connect with All Things Linux</h1>
           <p className="text-muted-foreground max-w-[600px] md:text-xl">
@@ -85,4 +85,3 @@ export default function Home() {
     </div>
   )
 }
-
