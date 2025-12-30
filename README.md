@@ -32,8 +32,13 @@ pnpm install
 
 You can start the entire ecosystem in specific modes using Turborepo.
 
-**Start all applications:**
-(Note: XMPP and IRC require Docker to be running)
+**Start all applications (Unified):**
+The project includes a root `docker-compose.yml` that orchestrates both XMPP and IRC stacks, plus the Biboumi bridge.
+```bash
+docker compose up -d
+```
+
+**Start specific applications (Development):**
 ```bash
 pnpm run dev
 ```

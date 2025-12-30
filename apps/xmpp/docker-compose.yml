@@ -44,27 +44,27 @@ services:
 
     # Port mappings
     ports:
-      - '${PROSODY_C2S_PORT:-5222}:5222'              # XMPP client connections
-      - '${PROSODY_S2S_PORT:-5269}:5269'              # XMPP server-to-server
-      - '${PROSODY_C2S_DIRECT_TLS_PORT:-5223}:5223'   # XMPP client TLS
-      - '${PROSODY_S2S_DIRECT_TLS_PORT:-5270}:5270'   # XMPP server-to-server TLS
-      - '${PROSODY_HTTP_PORT:-5280}:5280'             # HTTP/BOSH
-      - '${PROSODY_HTTPS_PORT:-5281}:5281'            # HTTPS/BOSH
-      - '${PROSODY_PROXY65_PORT:-5000}:5000'          # Proxy65 file transfers
+      - "${PROSODY_C2S_PORT:-5222}:5222" # XMPP client connections
+      - "${PROSODY_S2S_PORT:-5269}:5269" # XMPP server-to-server
+      - "${PROSODY_C2S_DIRECT_TLS_PORT:-5223}:5223" # XMPP client TLS
+      - "${PROSODY_S2S_DIRECT_TLS_PORT:-5270}:5270" # XMPP server-to-server TLS
+      - "${PROSODY_HTTP_PORT:-5280}:5280" # HTTP/BOSH
+      - "${PROSODY_HTTPS_PORT:-5281}:5281" # HTTPS/BOSH
+      - "${PROSODY_PROXY65_PORT:-5000}:5000" # Proxy65 file transfers
 
     # Volume mounts
     volumes:
-      - ./app/config:/etc/prosody/config:ro              # Prosody configuration
-      - ./scripts:/opt/prosody/scripts:ro                # Utility scripts
-      - ./.runtime/certs:/etc/prosody/certs              # SSL certificates
-      - ./.runtime/logs:/var/log/prosody                 # Log files
-      - ./web/assets:/usr/share/prosody/www:ro           # Web assets
-      - xmpp_prosody_data:/var/lib/prosody/data          # Persistent data
-      - xmpp_prosody_uploads:/var/lib/prosody/uploads    # File uploads
+      - ./app/config:/etc/prosody/config:ro # Prosody configuration
+      - ./scripts:/opt/prosody/scripts:ro # Utility scripts
+      - ./.runtime/certs:/etc/prosody/certs # SSL certificates
+      - ./.runtime/logs:/var/log/prosody # Log files
+      - ./web/assets:/usr/share/prosody/www:ro # Web assets
+      - xmpp_prosody_data:/var/lib/prosody/data # Persistent data
+      - xmpp_prosody_uploads:/var/lib/prosody/uploads # File uploads
 
     # Health monitoring
     healthcheck:
-      test: ['CMD', '/usr/local/bin/health-check.sh']
+      test: ["CMD", "/usr/local/bin/health-check.sh"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -75,10 +75,10 @@ services:
       resources:
         limits:
           memory: 1G
-          cpus: '2.0'
+          cpus: "2.0"
         reservations:
           memory: 256M
-          cpus: '0.5'
+          cpus: "0.5"
 
     # System optimizations
     sysctls:
@@ -130,8 +130,8 @@ services:
 
     # Port mappings
     ports:
-      - '${NGINX_HTTP_PORT:-80}:80'      # HTTP
-      - '${NGINX_HTTPS_PORT:-443}:443'    # HTTPS
+      - "${NGINX_HTTP_PORT:-80}:80" # HTTP
+      - "${NGINX_HTTPS_PORT:-443}:443" # HTTPS
 
     # Volume mounts
     volumes:
@@ -249,14 +249,14 @@ services:
       resources:
         limits:
           memory: 512M
-          cpus: '1.0'
+          cpus: "1.0"
         reservations:
           memory: 128M
-          cpus: '0.25'
+          cpus: "0.25"
 
     # Health monitoring
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-prosody}']
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-prosody}"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -269,6 +269,28 @@ services:
     # Graceful shutdown
     stop_signal: SIGTERM
     stop_grace_period: 60s
+
+  # ============================================================================
+  # BIBOUMI - IRC BRIDGE (Production)
+  # ============================================================================
+  xmpp-biboumi:
+    image: louiz/biboumi:latest
+    container_name: xmpp-biboumi
+    hostname: xmpp-biboumi
+    restart: unless-stopped
+
+    depends_on:
+      - xmpp-prosody
+
+    environment:
+      - BIBOUMI_PASSWORD=${BIBOUMI_PASSWORD:-biboumi_secret}
+      - BIBOUMI_XMPP_SERVER_IP=xmpp-prosody
+      - BIBOUMI_XMPP_SERVER_PORT=5347
+      - BIBOUMI_HOSTNAME=irc.${PROSODY_DOMAIN:-atl.chat}
+
+    networks:
+      - xmpp_network
+      - shared_network
 
   # ============================================================================
   # COTURN - TURN/STUN SERVER (Production)
@@ -307,11 +329,11 @@ services:
 
     # Port mappings for TURN/STUN
     ports:
-      - '${TURN_PORT:-3478}:3478'                   # TURN/STUN primary
-      - '${TURN_PORT:-3478}:3478/udp'              # TURN/STUN primary UDP
-      - '${TURNS_PORT:-5349}:5349'                  # TURN/STUN TLS
-      - '${TURNS_PORT:-5349}:5349/udp'             # TURN/STUN TLS UDP
-      - '${TURN_MIN_PORT:-50000}-${TURN_MAX_PORT:-50100}:50000-50100/udp'  # Relay ports
+      - "${TURN_PORT:-3478}:3478" # TURN/STUN primary
+      - "${TURN_PORT:-3478}:3478/udp" # TURN/STUN primary UDP
+      - "${TURNS_PORT:-5349}:5349" # TURN/STUN TLS
+      - "${TURNS_PORT:-5349}:5349/udp" # TURN/STUN TLS UDP
+      - "${TURN_MIN_PORT:-50000}-${TURN_MAX_PORT:-50100}:50000-50100/udp" # Relay ports
 
     # Volume mounts
     volumes:
@@ -324,10 +346,10 @@ services:
       resources:
         limits:
           memory: 256M
-          cpus: '1.0'
+          cpus: "1.0"
         reservations:
           memory: 64M
-          cpus: '0.25'
+          cpus: "0.25"
 
     # TURN server command
     command: ["-c", "/etc/turnserver.conf"]
@@ -472,3 +494,6 @@ networks:
   xmpp_network:
     name: xmpp_network
     driver: bridge
+  shared_network:
+    name: atl_chat_shared
+    external: true

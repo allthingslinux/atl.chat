@@ -1,0 +1,10 @@
+name: atl_chat
+
+include:
+  - path: apps/xmpp/docker-compose.yml
+  - path: apps/irc/compose.yaml
+
+networks:
+  atl_chat_shared:
+    name: atl_chat_shared
+    driver: bridge
