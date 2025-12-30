@@ -1,0 +1,60 @@
+.vscode
+certs
+
+# Private environment files with sensitive data
+.env
+
+# Cloudflare credentials
+cloudflare-credentials.ini
+
+# Runtime data
+.runtime/
+!runtime/
+runtime/*/
+!runtime/.gitkeep
+
+# SSL certificates and keys
+src/backend/unrealircd/conf/tls/*
+
+# CA certificate bundles (should be generated locally, not committed)
+docs/examples/unrealircd/tls/curl-ca-bundle.crt
+
+# Runtime data directories (created at runtime)
+data/
+!data/**/.gitkeep
+logs/
+!logs/**/.gitkeep
+
+# Generated configuration files (created from templates)
+src/backend/unrealircd/conf/unrealircd.conf
+src/backend/atheme/conf/atheme.conf
+
+# Docker volumes (if any are created)
+ircd_data/
+ircd_logs/
+ircd_modules/
+ircd_contrib/       # Legacy
+atheme_data/
+atheme_logs/
+webpanel_data/
+webpanel_config/
+
+# Temporary files
+*.tmp
+*.swp
+*.bak
+
+
+
+# WebPanel config (part of data)
+data/webpanel/config/
+
+
+# python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.ruff_cache/
+.uv_cache/

@@ -1,0 +1,27 @@
+#
+# UnrealIRCd configuration settings for Docker build
+# These are the settings used by './Config -quick'
+#
+BASEPATH="/home/unrealircd/unrealircd"
+BINDIR="/home/unrealircd/unrealircd/bin"
+DATADIR="/home/unrealircd/unrealircd/data"
+CONFDIR="/home/unrealircd/unrealircd/conf"
+MODULESDIR="/home/unrealircd/unrealircd/modules"
+LOGDIR="/home/unrealircd/unrealircd/logs"
+CACHEDIR="/home/unrealircd/unrealircd/cache"
+DOCDIR="/home/unrealircd/unrealircd/doc"
+TMPDIR="/home/unrealircd/unrealircd/tmp"
+PRIVATELIBDIR="/home/unrealircd/unrealircd/lib"
+MAXCONNECTIONS_REQUEST="auto"
+NICKNAMEHISTORYLENGTH="2000"
+GEOIP="classic"
+DEFPERM="0600"
+SSLDIR=""
+REMOTEINC=""
+CURLDIR=""
+NOOPEROVERRIDE=""
+OPEROVERRIDEVERIFY=""
+GENCERTIFICATE="1"
+SANITIZER=""
+EXTRAPARA=""
+ADVANCED=""

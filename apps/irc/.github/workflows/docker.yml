@@ -1,0 +1,216 @@
+---
+name: Docker
+on:
+  push:
+    tags: [v*]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: 0 2 15 * *
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  DOCKER_BUILD_SUMMARY: true
+  DOCKER_BUILD_CHECKS_ANNOTATIONS: true
+jobs:
+  changes:
+    name: File Detection
+    runs-on: ubuntu-latest
+    outputs:
+      docker: ${{ steps.docker_changes.outputs.any_changed }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Check Docker
+        uses: tj-actions/changed-files@v47
+        id: docker_changes
+        with:
+          files: |
+            **/Containerfile
+            **/Dockerfile
+            compose.yaml
+            docker-compose*.yml
+            .dockerignore
+            docker/**
+  validate:
+    name: Validate
+    needs: [changes]
+    if: (needs.changes.outputs.docker == 'true' || github.event_name == 'workflow_dispatch')
+      && github.event_name == 'pull_request' && github.actor != 'renovate[bot]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    strategy:
+      matrix:
+        service: [unrealircd, atheme, unrealircd-webpanel]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Setup Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: irc-atl-chat-${{ matrix.service }}
+          tags: |
+            type=raw,value=pr-${{ github.event.number }}-${{ matrix.service }}
+          labels: |
+            org.opencontainers.image.title=IRC.atl.chat - ${{ matrix.service }}
+            org.opencontainers.image.description=IRC server infrastructure for All Things Linux Community
+            org.opencontainers.image.source=https://github.com/allthingslinux/irc.atl.chat
+            org.opencontainers.image.licenses=GPL-3.0
+            org.opencontainers.image.authors=All Things Linux
+            org.opencontainers.image.vendor=All Things Linux
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.documentation=https://github.com/allthingslinux/irc.atl.chat/blob/main/README.md
+      - name: Generate PR Version
+        id: pr_version
+        run: |
+          PR_VERSION="pr-${{ github.event.number }}-$(echo "${{ github.sha }}" | cut -c1-7)"
+          echo "version=$PR_VERSION" >> "$GITHUB_OUTPUT"
+          echo "Generated PR version: $PR_VERSION"
+      - name: Build ${{ matrix.service }}
+        uses: docker/build-push-action@v6
+        timeout-minutes: 10
+        with:
+          context: ./${{ matrix.service == 'unrealircd-webpanel' && 'src/frontend/webpanel' || matrix.service == 'unrealircd' && 'src/backend/unrealircd' || matrix.service == 'atheme' && 'src/backend/atheme' }}
+          file: ./${{ matrix.service == 'unrealircd-webpanel' && 'src/frontend/webpanel/Containerfile' || matrix.service == 'unrealircd' && 'src/backend/unrealircd/Containerfile' || matrix.service == 'atheme' && 'src/backend/atheme/Containerfile' }}
+          push: false
+          load: false
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            VERSION=${{ steps.pr_version.outputs.version }}
+            GIT_SHA=${{ github.sha }}
+            BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+      - name: Complete ${{ matrix.service }}
+        run: |
+          echo "✅ Docker build validation for ${{ matrix.service }} completed successfully"
+          echo "🔍 Build cache updated for faster future builds"
+      - name: Scan Containerfile ${{ matrix.service }}
+        uses: reviewdog/action-trivy@v1.14.0
+        continue-on-error: true
+        with:
+          github_token: ${{ github.token }}
+          trivy_command: config
+          trivy_target: ./${{ matrix.service == 'unrealircd-webpanel' && 'src/frontend/webpanel/Containerfile' || matrix.service == 'unrealircd' && 'src/backend/unrealircd/Containerfile' || matrix.service == 'atheme' && 'src/backend/atheme/Containerfile' }}
+          level: warning
+          reporter: github-pr-review
+          tool_name: trivy-dockerfile-${{ matrix.service }}
+          filter_mode: added
+          fail_level: none
+          trivy_flags: --severity HIGH,CRITICAL
+  build:
+    name: Build & Push
+    runs-on: ubuntu-latest
+    needs: [validate]
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        service: [unrealircd, atheme, unrealircd-webpanel]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Setup Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Login to Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-${{ matrix.service }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable={{is_default_branch}}
+          labels: |
+            org.opencontainers.image.title=IRC.atl.chat - ${{ matrix.service }}
+            org.opencontainers.image.description=IRC server infrastructure for All Things Linux Community
+            org.opencontainers.image.source=https://github.com/allthingslinux/irc.atl.chat
+            org.opencontainers.image.licenses=GPL-3.0
+            org.opencontainers.image.authors=All Things Linux
+            org.opencontainers.image.vendor=All Things Linux
+            org.opencontainers.image.documentation=https://github.com/allthingslinux/irc.atl.chat/blob/main/README.md
+      - name: Generate Release Version
+        id: release_version
+        run: |
+          TAG_VERSION="${GITHUB_REF#refs/tags/}"
+          CLEAN_VERSION="${TAG_VERSION#v}"
+          RELEASE_VERSION="$CLEAN_VERSION"
+          echo "version=$RELEASE_VERSION" >> "$GITHUB_OUTPUT"
+          echo "Generated release version: $RELEASE_VERSION"
+      - name: Build & Push ${{ matrix.service }}
+        uses: docker/build-push-action@v6
+        timeout-minutes: 15
+        with:
+          context: ./${{ matrix.service == 'unrealircd-webpanel' && 'src/frontend/webpanel' || matrix.service == 'unrealircd' && 'src/backend/unrealircd' || matrix.service == 'atheme' && 'src/backend/atheme' }}
+          file: ./${{ matrix.service == 'unrealircd-webpanel' && 'src/frontend/webpanel/Containerfile' || matrix.service == 'unrealircd' && 'src/backend/unrealircd/Containerfile' || matrix.service == 'atheme' && 'src/backend/atheme/Containerfile' }}
+          push: true
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            VERSION=${{ steps.release_version.outputs.version }}
+            GIT_SHA=${{ github.sha }}
+            BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+      - name: Scan Final Image ${{ matrix.service }}
+        if: always()
+        uses: reviewdog/action-trivy@v1.14.0
+        continue-on-error: true
+        with:
+          github_token: ${{ github.token }}
+          trivy_command: image
+          trivy_target: ${{ fromJSON(steps.meta.outputs.json).tags[0] }}
+          level: warning
+          reporter: github-pr-review
+          tool_name: trivy-final-${{ matrix.service }}
+          filter_mode: nofilter
+          fail_level: none
+          trivy_flags: --severity HIGH,CRITICAL --exit-code 0
+  cleanup:
+    name: Cleanup
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    permissions:
+      packages: write
+      contents: read
+    strategy:
+      matrix:
+        service: [unrealircd, atheme, unrealircd-webpanel]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Clean Old Images ${{ matrix.service }}
+        uses: actions/delete-package-versions@v5
+        with:
+          package-name: irc-atl-chat-${{ matrix.service }}
+          package-type: container
+          min-versions-to-keep: 15
+          delete-only-untagged-versions: true
+      - name: Cleanup Summary ${{ matrix.service }}
+        run: |-
+          {
+            echo "## 🐳 Docker Registry Cleanup - ${{ matrix.service }}"
+            echo "- **Policy**: Keep 15 versions, remove untagged"
+            echo "- **Schedule**: Weekly cleanup"
+            echo "- **Status**: ✅ Cleanup completed"
+          } >> "$GITHUB_STEP_SUMMARY"

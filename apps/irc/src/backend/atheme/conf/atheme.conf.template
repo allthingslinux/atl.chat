@@ -1,0 +1,794 @@
+loadmodule "protocol/unreal4";
+
+# https://atheme.dev/docs/config/database
+loadmodule "backend/opensex";
+
+/* Password Hashing - HIGHLY RECOMMENDED to use pbkdf2v2 */
+/* SCRAM-SHA Setup Requirements: */
+/* 1. Build Atheme with: ./configure --with-libidn */
+/* 2. Load pbkdf2v2 BEFORE any other crypto module (done below) */
+/* 3. Configure pbkdf2v2_digest = "SCRAM-SHA-256" (recommended) */
+/* 4. Ensure pbkdf2v2_rounds is 10000-65536 for Cyrus SASL compatibility */
+/* 5. Load modules/saslserv/scram-sha module (done below) */
+loadmodule "crypto/pbkdf2v2"; /* PBKDF2 v2 - Needed for SASL SCRAM-SHA support, HIGHLY RECOMMENDED */
+#loadmodule "crypto/pbkdf2";  /* PBKDF2 v1 - Verify-only module for Atheme <= 7.2 compatibility - DEPRECATED */
+
+loadmodule "nickserv/main";            /* Core components */
+loadmodule "nickserv/badmail";         /* Bad e-mail address blocking */
+loadmodule "nickserv/drop";            /* DROP command */
+loadmodule "nickserv/ghost";           /* GHOST command */
+loadmodule "nickserv/group";           /* GROUP and UNGROUP commands */
+loadmodule "nickserv/help";            /* HELP command */
+loadmodule "nickserv/hold";            /* HOLD command: Overrides default nickname expiry */
+loadmodule "nickserv/identify";        /* IDENTIFY command */
+loadmodule "nickserv/info";            /* INFO command */
+loadmodule "nickserv/list";            /* LIST command */
+loadmodule "nickserv/listmail";        /* LISTMAIL command */
+loadmodule "nickserv/logout";          /* LOGOUT command */
+loadmodule "nickserv/mark";            /* MARK command */
+loadmodule "nickserv/freeze";          /* FREEZE command */
+loadmodule "nickserv/listchans";       /* LISTCHANS command */
+loadmodule "nickserv/listgroups";      /* LISTGROUPS command */
+loadmodule "nickserv/register";        /* REGISTER command */
+loadmodule "nickserv/regnolimit";      /* Bypass registration limits (REGNOLIMIT) */
+loadmodule "nickserv/resetpass";       /* Password reset (RESETPASS command) */
+loadmodule "nickserv/restrict";        /* RESTRICT command */
+loadmodule "nickserv/return";          /* Password return (RETURN command) */
+loadmodule "nickserv/setpass";         /* Password retrieval uses code (SETPASS cmd) */
+loadmodule "nickserv/sendpass_user";   /* Password retrieval allowed to normal users */
+loadmodule "nickserv/set_accountname"; /* Change primary nickname (SET ACCOUNTNAME) */
+loadmodule "nickserv/set_email";       /* SET EMAIL command */
+loadmodule "nickserv/set_emailmemos";  /* SET EMAILMEMOS command - Forwards incoming memos to user's e-mail */
+loadmodule "nickserv/set_hidemail";    /* SET HIDEMAIL command - Hides the user's e-mail address */
+loadmodule "nickserv/set_language";    /* SET LANGUAGE command */
+loadmodule "nickserv/set_nevergroup";  /* SET NEVERGROUP command */
+loadmodule "nickserv/set_neverop";     /* SET NEVEROP command - Prevents user from being added to access lists */
+loadmodule "nickserv/set_nogreet";     /* SET NOGREET command */
+loadmodule "nickserv/set_nomemo";      /* SET NOMEMO command - Disables the ability to receive memos */
+loadmodule "nickserv/set_noop";        /* SET NOOP command - Prevents services from setting modes automatically */
+loadmodule "nickserv/set_password";    /* SET PASSWORD command */
+loadmodule "nickserv/set_property";    /* SET PROPERTY command */
+loadmodule "nickserv/set_pubkey";      /* SET PUBKEY command */
+loadmodule "nickserv/set_quietchg";    /* SET QUIETCHG command - Allows user to opt-out of channel change messages */
+loadmodule "nickserv/status";          /* STATUS command */
+loadmodule "nickserv/taxonomy";        /* Nickname metadata viewer (TAXONOMY command) */
+loadmodule "nickserv/vacation";        /* VACATION command */
+loadmodule "nickserv/verify";          /* VERIFY command */
+loadmodule "nickserv/vhost";           /* VHOST command */
+
+loadmodule "chanserv/main";            /* Core components */
+loadmodule "chanserv/access";          /* ACCESS command (simplified ACL editing) */
+loadmodule "chanserv/akick";           /* AKICK command */
+loadmodule "chanserv/ban";             /* BAN/UNBAN commands */
+loadmodule "chanserv/bansearch";       /* BANSEARCH command */
+loadmodule "chanserv/clone";           /* CLONE command */
+loadmodule "chanserv/close";           /* CLOSE command */
+loadmodule "chanserv/clear";           /* CLEAR command */
+loadmodule "chanserv/clear_akicks";    /* CLEAR AKICKS command */
+loadmodule "chanserv/clear_bans";      /* CLEAR BANS command */
+loadmodule "chanserv/clear_flags";     /* CLEAR FLAGS command */
+loadmodule "chanserv/clear_users";     /* CLEAR USERS command */
+loadmodule "chanserv/count";           /* COUNT command */
+loadmodule "chanserv/drop";            /* DROP command */
+loadmodule "chanserv/flags";           /* FLAGS command */
+loadmodule "chanserv/ftransfer";       /* Forced foundership transfers */
+loadmodule "chanserv/getkey";          /* GETKEY command */
+loadmodule "chanserv/help";            /* HELP command */
+loadmodule "chanserv/hold";            /* HOLD command - Overrides default channel expiry */
+loadmodule "chanserv/info";            /* INFO command */
+loadmodule "chanserv/invite";          /* INVITE command */
+loadmodule "chanserv/kick";            /* KICK/KICKBAN commands */
+loadmodule "chanserv/list";            /* LIST command */
+loadmodule "chanserv/mark";            /* MARK command */
+loadmodule "chanserv/op";              /* OP/DEOP commands */
+loadmodule "chanserv/recover";         /* Channel takeover recovery (RECOVER command) */
+loadmodule "chanserv/register";        /* REGISTER command */
+loadmodule "chanserv/set_email";       /* SET EMAIL command */
+loadmodule "chanserv/set_entrymsg";    /* SET ENTRYMSG command */
+loadmodule "chanserv/set_fantasy";     /* SET FANTASY command */
+loadmodule "chanserv/set_guard";       /* SET GUARD command - Sets whether ChanServ will inhabit the channel */
+loadmodule "chanserv/set_keeptopic";   /* SET KEEPTOPIC command - Enables topic retention if channel is empty */
+loadmodule "chanserv/set_mlock";       /* SET MLOCK command */
+loadmodule "chanserv/set_prefix";      /* SET PREFIX command */
+loadmodule "chanserv/set_property";    /* SET PROPERTY command */
+loadmodule "chanserv/set_restricted";  /* SET RESTRICTED command */
+loadmodule "chanserv/set_secure";      /* SET SECURE command - Prevents unauthorized users from gaining oper */
+loadmodule "chanserv/set_topiclock";   /* SET TOPICLOCK command - Restricts who can change the topic */
+loadmodule "chanserv/set_url";         /* SET URL command */
+loadmodule "chanserv/set_verbose";     /* SET VERBOSE command - Notifies channel about access list modifications */
+loadmodule "chanserv/status";          /* STATUS command */
+loadmodule "chanserv/sync";            /* SYNC command (and automatic ACL syncing) */
+loadmodule "chanserv/taxonomy";        /* Channel metadata viewer (TAXONOMY command) */
+loadmodule "chanserv/template";        /* TEMPLATE command */
+loadmodule "chanserv/topic";           /* TOPIC/TOPICAPPEND commands */
+loadmodule "chanserv/voice";           /* VOICE/DEVOICE commands */
+loadmodule "chanserv/why";             /* WHY command */
+loadmodule "chanserv/antiflood";       /* Flood protection */
+
+loadmodule "operserv/akill";            /* AKILL system */
+loadmodule "operserv/compare";          /* COMPARE command */
+loadmodule "operserv/help";             /* HELP command */
+loadmodule "operserv/identify";         /* IDENTIFY command */
+loadmodule "operserv/ignore";           /* IGNORE system */
+loadmodule "operserv/info";             /* INFO command */
+loadmodule "operserv/jupe";             /* JUPE command */
+loadmodule "operserv/mode";             /* MODE command */
+loadmodule "operserv/modlist";          /* MODLIST command */
+loadmodule "operserv/modmanager";       /* Module inspect/load/reload/unload commands */
+loadmodule "operserv/noop";             /* NOOP system */
+loadmodule "operserv/readonly";         /* READONLY command */
+loadmodule "operserv/rehash";           /* REHASH command */
+loadmodule "operserv/restart";          /* RESTART command */
+loadmodule "operserv/rmatch";           /* Display regex matching (RMATCH command) */
+loadmodule "operserv/rnc";              /* Most common realnames (RNC command) */
+loadmodule "operserv/rwatch";           /* RWATCH system */
+loadmodule "operserv/set_akicktime";    /* SET AKICKTIME command */
+loadmodule "operserv/set_chanexpire";   /* SET CHANEXPIRE command */
+loadmodule "operserv/set_commitinterval"; /* SET COMMITINTERVAL command */
+loadmodule "operserv/set_klinetime";    /* SET KLINETIME command */
+loadmodule "operserv/set_maxchanacs";   /* SET MAXCHANACS command */
+loadmodule "operserv/set_maxchans";     /* SET MAXCHANS command */
+loadmodule "operserv/set_maxfounders";  /* SET MAXFOUNDERS command */
+loadmodule "operserv/set_maxlogins";    /* SET MAXLOGINS command */
+loadmodule "operserv/set_maxnicks";     /* SET MAXNICKS command */
+loadmodule "operserv/set_maxusers";     /* SET MAXUSERS command */
+loadmodule "operserv/set_mdlimit";      /* SET MDLIMIT command */
+loadmodule "operserv/set_nickexpire";   /* SET NICKEXPIRE command */
+loadmodule "operserv/set_recontime";    /* SET RECONTIME command */
+loadmodule "operserv/set_spam";         /* SET SPAM command */
+loadmodule "operserv/sgline";           /* SGLINE system */
+loadmodule "operserv/shutdown";         /* SHUTDOWN command */
+loadmodule "operserv/specs";            /* Oper privilege display (SPECS command) */
+loadmodule "operserv/sqline";           /* SQLINE system */
+loadmodule "operserv/update";           /* UPDATE command */
+loadmodule "operserv/uptime";           /* UPTIME command */
+
+loadmodule "memoserv/main";             /* Core components */
+loadmodule "memoserv/help";             /* HELP command */
+loadmodule "memoserv/send";             /* SEND command */
+loadmodule "memoserv/sendops";          /* SENDOPS command */
+loadmodule "memoserv/sendgroup";        /* SENDGROUP command */
+loadmodule "memoserv/list";             /* LIST command */
+loadmodule "memoserv/read";             /* READ command */
+loadmodule "memoserv/forward";          /* FORWARD command */
+loadmodule "memoserv/delete";           /* DELETE command */
+loadmodule "memoserv/ignore";           /* IGNORE command */
+
+loadmodule "global/main";               /* Core components */
+
+loadmodule "infoserv/main";             /* Core components */
+
+/* SASL Authentication Modules */
+loadmodule "saslserv/authcookie";       /* AUTHCOOKIE mechanism (for IRIS) */
+loadmodule "saslserv/plain";            /* PLAIN mechanism - Basic SASL authentication */
+loadmodule "saslserv/scram";             /* SCRAM-SHA mechanisms - More secure than PLAIN */
+
+loadmodule "groupserv/main";			/* Core components */
+loadmodule "groupserv/acsnolimit";		/* ACSNOLIMIT command */
+loadmodule "groupserv/drop";			/* DROP command */
+loadmodule "groupserv/fflags";			/* FFLAGS command */
+loadmodule "groupserv/flags";			/* FLAGS command */
+loadmodule "groupserv/help";			/* HELP command */
+loadmodule "groupserv/info";			/* INFO command */
+loadmodule "groupserv/join";			/* JOIN command */
+loadmodule "groupserv/list";			/* LIST command */
+loadmodule "groupserv/listchans";		/* LISTCHANS command */
+loadmodule "groupserv/register";		/* REGISTER command */
+loadmodule "groupserv/regnolimit";		/* REGNOLIMIT command */
+loadmodule "groupserv/set";				/* SET command */
+loadmodule "groupserv/set_channel";		/* SET CHANNEL command */
+loadmodule "groupserv/set_description";	/* SET DESCRIPTION command */
+loadmodule "groupserv/set_email";		/* SET EMAIL command */
+loadmodule "groupserv/set_groupname";	/* SET GROUPNAME command */
+loadmodule "groupserv/set_joinflags";	/* SET JOINFLAGS command */
+loadmodule "groupserv/set_open";		/* SET OPEN command */
+loadmodule "groupserv/set_public";		/* SET PUBLIC command */
+loadmodule "groupserv/set_url";			/* SET URL command */
+
+#loadmodule "security/cmdperm";
+#loadmodule "protocol/mixin_nohalfops";
+#loadmodule "protocol/mixin_noholdnick";
+#loadmodule "protocol/mixin_noprotect";
+#loadmodule "protocol/mixin_noowner";
+#loadmodule "crypto/argon2";            /* Argon2d - Password Hashing Competition v1.3 (requires --with-argon2) */
+#loadmodule "crypto/scrypt";            /* Scrypt via libsodium - Verify-only module (requires --with-sodium) */
+#loadmodule "crypto/bcrypt";            /* bcrypt - Alternative encryption option (see crypto{} block notes) */
+#loadmodule "crypto/crypt3-sha2-512";   /* SHA2-512 crypt(3) - Requires crypt(3) support */
+#loadmodule "crypto/crypt3-sha2-256";   /* SHA2-256 crypt(3) - Requires crypt(3) support */
+#loadmodule "crypto/crypt3-md5";        /* MD5 crypt(3) - Verify-only for legacy Atheme on Linux */
+#loadmodule "crypto/rawsha2-512";       /* Raw SHA2-512 - Verify-only, unsalted (requires --enable-legacy-pwcrypto) */
+#loadmodule "crypto/rawsha2-256";       /* Raw SHA2-256 - Verify-only, unsalted (requires --enable-legacy-pwcrypto) */
+#loadmodule "crypto/anope-enc-sha256";  /* Anope SHA2-256 - Verify-only for Anope 2.0 compatibility */
+#loadmodule "crypto/rawsha1";           /* Raw SHA1 - Verify-only for Anope ~1.8 compatibility */
+#loadmodule "crypto/rawmd5";            /* Raw MD5 - Verify-only for Anope ~1.8 compatibility */
+#loadmodule "crypto/ircservices";       /* IRCServices MD5 - Verify-only for IRCServices/Anope compatibility */
+#loadmodule "crypto/crypt3-des";        /* DES crypt(3) - Verify-only for legacy Atheme on Mac OS X */
+#loadmodule "crypto/base64";            /* Base64 - Verify-only for Anope ~1.8 compatibility */
+#loadmodule "auth/ldap";               /* LDAP authentication */
+loadmodule "nickserv/access";         /* Nickname access lists */
+loadmodule "nickserv/cert";           /* CertFP fingerprint management */
+loadmodule "nickserv/enforce";        /* Nickname enforcement - Enables or disables automatic protection */
+loadmodule "nickserv/info_lastquit";  /* Last quit message in INFO */
+loadmodule "nickserv/listlogins";     /* LISTLOGINS command */
+loadmodule "nickserv/listownmail";    /* LISTOWNMAIL command */
+#loadmodule "nickserv/login";          /* LOGIN command (for no_nick_ownership) */
+#loadmodule "nickserv/loginnolimit";   /* LOGINNOLIMIT command */
+#loadmodule "nickserv/pwquality";      /* Password quality validation */
+#loadmodule "nickserv/sendpass";       /* Password retrieval (SENDPASS command) */
+#loadmodule "nickserv/set_badpasswdmsg"; /* SET BADPASSWDMSG command */
+#loadmodule "nickserv/set_enforcetime"; /* SET ENFORCETIME command */
+#loadmodule "nickserv/set_nopassword"; /* SET NOPASSWORD command */
+loadmodule "nickserv/set_privmsg";    /* SET PRIVMSG command - Uses private messages instead of notices */
+loadmodule "nickserv/set_private";    /* SET PRIVATE command - Hides information about the user from other users */
+loadmodule "nickserv/waitreg";        /* Delay services account registrations */
+#loadmodule "chanserv/unban_self";     /* UNBAN self only (load ban or this not both) */
+#loadmodule "chanserv/fflags";         /* Forced flags changes */
+#loadmodule "chanserv/halfop";         /* HALFOP/DEHALFOP commands */
+#loadmodule "chanserv/moderate";       /* Moderated channel registrations */
+#loadmodule "chanserv/owner";          /* OWNER/DEOWNER commands */
+#loadmodule "chanserv/protect";        /* PROTECT/DEPROTECT commands */
+loadmodule "chanserv/quiet";           /* QUIET command (+q support) */
+#loadmodule "chanserv/set_gameserv";   /* SET GAMESERV command */
+#loadmodule "chanserv/set_limitflags"; /* SET LIMITFLAGS command */
+loadmodule "chanserv/set_private";     /* SET PRIVATE command - Hides information about a channel */
+#loadmodule "chanserv/set_pubacl";     /* SET PUBACL command */
+#loadmodule "chanserv/successor_acl";  /* Named Successor ACL flag */
+loadmodule "chanserv/xop";             /* VOP/HOP/AOP/SOP commands */
+#loadmodule "chanfix/main";            /* Core components */
+loadmodule "operserv/clearchan";       /* CLEARCHAN command */
+loadmodule "operserv/clones";          /* CLONES system */
+loadmodule "operserv/genhash";         /* GENHASH command */
+loadmodule "operserv/greplog";         /* GREPLOG command */
+#loadmodule "operserv/joinrate";        /* JOINRATE command & join rate monitoring */
+#loadmodule "operserv/rakill";          /* Regex mass akill (RAKILL command) */
+loadmodule "operserv/soper";           /* Non-config oper privileges (SOPER command) */
+#loadmodule "saslserv/ecdh-x25519-challenge"; /* ECDH-X25519-CHALLENGE mechanism */
+#loadmodule "saslserv/ecdsa-nist256p-challenge"; /* ECDSA-NIST256P-CHALLENGE mechanism */
+#loadmodule "saslserv/external"; 		/* EXTERNAL mechanism (IRCv3.1+) */
+#loadmodule "saslserv/scram";  			/* SCRAM-SHA mechanisms - More secure than PLAIN */
+#loadmodule "gameserv/dice";			/* DICE/WOD commands */
+#loadmodule "gameserv/eightball";		/* EIGHTBALL command */
+#loadmodule "gameserv/gamecalc";		/* Game-specific dice calculators */
+#loadmodule "gameserv/help";			/* HELP commands */
+#loadmodule "gameserv/lottery";			/* LOTTERY command */
+#loadmodule "gameserv/namegen";			/* NAMEGEN command */
+#loadmodule "gameserv/rps";				/* RPS command */
+#loadmodule "rpgserv/enable";          	/* ENABLE/DISABLE commands */
+#loadmodule "rpgserv/help";            	/* HELP command */
+#loadmodule "rpgserv/info";            	/* INFO command */
+#loadmodule "rpgserv/list";            	/* LIST command */
+#loadmodule "rpgserv/search";           /* SEARCH command */
+#loadmodule "rpgserv/set";              /* SET commands */
+#loadmodule "botserv/main";				/* Core components */
+#loadmodule "botserv/help";				/* HELP command */
+#loadmodule "botserv/info";				/* INFO command */
+#loadmodule "botserv/bottalk";			/* NPC commands (SAY, ACT) */
+#loadmodule "botserv/set_fantasy";		/* SET FANTASY command */
+#loadmodule "botserv/set_nobot";		/* SET NOBOT command */
+#loadmodule "botserv/set_private";		/* SET PRIVATE command */
+#loadmodule "botserv/set_saycaller";	/* SET SAYCALLER command */
+loadmodule "hostserv/main";				/* Core components */
+loadmodule "hostserv/help";				/* HELP command */
+loadmodule "hostserv/onoff";			/* ON and OFF commands */
+loadmodule "hostserv/offer";			/* OFFER system */
+loadmodule "hostserv/request";			/* REQUEST system */
+loadmodule "hostserv/vhost";			/* VHOST and LISTVHOST commands */
+loadmodule "hostserv/vhostnick";		/* VHOSTNICK command */
+loadmodule "hostserv/group";			/* GROUP command */
+loadmodule "hostserv/drop";				/* DROP command */
+loadmodule "helpserv/main";				/* Core components */
+loadmodule "helpserv/helpme";			/* HELPME command */
+loadmodule "helpserv/ticket";			/* Help Ticket system */
+loadmodule "helpserv/services";			/* Service List */
+loadmodule "alis/main";					/* Core components */
+loadmodule "statserv/main";				/* Core components */
+loadmodule "statserv/channel";			/* CHANNEL command */
+loadmodule "statserv/netsplit";			/* NETSPLIT command */
+loadmodule "statserv/server";			/* SERVER command */
+loadmodule "groupserv/invite";			/* INVITE command */
+#loadmodule "misc/httpd";				/* HTTP Server */
+#loadmodule "misc/login_throttling";	/* Password-based login throttling */
+#loadmodule "transport/xmlrpc";			/* XMLRPC handler for the httpd */
+#loadmodule "exttarget/oper";			/* $oper exttarget match type */
+#loadmodule "exttarget/registered"; 	/* $registered exttarget match type */
+#loadmodule "exttarget/channel";		/* $channel exttarget match type */
+#loadmodule "exttarget/chanacs";		/* $chanacs exttarget match type */
+#loadmodule "exttarget/server";			/* $server exttarget match type */
+loadmodule "proxyscan/main";			/* Core components */
+loadmodule "proxyscan/dnsbl";			/* Proxyscan (DNSBL) modules */
+#loadmodule "contrib/backtrace";        /* Backtrace module */
+
+crypto {
+	/* Argon2 Configuration - Alternative to pbkdf2v2 */
+	#argon2_type = "argon2id"; /* Type: argon2d (GPU-resistant), argon2i (side-channel resistant), argon2id (balanced) */
+	#argon2_memcost = 16; /* Memory cost as power of 2 in KiB (3-30, default 16 = 64 MiB RAM) */
+	#argon2_timecost = 3; /* Time cost iterations (3-1048576, default 3) */
+	#argon2_threads = 1; /* CPU threads to use (1-255, default 1, experimental) */
+	#argon2_saltlen = 16; /* Salt length in bytes (4-48, default 16) */
+	#argon2_hashlen = 64; /* Digest length in bytes (16-128, default 64) */
+
+	/* Scrypt Configuration - Alternative to pbkdf2v2 */
+	#scrypt_memlimit = 14; /* Memory cost as power of 2 in KiB (14-26, default 14 = 16 MiB RAM) */
+	#scrypt_opslimit = 524288; /* Computation amount (32768-4294967295, default 524288) */
+
+	/* PBKDF2v2 Configuration - HIGHLY RECOMMENDED */
+	/* Configure pbkdf2v2 for SCRAM-SHA-256 support */
+	/* SCRAM-SHA Requirements: */
+	/* 1. Must be loaded BEFORE any other crypto module */
+	/* 2. Use SCRAM-SHA-256 (recommended), SCRAM-SHA-512, or SCRAM-SHA-1 */
+	/* 3. Rounds must be 10000-65536 for Cyrus SASL compatibility */
+	/* 4. Load modules/saslserv/scram-sha module for SASL support */
+	pbkdf2v2_digest = "SCRAM-SHA-256"; /* Digest: SHA1, SHA2-256, SHA2-512, or SCRAM-* variants */
+	pbkdf2v2_rounds = 64000; /* Iteration count (10000-65536 for SCRAM-SHA, default 64000) */
+	pbkdf2v2_saltlen = 32; /* Salt length in bytes (default 32 for SCRAM-SHA-256) */
+
+	/* bcrypt Configuration - Alternative to pbkdf2v2 */
+	#bcrypt_cost = 7; /* Rounds as power of 2 (4-31, default 7) */
+
+	/* Crypt3 SHA2 Configuration - Requires GNU glibc v2.7+ */
+	#crypt3_sha2_256_rounds = 5000; /* SHA2-256 rounds (5000-1000000, default 5000) */
+	#crypt3_sha2_512_rounds = 5000; /* SHA2-512 rounds (5000-1000000, default 5000) */
+};
+
+# Services connect as pseudo-servers - serverinfo block is required
+serverinfo {
+	name = "${ATHEME_SERVER_NAME}";
+	desc = "${ATHEME_SERVER_DESC}";
+	numeric = "${ATHEME_NUMERIC}";
+	recontime = ${ATHEME_RECONTIME};
+	netname = "${ATHEME_NETNAME}";
+	hidehostsuffix = "${ATHEME_HIDEHOST_SUFFIX}";
+	adminname = "${ATHEME_ADMIN_NAME}";
+	adminemail = "${ATHEME_ADMIN_EMAIL}";
+	registeremail = "${ATHEME_REGISTER_EMAIL}";
+	#hidden;
+	mta = "/usr/sbin/sendmail";
+	loglevel = { debug; };
+	maxcertfp = 0;
+	maxlogins = 5;
+	maxusers = 5;
+	mdlimit = 30;
+	emaillimit = 10;
+	emailtime = 300;
+	auth = none;
+	casemapping = rfc1459;
+};
+
+uplink "${IRC_DOMAIN}" {
+    host = "${ATHEME_UPLINK_HOST}";
+    #vhost = "192.0.2.5";
+    port = ${ATHEME_UPLINK_PORT};
+    send_password = "${ATHEME_SEND_PASSWORD}";
+    receive_password = "${ATHEME_RECEIVE_PASSWORD}";
+};
+
+nickserv {
+	nick = "${ATHEME_NICKSERV_NICK}";
+	user = "${ATHEME_NICKSERV_USER}";
+	host = "${ATHEME_NICKSERV_HOST}";
+	real = "${ATHEME_NICKSERV_REAL}";
+	aliases {
+		"ID" = "IDENTIFY";
+		"MYACCESS" = "LISTCHANS";
+	};
+	access {
+	};
+	spam;
+	#no_nick_ownership;
+	maxnicks = 5;
+	expire = 30;
+	enforce_expire = 14;
+	enforce_delay = 30;
+	enforce_prefix = "Guest";
+	waitreg_time = 30;
+	#pwquality_dict = "/var/cache/cracklib/cracklib_dict";
+	#passwdqc_max = 288;     /* (8 <= value <= 288) */
+	#passwdqc_min_n0 = 20;   /* (0 <= value <= passwdqc_max) */
+	#passwdqc_min_n1 = 16;   /* (0 <= value <= passwdqc_min_n0) */
+	#passwdqc_min_n2 = 16;   /* (0 <= value <= passwdqc_min_n1) */
+	#passwdqc_min_n3 = 12;   /* (0 <= value <= passwdqc_min_n2) */
+	#passwdqc_min_n4 = 8;    /* (0 <= value <= passwdqc_min_n3) */
+	#passwdqc_words = 4;     /* (2 <= value <= 8) */
+	#pwquality_warn_only;
+	show_custom_metadata;
+	emailexempts {
+	};
+	shorthelp = "REGISTER IDENTIFY LOGOUT GROUP DROP GHOST ACCESS CERT SET";
+	listownmail_canon;
+	bad_password_message;
+};
+
+chanserv {
+	nick = "${ATHEME_CHANSERV_NICK}";
+	user = "${ATHEME_CHANSERV_USER}";
+	host = "${ATHEME_CHANSERV_HOST}";
+	real = "${ATHEME_CHANSERV_REAL}";
+	aliases {
+	};
+	access {
+	};
+	#reggroup = "!Services-Team";
+	maxchans = 5;
+	fantasy;
+	#hide_xop;
+	#hide_flags_akicks;
+	#hide_pubacl_akicks;
+	templates {
+		vop = "+AV";
+		hop = "+AHehitrv";
+		aop = "+AOehiortv";
+		sop = "+AOaefhiorstv";
+		founder = "+AFORaefhioqrstv";
+		member = "+Ai";
+		op = "+AOiortv";
+	};
+        deftemplates = "MEMBER=+Ai OP=+AOiortv";
+        changets;
+	trigger = "!";
+	expire = 30;
+	maxchanacs = 0;
+	maxfounders = 4;
+	#founder_flags = "AFORefiorstv";
+	#default_mlock = "+nt";
+	#akick_time = 10;
+	antiflood_enforce_method = quiet;
+	show_custom_metadata;
+        shorthelp = "REGISTER DROP OP DEOP VOICE DEVOICE AKICK FLAGS INFO TOPIC INVITE";
+};
+
+chanfix {
+	nick = "${ATHEME_CHANFIX_NICK}";
+	user = "${ATHEME_CHANFIX_USER}";
+	host = "${ATHEME_CHANFIX_HOST}";
+	real = "${ATHEME_CHANFIX_REAL}";
+	aliases {
+	};
+	access {
+	};
+	autofix;
+};
+
+global {
+	nick = "${ATHEME_GLOBAL_NICK}";
+	user = "${ATHEME_GLOBAL_USER}";
+	host = "${ATHEME_GLOBAL_HOST}";
+	real = "${ATHEME_GLOBAL_REAL}";
+	aliases {
+	};
+	access {
+	};
+};
+
+infoserv {
+	nick = "${ATHEME_INFOSERV_NICK}";
+	user = "${ATHEME_INFOSERV_USER}";
+	host = "${ATHEME_INFOSERV_HOST}";
+	real = "${ATHEME_INFOSERV_REAL}";
+	aliases {
+	};
+	access {
+	};
+	logoninfo_count = 3;
+	logoninfo_reverse;
+	logoninfo_show_metadata;
+};
+
+operserv {
+	nick = "${ATHEME_OPERSERV_NICK}";
+	user = "${ATHEME_OPERSERV_USER}";
+	host = "${ATHEME_OPERSERV_HOST}";
+	real = "${ATHEME_OPERSERV_REAL}";
+	aliases {
+		"AKILL" = "AKILL";
+		"GLINE" = "AKILL";
+		"KLINE" = "AKILL";
+	};
+	access {
+	};
+	modinspect_use_colors;
+};
+
+saslserv {
+	nick = "${ATHEME_SASLSERV_NICK}";
+	user = "${ATHEME_SASLSERV_USER}";
+	host = "${ATHEME_SASLSERV_HOST}";
+	real = "${ATHEME_SASLSERV_REAL}";
+	#hide_server_names;
+};
+
+memoserv {
+        nick = "${ATHEME_MEMOSERV_NICK}";
+        user = "${ATHEME_MEMOSERV_USER}";
+        host = "${ATHEME_MEMOSERV_HOST}";
+        real = "${ATHEME_MEMOSERV_REAL}";
+	aliases {
+                "MAIL" = "SEND";
+                "MSG" = "SEND";
+                "DEL" = "DELETE";
+                "RM" = "DELETE";
+	};
+	access {
+	};
+        maxmemos = 50;
+};
+
+gameserv {
+	nick = "${ATHEME_GAMESERV_NICK}";
+	user = "${ATHEME_GAMESERV_USER}";
+	host = "${ATHEME_GAMESERV_HOST}";
+	real = "${ATHEME_GAMESERV_REAL}";
+	aliases {
+	};
+	access {
+	};
+};
+
+rpgserv {
+	nick = "${ATHEME_RPGSERV_NICK}";
+	user = "${ATHEME_RPGSERV_USER}";
+	host = "${ATHEME_RPGSERV_HOST}";
+	real = "${ATHEME_RPGSERV_REAL}";
+	aliases {
+	};
+	access {
+	};
+};
+
+botserv {
+	nick = "${ATHEME_BOTSERV_NICK}";
+	user = "${ATHEME_BOTSERV_USER}";
+	host = "${ATHEME_BOTSERV_HOST}";
+	real = "${ATHEME_BOTSERV_REAL}";
+	aliases {
+	};
+	access {
+	};
+	min_users = 0;
+};
+
+groupserv {
+        nick = "${ATHEME_GROUPSERV_NICK}";
+        user = "${ATHEME_GROUPSERV_USER}";
+        host = "${ATHEME_GROUPSERV_HOST}";
+        real = "${ATHEME_GROUPSERV_REAL}";
+	aliases {
+                "APPROVE" = "ACTIVATE";
+                "DENY" = "REJECT";
+	};
+	access {
+	};
+	maxgroups = 5;
+	maxgroupacs = 100;
+	enable_open_groups;
+        join_flags = "+cv";
+};
+
+hostserv {
+
+        nick = "${ATHEME_HOSTSERV_NICK}";
+        user = "${ATHEME_HOSTSERV_USER}";
+        host = "${ATHEME_HOSTSERV_HOST}";
+        real = "${ATHEME_HOSTSERV_REAL}";
+	aliases {
+		"APPROVE" = "ACTIVATE";
+		"DENY" = "REJECT";
+                "REQ" = "REQUEST";
+                "LIST" = "LISTVHOST";
+                "SET" = "VHOST";
+	};
+	access {
+	};
+        reggroup = "!Services-Team";
+	#no_subsequent_requests;
+	#request_per_nick;
+};
+
+helpserv {
+        nick = "${ATHEME_HELPSERV_NICK}";
+        user = "${ATHEME_HELPSERV_USER}";
+        host = "${ATHEME_HELPSERV_HOST}";
+        real = "${ATHEME_HELPSERV_REAL}";
+	aliases {
+                "HELP" = "HELPME";
+                "SUPPORT" = "HELPME";
+                "REQUEST" = "HELPME";
+                "LIST" = "SERVICES";
+	};
+	access {
+	};
+};
+
+statserv {
+        nick = "${ATHEME_STATSERV_NICK}";
+        user = "${ATHEME_STATSERV_USER}";
+        host = "${ATHEME_STATSERV_HOST}";
+        real = "${ATHEME_STATSERV_REAL}";
+	aliases {
+                "STATS" = "SERVER";
+                "CHAN" = "CHANNEL";
+                "SPLIT" = "NETSPLIT";
+	};
+	access {
+	};
+};
+
+alis {
+        nick = "${ATHEME_ALIS_NICK}";
+        user = "${ATHEME_ALIS_USER}";
+        host = "${ATHEME_ALIS_HOST}";
+        real = "${ATHEME_ALIS_REAL}";
+	aliases {
+                "FIND" = "LIST";
+                "SEARCH" = "LIST";
+	};
+	access {
+	};
+        maxmatches = 128;
+};
+
+proxyscan {
+        nick = "${ATHEME_PROXYSCAN_NICK}";
+        user = "${ATHEME_PROXYSCAN_USER}";
+        host = "${ATHEME_PROXYSCAN_HOST}";
+        real = "${ATHEME_PROXYSCAN_REAL}";
+	aliases {
+                "SCAN" = "SCAN";
+                "CHECK" = "SCAN";
+	};
+	access {
+	};
+	blacklists {
+		"dnsbl.dronebl.org";
+		"rbl.efnetrbl.org";
+		"tor.efnet.org";
+                "dnsbl.tornevall.org";
+                "bl.spamcop.net";
+        };
+	dnsbl_action = kline;
+};
+
+httpd {
+	host = "0.0.0.0";
+	#host = "::";
+	www_root = "/var/www";
+	port = 8080;
+};
+
+throttle {
+	#address_burst = 5;
+	#address_replenish = 1;
+	#address_account_burst = 2;
+	#address_account_replenish = 2;
+};
+
+ldap {
+	url = "ldap://127.0.0.1";
+	dnformat = "cn=%s,dc=jillestest,dc=com";
+};
+
+/* File-based logging configuration - SINGLE LOG FILE */
+/*
+ * Single comprehensive log file capturing everything
+ * All log categories are written to logs/atheme/atheme.log
+ */
+
+/* Single comprehensive log file - captures everything */
+logfile "logs/atheme/atheme.log" { debug; };                /* ALL LOGGING - Everything goes here */
+
+/* Optional: Log to IRC channels (uncomment if needed) */
+#logfile "#services" { debug; };
+#logfile "!snotices" { debug; };
+
+general {
+	#permissive_mode; /* Unknown function - not documented */
+	helpchan = "${ATHEME_HELP_CHANNEL}"; /* Network help channel shown for unknown commands */
+	helpurl = "${ATHEME_HELP_URL}"; /* Webpage for services help */
+	#silent; /* Prevents WALLOPS/GLOBOPS - not recommended to uncomment */
+	#verbose_wallops; /* Additional event information - may cause large amounts of messages */
+	join_chans; /* Allow ChanServ to join registered channels (recommended) */
+	leave_chans; /* ChanServ leaves channels after everyone else (recommended) */
+	#secure; /* Requires /msg <service>@<host> instead of /msg <service> */
+	uflags = { hidemail; }; /* Default user flags: hides email address */
+	cflags = { guard; verbose; }; /* Default channel flags: ChanServ inhabits channel, verbose notifications */
+	#raw; /* Allows RAW/INJECT commands - TAINTS the instance, use for debugging only */
+	flood_msgs = 7; /* Number of messages to trigger flood protection */
+	flood_time = 10; /* Time window in seconds for flood detection */
+	ratelimit_uses = 5; /* Number of uses before ratelimit kicks in */
+	ratelimit_period = 60; /* Time period in seconds for ratelimit */
+	#vhost_change = 30; /* Days before vHost can be changed again */
+	kline_time = 7; /* Default expiration time for KLINEs in days (0 = permanent) */
+	#kline_with_ident; /* KLINE user@host instead of *@host */
+	#kline_verified_ident; /* KLINE *@host for unverified, user@host for verified idents */
+	clone_time = 0;
+        commit_interval = 5; /* Save database every 5 minutes */
+	#db_save_blocking;
+	#operstring = "is an IRC Operator";
+	#servicestring = "is a Network Service";
+	default_clone_allowed = 5;
+	default_clone_warn = 4;
+	clone_identified_increase_limit;
+	uplink_sendq_limit = 1048576;
+	language = "en";
+	exempts {
+	};
+	#allow_taint;
+	immune_level = immune;
+	show_entity_id;
+	load_database_mdeps;
+	#hide_opers;
+	match_masks_through_vhost;
+	#default_password_length = 16;
+};
+
+operclass "user" { };
+
+operclass "ircop" {
+	privs {
+		special:ircop;
+	};
+	privs {
+		user:auspex;
+		user:admin;
+		user:sendpass;
+		user:vhost;
+		user:mark;
+	};
+	privs {
+		chan:auspex;
+		chan:admin;
+		chan:cmodes;
+		chan:joinstaffonly;
+	};
+	privs {
+		general:auspex;
+		general:helper;
+		general:viewprivs;
+		general:flood;
+	};
+	privs {
+		operserv:omode;
+		operserv:akill;
+		operserv:jupe;
+		operserv:global;
+	};
+	privs {
+		group:auspex;
+		group:admin;
+	};
+};
+
+operclass "sra" {
+	extends "ircop";
+	privs {
+		user:exceedlimits;
+		user:hold;
+		user:regnolimit;
+	};
+	privs {
+		general:metadata;
+		general:admin;
+	};
+	privs {
+		#operserv:massakill;
+		#operserv:akill-anymask;
+		operserv:noop;
+		operserv:grant;
+	};
+	needoper;
+};
+
+operator "jilles" {
+	operclass = "sra";
+	#password = "$1$3gJMO9by$0G60YE6GqmuHVH3AnFPor1";
+};
+
+
+/****************************************************************************
+ * INCLUDE CONFIGURATION SECTION.                                           *
+ ****************************************************************************/
+
+/* You may also specify other files for inclusion.
+ * For example:
+ *
+ * include "etc/sras.conf";
+ */

@@ -1,0 +1,173 @@
+# ============================================================================
+# BUILD STAGE - Compile UnrealIRCd from source
+# ============================================================================
+# This stage compiles UnrealIRCd and preserves the source code for module management
+FROM alpine:3.23@sha256:51183f2cfa6320055da30872f211093f9ff1d3cf06f39a0bdb212314c5dc7375 AS builder
+
+# Build arguments
+ARG UNREALIRCD_VERSION=6.2.0.1
+ARG UID=0
+ARG GID=0
+
+# Install build dependencies
+# hadolint ignore=DL3018
+RUN apk update && apk add --no-cache \
+    build-base \
+    wget \
+    pkgconfig \
+    openssl \
+    openssl-dev \
+    pcre2-dev \
+    c-ares-dev \
+    curl-dev \
+    argon2-dev \
+    libsodium-dev \
+    jansson-dev \
+    cmake \
+    file
+
+# Create unrealircd user (skip if UID is 0)
+RUN if [ "${UID}" != "0" ]; then \
+    addgroup -g ${GID} unrealircd && \
+    adduser -D -u ${UID} -G unrealircd -s /bin/false unrealircd; \
+    fi
+
+# Create installation directory
+RUN mkdir -p /home/unrealircd/unrealircd
+
+# Download and extract UnrealIRCd source
+WORKDIR /tmp
+RUN wget --progress=dot:giga https://www.unrealircd.org/downloads/unrealircd-${UNREALIRCD_VERSION}.tar.gz && \
+    tar xzf unrealircd-${UNREALIRCD_VERSION}.tar.gz
+
+# Create build user (UnrealIRCd refuses to build as root)
+RUN addgroup -g 1001 builduser && \
+    adduser -D -u 1001 -G builduser builduser && \
+    mkdir -p /home/unrealircd && \
+    chown -R builduser:builduser /tmp/unrealircd-${UNREALIRCD_VERSION} /home/unrealircd
+
+# Switch to build user and configure
+WORKDIR /tmp/unrealircd-${UNREALIRCD_VERSION}
+USER builduser
+
+# Copy configuration settings
+COPY config.settings .
+
+# Configure UnrealIRCd build
+RUN ./Config -quick
+
+# Compile UnrealIRCd
+RUN make -j"$(nproc)"
+
+# Install UnrealIRCd
+RUN make install
+
+# ============================================================================
+# RUNTIME STAGE - Enhanced production container with module management
+# ============================================================================
+# This stage includes the compiled UnrealIRCd plus source code and build tools
+# to enable third-party module installation and management
+FROM alpine:3.23@sha256:51183f2cfa6320055da30872f211093f9ff1d3cf06f39a0bdb212314c5dc7375
+
+# Runtime arguments (inherit from builder stage)
+ARG UNREALIRCD_VERSION=6.2.0.1
+ARG UID=0
+ARG GID=0
+
+# Install runtime dependencies (including build tools for module compilation)
+# hadolint ignore=DL3018
+RUN apk update && apk add --no-cache \
+    openssl \
+    pcre2 \
+    c-ares \
+    curl \
+    ca-certificates \
+    ca-certificates-bundle \
+    tini \
+    su-exec \
+    netcat-openbsd \
+    argon2-libs \
+    libsodium \
+    jansson \
+    # Build tools for third-party modules
+    build-base \
+    pkgconfig \
+    cmake \
+    openssl-dev \
+    pcre2-dev \
+    c-ares-dev \
+    curl-dev \
+    argon2-dev \
+    libsodium-dev \
+    jansson-dev \
+    wget
+
+# Create unrealircd user with specific UID/GID
+RUN if [ "${UID}" = "0" ]; then \
+    addgroup -g 1000 unrealircd && \
+    adduser -D -u 1000 -G unrealircd -s /bin/false unrealircd; \
+    else \
+    addgroup -g ${GID} unrealircd && \
+    adduser -D -u ${UID} -G unrealircd -s /bin/false unrealircd; \
+    fi
+
+# Copy built application and source code from builder stage
+COPY --from=builder /home/unrealircd/unrealircd /home/unrealircd/unrealircd
+COPY --from=builder /tmp/unrealircd-${UNREALIRCD_VERSION} /tmp/unrealircd-${UNREALIRCD_VERSION}
+
+# Copy third-party modules configuration, installation and management scripts
+COPY third-party-modules.list /home/unrealircd/third-party-modules.list
+COPY scripts/install-modules.sh /usr/local/bin/install-modules.sh
+COPY scripts/manage-modules.sh /usr/local/bin/manage-modules.sh
+RUN chmod +x /usr/local/bin/install-modules.sh
+RUN chmod +x /usr/local/bin/manage-modules.sh
+
+# Set ownership based on UID/GID arguments
+RUN if [ "${UID}" = "0" ]; then \
+    chown -R 1000:1000 /home/unrealircd/unrealircd && \
+    chown -R 1000:1000 /tmp/unrealircd-${UNREALIRCD_VERSION}; \
+    else \
+    chown -R ${UID}:${GID} /home/unrealircd/unrealircd && \
+    chown -R ${UID}:${GID} /tmp/unrealircd-${UNREALIRCD_VERSION}; \
+    fi
+
+# Create directory structure with proper permissions
+RUN mkdir -p /home/unrealircd/unrealircd/conf \
+    /home/unrealircd/unrealircd/logs \
+    /home/unrealircd/unrealircd/data \
+    /home/unrealircd/unrealircd/cache \
+    /home/unrealircd/unrealircd/tmp \
+    /run/unrealircd && \
+    # Create symlink to source for module manager
+    ln -sf /tmp/unrealircd-${UNREALIRCD_VERSION} /home/unrealircd/unrealircd/source && \
+    if [ "${UID}" = "0" ]; then \
+    chown -R 1000:1000 /home/unrealircd/unrealircd && \
+    chown -R 1000:1000 /run/unrealircd; \
+    else \
+    chown -R ${UID}:${GID} /home/unrealircd/unrealircd && \
+    chown -R ${UID}:${GID} /run/unrealircd; \
+    fi && \
+    chmod -R 755 /home/unrealircd/unrealircd && \
+    chmod 755 /run/unrealircd
+
+# Copy entrypoint script
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+# Set working directory
+WORKDIR /home/unrealircd/unrealircd
+
+# Expose IRC ports (TLS only)
+EXPOSE 6697 6900 6901 8600 8000
+
+# Health check - verify IRC server is responding on TLS port
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD su-exec unrealircd nc -z localhost 6697 || exit 1
+
+# Switch to unrealircd user for security
+USER unrealircd
+
+# Use tini as init system with child subreaper
+# Entrypoint handles permissions and user switching
+ENTRYPOINT ["/sbin/tini", "-s", "--", "/usr/local/bin/docker-entrypoint.sh"]
+CMD ["start"]

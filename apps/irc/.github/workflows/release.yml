@@ -1,0 +1,152 @@
+---
+name: Release
+on:
+  push:
+    tags: [v*]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to release (e.g., v1.2.3)
+        required: true
+        type: string
+permissions:
+  contents: write
+  packages: write
+  pull-requests: read
+jobs:
+  validate:
+    name: Validate
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      is_prerelease: ${{ steps.version.outputs.is_prerelease }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Determine Version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${GITHUB_REF#refs/tags/}"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+          # Check if this is a prerelease (contains alpha, beta, rc)
+          if [[ "$VERSION" =~ (alpha|beta|rc) ]]; then
+            echo "is_prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "Release version: $VERSION"
+          echo "Is prerelease: $([ "$VERSION" != "${VERSION/alpha/}" ] || [ "$VERSION" != "${VERSION/beta/}" ] || [ "$VERSION" != "${VERSION/rc/}" ] && echo "true" || echo "false")"
+  wait:
+    name: Wait for Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for Docker Build
+        uses: lewagon/wait-on-check-action@3603e826ee561ea102b58accb5ea55a1a7482343 # v1.4.1
+        with:
+          ref: ${{ github.sha }}
+          check-name: Docker (Build & Push)
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 30
+          allowed-conclusions: success
+      - name: Wait for Security Scan
+        uses: lewagon/wait-on-check-action@3603e826ee561ea102b58accb5ea55a1a7482343 # v1.4.1
+        with:
+          ref: ${{ github.sha }}
+          check-name: Security (Docker Security)
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 30
+          allowed-conclusions: success
+  create:
+    name: Create Release
+    runs-on: ubuntu-latest
+    needs: [validate, wait]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Generate Changelog
+        id: changelog
+        run: |
+          # Get the previous tag
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -z "$PREVIOUS_TAG" ]; then
+            echo "changelog=Initial release of IRC.atl.chat infrastructure" >> "$GITHUB_OUTPUT"
+          else
+            # Generate changelog from commit messages since last tag
+            CHANGELOG=$(git log "${PREVIOUS_TAG}..HEAD" --pretty=format:"- %s (%h)" --no-merges)
+
+            # Use multiline output format for GitHub Actions
+            {
+              echo "changelog<<EOF"
+              echo "## Changes since $PREVIOUS_TAG"
+              echo ""
+              echo "$CHANGELOG"
+              echo ""
+              echo "## Docker Images Released"
+              echo "- \`ghcr.io/allthingslinux/irc.atl.chat-unrealircd:${{ needs.validate.outputs.version }}\`"
+              echo "- \`ghcr.io/allthingslinux/irc.atl.chat-atheme:${{ needs.validate.outputs.version }}\`"
+              echo "- \`ghcr.io/allthingslinux/irc.atl.chat-unrealircd-webpanel:${{ needs.validate.outputs.version }}\`"
+              echo ""
+              echo "## Quick Start"
+              echo "\`\`\`bash"
+              echo "# Pull the latest images"
+              echo "docker pull ghcr.io/allthingslinux/irc.atl.chat-unrealircd:${{ needs.validate.outputs.version }}"
+              echo "docker pull ghcr.io/allthingslinux/irc.atl.chat-atheme:${{ needs.validate.outputs.version }}"
+              echo "docker pull ghcr.io/allthingslinux/irc.atl.chat-unrealircd-webpanel:${{ needs.validate.outputs.version }}"
+              echo ""
+              echo "# Update your compose.yaml to use the new version"
+              echo "# Then restart your services"
+              echo "docker compose down && docker compose up -d"
+              echo "\`\`\`"
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
+          fi
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.validate.outputs.version }}
+          name: IRC.atl.chat Release ${{ needs.validate.outputs.version }}
+          body: ${{ steps.changelog.outputs.changelog }}
+          prerelease: ${{ needs.validate.outputs.is_prerelease == 'true' }}
+          generate_release_notes: true
+          make_latest: ${{ needs.validate.outputs.is_prerelease == 'false' }}
+      - name: Update Documentation
+        run: |
+          {
+            echo "## 📚 Documentation Update"
+            echo ""
+            echo "### IRC.atl.chat Infrastructure"
+            echo ""
+            echo "This release includes updates to the IRC server infrastructure:"
+            echo "- **UnrealIRCd**: IRC daemon"
+            echo "- **Atheme Services**: NickServ, ChanServ, OperServ"
+            echo "- **WebPanel**: Administrative interface"
+            echo ""
+            echo "### Docker Images"
+            echo ""
+            echo "| Service | Image |"
+            echo "|---------|-------|"
+            echo "| UnrealIRCd | \`ghcr.io/allthingslinux/irc.atl.chat-unrealircd:${{ needs.validate.outputs.version }}\` |"
+            echo "| Atheme Services | \`ghcr.io/allthingslinux/irc.atl.chat-atheme:${{ needs.validate.outputs.version }}\` |"
+            echo "| WebPanel | \`ghcr.io/allthingslinux/irc.atl.chat-unrealircd-webpanel:${{ needs.validate.outputs.version }}\` |"
+            echo ""
+            echo "### Migration Guide"
+            echo ""
+            echo "To update to this version:"
+            echo "1. Pull the new images: \`docker compose pull\`"
+            echo "2. Stop services: \`docker compose down\`"
+            echo "3. Start services: \`docker compose up -d\`"
+            echo ""
+            echo "### Configuration"
+            echo ""
+            echo "Ensure your \`.env\` file is properly configured before starting the services."
+            echo "See the [README.md](https://github.com/allthingslinux/irc.atl.chat/blob/main/README.md) for setup instructions."
+          } >> "$GITHUB_STEP_SUMMARY"

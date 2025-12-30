@@ -1,0 +1,16 @@
+# Third-party modules to install during container build
+# This file is read during the Docker build process to install required modules
+#
+# Format: one module name per line
+# Lines starting with # are comments and ignored
+# Empty lines are ignored
+#
+# Available modules can be found at: https://modules.unrealircd.org/
+# Or by running: docker compose exec unrealircd ./unrealircd module list
+
+# WebIRC/WebSocket information in WHOIS
+third/showwebirc
+
+# Add more modules here as needed:
+# third/example-module
+# third/another-module

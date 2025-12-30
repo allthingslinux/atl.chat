@@ -1,0 +1,227 @@
+---
+name: Security
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: 20 7 * * 1
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  changes:
+    name: File Detection
+    runs-on: ubuntu-latest
+    outputs:
+      docker: ${{ steps.docker_changes.outputs.any_changed }}
+      shell: ${{ steps.shell_changes.outputs.any_changed }}
+      yaml: ${{ steps.yaml_changes.outputs.any_changed }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Check Docker
+        uses: tj-actions/changed-files@v47
+        id: docker_changes
+        with:
+          files: |
+            **/Containerfile
+            **/Dockerfile
+            compose.yaml
+            docker-compose*.yml
+      - name: Check Shell
+        uses: tj-actions/changed-files@v47
+        id: shell_changes
+        with:
+          files: |
+            **/*.sh
+            scripts/**
+      - name: Check YAML
+        uses: tj-actions/changed-files@v47
+        id: yaml_changes
+        with:
+          files: |
+            **/*.yml
+            **/*.yaml
+            .github/**
+  codeql:
+    name: CodeQL
+    runs-on: ubuntu-latest
+    needs: [changes]
+    if: (needs.changes.outputs.shell == 'true' || needs.changes.outputs.yaml == 'true' || github.event_name == 'workflow_dispatch')
+      && github.event_name != 'pull_request'
+    permissions:
+      security-events: write
+      packages: read
+      actions: read
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: actions
+            build-mode: none
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Initialize
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+      - name: Analyze
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: /language:${{ matrix.language }}
+  dependencies:
+    name: Dependencies
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && github.actor != 'renovate[bot]'
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Review
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+          comment-summary-in-pr: always
+  docker:
+    name: Docker Security
+    runs-on: ubuntu-latest
+    needs: [changes]
+    if: (needs.changes.outputs.docker == 'true' || github.event_name == 'workflow_dispatch')
+      && github.event_name != 'pull_request'
+    permissions:
+      contents: read
+      security-events: write
+    strategy:
+      matrix:
+        service: [unrealircd, atheme, unrealircd-webpanel]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Setup Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build for Security Scan
+        uses: docker/build-push-action@v6
+        with:
+          context: ./${{ matrix.service == 'unrealircd-webpanel' && 'src/frontend/webpanel' || matrix.service == 'unrealircd' && 'src/backend/unrealircd' || matrix.service == 'atheme' && 'src/backend/atheme' }}
+          file: ./${{ matrix.service == 'unrealircd-webpanel' && 'src/frontend/webpanel/Containerfile' || matrix.service == 'unrealircd' && 'src/backend/unrealircd/Containerfile' || matrix.service == 'atheme' && 'src/backend/atheme/Containerfile' }}
+          push: false
+          load: true
+          tags: irc-atl-chat-${{ matrix.service }}:security-scan
+      - name: Scan Container Image
+        uses: reviewdog/action-trivy@v1.14.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          trivy_command: image
+          trivy_target: 'irc-atl-chat-${{ matrix.service }}:security-scan'
+          level: warning
+          reporter: github-pr-review
+          tool_name: trivy-${{ matrix.service }}
+          filter_mode: nofilter
+          fail_level: none
+          trivy_flags: --severity HIGH,CRITICAL --exit-code 0
+  shell:
+    name: Shell Script Security
+    runs-on: ubuntu-latest
+    needs: [changes]
+    if: (needs.changes.outputs.shell == 'true' || github.event_name == 'workflow_dispatch')
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Shell Script Security Analysis
+        run: |
+          echo "## 🔍 Shell Script Security Analysis"
+          echo ""
+
+          # Find all shell scripts
+          SHELL_SCRIPTS=$(find . -name "*.sh" -o -name "*.bash" -o -name "*.zsh" | grep -v ".git" || echo "")
+
+          if [ -z "$SHELL_SCRIPTS" ]; then
+            echo "No shell scripts found for analysis"
+            exit 0
+          fi
+
+          echo "Found shell scripts:"
+          echo "$SHELL_SCRIPTS"
+          echo ""
+
+          # Security checks for shell scripts
+          for script in $SHELL_SCRIPTS; do
+            echo "### Analyzing: $script"
+
+            # Check for common security issues
+            echo "**Security Checks:**"
+
+            # Check for hardcoded passwords/secrets
+            if grep -n -i "password\|secret\|key\|token" "$script" | grep -v "#.*password\|#.*secret" | grep -v "echo.*password\|echo.*secret"; then
+              echo "⚠️ Potential hardcoded credentials found"
+            else
+              echo "✅ No obvious hardcoded credentials"
+            fi
+
+            # Check for eval usage (dangerous)
+            if grep -n "eval " "$script"; then
+              echo "⚠️ Use of 'eval' detected (security risk)"
+            else
+              echo "✅ No 'eval' usage found"
+            fi
+
+            # Check for unquoted variables
+            if grep -n "\$[a-zA-Z_][a-zA-Z0-9_]*[^\"' ]" "$script" | grep -v "echo\|printf\|test"; then
+              echo "⚠️ Potentially unquoted variables found"
+            else
+              echo "✅ Variables appear properly quoted"
+            fi
+
+            # Check for rm -rf patterns
+            if grep -n "rm.*-rf" "$script"; then
+              echo "⚠️ 'rm -rf' usage detected (verify paths are safe)"
+            else
+              echo "✅ No dangerous rm patterns"
+            fi
+
+            # Check for curl/wget without SSL verification
+            if grep -n "curl.*-k\|wget.*--no-check-certificate" "$script"; then
+              echo "⚠️ SSL verification disabled in network requests"
+            else
+              echo "✅ SSL verification appears enabled"
+            fi
+
+            echo ""
+          done
+          {
+            echo "## 🛡️ Additional Security Analysis"
+            echo ""
+
+            # Check for dangerous file permissions
+            echo "**File Permission Analysis:**"
+            DANGEROUS_PERMS=$(find . -type f -perm /o+w -not -path "./.git/*" 2>/dev/null || echo "")
+            if [ -n "$DANGEROUS_PERMS" ]; then
+              echo "⚠️ World-writable files found:"
+              echo "$DANGEROUS_PERMS"
+            else
+              echo "✅ No world-writable files found"
+            fi
+
+            # Check for suid/sgid files
+            SUID_FILES=$(find . -type f \( -perm -4000 -o -perm -2000 \) -not -path "./.git/*" 2>/dev/null || echo "")
+            if [ -n "$SUID_FILES" ]; then
+              echo "⚠️ SUID/SGID files found:"
+              echo "$SUID_FILES"
+            else
+              echo "✅ No SUID/SGID files found"
+            fi
+
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
