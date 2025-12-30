@@ -1,0 +1,11 @@
+{
+  "name": "xmpp",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "make dev",
+    "build": "make build",
+    "test": "make test",
+    "lint": "echo 'No lint script defined'"
+  }
+}

@@ -1,12 +1,16 @@
 {
   "name": "atl.chat-monorepo",
   "private": true,
+  "packageManager": "pnpm@9.1.0",
   "scripts": {
-    "dev": "npm run dev --workspaces",
-    "build": "npm run build --workspaces",
-    "lint": "npm run lint --workspaces"
+    "dev": "pnpm -r dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint"
   },
   "workspaces": [
     "apps/*"
-  ]
+  ],
+  "devDependencies": {
+    "turbo": "^2.7.2"
+  }
 }
