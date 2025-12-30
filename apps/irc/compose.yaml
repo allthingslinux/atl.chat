@@ -44,7 +44,6 @@ services:
     # Network configuration
     networks:
       - irc-network
-      - shared_network
 
     # Restart policy
     restart: unless-stopped
@@ -271,9 +270,6 @@ networks:
   irc-network:
     name: irc-network
     driver: bridge
-  shared_network:
-    name: atl_chat_shared
-    external: true
 
 # ============================================================================
 # VOLUMES

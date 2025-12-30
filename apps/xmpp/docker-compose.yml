@@ -494,6 +494,3 @@ networks:
   xmpp_network:
     name: xmpp_network
     driver: bridge
-  shared_network:
-    name: atl_chat_shared
-    external: true
