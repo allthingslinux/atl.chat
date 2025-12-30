@@ -8,7 +8,7 @@ The project is managed as a **pnpm workspace** using **Turborepo** for orchestra
 
 | Path | Application | Description | Tech Stack |
 |------|-------------|-------------|------------|
-| **[`apps/web`](./apps/web)** | **Web Interface** | The main user-facing Next.js application. | Next.js 14, React, Tailwind, Drizzle ORM |
+| **[`apps/web`](./apps/web)** | **Landing Page** | The main landing page for `atl.chat`. | Next.js 14, React, Tailwind |
 | **[`apps/xmpp`](./apps/xmpp)** | **XMPP Server** | Prosody-based XMPP server with custom modules. | Prosody (Lua), Docker, PostgreSQL |
 | **[`apps/irc`](./apps/irc)** | **IRC Server** | UnrealIRCd server with Atheme services. | UnrealIRCd (C), Atheme, Docker |
 
@@ -62,9 +62,8 @@ pnpm run build
 ## 📦 Application Details
 
 ### Web (`apps/web`)
-The modern frontend for `atl.chat`. It handles user authentication, dashboard management, and web-based chat features.
+The landing page for `atl.chat`. It serves as the main entry point for the project.
 - **Port**: `3000` (default)
-- **Database**: PostgreSQL (managed via Drizzle)
 
 ### XMPP (`apps/xmpp`)
 A robust XMPP server powered by Prosody. It supports modern extensions (XEPs) and integrates with the web platform.
