@@ -1,7 +1,7 @@
 {
   "name": "atl.chat-monorepo",
   "private": true,
-  "packageManager": "pnpm@9.1.0",
+  "packageManager": "pnpm@9.15.0",
   "scripts": {
     "dev": "pnpm -r dev",
     "build": "pnpm -r build",

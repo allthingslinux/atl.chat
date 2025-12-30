@@ -1,2 +1,23 @@
 packages:
-  - 'apps/*'
+  - "apps/*"
+  - "packages/*"
+
+catalog:
+  next: "14.2.16"
+  react: "^18"
+  react-dom: "^18"
+  typescript: "^5"
+  tailwindcss: "^3.4.1"
+  postcss: "^8"
+  eslint: "^8"
+  eslint-config-next: "14.2.16"
+  "@types/node": "^20"
+  "@types/react": "^18"
+  "@types/react-dom": "^18"
+  lucide-react: "^0.461.0"
+  class-variance-authority: "^0.7.1"
+  clsx: "^2.1.1"
+  tailwind-merge: "^2.5.5"
+  tailwindcss-animate: "^1.0.7"
+  "@radix-ui/react-slot": "^1.1.0"
+  "@cloudflare/next-on-pages": "^1.13.5"

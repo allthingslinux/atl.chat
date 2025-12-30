@@ -4,6 +4,63 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+catalogs:
+  default:
+    '@cloudflare/next-on-pages':
+      specifier: ^1.13.5
+      version: 1.13.16
+    '@radix-ui/react-slot':
+      specifier: ^1.1.0
+      version: 1.2.4
+    '@types/node':
+      specifier: ^20
+      version: 20.19.27
+    '@types/react':
+      specifier: ^18
+      version: 18.3.27
+    '@types/react-dom':
+      specifier: ^18
+      version: 18.3.7
+    class-variance-authority:
+      specifier: ^0.7.1
+      version: 0.7.1
+    clsx:
+      specifier: ^2.1.1
+      version: 2.1.1
+    eslint:
+      specifier: ^8
+      version: 8.57.1
+    eslint-config-next:
+      specifier: 14.2.16
+      version: 14.2.16
+    lucide-react:
+      specifier: ^0.461.0
+      version: 0.461.0
+    next:
+      specifier: 14.2.16
+      version: 14.2.16
+    postcss:
+      specifier: ^8
+      version: 8.5.6
+    react:
+      specifier: ^18
+      version: 18.3.1
+    react-dom:
+      specifier: ^18
+      version: 18.3.1
+    tailwind-merge:
+      specifier: ^2.5.5
+      version: 2.6.0
+    tailwindcss:
+      specifier: ^3.4.1
+      version: 3.4.19
+    tailwindcss-animate:
+      specifier: ^1.0.7
+      version: 1.0.7
+    typescript:
+      specifier: ^5
+      version: 5.9.3
+
 importers:
 
   .:
@@ -17,59 +74,59 @@ importers:
   apps/web:
     dependencies:
       '@cloudflare/next-on-pages':
-        specifier: ^1.13.5
+        specifier: 'catalog:'
         version: 1.13.16(next@14.2.16(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(wrangler@4.54.0)
       '@radix-ui/react-slot':
-        specifier: ^1.1.0
+        specifier: 'catalog:'
         version: 1.2.4(@types/react@18.3.27)(react@18.3.1)
       class-variance-authority:
-        specifier: ^0.7.1
+        specifier: 'catalog:'
         version: 0.7.1
       clsx:
-        specifier: ^2.1.1
+        specifier: 'catalog:'
         version: 2.1.1
       lucide-react:
-        specifier: ^0.461.0
+        specifier: 'catalog:'
         version: 0.461.0(react@18.3.1)
       next:
-        specifier: 14.2.16
+        specifier: 'catalog:'
         version: 14.2.16(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react:
-        specifier: ^18
+        specifier: 'catalog:'
         version: 18.3.1
       react-dom:
-        specifier: ^18
+        specifier: 'catalog:'
         version: 18.3.1(react@18.3.1)
       tailwind-merge:
-        specifier: ^2.5.5
+        specifier: 'catalog:'
         version: 2.6.0
       tailwindcss-animate:
-        specifier: ^1.0.7
+        specifier: 'catalog:'
         version: 1.0.7(tailwindcss@3.4.19)
     devDependencies:
       '@types/node':
-        specifier: ^20
+        specifier: 'catalog:'
         version: 20.19.27
       '@types/react':
-        specifier: ^18
+        specifier: 'catalog:'
         version: 18.3.27
       '@types/react-dom':
-        specifier: ^18
+        specifier: 'catalog:'
         version: 18.3.7(@types/react@18.3.27)
       eslint:
-        specifier: ^8
+        specifier: 'catalog:'
         version: 8.57.1
       eslint-config-next:
-        specifier: 14.2.16
+        specifier: 'catalog:'
         version: 14.2.16(eslint@8.57.1)(typescript@5.9.3)
       postcss:
-        specifier: ^8
+        specifier: 'catalog:'
         version: 8.5.6
       tailwindcss:
-        specifier: ^3.4.1
+        specifier: 'catalog:'
         version: 3.4.19
       typescript:
-        specifier: ^5
+        specifier: 'catalog:'
         version: 5.9.3
 
   apps/xmpp: {}
@@ -3666,7 +3723,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  eslint-module-utils@2.12.1(@typescript-eslint/parser@8.51.0(eslint@8.57.1)(typescript@5.9.3))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0)(eslint@8.57.1))(eslint@8.57.1):
+  eslint-module-utils@2.12.1(@typescript-eslint/parser@8.51.0(eslint@8.57.1)(typescript@5.9.3))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.10.1)(eslint@8.57.1):
     dependencies:
       debug: 3.2.7
     optionalDependencies:
@@ -3688,7 +3745,7 @@ snapshots:
       doctrine: 2.1.0
       eslint: 8.57.1
       eslint-import-resolver-node: 0.3.9
-      eslint-module-utils: 2.12.1(@typescript-eslint/parser@8.51.0(eslint@8.57.1)(typescript@5.9.3))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0)(eslint@8.57.1))(eslint@8.57.1)
+      eslint-module-utils: 2.12.1(@typescript-eslint/parser@8.51.0(eslint@8.57.1)(typescript@5.9.3))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.10.1)(eslint@8.57.1)
       hasown: 2.0.2
       is-core-module: 2.16.1
       is-glob: 4.0.3
