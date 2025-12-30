@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>{site_name} - Sign in</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+{state.error&
+	<dialog open="" class="error">
+		<p>{state.error}</p>
+		<form method="dialog"><button>dismiss</button></form>
+	</dialog>}
+	<header>
+	<h1>{site_name}</h1>
+	</header>
+	<main>
+	<fieldset>
+	<legend>Sign in</legend>
+	<p>Sign in to your account to continue.</p>
+	<form method="post">
+		<input type="text" name="username" placeholder="Username" aria-label="Username"
+			autocomplete="username" required="" {extra.username_hint~autofocus=""} {extra.username_hint&value="{extra.username_hint?}"} /><br/>
+		<input type="password" name="password" placeholder="Password" aria-label="Password"
+			autocomplete="current-password" required="" {extra.username_hint&autofocus=""} /><br />
+		<input type="submit" value="Sign in" />
+	</form>
+	</fieldset>
+	</main>
+</body>
+</html>

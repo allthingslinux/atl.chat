@@ -1,0 +1,31 @@
+prosody-modules
+===============
+
+*Add-on modules for Prosody IM Server*
+
+--------------------------------------------------------------------------
+
+Community repository for non-core, unofficial and/or experimental plugins 
+for [Prosody][].
+
+If you are a developer and would like to host your Prosody module in this 
+repository, or want to contribute to existing modules, simply introduce 
+yourself and request commit access on our [mailing list][].
+
+Notes for users
+----------------
+
+There are lots of fun and exciting modules to be found here, we know 
+you'll like it.  However please note that each module is in a different 
+state of development.  Some are proof-of-concept, others are quite stable 
+and ready for production use.  Be sure to read the wiki page of any 
+module before installing it on your server.
+
+We are working on methods to easily download and install modules from 
+this repository.  In the meantime most modules are either a single file 
+and easy to install, or contain installation instructions on their wiki 
+page.  You can browse the files stored in this repository at 
+<https://hg.prosody.im/prosody-modules>.
+
+[Prosody]: https://prosody.im/
+[mailing list]: https://prosody.im/discuss

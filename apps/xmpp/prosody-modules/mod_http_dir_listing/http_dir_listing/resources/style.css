@@ -1,0 +1,10 @@
+
+body{background-color:#eeeeec;font-family:sans-serif;}
+h1{font-size:xx-large;}
+a:link,a:visited{color:#2e3436;text-decoration:none;}
+a:link:hover,a:visited:hover{color:#3465a4;}
+.filelist{background-color:white;padding:1em;list-style-position:inside;-moz-column-width:20em;-webkit-column-width:20em;-ms-column-width:20em;column-width:20em;}
+.file{list-style-image:url(text-x-generic.png);}
+.directory{list-style-image:url(folder.png);}
+.parent{list-style-image:url(user-home.png);}
+footer{margin-top:1ex;font-size:smaller;color:#babdb6;}

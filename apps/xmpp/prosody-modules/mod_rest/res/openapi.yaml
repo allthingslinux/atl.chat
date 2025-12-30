@@ -1,0 +1,1467 @@
+---
+openapi: 3.0.1
+info:
+  title: mod_rest API
+  version: 0.3.2
+  description: |
+    API for sending and receiving stanzas, in a REST-ish fashion or by
+    responding to webhooks. Multiple formats supported, including native XML
+    and a simplified JSON mapping.
+  license:
+    name: MIT
+paths:
+  /rest:
+    post:
+      summary: Send stanzas and receive responses. Webhooks work the same way.
+      tags:
+        - generic
+      security:
+        - basic: []
+        - token: []
+        - oauth2: []
+      requestBody:
+        $ref: '#/components/requestBodies/common'
+      responses:
+        "200":
+          $ref: '#/components/responses/success'
+        "202":
+          $ref: '#/components/responses/sent'
+  /rest/{kind}/{type}/{to}:
+    post:
+      summary: Even more RESTful mapping with certain components in the path.
+      tags:
+        - generic
+      security:
+        - basic: []
+        - token: []
+        - oauth2: []
+      parameters:
+        - $ref: '#/components/parameters/kind'
+        - $ref: '#/components/parameters/type'
+        - $ref: '#/components/parameters/to'
+      requestBody:
+        $ref: '#/components/requestBodies/common'
+      responses:
+        "200":
+          $ref: '#/components/responses/success'
+  /rest/echo:
+    post:
+      summary: Build as stanza and return it for inspection.
+      tags:
+        - debug
+      security:
+        - basic: []
+        - token: []
+        - oauth2: []
+      requestBody:
+        $ref: '#/components/requestBodies/common'
+      responses:
+        "200":
+          $ref: '#/components/responses/success'
+  /rest/ping/{to}:
+    get:
+      tags:
+        - query
+      summary: Ping a local or remote server or other entity
+      security:
+        - basic: []
+        - token: []
+        - oauth2: []
+      parameters:
+        - $ref: '#/components/parameters/to'
+      responses:
+        "200":
+          description: Test reachability of some address
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/iq_pong'
+            application/xmpp+xml:
+              schema:
+                $ref: '#/components/schemas/iq_pong'
+  /rest/version/{to}:
+    get:
+      tags:
+        - query
+      summary: Ask what software version is used.
+      security:
+        - basic: []
+        - token: []
+        - oauth2: []
+      parameters:
+        - $ref: '#/components/parameters/to'
+      responses:
+        "200":
+          description: Version query response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/iq_result_version'
+            application/xmpp+xml:
+              schema:
+                $ref: '#/components/schemas/iq_result_version'
+  /rest/disco/{to}:
+    get:
+      tags:
+        - query
+      summary: Query a remote entity for supported features
+      security:
+        - basic: []
+        - token: []
+        - oauth2: []
+      parameters:
+        - $ref: '#/components/parameters/to'
+      responses:
+        "200":
+          $ref: '#/components/responses/success'
+  /rest/items/{to}:
+    get:
+      tags:
+        - query
+      summary: Query an entity for related services, chat rooms or other items
+      security:
+        - basic: []
+        - token: []
+        - oauth2: []
+      parameters:
+        - $ref: '#/components/parameters/to'
+      responses:
+        "200":
+          $ref: '#/components/responses/success'
+  /rest/extdisco/{to}:
+    get:
+      tags:
+        - query
+      summary: Query for external services (usually STUN and TURN)
+      security:
+        - basic: []
+        - token: []
+        - oauth2: []
+      parameters:
+        - $ref: '#/components/parameters/to'
+        - name: type
+          in: query
+          schema:
+            type: string
+            example: stun
+      responses:
+        "200":
+          $ref: '#/components/responses/success'
+  /rest/archive/{to}:
+    get:
+      tags:
+        - query
+      summary: Query a message archive
+      security:
+        - basic: []
+        - token: []
+        - oauth2: []
+      parameters:
+        - $ref: '#/components/parameters/to'
+        - name: with
+          in: query
+          schema:
+            type: string
+        - name: start
+          in: query
+          schema:
+            type: string
+        - name: end
+          in: query
+          schema:
+            type: string
+        - name: before-id
+          in: query
+          schema:
+            type: string
+        - name: after-id
+          in: query
+          schema:
+            type: string
+        - name: ids
+          in: query
+          schema:
+            type: string
+          description: comma-separated list of archive ids
+        - name: after
+          in: query
+          schema:
+            type: string
+        - name: before
+          in: query
+          schema:
+            type: string
+        - name: max
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          $ref: '#/components/responses/success'
+  /rest/lastactivity/{to}:
+    get:
+      tags:
+        - query
+      summary: Query last activity of an entity. Sometimes used as "uptime" for servers.
+      security:
+        - basic: []
+        - token: []
+        - oauth2: []
+      parameters:
+        - $ref: '#/components/parameters/to'
+      responses:
+        "200":
+          $ref: '#/components/responses/success'
+  /rest/stats/{to}:
+    get:
+      tags:
+        - query
+      summary: Query an entity for statistics
+      security:
+        - basic: []
+        - token: []
+        - oauth2: []
+      parameters:
+        - $ref: '#/components/parameters/to'
+      responses:
+        "200":
+          $ref: '#/components/responses/success'
+  /rest/upload_request/{to}:
+    get:
+      tags:
+        - query
+      summary: Request space for uploading a file to the server.
+      security:
+        - basic: []
+        - token: []
+        - oauth2: []
+      parameters:
+        - $ref: '#/components/parameters/to'
+        - name: filename
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: size
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: content-type
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successful slot request.
+          content:
+            application/json:
+              schema:
+                type: object
+                xml:
+                  name: iq
+                properties:
+                  kind:
+                    type: string
+                    enum:
+                      - iq
+                  type:
+                    type: string
+                    enum:
+                      - result
+                    xml:
+                      attribute: true
+                  to:
+                    $ref: '#/components/schemas/to'
+                  from:
+                    $ref: '#/components/schemas/from'
+                  id:
+                    $ref: '#/components/schemas/id'
+                  upload_slot:
+                    $ref: '#/components/schemas/upload_slot'
+components:
+  schemas:
+    stanza:
+      type: object
+      example:
+        body: Hello
+        type: chat
+        kind: message
+        to: alice@example.com
+        state: active
+      oneOf:
+        - $ref: '#/components/schemas/message'
+        - $ref: '#/components/schemas/presence'
+        - $ref: '#/components/schemas/iq'
+    message:
+      type: object
+      xml:
+        name: message
+      properties:
+        kind:
+          description: Which kind of stanza
+          type: string
+          enum:
+            - message
+        type:
+          type: string
+          enum:
+            - chat
+            - error
+            - groupchat
+            - headline
+            - normal
+          xml:
+            attribute: true
+        to:
+          $ref: '#/components/schemas/to'
+        from:
+          $ref: '#/components/schemas/from'
+        id:
+          $ref: '#/components/schemas/id'
+        lang:
+          $ref: '#/components/schemas/lang'
+        body:
+          $ref: '#/components/schemas/body'
+        subject:
+          $ref: '#/components/schemas/subject'
+        thread:
+          $ref: '#/components/schemas/thread'
+        invite:
+          $ref: '#/components/schemas/invite'
+        state:
+          $ref: '#/components/schemas/state'
+        nick:
+          $ref: '#/components/schemas/nick'
+        delay:
+          $ref: '#/components/schemas/delay'
+        replace:
+          $ref: '#/components/schemas/replace'
+        html:
+          $ref: '#/components/schemas/html'
+        oob:
+          $ref: '#/components/schemas/oob'
+        reactions:
+          $ref: '#/components/schemas/reactions'
+        occupant_id:
+          $ref: '#/components/schemas/occupant_id'
+        attach_to:
+          $ref: '#/components/schemas/attach_to'
+        fallback:
+          $ref: '#/components/schemas/fallback'
+        stanza_ids:
+          $ref: '#/components/schemas/stanza_ids'
+        reference:
+          $ref: '#/components/schemas/reference'
+        reply:
+          $ref: '#/components/schemas/reply'
+        markable:
+          $ref: '#/components/schemas/markable'
+        displayed:
+          $ref: '#/components/schemas/displayed'
+        encryption:
+          $ref: '#/components/schemas/encryption'
+        archive:
+          $ref: '#/components/schemas/archive_result'
+        dataform:
+          $ref: '#/components/schemas/dataform'
+        forwarded:
+          $ref: '#/components/schemas/forwarded'
+        error:
+          $ref: '#/components/schemas/error'
+    presence:
+      type: object
+      properties:
+        kind:
+          description: Which kind of stanza
+          type: string
+          enum:
+            - presence
+        type:
+          type: string
+          enum:
+            - available
+            - unavailable
+            - subscribe
+            - subscribed
+            - unsubscribe
+            - unsubscribed
+            - error
+          xml:
+            attribute: true
+        to:
+          $ref: '#/components/schemas/to'
+        from:
+          $ref: '#/components/schemas/from'
+        id:
+          $ref: '#/components/schemas/id'
+        lang:
+          $ref: '#/components/schemas/lang'
+        show:
+          $ref: '#/components/schemas/show'
+        status:
+          $ref: '#/components/schemas/status'
+        priority:
+          $ref: '#/components/schemas/priority'
+        caps:
+          $ref: '#/components/schemas/caps'
+        nick:
+          $ref: '#/components/schemas/nick'
+        delay:
+          $ref: '#/components/schemas/delay'
+        vcard_update:
+          $ref: '#/components/schemas/vcard_update'
+        idle_since:
+          $ref: '#/components/schemas/idle_since'
+        muc:
+          $ref: '#/components/schemas/muc'
+        error:
+          $ref: '#/components/schemas/error'
+    iq:
+      type: object
+      properties:
+        kind:
+          description: Which kind of stanza
+          type: string
+          enum:
+            - iq
+        type:
+          type: string
+          enum:
+            - get
+            - set
+            - result
+            - error
+          xml:
+            attribute: true
+        to:
+          $ref: '#/components/schemas/to'
+        from:
+          $ref: '#/components/schemas/from'
+        id:
+          $ref: '#/components/schemas/id'
+        lang:
+          $ref: '#/components/schemas/lang'
+        ping:
+          $ref: '#/components/schemas/ping'
+        version:
+          $ref: '#/components/schemas/version'
+        lastactivity:
+          $ref: '#/components/schemas/lastactivity'
+        disco:
+          $ref: '#/components/schemas/disco'
+        items:
+          $ref: '#/components/schemas/items'
+        command:
+          $ref: '#/components/schemas/command'
+        stats:
+          $ref: '#/components/schemas/stats'
+        payload:
+          $ref: '#/components/schemas/payload'
+        gateway:
+          $ref: '#/components/schemas/gateway'
+        register:
+          $ref: '#/components/schemas/register'
+        extdisco:
+          $ref: '#/components/schemas/extdisco'
+        upload_request:
+          $ref: '#/components/schemas/upload_request'
+        upload_slot:
+          $ref: '#/components/schemas/upload_slot'
+        error:
+          $ref: '#/components/schemas/error'
+    iq_pong:
+      description: Test reachability of some XMPP address
+      type: object
+      xml:
+        name: iq
+      properties:
+        type:
+          type: string
+          enum:
+            - result
+          xml:
+            attribute: true
+    iq_result_version:
+      description: Version query response
+      type: object
+      xml:
+        name: iq
+      properties:
+        type:
+          type: string
+          enum:
+            - result
+          xml:
+            attribute: true
+        version:
+          $ref: '#/components/schemas/version'
+    kind:
+      description: Which kind of stanza
+      type: string
+      enum:
+        - message
+        - presence
+        - iq
+    type:
+      description: Stanza type
+      type: string
+      enum:
+        - chat
+        - normal
+        - headline
+        - groupchat
+        - get
+        - set
+        - result
+        - available
+        - unavailable
+        - subscribe
+        - subscribed
+        - unsubscribe
+        - unsubscribed
+      xml:
+        attribute: true
+    to:
+      description: the intended recipient for the stanza
+      example: alice@example.com
+      format: xmpp-jid
+      type: string
+      xml:
+        attribute: true
+    from:
+      description: the sender of the stanza
+      example: bob@example.net
+      format: xmpp-jid
+      type: string
+      xml:
+        attribute: true
+    id:
+      description: Reasonably unique id. mod_rest generates one if left out.
+      type: string
+      xml:
+        attribute: true
+    lang:
+      description: Language code
+      example: en
+      xml:
+        prefix: xml
+        attribute: true
+      type: string
+    body:
+      description: Human-readable chat message
+      example: Hello, World!
+      type: string
+    subject:
+      description: Subject of message or group chat
+      example: Talking about stuff
+      type: string
+    thread:
+      description: Message thread identifier
+      properties:
+        parent:
+          type: string
+          xml:
+            attribute: true
+        id:
+          type: string
+          xml:
+            text: true
+    show:
+      description: indicator of availability, ie away or not
+      type: string
+      enum:
+        - away
+        - chat
+        - dnd
+        - xa
+    status:
+      description: Textual status message.
+      type: string
+    priority:
+      description: Presence priority
+      type: integer
+      maximum: 127
+      minimum: -128
+    state:
+      description: Chat state notifications, e.g. "is typing..."
+      type: string
+      xml:
+        namespace: http://jabber.org/protocol/chatstates
+        x_name_is_value: true
+      enum:
+        - active
+        - inactive
+        - gone
+        - composing
+        - paused
+      example: composing
+    nick:
+      type: string
+      description: Nickname of the sender
+      xml:
+        name: nick
+        namespace: http://jabber.org/protocol/nick
+    delay:
+      type: string
+      format: date-time
+      description: Timestamp of when a stanza was delayed, in ISO 8601 / XEP-0082 format.
+      title: 'XEP-0203: Delayed Delivery'
+      xml:
+        name: delay
+        namespace: urn:xmpp:delay
+        x_single_attribute: stamp
+    replace:
+      type: string
+      description: ID of message being replaced (e.g. for corrections)
+      xml:
+        name: replace
+        namespace: urn:xmpp:message-correct:0
+        x_single_attribute: id
+    muc:
+      description: Multi-User-Chat related
+      type: object
+      xml:
+        name: x
+        namespace: http://jabber.org/protocol/muc
+      properties:
+        history:
+          type: object
+          properties:
+            maxchars:
+              type: integer
+              minimum: 0
+              xml:
+                attribute: true
+            maxstanzas:
+              type: integer
+              minimum: 0
+              xml:
+                attribute: true
+            seconds:
+              type: integer
+              minimum: 0
+              xml:
+                attribute: true
+            since:
+              type: string
+              format: date-time
+              xml:
+                attribute: true
+    invite:
+      description: Invite to a group chat
+      title: 'XEP-0249: Direct MUC Invitations'
+      type: object
+      required:
+        - jid
+      xml:
+        name: x
+        namespace: jabber:x:conference
+      properties:
+        jid:
+          type: string
+          description: Address of the group chat
+          format: xmpp-jid
+          xml:
+            attribute: true
+        reason:
+          type: string
+          description: Optional message by the inviter
+          xml:
+            attribute: true
+        password:
+          type: string
+          description: Password for the group chat, if required
+          xml:
+            attribute: true
+        thread:
+          type: string
+          xml:
+            attribute: true
+        continue:
+          type: boolean
+          description: Whether the group chat continues a one-to-one chat
+          xml:
+            attribute: true
+    html:
+      description: HTML version of 'body'
+      example: <body><p>Hello!</p></body>
+      type: string
+    ping:
+      description: A ping.
+      type: boolean
+      enum:
+        - true
+      xml:
+        name: ping
+        namespace: urn:xmpp:ping
+    version:
+      type: object
+      description: Software version query
+      properties:
+        name:
+          type: string
+          example: My Software
+        version:
+          type: string
+          example: 1.0.0
+        os:
+          type: string
+          example: Linux
+      required:
+        - name
+        - version
+      xml:
+        name: query
+        namespace: jabber:iq:version
+    disco:
+      description: Discover supported features
+      oneOf:
+        - description: A full response
+          type: object
+          properties:
+            features:
+              description: List of URIs indicating supported features
+              type: array
+              items:
+                type: string
+            identities:
+              description: List of abstract identities or types that describe the entity
+              type: array
+              example:
+                - name: Prosody
+                  type: im
+                  category: server
+              items:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  type:
+                    type: string
+                  category:
+                    type: string
+            node:
+              type: string
+            extensions:
+              type: object
+        - description: A query with a node, or an empty response with a node
+          type: string
+        - description: Either a query, or an empty response
+          type: boolean
+    items:
+      description: List of references to other entities
+      oneOf:
+        - description: List of items referenced
+          type: array
+          items:
+            properties:
+              jid:
+                type: string
+                description: Address of item
+              node:
+                type: string
+              name:
+                type: string
+                description: Descriptive name
+            required:
+              - jid
+            type: object
+        - type: string
+          description: A query with a node, or an empty reply list with a node
+        - description: An items query or empty list
+          type: boolean
+          enum:
+            - true
+    command:
+      description: Ad-hoc commands.
+      oneOf:
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/formdata'
+            action:
+              type: string
+            note:
+              type: object
+              properties:
+                text:
+                  type: string
+                type:
+                  type: string
+                  enum:
+                    - info
+                    - warn
+                    - error
+            form:
+              $ref: '#/components/schemas/dataform'
+            sessionid:
+              type: string
+            status:
+              type: string
+            node:
+              type: string
+            actions:
+              type: object
+              properties:
+                complete:
+                  type: boolean
+                prev:
+                  type: boolean
+                next:
+                  type: boolean
+                execute:
+                  type: string
+        - type: string
+          description: Call a command by 'node' id, without arguments
+    oob:
+      type: object
+      description: Reference a media file
+      xml:
+        name: x
+        namespace: jabber:x:oob
+      properties:
+        url:
+          type: string
+          description: URL of the attached media file
+          example: https://media.example.net/thisfile.jpg
+          format: uri
+        desc:
+          description: Optional description
+          type: string
+    payload:
+      title: 'XEP-0335: JSON Containers'
+      description: A piece of arbitrary JSON with a type field attached
+      type: object
+      xml:
+        name: payload
+        namespace: urn:xmpp:json-msg:0
+      required:
+        - datatype
+        - data
+      properties:
+        data:
+          example: '{"some":"json"}'
+          type: object
+        datatype:
+          example: urn:example:my-json#payload
+          type: string
+    rsm:
+      title: 'XEP-0059: Result Set Management'
+      xml:
+        name: set
+        namespace: http://jabber.org/protocol/rsm
+      type: object
+      properties:
+        last:
+          type: string
+        max:
+          type: integer
+        index:
+          type: integer
+        count:
+          type: integer
+        before:
+          type: string
+        after:
+          type: string
+        first:
+          type: string
+    archive_query:
+      title: 'XEP-0313: Message Archive Management'
+      type: object
+      properties:
+        queryid:
+          xml:
+            attribute: true
+          type: string
+        page:
+          $ref: '#/components/schemas/rsm'
+        form:
+          $ref: '#/components/schemas/dataform'
+      xml:
+        name: query
+        namespace: urn:xmpp:mam:2
+    archive_result:
+      title: 'XEP-0313: Message Archive Management'
+      xml:
+        namespace: urn:xmpp:mam:2
+        name: result
+      type: object
+      properties:
+        queryid:
+          type: string
+          xml:
+            attribute: true
+        forward:
+          $ref: '#/components/schemas/forwarded'
+    forwarded:
+      title: 'XEP-0297: Stanza Forwarding'
+      xml:
+        name: forwarded
+        namespace: urn:xmpp:forward:0
+      type: object
+      properties:
+        message:
+          $ref: '#/components/schemas/message'
+        delay:
+          $ref: '#/components/schemas/delay'
+    dataform:
+      description: Data form
+      type: object
+      properties:
+        title:
+          description: Title of the form
+          example: TPS Report
+          type: string
+        fields:
+          type: array
+          items:
+            description: Form field
+            type: object
+            properties:
+              value:
+                description: Field value
+                oneOf:
+                  - type: string
+                  - type: array
+                    items:
+                      type: string
+              type:
+                description: Type of form field
+                type: string
+              label:
+                description: Descriptive label for the field
+                type: string
+              desc:
+                description: Longer description, i.e. that would go in a tooltip
+                type: string
+              required:
+                description: Whether the field must be included in the form
+                type: boolean
+              var:
+                description: Internal name of the field
+                type: string
+        type:
+          type: string
+          enum:
+            - form
+            - submit
+            - cancel
+            - result
+        instructions:
+          type: string
+    formdata:
+      description: Simplified data form carrying only values
+      type: object
+      additionalProperties:
+        oneOf:
+          - type: string
+          - type: array
+            items:
+              type: string
+    stats:
+      description: Statistics
+      type: array
+      xml:
+        name: query
+        namespace: http://jabber.org/protocol/stats
+        wrapped: true
+      items:
+        type: object
+        properties:
+          name:
+            type: string
+            xml:
+              attribute: true
+          unit:
+            type: string
+            xml:
+              attribute: true
+          value:
+            type: string
+            xml:
+              attribute: true
+    lastactivity:
+      type: object
+      xml:
+        name: query
+        namespace: jabber:iq:last
+      properties:
+        seconds:
+          type: integer
+          minimum: 0
+          xml:
+            attribute: true
+        status:
+          type: string
+          xml:
+            text: true
+    caps:
+      type: object
+      xml:
+        name: c
+        namespace: http://jabber.org/protocol/caps
+      properties:
+        ver:
+          type: string
+          xml:
+            attribute: true
+        hash:
+          type: string
+          xml:
+            attribute: true
+        node:
+          type: string
+          xml:
+            attribute: true
+        ext:
+          type: string
+          xml:
+            attribute: true
+    vcard_update:
+      type: object
+      xml:
+        name: x
+        namespace: vcard-temp:x:update
+      properties:
+        photo:
+          type: string
+          example: adc83b19e793491b1c6ea0fd8b46cd9f32e592fc
+    reactions:
+      type: object
+      xml:
+        namespace: urn:xmpp:reactions:0
+      properties:
+        id:
+          type: string
+          xml:
+            attribute: true
+        reactions:
+          type: array
+          items:
+            xml:
+              name: reaction
+            type: string
+          xml:
+            wrapped: false
+            name: reactions
+    occupant_id:
+      type: string
+      xml:
+        namespace: urn:xmpp:occupant-id:0
+        x_single_attribute: id
+        name: occupant-id
+    attach_to:
+      type: string
+      xml:
+        namespace: urn:xmpp:message-attaching:1
+        x_single_attribute: id
+        name: attach-to
+    fallback:
+      type: boolean
+      xml:
+        namespace: urn:xmpp:fallback:0
+        x_name_is_value: true
+        name: fallback
+    stanza_ids:
+      type: array
+      items:
+        type: object
+        required:
+          - id
+          - by
+        xml:
+          namespace: urn:xmpp:sid:0
+          name: stanza-id
+        properties:
+          id:
+            xml:
+              attribute: true
+            type: string
+          by:
+            xml:
+              attribute: true
+            format: xmpp-jid
+            type: string
+    reference:
+      type: object
+      xml:
+        namespace: urn:xmpp:reference:0
+      properties:
+        end:
+          minimum: 0
+          xml:
+            attribute: true
+          type: integer
+        uri:
+          xml:
+            attribute: true
+          format: uri
+          type: string
+        begin:
+          minimum: 0
+          xml:
+            attribute: true
+          type: integer
+        type:
+          xml:
+            attribute: true
+          type: string
+      required:
+        - type
+        - uri
+    reply:
+      title: 'XEP-0461: Message Replies'
+      description: Reference a message being replied to
+      type: object
+      xml:
+        name: reply
+        namespace: urn:xmpp:reply:0
+      properties:
+        to:
+          type: string
+          xml:
+            attribute: true
+        id:
+          type: string
+          xml:
+            attribute: true
+    markable:
+      type: boolean
+      xml:
+        namespace: urn:xmpp:chat-markers:0
+        x_name_is_value: true
+    displayed:
+      type: string
+      description: Message ID of a message that has been displayed
+      xml:
+        namespace: urn:xmpp:chat-markers:0
+        x_single_attribute: id
+    idle_since:
+      type: string
+      xml:
+        namespace: urn:xmpp:idle:1
+        x_single_attribute: since
+        name: idle
+      format: date-time
+    gateway:
+      type: object
+      xml:
+        namespace: jabber:iq:gateway
+        name: query
+      properties:
+        desc:
+          type: string
+        prompt:
+          type: string
+        jid:
+          type: string
+    extdisco:
+      type: object
+      xml:
+        namespace: urn:xmpp:extdisco:2
+        name: services
+      properties:
+        type:
+          xml:
+            attribute: true
+          type: string
+        services:
+          items:
+            type: object
+            xml:
+              name: service
+            required:
+              - type
+              - host
+            properties:
+              transport:
+                xml:
+                  attribute: true
+                type: string
+              type:
+                xml:
+                  attribute: true
+                type: string
+              port:
+                xml:
+                  attribute: true
+                type: integer
+              host:
+                xml:
+                  attribute: true
+                type: string
+              expires:
+                xml:
+                  attribute: true
+                format: datetime
+                type: string
+              username:
+                xml:
+                  attribute: true
+                type: string
+              password:
+                xml:
+                  attribute: true
+                type: string
+              restricted:
+                xml:
+                  attribute: true
+                type: boolean
+              name:
+                xml:
+                  attribute: true
+                type: string
+          type: array
+    register:
+      type: object
+      description: Register with a service
+      xml:
+        namespace: jabber:iq:register
+        name: query
+      properties:
+        nick:
+          type: string
+        misc:
+          type: string
+        password:
+          type: string
+        date:
+          type: string
+        address:
+          type: string
+        key:
+          type: string
+        text:
+          type: string
+        url:
+          type: string
+        zip:
+          type: string
+        phone:
+          type: string
+        last:
+          type: string
+        email:
+          type: string
+        remove:
+          xml:
+            x_name_is_value: true
+          type: boolean
+        city:
+          type: string
+        registered:
+          xml:
+            x_name_is_value: true
+          type: boolean
+        first:
+          type: string
+        state:
+          type: string
+        instructions:
+          type: string
+        username:
+          type: string
+        name:
+          type: string
+      required:
+        - username
+        - password
+    upload_slot:
+      type: object
+      xml:
+        name: slot
+        namespace: urn:xmpp:http:upload:0
+      properties:
+        put:
+          type: object
+          properties:
+            url:
+              type: string
+              format: uri
+              xml:
+                attribute: true
+            headers:
+              type: array
+              items:
+                type: object
+                required:
+                  - name
+                  - value
+                xml:
+                  name: header
+                properties:
+                  name:
+                    type: string
+                    enum:
+                      - Authorization
+                      - Cookie
+                      - Expires
+                    xml:
+                      attribute: true
+                  value:
+                    type: string
+                    xml:
+                      text: true
+        get:
+          type: object
+          properties:
+            url:
+              type: string
+              format: uri
+              xml:
+                attribute: true
+    upload_request:
+      type: object
+      required:
+        - filename
+        - size
+      xml:
+        name: request
+        namespace: urn:xmpp:http:upload:0
+      properties:
+        filename:
+          type: string
+          xml:
+            attribute: true
+        content-type:
+          xml:
+            attribute: true
+            name: content-type
+        size:
+          type: integer
+          xml:
+            attribute: true
+    encryption:
+      title: 'XEP-0380: Explicit Message Encryption'
+      type: string
+      xml:
+        x_single_attribute: namespace
+        name: encryption
+        namespace: urn:xmpp:eme:0
+    error:
+      description: Description of something gone wrong. See the Stanza Errors section in RFC 6120.
+      type: object
+      properties:
+        type:
+          description: General category of error
+          type: string
+          enum:
+            - auth
+            - cancel
+            - continue
+            - modify
+            - wait
+        condition:
+          description: Specific error condition.
+          type: string
+          enum:
+            - bad-request
+            - conflict
+            - feature-not-implemented
+            - forbidden
+            - gone
+            - internal-server-error
+            - item-not-found
+            - jid-malformed
+            - not-acceptable
+            - not-allowed
+            - not-authorized
+            - policy-violation
+            - recipient-unavailable
+            - redirect
+            - registration-required
+            - remote-server-not-found
+            - remote-server-timeout
+            - resource-constraint
+            - service-unavailable
+            - subscription-required
+            - undefined-condition
+            - unexpected-request
+        code:
+          description: Legacy numeric error code. Similar to HTTP status codes.
+          type: integer
+        text:
+          description: Description of error intended for human eyes.
+          type: string
+        by:
+          description: Originator of the error, when different from the stanza @from attribute
+          type: string
+          xml:
+            attribute: true
+  securitySchemes:
+    token:
+      description: Tokens from mod_http_oauth2.
+      scheme: Bearer
+      type: http
+    basic:
+      description: Use JID as username.
+      scheme: Basic
+      type: http
+    oauth2:
+      description: Needs mod_http_oauth2
+      type: oauth2
+      flows:
+        authorizationCode:
+          authorizationUrl: https://example.com/oauth2/authorize
+          tokenUrl: https://example.com/oauth2/token
+          scopes:
+            prosody:restricted: Restricted account
+            prosody:user: Regular user privileges
+            prosody:admin: Administrator privileges
+            prosody:operator: Server operator privileges
+  requestBodies:
+    common:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/stanza'
+        application/xmpp+xml:
+          schema:
+            description: Single XMPP stanza in XML format.
+        application/x-www-form-urlencoded:
+          schema:
+            description: A subset of the JSON schema, only top level string fields.
+  responses:
+    success:
+      description: The stanza was sent and returned a response.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/stanza'
+        application/xmpp+xml:
+          schema:
+            description: Single XMPP stanza in XML format.
+            example: <message><body>Hello</body></message>
+        application/x-www-form-urlencoded:
+          schema:
+            description: A subset of the JSON schema, only top level string fields.
+            example: body=Hello
+        text/plain:
+          schema:
+            description: Plain text response used as message body.
+            example: Hello
+            type: string
+    sent:
+      description: The stanza was sent without problem, and without response, so an empty reply.
+  parameters:
+    to:
+      name: to
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/to'
+    kind:
+      name: kind
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/kind'
+    type:
+      name: type
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/type'

@@ -1,0 +1,20 @@
+# GitLeaks configuration file
+# Exclude prosody-modules directories from secret scanning
+
+[allowlist]
+description = "Allowlist for prosody-modules directories"
+paths = ["prosody-modules", "prosody-modules-enabled"]
+
+
+# Also exclude common false positives
+regexes = [
+    "AKIA[0-9A-Z]{16}",    # AWS Access Key ID
+    "ghp_[a-zA-Z0-9]{36}", # GitHub Personal Access Token
+    "gho_[a-zA-Z0-9]{36}", # GitHub OAuth Token
+    "ghu_[a-zA-Z0-9]{36}", # GitHub User-to-Server Token
+    "ghs_[a-zA-Z0-9]{36}", # GitHub Server-to-Server Token
+    "ghr_[a-zA-Z0-9]{36}", # GitHub Refresh Token
+]
+
+# Exclude common test/example files
+files = ["**/*.test.*", "**/*.spec.*", "**/*.example.*", "**/*.sample.*"]

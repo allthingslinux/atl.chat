@@ -1,0 +1,9 @@
+[Install]
+WantedBy=sockets.target
+
+[Socket]
+ListenStream=0.0.0.0:5269
+ListenStream=5269
+BindIPv6Only=ipv6-only
+Accept=false
+Service=prosody.service

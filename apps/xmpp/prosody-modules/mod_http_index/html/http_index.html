@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="generator" value="prosody/{prosody_version} mod_{mod_name}">
+<link rel="canonical" href="{canonical}">
+<title>{title}</title>
+<style>
+:link,:visited{color:#3465a4;text-decoration:none;}
+:link:hover,:visited:hover{color:#6197df;}
+body{background-color:#eeeeec;margin:1ex 0;padding-bottom:3em;font-family:Arial,Helvetica,sans-serif;}
+ul,ol{padding:0;}
+li{list-style:none;}
+hr{visibility:hidden;clear:both;}
+br{clear:both;}
+header,footer{margin:1ex 1em;}
+footer{font-size:smaller;color:#babdb6;}
+nav{font-size:large;margin:1ex 1ex;clear:both;line-height:1.5em;}
+footer nav .up{display:none;}
+@media screen and (min-width: 460px) {
+nav {font-size:x-large;margin:1ex 1em;}
+}
+nav a{padding:1ex}
+nav li,nav dt{margin:1ex}
+.content{background-color:white;padding:1em;list-style-position:inside;}
+@media (prefers-color-scheme: dark) {
+html{color:#eee}
+body{background-color:#161616}
+.content{background-color:#1c1c1c}
+footer{color:#444}
+}
+</style>
+</head>
+<body>
+<header>
+<h1>Prosody IM</h1>
+<h2>HTTP Services</h2>
+</header>
+<hr>
+<div class="content">
+<nav>
+<ul>{items#
+<li><a href="{item.url}" title="{item.module}">{item.title?{item.name}}</a></li>}
+</ul>
+</nav>
+</div>
+<hr>
+<footer>
+<br>
+<div class="powered-by">Prosody {prosody_version?}</div>
+</footer>
+</body>
+</html>

@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>XMPP Account Registration</title>
+  </head>
+  <body>
+    <h1>XMPP Account Registration</h1>
+    <form action="{path}" method="POST">
+      <p>{notice}</p>
+      <table>
+        <tbody>
+          <tr>
+            <th>Username:</th>
+            <td><input name="username" required>@{hostname}</td>
+          </tr>
+          <tr>
+            <th>Password:</th>
+            <td><input name="password" required type="password"></td>
+          </tr>
+          <tr>
+            <th>Confirm Password:</th>
+            <td><input name="confirm_password" required type="password"></td>
+          </tr>
+          {captcha}
+          <tr>
+            <td colspan="2"><input type="submit" value="Register!"></td>
+          </tr>
+        </tbody>
+      </table>
+    </form>
+  </body>
+</html>

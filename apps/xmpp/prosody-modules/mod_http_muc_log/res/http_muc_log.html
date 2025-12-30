@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+{date&<meta name="dcterms.date" content="{date}">}
+<title>{title?{room.name?{jid_node}}{date& - {date}}}</title>
+<link rel="stylesheet" type="text/css" href="{static}/style.css">
+</head>
+<body>
+<header>
+<h1 {lang&lang="{lang}"} title="xmpp:{jid?}">{title?{room.name?{jid_node}}{date& - {date}}}</h1>
+<nav>
+<ul>
+{jid_node&
+<li class="button"><a href="xmpp:{jid?}?join">Join using a client</a></li>
+}
+{room.webchat_url&
+<li class="button"><a href="{room.webchat_url}">Join via web</a></li>
+}
+{links#
+<li><a class="{item.rel?}" href="{item.href}{q&?{q%{idx}={item}}}" rel="{item.rel?}">{item.text}</a></li>}
+</ul>
+</nav>
+</header>
+<hr>
+<main {lang&lang="{lang}"} class="content">
+<nav>
+<dl class="room-list">
+{rooms#
+<dt {item.lang&lang="{item.lang}"} class="name"><a href="{item.href}{q&?{q%{idx}={item}}}">{item.name}</a></dt>
+<dd {item.lang&lang="{item.lang}"} class="description">{item.description?}</dd>}
+</dl>
+{dates|calendarize#
+<h2 id="{item.year}">{item.year}</h2>
+{item.months#
+<table id="{item.month}-{item.year}">
+<caption>{item.month}</caption>
+<thead><tr><th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th><th>Fri</th><th>Sat</th><th>Sun</th></tr></thead>
+<tbody>{item.weeks#
+<tr>{item.days#<td>{item.href&<a href="{item.href}{q&?{q%{idx}={item}}}">}<span>{item.day?&nbsp;}</span>{item.href&</a>}</td>}</tr>}
+</tbody>
+</table>
+}
+}
+</nav>
+
+<div>
+{presence_available&<form>
+<label>
+	<input name="p" value="s" type="checkbox"{show_presence& checked}>
+<span>show joins and parts</span>
+</label>
+<noscript>
+<button type="submit">Apply</button>
+</noscript>
+</form>}
+</div>
+
+<ol class="chat-logs">{lines#
+<li class="{item.st_name} {item.st_type?} {item.edited&edited}" id="{item.archive_id}">
+<b class="nick">{item.nick}</b>
+<em class="verb">{item.verb?}</em>
+<a class="time" href="#{item.archive_id}"><time id="{item.time}" datetime="{item.datetime}">{item.time}</time></a>
+<p {item.lang&lang="{item.lang}"} class="body">{item.edited&<del>}{item.body?}{item.edited&</del> <a href="#{item.edited}" title="jump to corrected version">&#9998;</a>}{item.edit& <a href="#{item.edit}" title="jump to previous version">&#9999;</a>}{item.reply& <a href="#{item.reply}" title="jump to message responded to">&#8634;</a>}</p>
+{item.reactions%<span class="reaction">{idx} {item}</span>}
+{item.oob.url&<figure><a rel="nofollow" href="{item.oob.url?}"><img alt="{item.oob.desc?}" src="{item.oob.url?}"/></a><figcaption>{item.oob.desc?}</figcaption></figure>}
+</li>}
+</ol>
+</main>
+<hr>
+<footer>
+<nav>
+<ul>{links#
+<li><a class="{item.rel?}" href="{item.href}{q&?{q%{idx}={item}}}" rel="{item.rel?}">{item.text}</a></li>}
+</ul>
+</nav>
+<br>
+<div class="powered-by">Prosody</div>
+</footer>
+<script defer type="application/javascript" src="{static}/timestamps.js"></script>
+</body>
+</html>

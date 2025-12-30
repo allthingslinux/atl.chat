@@ -1,0 +1,41 @@
+{
+   "$schema" : "https://lnav.org/schemas/format-v1.schema.json",
+   "prosody_log" : {
+      "body-field" : "message",
+      "description" : "The Prosody IM server log format",
+      "level" : {
+         "debug" : "^debug$",
+         "error" : "^error$",
+         "info" : "^info$",
+         "warning" : "^warn$"
+      },
+      "level-field" : "loglevel",
+      "multiline" : false,
+      "ordered-by-time" : true,
+      "regex" : {
+         "standard" : {
+            "pattern" : "^(?<timestamp>\\w{3} \\d{2} \\d{2}:\\d{2}:\\d{2}\\s+)(?<loggername>\\S+)\\s+(?<loglevel>debug|info|warn|error)\\s+(?<message>.+)$"
+         }
+      },
+      "sample" : [
+         {
+            "line" : "Jan 31 11:07:34 c2s565063fff480\tinfo\tClient connected"
+         }
+      ],
+      "timestamp-field" : "timestamp",
+      "timestamp-format" : [
+         "%b %d %H:%M:%S "
+      ],
+      "title" : "Prosody log",
+      "url" : "https://prosody.im/doc/logging",
+      "value" : {
+         "loggername" : {
+            "identifier" : true,
+            "kind" : "string"
+         },
+         "message" : {
+            "kind" : "xml"
+         }
+      }
+   }
+}

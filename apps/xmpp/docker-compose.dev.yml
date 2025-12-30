@@ -1,0 +1,419 @@
+# ============================================================================
+# DEVELOPMENT DOCKER COMPOSE CONFIGURATION
+# ============================================================================
+# Professional Prosody XMPP Server - Development Environment
+# ============================================================================
+# Optimized for local development with relaxed security and enhanced debugging
+# Usage: docker compose -f docker-compose.dev.yml up -d
+
+name: xmpp-server-dev
+
+services:
+  # ============================================================================
+  # PROSODY XMPP SERVER (Development)
+  # ============================================================================
+  xmpp-prosody-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: allthingslinux/prosody:dev
+    container_name: xmpp-prosody-dev
+    hostname: xmpp-prosody-dev
+    restart: unless-stopped
+    init: true
+
+    # Environment configuration
+    env_file:
+      - path: .env.development
+        required: true
+
+    # Logging configuration
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+        compress: "true"
+
+    # Port mappings
+    ports:
+      - '5222:5222'    # XMPP client connections
+      - '5269:5269'    # XMPP server-to-server
+      - '5223:5223'    # XMPP client TLS
+      - '5270:5270'    # XMPP server-to-server TLS
+      - '5280:5280'    # HTTP/BOSH
+      - '5281:5281'    # HTTPS/BOSH
+
+    # Volume mounts
+    volumes:
+      - ./app/config/prosody:/etc/prosody/config:rw        # Prosody configuration
+      - xmpp_prosody_data:/var/lib/prosody/data    # Persistent data
+      - xmpp_prosody_uploads:/var/lib/prosody/uploads  # File uploads
+      - xmpp_certs:/etc/prosody/certs              # SSL certificates
+      - ./scripts:/opt/prosody/scripts:ro          # Utility scripts
+      - ./.runtime/logs:/var/log/prosody           # Log files
+      - ./web/assets:/usr/share/prosody/www:ro     # Web assets
+
+    # Health monitoring
+    healthcheck:
+      test: ['CMD', '/usr/local/bin/health-check.sh']
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+    # Development resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
+        reservations:
+          memory: 128M
+          cpus: '0.25'
+
+    # Service dependencies
+    depends_on:
+      xmpp-postgres-dev:
+        condition: service_healthy
+
+    # Network configuration
+    networks:
+      - xmpp_network_dev
+
+    # Graceful shutdown
+    stop_grace_period: 60s
+
+  # ============================================================================
+  # POSTGRESQL DATABASE (Development)
+  # ============================================================================
+  xmpp-postgres-dev:
+    image: postgres:17-alpine
+    container_name: xmpp-postgres-dev
+    hostname: xmpp-postgres-dev
+    restart: unless-stopped
+
+    # Environment configuration
+    env_file:
+      - path: .env.development
+        required: false
+
+    # Database initialization
+    environment:
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
+
+    # Logging configuration
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+        compress: "true"
+
+    # Port mapping for development tools
+    ports:
+      - '5432:5432'
+
+    # Volume mounts
+    volumes:
+      - xmpp_postgres_data:/var/lib/postgresql/data
+      - ./database/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+
+    # Database optimization for development
+    command: >
+      postgres
+        -c max_connections=50
+        -c shared_buffers=128MB
+        -c effective_cache_size=512MB
+        -c maintenance_work_mem=32MB
+        -c checkpoint_completion_target=0.9
+        -c wal_buffers=8MB
+        -c default_statistics_target=100
+        -c random_page_cost=1.1
+        -c effective_io_concurrency=200
+        -c work_mem=2MB
+
+    # Health monitoring
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-prosody}']
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+    # Network configuration
+    networks:
+      - xmpp_network_dev
+
+    # Graceful shutdown
+    stop_grace_period: 60s
+
+  # ============================================================================
+  # COTURN - TURN/STUN SERVER (Development)
+  # ============================================================================
+  xmpp-coturn-dev:
+    image: coturn/coturn:latest
+    container_name: xmpp-coturn-dev
+    hostname: xmpp-coturn-dev
+    restart: unless-stopped
+
+    # Environment configuration
+    env_file:
+      - path: .env.development
+        required: true
+
+    # Logging configuration
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+        compress: "true"
+
+    # Port mappings for TURN/STUN
+    ports:
+      - '3478:3478'           # TURN/STUN primary
+      - '3478:3478/udp'       # TURN/STUN primary UDP
+      - '5349:5349'           # TURN/STUN TLS
+      - '5349:5349/udp'       # TURN/STUN TLS UDP
+      - '49300-49350:49152-49202/udp'  # Relay ports
+
+    # TURN server configuration
+    environment:
+      - TURN_NO_LOOPBACK_PEERS=false
+      - TURN_NO_MULTICAST_PEERS=true
+      - TURN_STALE_NONCE=true
+      - TURN_SECURE_STUN=true
+      - TURN_LOG_FILE=stdout
+      - TURN_VERBOSE=true
+
+    # Volume mounts
+    volumes:
+      - xmpp_coturn_data:/var/lib/coturn
+
+    # TURN server command
+    command: >
+      turnserver
+        --listening-port=3478
+        --min-port=49152
+        --max-port=49200
+        --realm=${TURN_REALM:-localhost}
+        --server-name=${TURN_DOMAIN:-localhost}
+        --use-auth-secret
+        --static-auth-secret=${TURN_SECRET:-devsecret}
+        --mobility
+        --no-cli
+        --no-tls
+        --no-dtls
+        --log-file=stdout
+        --simple-log
+
+    # Network configuration
+    networks:
+      - xmpp_network_dev
+
+  # ============================================================================
+  # ADMINER - DATABASE MANAGEMENT (Development)
+  # ============================================================================
+  xmpp-adminer-dev:
+    image: adminer:latest
+    container_name: xmpp-adminer-dev
+    hostname: xmpp-adminer-dev
+    restart: unless-stopped
+
+    # Environment configuration
+    env_file:
+      - path: .env.development
+        required: true
+
+    # Logging configuration
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+        compress: "true"
+
+    # Port mapping
+    ports:
+      - '8081:8080'  # Database admin interface
+
+    # Adminer configuration
+    environment:
+      ADMINER_DEFAULT_DRIVER: "pgsql"
+      ADMINER_DEFAULT_SERVER: "xmpp-postgres-dev"
+      ADMINER_DEFAULT_DB: ${POSTGRES_DB:-prosody}
+      ADMINER_DEFAULT_USERNAME: ${POSTGRES_USER:-prosody}
+      ADMINER_DEFAULT_PASSWORD: ${POSTGRES_PASSWORD:-devpassword}
+      ADMINER_AUTO_LOGIN: "true"  # Auto-login for development
+
+    # Custom Adminer files
+    configs:
+      - source: adminer-index.php
+        target: /var/www/html/index.php
+      - source: adminer-theme.css
+        target: /var/www/html/adminer.css
+
+    # Service command
+    command: ["sh", "-c", "php -S 0.0.0.0:8080 -t /var/www/html"]
+
+    # Service dependencies
+    depends_on:
+      xmpp-postgres-dev:
+        condition: service_healthy
+
+    # Network configuration
+    networks:
+      - xmpp_network_dev
+
+  # ============================================================================
+  # CONVERSE.JS WEB CLIENT (Development)
+  # ============================================================================
+  xmpp-conversejs-dev:
+    image: nginx:stable-alpine
+    container_name: xmpp-conversejs-dev
+    hostname: xmpp-conversejs-dev
+    restart: unless-stopped
+    init: true
+
+    # Security configuration
+    security_opt:
+      - no-new-privileges:true
+      - apparmor:docker-default
+
+    # Logging configuration
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+        compress: "true"
+
+    # Port mapping
+    ports:
+      - '8083:80'  # Converse.js web interface
+
+    # Volume mounts
+    volumes:
+      - ./web/conversejs:/usr/share/nginx/html:ro
+
+    # Service dependencies
+    depends_on:
+      - xmpp-prosody-dev
+
+    # Network configuration
+    networks:
+      - xmpp_network_dev
+
+    # Graceful shutdown
+    stop_signal: SIGQUIT
+    stop_grace_period: 30s
+
+  # ============================================================================
+  # LOG VIEWER - DOZZLE (Development)
+  # ============================================================================
+  xmpp-logs-dev:
+    image: amir20/dozzle:latest
+    container_name: xmpp-logs-dev
+    hostname: xmpp-logs-dev
+    restart: unless-stopped
+
+    # Port mapping
+    ports:
+      - '8082:8080'  # Log viewer interface
+
+    # Docker socket access for log viewing
+    volumes:
+      - ${XDG_RUNTIME_DIR}/docker.sock:/var/run/docker.sock:ro
+
+    # Dozzle configuration
+    environment:
+      - DOZZLE_FILTER=name=xmpp-*  # Filter to xmpp containers
+      - DOZZLE_NO_ANALYTICS=true  # Disable analytics
+
+    # Network configuration
+    networks:
+      - xmpp_network_dev
+
+  # ============================================================================
+  # NGINX REVERSE PROXY (Development)
+  # ============================================================================
+  xmpp-nginx-dev:
+    image: nginx:stable
+    container_name: xmpp-nginx-dev
+    hostname: xmpp-nginx-dev
+    restart: unless-stopped
+    init: true
+
+    # Port mappings
+    ports:
+      - '8080:80'   # HTTP
+      - '8443:443'  # HTTPS
+
+    # Volume mounts
+    volumes:
+      - ./config/nginx-docker.dev.conf:/etc/nginx/nginx.conf:ro
+      - ./.runtime/certs:/opt/xmpp.atl.chat/certs:ro
+
+    # Service dependencies
+    depends_on:
+      xmpp-prosody-dev:
+        condition: service_healthy
+
+    # Network configuration
+    networks:
+      - xmpp_network_dev
+
+    # Graceful shutdown
+    stop_signal: SIGQUIT
+    stop_grace_period: 30s
+
+# ============================================================================
+# DEVELOPMENT VOLUMES
+# ============================================================================
+volumes:
+  xmpp_prosody_data:
+    external: true
+    name: xmpp_prosody_data_dev
+  xmpp_prosody_uploads:
+    external: true
+    name: xmpp_prosody_uploads_dev
+  xmpp_postgres_data:
+    external: true
+    name: xmpp_postgres_data_dev
+  xmpp_coturn_data:
+    external: true
+    name: xmpp_coturn_data_dev
+  xmpp_certs:
+    external: true
+    name: xmpp_certs_dev
+
+# ============================================================================
+# DEVELOPMENT NETWORKS
+# ============================================================================
+networks:
+  xmpp_network_dev:
+    name: xmpp_network_dev
+
+# ============================================================================
+# DEVELOPMENT CONFIGS
+# ============================================================================
+configs:
+  adminer-index.php:
+    content: |
+      <?php
+        // Only auto-login in development environments
+        if (getenv('ADMINER_AUTO_LOGIN') === 'true' && empty($$_GET)) {
+          $$_POST['auth'] = [
+            'server' => getenv('ADMINER_DEFAULT_SERVER'),
+            'username' => getenv('ADMINER_DEFAULT_USERNAME'),
+            'password' => getenv('ADMINER_DEFAULT_PASSWORD'),
+            'driver' => getenv('ADMINER_DEFAULT_DRIVER'),
+            'db' => getenv('ADMINER_DEFAULT_DB'),
+          ];
+        }
+        include './adminer.php';
+      ?>
+
+  adminer-theme.css:
+    file: ./web/themes/adminer-theme.css

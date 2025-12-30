@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Stats</title>
+</head>
+<body>
+<h1>Glorious statistics!</h1>
+<script>
+
+var evtSource = new EventSource("/stats_stream");
+
+evtSource.addEventListener("stats-full", function(e) {
+	var initial_stats = JSON.parse(e.data);
+	console.log(initial_stats);
+
+}, false);
+
+evtSource.addEventListener("stats-updated", function(e) {
+	var updated_stats = JSON.parse(e.data);
+	console.log(updated_stats);
+
+}, false);
+
+</script>
+</body>
+</html>

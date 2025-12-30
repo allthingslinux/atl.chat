@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+/*
+
+MIT License
+
+Copyright (c) 2020 Simple.css (Kev Quirk)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+*/
+
+:root {
+  --sans-font: -apple-system, BlinkMacSystemFont, "Avenir Next", Avenir, "Nimbus Sans L", Roboto, Noto, "Segoe UI", Arial, Helvetica, "Helvetica Neue", sans-serif;
+  --mono-font: Consolas, Menlo, Monaco, "Andale Mono", "Ubuntu Mono", monospace;
+
+  --base-fontsize: 1.15rem;
+
+  --header-scale: 1.25;
+
+  --line-height: 1.618;
+
+  /* Default (light) theme */
+  --bg: #FFF;
+  --accent-bg: #F5F7FF;
+  --text: #212121;
+  --text-light: #585858;
+  --border: #D8DAE1;
+  --accent: #0D47A1;
+  --accent-light: #90CAF9;
+  --code: #D81B60;
+  --preformatted: #444;
+  --marked: #FFDD33;
+  --disabled: #EFEFEF;
+}
+
+/* Dark theme */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #212121;
+    --accent-bg: #2B2B2B;
+    --text: #DCDCDC;
+    --text-light: #ABABAB;
+    --border: #666;
+    --accent: #FFB300;
+    --accent-light: #FFECB3;
+    --code: #F06292;
+    --preformatted: #CCC;
+    --disabled: #111;
+  }
+
+  img, video {
+    opacity: .6;
+  }
+}
+
+html {
+  /* Set the font globally */
+  font-family: var(--sans-font);
+}
+
+/* Make the body a nice central block */
+body {
+  color: var(--text);
+  background: var(--bg);
+  font-size: var(--base-fontsize);
+  line-height: var(--line-height);
+  display: flex;
+  min-height: 100vh;
+  flex-direction: column;
+  flex: 1;
+  margin: 0 auto;
+  max-width: 45rem;
+  padding: 0 .5rem;
+  overflow-x: hidden;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+/* Fix line height when title wraps */
+h1, h2, h3 {
+  line-height: 1.1;
+}
+
+/* Format headers */
+h1 {
+  font-size: calc(var(--base-fontsize) * var(--header-scale) * var(--header-scale) * var(--header-scale) * var(--header-scale));
+  margin-top: calc(var(--line-height) * 1.5rem);
+}
+
+h2 {
+  font-size: calc(var(--base-fontsize) * var(--header-scale) * var(--header-scale) * var(--header-scale));
+  margin-top: calc(var(--line-height) * 1.5rem);
+}
+
+h3 {
+  font-size: calc(var(--base-fontsize) * var(--header-scale) * var(--header-scale));
+  margin-top: calc(var(--line-height) * 1.5rem);
+}
+
+h4 {
+  font-size: calc(var(--base-fontsize) * var(--header-scale));
+  margin-top: calc(var(--line-height) * 1.5rem);
+}
+
+h5 {
+  font-size: var(--base-fontsize);
+  margin-top: calc(var(--line-height) * 1.5rem);
+}
+
+h6 {
+  font-size: calc(var(--base-fontsize) / var(--header-scale));
+  margin-top: calc(var(--line-height) * 1.5rem);
+}
+
+/* Format links & buttons */
+a,
+a:visited {
+  color: var(--accent);
+}
+
+a:hover {
+  text-decoration: none;
+}
+
+/* Format tables */
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1.5rem 0;
+}
+
+td,
+th {
+  border: 1px solid var(--border);
+  text-align: left;
+  padding: .5rem;
+}
+
+th {
+  background: var(--accent-bg);
+  font-weight: bold;
+}
+
+tr:nth-child(even) {
+  background: var(--accent-bg);
+}
+
+/* Lists */
+ol, ul {
+  padding-left: 3rem;
+}
+</style>
+</head>
+<body>
+<div class="container">
+	<h1>OMEMO encryption information</h1>
+	<p>OMEMO is an end-to-end encryption technology that protects communication between
+	   users on the XMPP network. Find out more information <a href="https://conversations.im/omemo/">about OMEMO</a>
+	   and <a href="https://omemo.top/">a list of OMEMO-capable software</a>.
+	</p>
+
+	<p>If you are on this page, it may mean that you received an encrypted message that your client could not decrypt.
+	   Some possible causes of this problem are:</p>
+	<ul>
+	  <li>Your XMPP client does not support OMEMO, or does not have it enabled.</li>
+	  <li>Your server software is too old (Prosody 0.11.x is recommended) or misconfigured.</li>
+	  <li>The sender's client, or your client, has a bug in its OMEMO support.</li>
+	</ul>
+	
+	<h2>Advanced information</h2>
+	<p>Here you can find some advanced information that may be useful
+	   when debugging why an OMEMO message could not be decrypted. You may
+	   share this page privately with XMPP developers to help them
+	   diagnose your problem.
+	</p>
+
+	<h3>Message status</h3>
+
+	<p>This was an {message.encryption} {message.direction} {message.type} message. The sending device id was <tt>{omemo.sender_id}</tt>.</p>
+
+	<h4>Recipient devices</h4>
+
+	{message.has_any_keys&
+	<table class="table">
+	<tr>
+		<th>Device ID</th>
+		<th>Status</th>
+		<th>Comment</th>
+	</tr>
+	{rids%<tr>
+		<td>{idx}</td>
+		<td>{item.status?Unknown device} {item.prekey&<span class="badge badge-warning">Used pre-key</span>}</td>
+		<td>{item.comment?}</td>
+	</tr>}
+	</table>}
+
+	{message.has_no_keys&<p><strong>This message did not contain any OMEMO keys.</strong></p>}
+
+	<h3>Account status</h3>
+	<p>{user}'s account has {omemo.status} with OMEMO.</p>
+
+	<h4>Registered OMEMO devices</h4>
+	<table class="table">
+		<tr>
+			<th>Device ID</th>
+			<th>Status</th>
+			<th>Bundle</th>
+			<th>Access</th>
+		</tr>
+		{omemo.devices%<tr>
+			<td>{idx?<i>N/A</i>}</td>
+			<td>{item.status?<i>N/A</i>}</td>
+			<td>{item.bundle?<i>N/A</i>}</td>
+			<td>{item.access_model?<i>N/A</i>}</td>
+		</tr>}
+	</table>
+</div>
+</body>
+</html>

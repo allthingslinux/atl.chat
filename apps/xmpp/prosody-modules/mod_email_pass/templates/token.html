@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <link rel="stylesheet" type="text/css" href="style.css" />
+    <meta charset="utf-8">
+    <title>Reseto de la clave de tu cuenta Jabber</title>
+  </head>
+  <body>
+  <div id="estilo" class="formulario">
+    <h1>Reseteo de la clave de tu cuenta Jabber</h1>
+    <form action="{path}?{token}" method="POST">
+      <p class="error">{notice}</p>
+          <label>
+	    Token:
+	  </label>
+          <input name="token" value="{token}" required readonly>
+          <div class="spacer"></div>
+
+          <label>
+	    Contrase&ntilde;a:
+	  </label>
+          <input name="newpassword" type="password" required size="35">
+          <div class="spacer"></div>
+          <input id="button" class="button" type="submit" value="Cambiar!">
+          <div class="spacer"></div>
+    </form>
+  </div>
+  </body>
+</html>
+

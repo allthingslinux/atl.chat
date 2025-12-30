@@ -1,0 +1,7 @@
+html { height: 100%; }
+body {
+	background: linear-gradient(#FCFCFC, #EEEEEE);
+	background-repeat: no-repeat;
+}
+#msg-cell { white-space: pre-wrap; word-wrap: break-word; }
+#jid-cell *:link, #jid-cell *:visited, #muc-users { color: #666666; }

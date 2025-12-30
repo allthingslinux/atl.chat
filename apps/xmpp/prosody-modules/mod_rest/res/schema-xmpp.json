@@ -1,0 +1,1334 @@
+{
+   "_common" : {
+      "dataform" : {
+         "properties" : {
+            "fields" : {
+               "items" : {
+                  "properties" : {
+                     "desc" : {
+                        "type" : "string"
+                     },
+                     "label" : {
+                        "type" : "string",
+                        "xml" : {
+                           "attribute" : true
+                        }
+                     },
+                     "options" : {
+                        "items" : {
+                           "properties" : {
+                              "label" : {
+                                 "type" : "string",
+                                 "xml" : {
+                                    "attribute" : true
+                                 }
+                              },
+                              "value" : {
+                                 "type" : "string"
+                              }
+                           },
+                           "type" : "object",
+                           "xml" : {
+                              "name" : "option"
+                           }
+                        },
+                        "type" : "array"
+                     },
+                     "required" : {
+                        "type" : "boolean",
+                        "xml" : {
+                           "x_name_is_value" : true
+                        }
+                     },
+                     "type" : {
+                        "enum" : [
+                           "boolean",
+                           "fixed",
+                           "hidden",
+                           "jid-multi",
+                           "jid-single",
+                           "list-multi",
+                           "list-single",
+                           "text-multi",
+                           "text-private",
+                           "text-single"
+                        ],
+                        "type" : "string",
+                        "xml" : {
+                           "attribute" : true
+                        }
+                     },
+                     "values" : {
+                        "items" : {
+                           "type" : "string",
+                           "xml" : {
+                              "name" : "value"
+                           }
+                        },
+                        "type" : "array"
+                     },
+                     "var" : {
+                        "type" : "string",
+                        "xml" : {
+                           "attribute" : true
+                        }
+                     }
+                  },
+                  "type" : "object",
+                  "xml" : {
+                     "name" : "field"
+                  }
+               },
+               "type" : "array"
+            },
+            "instructions" : {
+               "type" : "string"
+            },
+            "title" : {
+               "type" : "string"
+            },
+            "type" : {
+               "enum" : [
+                  "cancel",
+                  "form",
+                  "result",
+                  "submit"
+               ],
+               "type" : "string",
+               "xml" : {
+                  "attribute" : true
+               }
+            }
+         },
+         "title" : "XEP-0004: Data Forms",
+         "type" : "object",
+         "xml" : {
+            "name" : "x",
+            "namespace" : "jabber:x:data"
+         }
+      },
+      "delay" : {
+         "description" : "Timestamp of when a stanza was delayed, in ISO 8601 / XEP-0082 format.",
+         "examples" : [
+            "2002-09-10T23:08:25Z"
+         ],
+         "format" : "date-time",
+         "title" : "XEP-0203: Delayed Delivery",
+         "type" : "string",
+         "xml" : {
+            "name" : "delay",
+            "namespace" : "urn:xmpp:delay",
+            "x_single_attribute" : "stamp"
+         }
+      },
+      "from" : {
+         "description" : "the sender of the stanza",
+         "examples" : [
+            "bob@example.net"
+         ],
+         "format" : "xmpp-jid",
+         "type" : "string",
+         "xml" : {
+            "attribute" : true
+         }
+      },
+      "id" : {
+         "description" : "Reasonably unique id. mod_rest generates one if left out.",
+         "examples" : [
+            "c6d02db2-5c1f-4e00-9014-4dd3e21309b0",
+            "EBRthZvxaAEXoTJ77w692pQW"
+         ],
+         "type" : "string",
+         "xml" : {
+            "attribute" : true
+         }
+      },
+      "lang" : {
+         "description" : "Language code",
+         "examples" : [
+            "de",
+            "en",
+            "en-UK",
+            "en-US",
+            "fr",
+            "sv-SE"
+         ],
+         "type" : "string",
+         "xml" : {
+            "attribute" : true,
+            "prefix" : "xml"
+         }
+      },
+      "nick" : {
+         "examples" : [
+            "CallMeIshmael"
+         ],
+         "type" : "string",
+         "xml" : {
+            "name" : "nick",
+            "namespace" : "http://jabber.org/protocol/nick"
+         }
+      },
+      "payload" : {
+         "properties" : {
+            "data" : {
+               "format" : "json",
+               "type" : "string",
+               "xml" : {
+                  "text" : true
+               }
+            },
+            "datatype" : {
+               "type" : "string",
+               "xml" : {
+                  "attribute" : true
+               }
+            }
+         },
+         "title" : "XEP-0432: Simple JSON Messaging",
+         "type" : "object",
+         "xml" : {
+            "namespace" : "urn:xmpp:json-msg:0"
+         }
+      },
+      "rsm" : {
+         "properties" : {
+            "after" : {
+               "type" : "string"
+            },
+            "before" : {
+               "type" : "string"
+            },
+            "count" : {
+               "type" : "integer"
+            },
+            "first" : {
+               "type" : "string"
+            },
+            "index" : {
+               "type" : "integer"
+            },
+            "last" : {
+               "type" : "string"
+            },
+            "max" : {
+               "type" : "integer"
+            }
+         },
+         "title" : "XEP-0059: Result Set Management",
+         "type" : "object",
+         "xml" : {
+            "name" : "set",
+            "namespace" : "http://jabber.org/protocol/rsm"
+         }
+      },
+      "to" : {
+         "description" : "the intended recipient for the stanza",
+         "example" : "alice@example.com",
+         "examples" : [
+            "alice@example.com"
+         ],
+         "format" : "xmpp-jid",
+         "type" : "string",
+         "xml" : {
+            "attribute" : true
+         }
+      },
+      "type" : {
+         "description" : "Stanza type",
+         "type" : "string",
+         "xml" : {
+            "attribute" : true
+         }
+      }
+   },
+   "properties" : {
+      "iq" : {
+         "properties" : {
+            "archive" : {
+               "properties" : {
+                  "form" : {
+                     "$ref" : "#/_common/dataform"
+                  },
+                  "page" : {
+                     "$ref" : "#/_common/rsm"
+                  },
+                  "queryid" : {
+                     "type" : "string",
+                     "xml" : {
+                        "attribute" : true
+                     }
+                  }
+               },
+               "type" : "object",
+               "xml" : {
+                  "name" : "query",
+                  "namespace" : "urn:xmpp:mam:2"
+               }
+            },
+            "block" : {
+               "items" : {
+                  "properties" : {
+                     "jid" : {
+                        "type" : "string",
+                        "xml" : {
+                           "attribute" : true
+                        }
+                     },
+                     "report" : {
+                        "properties" : {
+                           "reason" : {
+                              "enum" : [
+                                 "urn:xmpp:reporting:spam",
+                                 "urn:xmpp:reporting:abuse"
+                              ],
+                              "type" : "string",
+                              "xml" : {
+                                 "attribute" : true
+                              }
+                           },
+                           "stanza_ids" : {
+                              "$ref" : "#/properties/message/properties/stanza_ids"
+                           }
+                        },
+                        "xml" : {
+                           "name" : "report",
+                           "namespace" : "urn:xmpp:reporting:1"
+                        }
+                     }
+                  },
+                  "type" : "object",
+                  "xml" : {
+                     "name" : "item"
+                  }
+               },
+               "type" : "array",
+               "xml" : {
+                  "name" : "block",
+                  "namespace" : "urn:xmpp:blocking",
+                  "wrapped" : true
+               }
+            },
+            "blocklist" : {
+               "items" : {
+                  "properties" : {
+                     "jid" : {
+                        "type" : "string",
+                        "xml" : {
+                           "attribute" : true
+                        }
+                     }
+                  },
+                  "type" : "object",
+                  "xml" : {
+                     "name" : "item"
+                  }
+               },
+               "type" : "array",
+               "xml" : {
+                  "name" : "blocklist",
+                  "namespace" : "urn:xmpp:blocking",
+                  "wrapped" : true
+               }
+            },
+            "dataform" : {
+               "$ref" : "#/_common/dataform"
+            },
+            "delay" : {
+               "$ref" : "#/_common/delay"
+            },
+            "extdisco" : {
+               "properties" : {
+                  "services" : {
+                     "items" : {
+                        "properties" : {
+                           "expires" : {
+                              "format" : "date-time",
+                              "type" : "string",
+                              "xml" : {
+                                 "attribute" : true
+                              }
+                           },
+                           "host" : {
+                              "type" : "string",
+                              "xml" : {
+                                 "attribute" : true
+                              }
+                           },
+                           "name" : {
+                              "type" : "string",
+                              "xml" : {
+                                 "attribute" : true
+                              }
+                           },
+                           "password" : {
+                              "type" : "string",
+                              "xml" : {
+                                 "attribute" : true
+                              }
+                           },
+                           "port" : {
+                              "type" : "integer",
+                              "xml" : {
+                                 "attribute" : true
+                              }
+                           },
+                           "restricted" : {
+                              "type" : "boolean",
+                              "xml" : {
+                                 "attribute" : true
+                              }
+                           },
+                           "transport" : {
+                              "type" : "string",
+                              "xml" : {
+                                 "attribute" : true
+                              }
+                           },
+                           "type" : {
+                              "type" : "string",
+                              "xml" : {
+                                 "attribute" : true
+                              }
+                           },
+                           "username" : {
+                              "type" : "string",
+                              "xml" : {
+                                 "attribute" : true
+                              }
+                           }
+                        },
+                        "required" : [
+                           "type",
+                           "host"
+                        ],
+                        "type" : "object",
+                        "xml" : {
+                           "name" : "service"
+                        }
+                     },
+                     "type" : "array"
+                  },
+                  "type" : {
+                     "type" : "string",
+                     "xml" : {
+                        "attribute" : true
+                     }
+                  }
+               },
+               "title" : "XEP-0215: External Service Discovery",
+               "type" : "object",
+               "xml" : {
+                  "name" : "services",
+                  "namespace" : "urn:xmpp:extdisco:2"
+               }
+            },
+            "from" : {
+               "$ref" : "#/_common/from"
+            },
+            "gateway" : {
+               "properties" : {
+                  "desc" : {
+                     "type" : "string"
+                  },
+                  "jid" : {
+                     "type" : "string"
+                  },
+                  "prompt" : {
+                     "type" : "string"
+                  }
+               },
+               "title" : "XEP-0100: Gateway Interaction",
+               "type" : "object",
+               "xml" : {
+                  "name" : "query",
+                  "namespace" : "jabber:iq:gateway"
+               }
+            },
+            "id" : {
+               "$ref" : "#/_common/id"
+            },
+            "lang" : {
+               "$ref" : "#/_common/lang"
+            },
+            "lastactivity" : {
+               "properties" : {
+                  "seconds" : {
+                     "minimum" : 0,
+                     "type" : "integer",
+                     "xml" : {
+                        "attribute" : true
+                     }
+                  },
+                  "status" : {
+                     "type" : "string",
+                     "xml" : {
+                        "text" : true
+                     }
+                  }
+               },
+               "title" : "XEP-0012: Last Activity",
+               "type" : "object",
+               "xml" : {
+                  "name" : "query",
+                  "namespace" : "jabber:iq:last"
+               }
+            },
+            "nick" : {
+               "$ref" : "#/_common/nick"
+            },
+            "oob" : {
+               "properties" : {
+                  "desc" : {
+                     "type" : "string"
+                  },
+                  "url" : {
+                     "format" : "uri",
+                     "type" : "string"
+                  }
+               },
+               "title" : "XEP-0066: Out of Band Data",
+               "type" : "object",
+               "xml" : {
+                  "name" : "query",
+                  "namespace" : "jabber:iq:oob"
+               }
+            },
+            "payload" : {
+               "$ref" : "#/_common/payload"
+            },
+            "ping" : {
+               "description" : "Test reachability of some XMPP address",
+               "enum" : [
+                  true
+               ],
+               "title" : "XEP-0199: XMPP Ping",
+               "type" : "boolean",
+               "xml" : {
+                  "name" : "ping",
+                  "namespace" : "urn:xmpp:ping",
+                  "x_name_is_value" : true
+               }
+            },
+            "register" : {
+               "description" : "Register with a service",
+               "properties" : {
+                  "address" : {
+                     "type" : "string"
+                  },
+                  "city" : {
+                     "type" : "string"
+                  },
+                  "date" : {
+                     "type" : "string"
+                  },
+                  "email" : {
+                     "type" : "string"
+                  },
+                  "first" : {
+                     "type" : "string"
+                  },
+                  "instructions" : {
+                     "type" : "string"
+                  },
+                  "key" : {
+                     "type" : "string"
+                  },
+                  "last" : {
+                     "type" : "string"
+                  },
+                  "misc" : {
+                     "type" : "string"
+                  },
+                  "name" : {
+                     "type" : "string"
+                  },
+                  "nick" : {
+                     "type" : "string"
+                  },
+                  "password" : {
+                     "type" : "string"
+                  },
+                  "phone" : {
+                     "type" : "string"
+                  },
+                  "registered" : {
+                     "type" : "boolean",
+                     "xml" : {
+                        "x_name_is_value" : true
+                     }
+                  },
+                  "remove" : {
+                     "type" : "boolean",
+                     "xml" : {
+                        "x_name_is_value" : true
+                     }
+                  },
+                  "state" : {
+                     "type" : "string"
+                  },
+                  "text" : {
+                     "type" : "string"
+                  },
+                  "url" : {
+                     "type" : "string"
+                  },
+                  "username" : {
+                     "type" : "string"
+                  },
+                  "zip" : {
+                     "type" : "string"
+                  }
+               },
+               "required" : [
+                  "username",
+                  "password"
+               ],
+               "title" : "XEP-0077: In-Band Registration",
+               "type" : "object",
+               "xml" : {
+                  "name" : "query",
+                  "namespace" : "jabber:iq:register"
+               }
+            },
+            "result" : {
+               "properties" : {
+                  "page" : {
+                     "$ref" : "#/_common/rsm"
+                  }
+               },
+               "type" : "object",
+               "xml" : {
+                  "name" : "fin",
+                  "namespace" : "urn:xmpp:mam:2"
+               }
+            },
+            "rsm" : {
+               "$ref" : "#/_common/rsm"
+            },
+            "stats" : {
+               "description" : "Simple statistics gathering, array of (name, unit, value) tuples.",
+               "items" : {
+                  "properties" : {
+                     "name" : {
+                        "type" : "string",
+                        "xml" : {
+                           "attribute" : true
+                        }
+                     },
+                     "unit" : {
+                        "type" : "string",
+                        "xml" : {
+                           "attribute" : true
+                        }
+                     },
+                     "value" : {
+                        "type" : "number",
+                        "xml" : {
+                           "attribute" : true
+                        }
+                     }
+                  },
+                  "type" : "object",
+                  "xml" : {
+                     "name" : "stat"
+                  }
+               },
+               "title" : "XEP-0039: Statistics Gathering",
+               "type" : "array",
+               "xml" : {
+                  "name" : "query",
+                  "namespace" : "http://jabber.org/protocol/stats",
+                  "wrapped" : true
+               }
+            },
+            "to" : {
+               "$ref" : "#/_common/to"
+            },
+            "type" : {
+               "$ref" : "#/_common/type"
+            },
+            "upload_request" : {
+               "properties" : {
+                  "content-type" : {
+                     "xml" : {
+                        "attribute" : true,
+                        "name" : "content-type"
+                     }
+                  },
+                  "filename" : {
+                     "type" : "string",
+                     "xml" : {
+                        "attribute" : true
+                     }
+                  },
+                  "size" : {
+                     "type" : "integer",
+                     "xml" : {
+                        "attribute" : true
+                     }
+                  }
+               },
+               "required" : [
+                  "filename",
+                  "size"
+               ],
+               "type" : "object",
+               "xml" : {
+                  "name" : "request",
+                  "namespace" : "urn:xmpp:http:upload:0"
+               }
+            },
+            "upload_slot" : {
+               "properties" : {
+                  "get" : {
+                     "properties" : {
+                        "url" : {
+                           "format" : "uri",
+                           "type" : "string",
+                           "xml" : {
+                              "attribute" : true
+                           }
+                        }
+                     },
+                     "type" : "object"
+                  },
+                  "put" : {
+                     "properties" : {
+                        "headers" : {
+                           "items" : {
+                              "properties" : {
+                                 "name" : {
+                                    "enum" : [
+                                       "Authorization",
+                                       "Cookie",
+                                       "Expires"
+                                    ],
+                                    "type" : "string",
+                                    "xml" : {
+                                       "attribute" : true
+                                    }
+                                 },
+                                 "value" : {
+                                    "type" : "string",
+                                    "xml" : {
+                                       "text" : true
+                                    }
+                                 }
+                              },
+                              "required" : [
+                                 "name",
+                                 "value"
+                              ],
+                              "type" : "object",
+                              "xml" : {
+                                 "name" : "header"
+                              }
+                           },
+                           "type" : "array"
+                        },
+                        "url" : {
+                           "format" : "uri",
+                           "type" : "string",
+                           "xml" : {
+                              "attribute" : true
+                           }
+                        }
+                     },
+                     "type" : "object"
+                  }
+               },
+               "type" : "object",
+               "xml" : {
+                  "name" : "slot",
+                  "namespace" : "urn:xmpp:http:upload:0"
+               }
+            },
+            "version" : {
+               "description" : "Ask about software version information",
+               "properties" : {
+                  "name" : {
+                     "example" : "My Software",
+                     "examples" : [
+                        "My Software"
+                     ],
+                     "type" : "string"
+                  },
+                  "os" : {
+                     "example" : "Linux",
+                     "examples" : [
+                        "Linux"
+                     ],
+                     "type" : "string"
+                  },
+                  "version" : {
+                     "example" : "1.0.0",
+                     "examples" : [
+                        "1.0.0"
+                     ],
+                     "type" : "string"
+                  }
+               },
+               "required" : [
+                  "name",
+                  "version"
+               ],
+               "title" : "XEP-0092: Software Version",
+               "type" : "object",
+               "xml" : {
+                  "name" : "query",
+                  "namespace" : "jabber:iq:version"
+               }
+            }
+         },
+         "type" : "object",
+         "xml" : {
+            "name" : "iq",
+            "namespace" : "jabber:client"
+         }
+      },
+      "message" : {
+         "properties" : {
+            "archive" : {
+               "properties" : {
+                  "forward" : {
+                     "$ref" : "#/properties/message/properties/forwarded"
+                  },
+                  "id" : {
+                     "type" : "string",
+                     "xml" : {
+                        "attribute" : true
+                     }
+                  },
+                  "queryid" : {
+                     "type" : "string",
+                     "xml" : {
+                        "attribute" : true
+                     }
+                  }
+               },
+               "title" : "XEP-0313: Message Archive Management",
+               "type" : "object",
+               "xml" : {
+                  "name" : "result",
+                  "namespace" : "urn:xmpp:mam:2"
+               }
+            },
+            "attach_to" : {
+               "title" : "XEP-0367: Message Attaching",
+               "type" : "string",
+               "xml" : {
+                  "name" : "attach-to",
+                  "namespace" : "urn:xmpp:message-attaching:1",
+                  "x_single_attribute" : "id"
+               }
+            },
+            "body" : {
+               "description" : "Human-readable chat message",
+               "example" : "Hello, World!",
+               "examples" : [
+                  "Hello, World!"
+               ],
+               "type" : "string"
+            },
+            "dataform" : {
+               "$ref" : "#/_common/dataform"
+            },
+            "delay" : {
+               "$ref" : "#/_common/delay"
+            },
+            "displayed" : {
+               "description" : "Message ID of a message that has been displayed",
+               "title" : "XEP-0333: Chat Markers",
+               "type" : "string",
+               "xml" : {
+                  "namespace" : "urn:xmpp:chat-markers:0",
+                  "x_single_attribute" : "id"
+               }
+            },
+            "encryption" : {
+               "title" : "XEP-0380: Explicit Message Encryption",
+               "type" : "string",
+               "xml" : {
+                  "name" : "encryption",
+                  "namespace" : "urn:xmpp:eme:0",
+                  "x_single_attribute" : "namespace"
+               }
+            },
+            "fallback" : {
+               "title" : "XEP-0428: Fallback Indication",
+               "type" : "boolean",
+               "xml" : {
+                  "name" : "fallback",
+                  "namespace" : "urn:xmpp:fallback:0",
+                  "x_name_is_value" : true
+               }
+            },
+            "forwarded" : {
+               "properties" : {
+                  "delay" : {
+                     "$ref" : "#/_common/delay"
+                  },
+                  "message" : {
+                     "$ref" : "#/properties/message"
+                  }
+               },
+               "title" : "XEP-0297: Stanza Forwarding",
+               "type" : "object",
+               "xml" : {
+                  "name" : "forwarded",
+                  "namespace" : "urn:xmpp:forward:0"
+               }
+            },
+            "from" : {
+               "$ref" : "#/_common/from"
+            },
+            "id" : {
+               "$ref" : "#/_common/id"
+            },
+            "invite" : {
+               "properties" : {
+                  "continue" : {
+                     "type" : "boolean",
+                     "xml" : {
+                        "attribute" : true
+                     }
+                  },
+                  "jid" : {
+                     "format" : "xmpp-jid",
+                     "type" : "string",
+                     "xml" : {
+                        "attribute" : true
+                     }
+                  },
+                  "password" : {
+                     "type" : "string",
+                     "xml" : {
+                        "attribute" : true
+                     }
+                  },
+                  "reason" : {
+                     "type" : "string",
+                     "xml" : {
+                        "attribute" : true
+                     }
+                  },
+                  "thread" : {
+                     "type" : "string",
+                     "xml" : {
+                        "attribute" : true
+                     }
+                  }
+               },
+               "required" : [
+                  "jid"
+               ],
+               "title" : "XEP-0249: Direct MUC Invitations",
+               "type" : "object",
+               "xml" : {
+                  "name" : "x",
+                  "namespace" : "jabber:x:conference"
+               }
+            },
+            "lang" : {
+               "$ref" : "#/_common/lang"
+            },
+            "markable" : {
+               "title" : "XEP-0333: Chat Markers",
+               "type" : "boolean",
+               "xml" : {
+                  "namespace" : "urn:xmpp:chat-markers:0",
+                  "x_name_is_value" : true
+               }
+            },
+            "nick" : {
+               "$ref" : "#/_common/nick"
+            },
+            "occupant_id" : {
+               "title" : "XEP-0421: Anonymous unique occupant identifiers for MUCs",
+               "type" : "string",
+               "xml" : {
+                  "name" : "occupant-id",
+                  "namespace" : "urn:xmpp:occupant-id:0",
+                  "x_single_attribute" : "id"
+               }
+            },
+            "oob" : {
+               "description" : "Reference a media file",
+               "properties" : {
+                  "desc" : {
+                     "description" : "Optional description",
+                     "type" : "string"
+                  },
+                  "url" : {
+                     "description" : "The URL of the attached media file",
+                     "example" : "https://media.example.net/thisfile.jpg",
+                     "examples" : [
+                        "https://media.example.net/thisfile.jpg"
+                     ],
+                     "format" : "uri",
+                     "type" : "string"
+                  }
+               },
+               "title" : "XEP-0066: Out of Band Data",
+               "type" : "object",
+               "xml" : {
+                  "name" : "x",
+                  "namespace" : "jabber:x:oob"
+               }
+            },
+            "payload" : {
+               "$ref" : "#/_common/payload"
+            },
+            "reactions" : {
+               "properties" : {
+                  "id" : {
+                     "type" : "string",
+                     "xml" : {
+                        "attribute" : true
+                     }
+                  },
+                  "reactions" : {
+                     "items" : {
+                        "type" : "string",
+                        "xml" : {
+                           "name" : "reaction"
+                        }
+                     },
+                     "type" : "array",
+                     "xml" : {
+                        "name" : "reactions",
+                        "wrapped" : false
+                     }
+                  }
+               },
+               "title" : "XEP-0444: Message Reactions",
+               "type" : "object",
+               "xml" : {
+                  "namespace" : "urn:xmpp:reactions:0"
+               }
+            },
+            "reference" : {
+               "properties" : {
+                  "begin" : {
+                     "minimum" : 0,
+                     "type" : "integer",
+                     "xml" : {
+                        "attribute" : true
+                     }
+                  },
+                  "end" : {
+                     "minimum" : 0,
+                     "type" : "integer",
+                     "xml" : {
+                        "attribute" : true
+                     }
+                  },
+                  "type" : {
+                     "type" : "string",
+                     "xml" : {
+                        "attribute" : true
+                     }
+                  },
+                  "uri" : {
+                     "format" : "uri",
+                     "type" : "string",
+                     "xml" : {
+                        "attribute" : true
+                     }
+                  }
+               },
+               "required" : [
+                  "type",
+                  "uri"
+               ],
+               "title" : "XEP-0372: References",
+               "type" : "object",
+               "xml" : {
+                  "namespace" : "urn:xmpp:reference:0"
+               }
+            },
+            "replace" : {
+               "description" : "For indicating that a message is a correction of the last sent message.",
+               "title" : "XEP-0308: Last Message Correction",
+               "type" : "string",
+               "xml" : {
+                  "name" : "replace",
+                  "namespace" : "urn:xmpp:message-correct:0",
+                  "x_single_attribute" : "id"
+               }
+            },
+            "reply" : {
+               "description" : "Reference a message being replied to",
+               "properties" : {
+                  "id" : {
+                     "type" : "string",
+                     "xml" : {
+                        "attribute" : true
+                     }
+                  },
+                  "to" : {
+                     "type" : "string",
+                     "xml" : {
+                        "attribute" : true
+                     }
+                  }
+               },
+               "title" : "XEP-0461: Message Replies",
+               "type" : "object",
+               "xml" : {
+                  "name" : "reply",
+                  "namespace" : "urn:xmpp:reply:0"
+               }
+            },
+            "rsm" : {
+               "$ref" : "#/_common/rsm"
+            },
+            "stanza_ids" : {
+               "items" : {
+                  "properties" : {
+                     "by" : {
+                        "format" : "xmpp-jid",
+                        "type" : "string",
+                        "xml" : {
+                           "attribute" : true
+                        }
+                     },
+                     "id" : {
+                        "type" : "string",
+                        "xml" : {
+                           "attribute" : true
+                        }
+                     }
+                  },
+                  "required" : [
+                     "id",
+                     "by"
+                  ],
+                  "type" : "object",
+                  "xml" : {
+                     "name" : "stanza-id",
+                     "namespace" : "urn:xmpp:sid:0"
+                  }
+               },
+               "title" : "XEP-0359: Unique and Stable Stanza IDs",
+               "type" : "array"
+            },
+            "state" : {
+               "description" : "Chat state notifications, e.g. \"is typing...\"",
+               "enum" : [
+                  "active",
+                  "inactive",
+                  "gone",
+                  "composing",
+                  "paused"
+               ],
+               "title" : "XEP-0085: Chat State Notifications",
+               "type" : "string",
+               "xml" : {
+                  "namespace" : "http://jabber.org/protocol/chatstates",
+                  "x_name_is_value" : true
+               }
+            },
+            "subject" : {
+               "description" : "Subject of message or group chat",
+               "example" : "Talking about stuff",
+               "examples" : [
+                  "I implore you!",
+                  "Talking about stuff"
+               ],
+               "type" : "string"
+            },
+            "thread" : {
+               "description" : "Message thread identifier",
+               "properties" : {
+                  "id" : {
+                     "type" : "string",
+                     "xml" : {
+                        "text" : true
+                     }
+                  },
+                  "parent" : {
+                     "type" : "string",
+                     "xml" : {
+                        "attribute" : true
+                     }
+                  }
+               },
+               "type" : "object"
+            },
+            "to" : {
+               "$ref" : "#/_common/to"
+            },
+            "type" : {
+               "$ref" : "#/_common/type"
+            }
+         },
+         "type" : "object",
+         "xml" : {
+            "name" : "message",
+            "namespace" : "jabber:client"
+         }
+      },
+      "presence" : {
+         "properties" : {
+            "caps" : {
+               "properties" : {
+                  "ext" : {
+                     "type" : "string",
+                     "xml" : {
+                        "attribute" : true
+                     }
+                  },
+                  "hash" : {
+                     "type" : "string",
+                     "xml" : {
+                        "attribute" : true
+                     }
+                  },
+                  "node" : {
+                     "type" : "string",
+                     "xml" : {
+                        "attribute" : true
+                     }
+                  },
+                  "ver" : {
+                     "type" : "string",
+                     "xml" : {
+                        "attribute" : true
+                     }
+                  }
+               },
+               "title" : "XEP-0115: Entity Capabilities",
+               "type" : "object",
+               "xml" : {
+                  "name" : "c",
+                  "namespace" : "http://jabber.org/protocol/caps"
+               }
+            },
+            "dataform" : {
+               "$ref" : "#/_common/dataform"
+            },
+            "delay" : {
+               "$ref" : "#/_common/delay"
+            },
+            "from" : {
+               "$ref" : "#/_common/from"
+            },
+            "id" : {
+               "$ref" : "#/_common/id"
+            },
+            "idle_since" : {
+               "format" : "date-time",
+               "title" : "XEP-0319: Last User Interaction in Presence",
+               "type" : "string",
+               "xml" : {
+                  "name" : "idle",
+                  "namespace" : "urn:xmpp:idle:1",
+                  "x_single_attribute" : "since"
+               }
+            },
+            "lang" : {
+               "$ref" : "#/_common/lang"
+            },
+            "muc" : {
+               "properties" : {
+                  "history" : {
+                     "properties" : {
+                        "maxchars" : {
+                           "minimum" : 0,
+                           "type" : "integer",
+                           "xml" : {
+                              "attribute" : true
+                           }
+                        },
+                        "maxstanzas" : {
+                           "minimum" : 0,
+                           "type" : "integer",
+                           "xml" : {
+                              "attribute" : true
+                           }
+                        },
+                        "seconds" : {
+                           "minimum" : 0,
+                           "type" : "integer",
+                           "xml" : {
+                              "attribute" : true
+                           }
+                        },
+                        "since" : {
+                           "format" : "date-time",
+                           "type" : "string",
+                           "xml" : {
+                              "attribute" : true
+                           }
+                        }
+                     },
+                     "type" : "object"
+                  }
+               },
+               "type" : "object",
+               "xml" : {
+                  "name" : "x",
+                  "namespace" : "http://jabber.org/protocol/muc"
+               }
+            },
+            "nick" : {
+               "$ref" : "#/_common/nick"
+            },
+            "priority" : {
+               "description" : "Presence priority",
+               "maximum" : 127,
+               "minimum" : -128,
+               "type" : "integer"
+            },
+            "rsm" : {
+               "$ref" : "#/_common/rsm"
+            },
+            "show" : {
+               "description" : "indicator of availability, ie away or not",
+               "enum" : [
+                  "away",
+                  "chat",
+                  "dnd",
+                  "xa"
+               ],
+               "type" : "string"
+            },
+            "status" : {
+               "description" : "Textual status message.",
+               "type" : "string"
+            },
+            "to" : {
+               "$ref" : "#/_common/to"
+            },
+            "type" : {
+               "$ref" : "#/_common/type"
+            },
+            "vcard_update" : {
+               "properties" : {
+                  "photo" : {
+                     "type" : "string"
+                  }
+               },
+               "title" : "XEP-0153: vCard-Based Avatars",
+               "type" : "object",
+               "xml" : {
+                  "name" : "x",
+                  "namespace" : "vcard-temp:x:update"
+               }
+            }
+         },
+         "type" : "object",
+         "xml" : {
+            "name" : "presence",
+            "namespace" : "jabber:client"
+         }
+      }
+   },
+   "type" : "object",
+   "xml" : {
+      "name" : "xmpp",
+      "namespace" : "jabber:client"
+   }
+}

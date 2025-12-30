@@ -1,0 +1,21 @@
+Hej!
+
+Detta meddelande är för att informera om kommande ändringar på $HOST.
+
+Några av dina kontakter använder andra Jabber/XMPP-tjänster som inte stödjer kryptering.  Som del i ett initiativ för att öka säkerheten på Jabber/XMPP-nätverket kommer vi att delta i en serie tester för att se effekten av våra planerade förändringar, och du kommer kanske inte kunna chatta med några av dina kontakter.
+
+Testerna kommer utföras på följande datum: 4e januari, 22a februari, 22a mars och 19e april.  Under dessa datum kommer vi att kräva att alla anslutningar till och från $HOST är krypterade.  Du har kontakter på följande tjänster som just nu inte stödjer kryptering:
+
+$SERVICES
+
+Påverkade kontakter är
+
+$CONTACTS
+
+Vad kan du göra?  Du kan be dina kontakter att prata med sin tjänsteleverantör/administratör om avsaknaden av kryptering.  Alternativt så kan de byta till en annan tjänst.
+
+En lista på publika tjänster kan hittas på https://xmpp.net/directory.php
+
+För mer information om säkerhetsinitiativet på Jabber/XMPP-nätverket som vi deltar i, läs meddelandet på https://stpeter.im/journal/1496.html
+
+Om du har frågor eller funderingar kan du kontakta oss via $CONTACTVIA på $CONTACT

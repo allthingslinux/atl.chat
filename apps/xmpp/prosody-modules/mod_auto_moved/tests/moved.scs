@@ -1,0 +1,184 @@
+# XEP-0283: Moved
+
+[Client] Romeo
+	jid: romeo1@localhost
+	password: password
+
+[Client] RomeoNew
+	jid: romeo.new@localhost
+	password: password
+
+[Client] Juliet
+	jid: juliet.m@localhost
+	password: password
+
+-----
+
+# The parties connect
+Romeo connects
+
+Romeo sends:
+	<presence/>
+
+Romeo receives:
+	<presence from="${Romeo's full JID}"/>
+
+Juliet connects
+
+Juliet sends:
+	<presence/>
+
+Juliet receives:
+	<presence from="${Juliet's full JID}"/>
+
+RomeoNew connects
+
+RomeoNew sends:
+	<presence/>
+
+RomeoNew receives:
+	<presence from="${RomeoNew's full JID}"/>
+
+# They add each other
+Romeo sends:
+	<presence type="subscribe" to="${Juliet's JID}"/>
+
+Romeo receives:
+	<presence from="${Juliet's JID}" to="${Romeo's JID}" type="unavailable"/>
+
+Juliet receives:
+	<presence type="subscribe" to="${Juliet's JID}" from="${Romeo's JID}"/>
+
+Juliet sends:
+	<presence type="subscribed" to="${Romeo's JID}"/>
+
+Romeo receives:
+	<presence from="${Juliet's full JID}" to="${Romeo's JID}">
+	  <delay xmlns="urn:xmpp:delay" stamp="{scansion:any}" from="localhost"/>
+	</presence>
+
+Juliet sends:
+	<presence type="subscribe" to="${Romeo's JID}"/>
+
+Juliet receives:
+	<presence from="${Romeo's JID}" to="${Juliet's JID}" type="unavailable"/>
+
+Romeo receives:
+	<presence type="subscribe" to="${Romeo's JID}" from="${Juliet's JID}"/>
+
+Romeo sends:
+	<presence type="subscribed" to="${Juliet's JID}"/>
+
+Juliet receives:
+	<presence from="${Romeo's full JID}" to="${Juliet's JID}">
+	  <delay xmlns="urn:xmpp:delay" stamp="{scansion:any}" from="localhost"/>
+	</presence>
+
+Romeo receives:
+	<presence from="${Juliet's full JID}" to="${Romeo's JID}">
+	  <delay xmlns="urn:xmpp:delay" stamp="{scansion:any}" from="localhost"/>
+	</presence>
+
+# They request their rosters
+
+Juliet sends:
+	<iq type="get" id="roster1">
+		<query xmlns='jabber:iq:roster'/>
+	</iq>
+
+Juliet receives:
+	<iq type="result" id="roster1"/>
+
+RomeoNew sends:
+	<iq type="get" id="roster1">
+		<query xmlns='jabber:iq:roster'/>
+	</iq>
+
+RomeoNew receives:
+	<iq type="result" id="roster1"/>
+
+# They can now talk
+Juliet sends:
+	<message type="chat" to="${Romeo's JID}">
+	  <body>ohai</body>
+	</message>
+
+Romeo receives:
+	<message type="chat" to="${Romeo's JID}" from="${Juliet's full JID}">
+	  <body>ohai</body>
+	</message>
+
+# Romeo moves to a new account
+
+# Romeo publishes a moved statement
+
+Romeo sends:
+	<iq type='set' id='pub1'>
+		<pubsub xmlns='http://jabber.org/protocol/pubsub'>
+			<publish node='urn:xmpp:moved:1'>
+				<item id='current'>
+					<moved xmlns='urn:xmpp:moved:1'>
+						<new-jid>${RomeoNew's JID}</new-jid>
+					</moved>
+				</item>
+			</publish>
+			<publish-options>
+				<x xmlns='jabber:x:data' type='submit'>
+					<field var='FORM_TYPE' type='hidden'>
+						<value>http://jabber.org/protocol/pubsub#publish-options</value>
+					</field>
+					<field var='pubsub#access_model'>
+						<value>open</value>
+					</field>
+				</x>
+			</publish-options>
+		</pubsub>
+	</iq>
+
+Romeo receives:
+	<iq type="result" id="pub1">
+		<pubsub xmlns='http://jabber.org/protocol/pubsub'>
+			<publish node='urn:xmpp:moved:1'>
+				<item id='current'/>
+			</publish>
+		</pubsub>
+	</iq>
+
+
+
+# RomeoNew sends moved notification to Juliet
+RomeoNew sends:
+	<presence type="subscribe" to="${Juliet's JID}">
+		<moved xmlns="urn:xmpp:moved:1">
+			<old-jid>${Romeo's JID}</old-jid>
+		</moved>
+	</presence>
+
+RomeoNew receives:
+	<iq type='set' id="{scansion:any}">
+		<query ver="{scansion:any}" xmlns='jabber:iq:roster'>
+			<item jid="${Juliet's JID}" subscription='none' ask='subscribe'/>
+		</query>
+	</iq>
+
+# Juliet's server verifies and approves the subscription request
+
+RomeoNew receives:
+	<presence type="subscribed" from="${Juliet's JID}"/>
+
+RomeoNew receives:
+	<iq type='set' id="{scansion:any}">
+		<query ver="{scansion:any}" xmlns='jabber:iq:roster'>
+			<item jid="${Juliet's JID}" subscription='to' />
+		</query>
+	</iq>
+
+# Juliet's server notifies her via a roster push
+
+Juliet receives:
+	<iq type="set" id="{scansion:any}">
+		<query xmlns='jabber:iq:roster' ver='{scansion:any}'>
+			<item jid="${RomeoNew's JID}" subscription='from'/>
+		</query>
+	</iq>
+

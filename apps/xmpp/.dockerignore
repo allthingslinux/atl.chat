@@ -1,0 +1,83 @@
+# Git
+.git
+.gitignore
+
+# Documentation (not needed in container)
+docs/
+*.md
+
+# Development files
+research/
+.env.dev
+.env.dev.example
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Python (if any)
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+.pytest_cache/
+
+# Node.js (if any)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Temporary files
+*.tmp
+*.temp
+.tmp/
+.temp/
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# Runtime data (should be mounted as volumes)
+.runtime/
+logs/
+certs/
+
+# Deployment files (not needed in container)
+
+systemd/
+
+# Scripts (some are runtime, keep only necessary ones)
+scripts/
+!scripts/setup/entrypoint.sh
+!scripts/maintenance/health-check.sh
+
+# Templates (not needed in container)
+templates/
+
+# Development tools
+renovate.json

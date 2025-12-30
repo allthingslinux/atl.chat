@@ -1,0 +1,341 @@
+<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>Feed of &#34;slidge&#34;</title>
+    <link>https://codeberg.org/slidge</link>
+    <description></description>
+    <pubDate>Fri, 17 Jan 2025 12:15:21 +0000</pubDate>
+    <item>
+      <title>aereaux commented on issue slidge/slidge#36</title>
+      <link>https://codeberg.org/slidge/slidge/issues/36#issuecomment-2590246</link>
+      <description>Error on startup&#xA;&#xA;&lt;p dir=&#34;auto&#34;&gt;It does continue to run, but it doesn&amp;#39;t set my avatar.  I do seem to see my own avatar in group chats, at least in cheogram.&lt;/p&gt;&#xA;</description>
+      <content:encoded><![CDATA[Error on startup
+
+<p dir="auto">It does continue to run, but it doesn&#39;t set my avatar.  I do seem to see my own avatar in group chats, at least in cheogram.</p>
+]]></content:encoded>
+      <author>aereaux</author>
+      <guid isPermaLink="false">22108577: https://codeberg.org/slidge/slidge/issues/36#issuecomment-2590246</guid>
+      <pubDate>Thu, 16 Jan 2025 15:32:41 +0000</pubDate>
+    </item>
+    <item>
+      <title>nicoco commented on issue slidge/slidge#36</title>
+      <link>https://codeberg.org/slidge/slidge/issues/36#issuecomment-2590128</link>
+      <description>Error on startup&#xA;&#xA;&lt;p dir=&#34;auto&#34;&gt;I&amp;#39;m not sure why this happens but it is non fatal, right? I suspect you don&amp;#39;t see your own avatar in group chats though.&lt;/p&gt;&#xA;</description>
+      <content:encoded><![CDATA[Error on startup
+
+<p dir="auto">I&#39;m not sure why this happens but it is non fatal, right? I suspect you don&#39;t see your own avatar in group chats though.</p>
+]]></content:encoded>
+      <author>nicoco</author>
+      <guid isPermaLink="false">22106314: https://codeberg.org/slidge/slidge/issues/36#issuecomment-2590128</guid>
+      <pubDate>Thu, 16 Jan 2025 14:28:29 +0000</pubDate>
+    </item>
+    <item>
+      <title>nicoco pushed to dev at slidge/slidgram</title>
+      <link>/slidge/slidgram/compare/3f8b7a2f69c6c891d8ab07700f113103db73faa3...dd7c6923c788b38312fbc27cffba3b7007d0126e</link>
+      <description>&lt;a href=&#34;https://codeberg.org/slidge/slidgram/commit/dd7c6923c788b38312fbc27cffba3b7007d0126e&#34;&gt;dd7c6923c788b38312fbc27cffba3b7007d0126e&lt;/a&gt;&#xA;build: update pre-commit hooks&#xA;&#xA;&lt;a href=&#34;https://codeberg.org/slidge/slidgram/commit/790116333966f395cc268b032c7a6173486955f4&#34;&gt;790116333966f395cc268b032c7a6173486955f4&lt;/a&gt;&#xA;chore: update lockfile&#xA;&#xA;&lt;a href=&#34;https://codeberg.org/slidge/slidgram/commit/776de82113f8a860408f78c22e8539e73306ac87&#34;&gt;776de82113f8a860408f78c22e8539e73306ac87&lt;/a&gt;&#xA;ci: use woodpecker</description>
+      <content:encoded><![CDATA[<a href="https://codeberg.org/slidge/slidgram/commit/dd7c6923c788b38312fbc27cffba3b7007d0126e" rel="nofollow">dd7c6923c788b38312fbc27cffba3b7007d0126e</a>
+build: update pre-commit hooks
+
+<a href="https://codeberg.org/slidge/slidgram/commit/790116333966f395cc268b032c7a6173486955f4" rel="nofollow">790116333966f395cc268b032c7a6173486955f4</a>
+chore: update lockfile
+
+<a href="https://codeberg.org/slidge/slidgram/commit/776de82113f8a860408f78c22e8539e73306ac87" rel="nofollow">776de82113f8a860408f78c22e8539e73306ac87</a>
+ci: use woodpecker]]></content:encoded>
+      <author>nicoco</author>
+      <guid isPermaLink="false">22100038: /slidge/slidgram/compare/3f8b7a2f69c6c891d8ab07700f113103db73faa3...dd7c6923c788b38312fbc27cffba3b7007d0126e</guid>
+      <pubDate>Thu, 16 Jan 2025 12:40:29 +0000</pubDate>
+    </item>
+    <item>
+      <title>nicoco pushed to dev at slidge/slidgram</title>
+      <link>https://codeberg.org/slidge/slidgram/commit/3f8b7a2f69c6c891d8ab07700f113103db73faa3</link>
+      <description>&lt;a href=&#34;https://codeberg.org/slidge/slidgram/commit/3f8b7a2f69c6c891d8ab07700f113103db73faa3&#34;&gt;3f8b7a2f69c6c891d8ab07700f113103db73faa3&lt;/a&gt;&#xA;fixup! ci: use woodpecker</description>
+      <content:encoded><![CDATA[<a href="https://codeberg.org/slidge/slidgram/commit/3f8b7a2f69c6c891d8ab07700f113103db73faa3" rel="nofollow">3f8b7a2f69c6c891d8ab07700f113103db73faa3</a>
+fixup! ci: use woodpecker]]></content:encoded>
+      <author>nicoco</author>
+      <guid isPermaLink="false">22099622: https://codeberg.org/slidge/slidgram/commit/3f8b7a2f69c6c891d8ab07700f113103db73faa3</guid>
+      <pubDate>Thu, 16 Jan 2025 12:15:22 +0000</pubDate>
+    </item>
+    <item>
+      <title>nicoco pushed to dev at slidge/slidgram</title>
+      <link>https://codeberg.org/slidge/slidgram/commit/6a1c45d27839cc1d4db0edd0fbe074171b89fcc0</link>
+      <description>&lt;a href=&#34;https://codeberg.org/slidge/slidgram/commit/6a1c45d27839cc1d4db0edd0fbe074171b89fcc0&#34;&gt;6a1c45d27839cc1d4db0edd0fbe074171b89fcc0&lt;/a&gt;&#xA;fixup! ci: use woodpecker</description>
+      <content:encoded><![CDATA[<a href="https://codeberg.org/slidge/slidgram/commit/6a1c45d27839cc1d4db0edd0fbe074171b89fcc0" rel="nofollow">6a1c45d27839cc1d4db0edd0fbe074171b89fcc0</a>
+fixup! ci: use woodpecker]]></content:encoded>
+      <author>nicoco</author>
+      <guid isPermaLink="false">22099101: https://codeberg.org/slidge/slidgram/commit/6a1c45d27839cc1d4db0edd0fbe074171b89fcc0</guid>
+      <pubDate>Thu, 16 Jan 2025 11:53:46 +0000</pubDate>
+    </item>
+    <item>
+      <title>nicoco pushed to dev at slidge/slidgram</title>
+      <link>/slidge/slidgram/compare/2dfc9cc3916e91cf1db677771bc1a41ba55f50aa...d818b8518ce676361e3d694ff9b14ec86cb7e31c</link>
+      <description>&lt;a href=&#34;https://codeberg.org/slidge/slidgram/commit/d818b8518ce676361e3d694ff9b14ec86cb7e31c&#34;&gt;d818b8518ce676361e3d694ff9b14ec86cb7e31c&lt;/a&gt;&#xA;fixup! ci: use woodpecker&#xA;&#xA;&lt;a href=&#34;https://codeberg.org/slidge/slidgram/commit/2e52e2170caeb1a2ac28635dd766e32a79dcbae9&#34;&gt;2e52e2170caeb1a2ac28635dd766e32a79dcbae9&lt;/a&gt;&#xA;chore: update lockfile&#xA;&#xA;&lt;a href=&#34;https://codeberg.org/slidge/slidgram/commit/31d0ee7595b08be34255add47e2b569ba1b05ac4&#34;&gt;31d0ee7595b08be34255add47e2b569ba1b05ac4&lt;/a&gt;&#xA;fixup! ci: use woodpecker&#xA;&#xA;&lt;a href=&#34;https://codeberg.org/slidge/slidgram/commit/e8530a185c5a783b1a98a3183326b1954f92997b&#34;&gt;e8530a185c5a783b1a98a3183326b1954f92997b&lt;/a&gt;&#xA;chore: update lockfile&#xA;&#xA;&lt;a href=&#34;https://codeberg.org/slidge/slidgram/commit/acf27d0ca32c4e193451fcb5025db0e9820380f8&#34;&gt;acf27d0ca32c4e193451fcb5025db0e9820380f8&lt;/a&gt;&#xA;ci: use woodpecker</description>
+      <content:encoded><![CDATA[<a href="https://codeberg.org/slidge/slidgram/commit/d818b8518ce676361e3d694ff9b14ec86cb7e31c" rel="nofollow">d818b8518ce676361e3d694ff9b14ec86cb7e31c</a>
+fixup! ci: use woodpecker
+
+<a href="https://codeberg.org/slidge/slidgram/commit/2e52e2170caeb1a2ac28635dd766e32a79dcbae9" rel="nofollow">2e52e2170caeb1a2ac28635dd766e32a79dcbae9</a>
+chore: update lockfile
+
+<a href="https://codeberg.org/slidge/slidgram/commit/31d0ee7595b08be34255add47e2b569ba1b05ac4" rel="nofollow">31d0ee7595b08be34255add47e2b569ba1b05ac4</a>
+fixup! ci: use woodpecker
+
+<a href="https://codeberg.org/slidge/slidgram/commit/e8530a185c5a783b1a98a3183326b1954f92997b" rel="nofollow">e8530a185c5a783b1a98a3183326b1954f92997b</a>
+chore: update lockfile
+
+<a href="https://codeberg.org/slidge/slidgram/commit/acf27d0ca32c4e193451fcb5025db0e9820380f8" rel="nofollow">acf27d0ca32c4e193451fcb5025db0e9820380f8</a>
+ci: use woodpecker]]></content:encoded>
+      <author>nicoco</author>
+      <guid isPermaLink="false">22099034: /slidge/slidgram/compare/2dfc9cc3916e91cf1db677771bc1a41ba55f50aa...d818b8518ce676361e3d694ff9b14ec86cb7e31c</guid>
+      <pubDate>Thu, 16 Jan 2025 11:49:45 +0000</pubDate>
+    </item>
+    <item>
+      <title>nicoco pushed to dev at slidge/slidge</title>
+      <link>/slidge/slidge/compare/f2700e77b26f3a1391a3bcecc0db758398b9db73...9440989ef8c9b751eb4153f1e20e55627f8f548e</link>
+      <description>&lt;a href=&#34;https://codeberg.org/slidge/slidge/commit/9440989ef8c9b751eb4153f1e20e55627f8f548e&#34;&gt;9440989ef8c9b751eb4153f1e20e55627f8f548e&lt;/a&gt;&#xA;docs: readme: freshen up&#xA;&#xA;&lt;a href=&#34;https://codeberg.org/slidge/slidge/commit/43ea9bf36f1d74e09154e0a9d46e5f67e778fb74&#34;&gt;43ea9bf36f1d74e09154e0a9d46e5f67e778fb74&lt;/a&gt;&#xA;ci: factorisation, cron jobs, manual pipelines</description>
+      <content:encoded><![CDATA[<a href="https://codeberg.org/slidge/slidge/commit/9440989ef8c9b751eb4153f1e20e55627f8f548e" rel="nofollow">9440989ef8c9b751eb4153f1e20e55627f8f548e</a>
+docs: readme: freshen up
+
+<a href="https://codeberg.org/slidge/slidge/commit/43ea9bf36f1d74e09154e0a9d46e5f67e778fb74" rel="nofollow">43ea9bf36f1d74e09154e0a9d46e5f67e778fb74</a>
+ci: factorisation, cron jobs, manual pipelines]]></content:encoded>
+      <author>nicoco</author>
+      <guid isPermaLink="false">22097690: /slidge/slidge/compare/f2700e77b26f3a1391a3bcecc0db758398b9db73...9440989ef8c9b751eb4153f1e20e55627f8f548e</guid>
+      <pubDate>Thu, 16 Jan 2025 10:42:40 +0000</pubDate>
+    </item>
+    <item>
+      <title>nicoco deleted branch buildx from slidge/slidge</title>
+      <link>https://codeberg.org/slidge/slidge</link>
+      <description></description>
+      <author>nicoco</author>
+      <guid isPermaLink="false">22096886: https://codeberg.org/slidge/slidge</guid>
+      <pubDate>Thu, 16 Jan 2025 10:13:13 +0000</pubDate>
+    </item>
+    <item>
+      <title>nicoco pushed to dev at slidge/slidge</title>
+      <link>https://codeberg.org/slidge/slidge/commit/f2700e77b26f3a1391a3bcecc0db758398b9db73</link>
+      <description>&lt;a href=&#34;https://codeberg.org/slidge/slidge/commit/f2700e77b26f3a1391a3bcecc0db758398b9db73&#34;&gt;f2700e77b26f3a1391a3bcecc0db758398b9db73&lt;/a&gt;&#xA;ci: cache virtualenv; factorisation</description>
+      <content:encoded><![CDATA[<a href="https://codeberg.org/slidge/slidge/commit/f2700e77b26f3a1391a3bcecc0db758398b9db73" rel="nofollow">f2700e77b26f3a1391a3bcecc0db758398b9db73</a>
+ci: cache virtualenv; factorisation]]></content:encoded>
+      <author>nicoco</author>
+      <guid isPermaLink="false">22096805: https://codeberg.org/slidge/slidge/commit/f2700e77b26f3a1391a3bcecc0db758398b9db73</guid>
+      <pubDate>Thu, 16 Jan 2025 10:08:14 +0000</pubDate>
+    </item>
+    <item>
+      <title>nicoco pushed to dev at slidge/slidge</title>
+      <link>https://codeberg.org/slidge/slidge/commit/b25334774b74b5d88572694a10ecf451282639b4</link>
+      <description>&lt;a href=&#34;https://codeberg.org/slidge/slidge/commit/b25334774b74b5d88572694a10ecf451282639b4&#34;&gt;b25334774b74b5d88572694a10ecf451282639b4&lt;/a&gt;&#xA;fixup! ci</description>
+      <content:encoded><![CDATA[<a href="https://codeberg.org/slidge/slidge/commit/b25334774b74b5d88572694a10ecf451282639b4" rel="nofollow">b25334774b74b5d88572694a10ecf451282639b4</a>
+fixup! ci]]></content:encoded>
+      <author>nicoco</author>
+      <guid isPermaLink="false">22096514: https://codeberg.org/slidge/slidge/commit/b25334774b74b5d88572694a10ecf451282639b4</guid>
+      <pubDate>Thu, 16 Jan 2025 09:51:06 +0000</pubDate>
+    </item>
+    <item>
+      <title>c3p0-slidge pushed to main at slidge/pages</title>
+      <link>https://codeberg.org/slidge/pages/commit/4688fe65212fee04717f4b466185ba05ac0ccba0</link>
+      <description>&lt;a href=&#34;https://codeberg.org/slidge/pages/commit/4688fe65212fee04717f4b466185ba05ac0ccba0&#34;&gt;4688fe65212fee04717f4b466185ba05ac0ccba0&lt;/a&gt;&#xA;deploy docs for 03adac6ec948d70934756626ce9183b9321523dc</description>
+      <content:encoded><![CDATA[<a href="https://codeberg.org/slidge/pages/commit/4688fe65212fee04717f4b466185ba05ac0ccba0" rel="nofollow">4688fe65212fee04717f4b466185ba05ac0ccba0</a>
+deploy docs for 03adac6ec948d70934756626ce9183b9321523dc]]></content:encoded>
+      <author>c3p0-slidge</author>
+      <guid isPermaLink="false">22096350: https://codeberg.org/slidge/pages/commit/4688fe65212fee04717f4b466185ba05ac0ccba0</guid>
+      <pubDate>Thu, 16 Jan 2025 09:40:36 +0000</pubDate>
+    </item>
+    <item>
+      <title>c3p0-slidge pushed to main at slidge/pages</title>
+      <link>https://codeberg.org/slidge/pages/commit/c9ae413a9966ff51af5d4d4281e74001a1e8677d</link>
+      <description>&lt;a href=&#34;https://codeberg.org/slidge/pages/commit/c9ae413a9966ff51af5d4d4281e74001a1e8677d&#34;&gt;c9ae413a9966ff51af5d4d4281e74001a1e8677d&lt;/a&gt;&#xA;deploy docs for 03adac6ec948d70934756626ce9183b9321523dc</description>
+      <content:encoded><![CDATA[<a href="https://codeberg.org/slidge/pages/commit/c9ae413a9966ff51af5d4d4281e74001a1e8677d" rel="nofollow">c9ae413a9966ff51af5d4d4281e74001a1e8677d</a>
+deploy docs for 03adac6ec948d70934756626ce9183b9321523dc]]></content:encoded>
+      <author>c3p0-slidge</author>
+      <guid isPermaLink="false">22096294: https://codeberg.org/slidge/pages/commit/c9ae413a9966ff51af5d4d4281e74001a1e8677d</guid>
+      <pubDate>Thu, 16 Jan 2025 09:38:07 +0000</pubDate>
+    </item>
+    <item>
+      <title>nicoco pushed to dev at slidge/slidge</title>
+      <link>https://codeberg.org/slidge/slidge/commit/03adac6ec948d70934756626ce9183b9321523dc</link>
+      <description>&lt;a href=&#34;https://codeberg.org/slidge/slidge/commit/03adac6ec948d70934756626ce9183b9321523dc&#34;&gt;03adac6ec948d70934756626ce9183b9321523dc&lt;/a&gt;&#xA;fixup! ci</description>
+      <content:encoded><![CDATA[<a href="https://codeberg.org/slidge/slidge/commit/03adac6ec948d70934756626ce9183b9321523dc" rel="nofollow">03adac6ec948d70934756626ce9183b9321523dc</a>
+fixup! ci]]></content:encoded>
+      <author>nicoco</author>
+      <guid isPermaLink="false">22096251: https://codeberg.org/slidge/slidge/commit/03adac6ec948d70934756626ce9183b9321523dc</guid>
+      <pubDate>Thu, 16 Jan 2025 09:36:07 +0000</pubDate>
+    </item>
+    <item>
+      <title>nicoco pushed to dev at slidge/slidge</title>
+      <link>https://codeberg.org/slidge/slidge/commit/6e945b3eae118271d19c5d94aa1bdbe8006b0267</link>
+      <description>&lt;a href=&#34;https://codeberg.org/slidge/slidge/commit/6e945b3eae118271d19c5d94aa1bdbe8006b0267&#34;&gt;6e945b3eae118271d19c5d94aa1bdbe8006b0267&lt;/a&gt;&#xA;fixup! ci</description>
+      <content:encoded><![CDATA[<a href="https://codeberg.org/slidge/slidge/commit/6e945b3eae118271d19c5d94aa1bdbe8006b0267" rel="nofollow">6e945b3eae118271d19c5d94aa1bdbe8006b0267</a>
+fixup! ci]]></content:encoded>
+      <author>nicoco</author>
+      <guid isPermaLink="false">22095628: https://codeberg.org/slidge/slidge/commit/6e945b3eae118271d19c5d94aa1bdbe8006b0267</guid>
+      <pubDate>Thu, 16 Jan 2025 09:17:04 +0000</pubDate>
+    </item>
+    <item>
+      <title>nicoco pushed to dev at slidge/slidge</title>
+      <link>https://codeberg.org/slidge/slidge/commit/e27df12d6d6a950c4d6ba28c568f6d45fb7456ea</link>
+      <description>&lt;a href=&#34;https://codeberg.org/slidge/slidge/commit/e27df12d6d6a950c4d6ba28c568f6d45fb7456ea&#34;&gt;e27df12d6d6a950c4d6ba28c568f6d45fb7456ea&lt;/a&gt;&#xA;fixup! ci</description>
+      <content:encoded><![CDATA[<a href="https://codeberg.org/slidge/slidge/commit/e27df12d6d6a950c4d6ba28c568f6d45fb7456ea" rel="nofollow">e27df12d6d6a950c4d6ba28c568f6d45fb7456ea</a>
+fixup! ci]]></content:encoded>
+      <author>nicoco</author>
+      <guid isPermaLink="false">22095366: https://codeberg.org/slidge/slidge/commit/e27df12d6d6a950c4d6ba28c568f6d45fb7456ea</guid>
+      <pubDate>Thu, 16 Jan 2025 09:02:26 +0000</pubDate>
+    </item>
+    <item>
+      <title>nicoco pushed to dev at slidge/slidge</title>
+      <link>https://codeberg.org/slidge/slidge/commit/f2c028957dbf2447ae54a0e7d9e94b7145d856d1</link>
+      <description>&lt;a href=&#34;https://codeberg.org/slidge/slidge/commit/f2c028957dbf2447ae54a0e7d9e94b7145d856d1&#34;&gt;f2c028957dbf2447ae54a0e7d9e94b7145d856d1&lt;/a&gt;&#xA;fixup! ci</description>
+      <content:encoded><![CDATA[<a href="https://codeberg.org/slidge/slidge/commit/f2c028957dbf2447ae54a0e7d9e94b7145d856d1" rel="nofollow">f2c028957dbf2447ae54a0e7d9e94b7145d856d1</a>
+fixup! ci]]></content:encoded>
+      <author>nicoco</author>
+      <guid isPermaLink="false">22094639: https://codeberg.org/slidge/slidge/commit/f2c028957dbf2447ae54a0e7d9e94b7145d856d1</guid>
+      <pubDate>Thu, 16 Jan 2025 08:34:20 +0000</pubDate>
+    </item>
+    <item>
+      <title>nicoco pushed to buildx at slidge/slidge</title>
+      <link>https://codeberg.org/slidge/slidge/commit/6c6a79b6b74c684585fca23910d29859253741e4</link>
+      <description>&lt;a href=&#34;https://codeberg.org/slidge/slidge/commit/6c6a79b6b74c684585fca23910d29859253741e4&#34;&gt;6c6a79b6b74c684585fca23910d29859253741e4&lt;/a&gt;&#xA;ci: fix auth</description>
+      <content:encoded><![CDATA[<a href="https://codeberg.org/slidge/slidge/commit/6c6a79b6b74c684585fca23910d29859253741e4" rel="nofollow">6c6a79b6b74c684585fca23910d29859253741e4</a>
+ci: fix auth]]></content:encoded>
+      <author>nicoco</author>
+      <guid isPermaLink="false">22094450: https://codeberg.org/slidge/slidge/commit/6c6a79b6b74c684585fca23910d29859253741e4</guid>
+      <pubDate>Thu, 16 Jan 2025 08:26:14 +0000</pubDate>
+    </item>
+    <item>
+      <title>nicoco pushed to buildx at slidge/slidge</title>
+      <link>https://codeberg.org/slidge/slidge/commit/af5cb61652c159ea382a3df7cc0711df82e2c6f3</link>
+      <description>&lt;a href=&#34;https://codeberg.org/slidge/slidge/commit/af5cb61652c159ea382a3df7cc0711df82e2c6f3&#34;&gt;af5cb61652c159ea382a3df7cc0711df82e2c6f3&lt;/a&gt;&#xA;ci: just build all the time</description>
+      <content:encoded><![CDATA[<a href="https://codeberg.org/slidge/slidge/commit/af5cb61652c159ea382a3df7cc0711df82e2c6f3" rel="nofollow">af5cb61652c159ea382a3df7cc0711df82e2c6f3</a>
+ci: just build all the time]]></content:encoded>
+      <author>nicoco</author>
+      <guid isPermaLink="false">22094328: https://codeberg.org/slidge/slidge/commit/af5cb61652c159ea382a3df7cc0711df82e2c6f3</guid>
+      <pubDate>Thu, 16 Jan 2025 08:18:02 +0000</pubDate>
+    </item>
+    <item>
+      <title>nicoco pushed to buildx at slidge/slidge</title>
+      <link>/slidge/slidge/compare/6e77ed7510a1dfd23f35b81affc90ded895515e6...3efecf7655b24623a122170b872782ac9cab9344</link>
+      <description>&lt;a href=&#34;https://codeberg.org/slidge/slidge/commit/3efecf7655b24623a122170b872782ac9cab9344&#34;&gt;3efecf7655b24623a122170b872782ac9cab9344&lt;/a&gt;&#xA;feat: allow multiple values for --cache-from&#xA;&#xA;&lt;a href=&#34;https://codeberg.org/slidge/slidge/commit/d689954ee5afee840d9c3ccb37eeb434c5554325&#34;&gt;d689954ee5afee840d9c3ccb37eeb434c5554325&lt;/a&gt;&#xA;chore(deps): update docker.io/mstruebing/editorconfig-checker docker tag to v3.1.2&#xA;&#xA;&lt;a href=&#34;https://codeberg.org/slidge/slidge/commit/3e6c614b92c907987cf50029eb4512dba44dadd2&#34;&gt;3e6c614b92c907987cf50029eb4512dba44dadd2&lt;/a&gt;&#xA;fix(deps): update module github.com/go-git/go-git/v5 to v5.13.1&#xA;&#xA;&lt;a href=&#34;https://codeberg.org/slidge/slidge/commit/9ff0fa678dccd7fc4be7cace72073b8d5fefd60a&#34;&gt;9ff0fa678dccd7fc4be7cace72073b8d5fefd60a&lt;/a&gt;&#xA;chore(deps): update davidanson/markdownlint-cli2 docker tag to v0.17.1&#xA;&#xA;&lt;a href=&#34;https://codeberg.org/slidge/slidge/commit/c8666a5831ecafa5c60450128f459191cd94c88a&#34;&gt;c8666a5831ecafa5c60450128f459191cd94c88a&lt;/a&gt;&#xA;fix(deps): update module github.com/go-git/go-git/v5 to v5.13.0</description>
+      <content:encoded><![CDATA[<a href="https://codeberg.org/slidge/slidge/commit/3efecf7655b24623a122170b872782ac9cab9344" rel="nofollow">3efecf7655b24623a122170b872782ac9cab9344</a>
+feat: allow multiple values for --cache-from
+
+<a href="https://codeberg.org/slidge/slidge/commit/d689954ee5afee840d9c3ccb37eeb434c5554325" rel="nofollow">d689954ee5afee840d9c3ccb37eeb434c5554325</a>
+chore(deps): update docker.io/mstruebing/editorconfig-checker docker tag to v3.1.2
+
+<a href="https://codeberg.org/slidge/slidge/commit/3e6c614b92c907987cf50029eb4512dba44dadd2" rel="nofollow">3e6c614b92c907987cf50029eb4512dba44dadd2</a>
+fix(deps): update module github.com/go-git/go-git/v5 to v5.13.1
+
+<a href="https://codeberg.org/slidge/slidge/commit/9ff0fa678dccd7fc4be7cace72073b8d5fefd60a" rel="nofollow">9ff0fa678dccd7fc4be7cace72073b8d5fefd60a</a>
+chore(deps): update davidanson/markdownlint-cli2 docker tag to v0.17.1
+
+<a href="https://codeberg.org/slidge/slidge/commit/c8666a5831ecafa5c60450128f459191cd94c88a" rel="nofollow">c8666a5831ecafa5c60450128f459191cd94c88a</a>
+fix(deps): update module github.com/go-git/go-git/v5 to v5.13.0]]></content:encoded>
+      <author>nicoco</author>
+      <guid isPermaLink="false">22094312: /slidge/slidge/compare/6e77ed7510a1dfd23f35b81affc90ded895515e6...3efecf7655b24623a122170b872782ac9cab9344</guid>
+      <pubDate>Thu, 16 Jan 2025 08:16:32 +0000</pubDate>
+    </item>
+    <item>
+      <title>nicoco created branch buildx in slidge/slidge</title>
+      <link>https://codeberg.org/slidge/slidge/src/branch/buildx</link>
+      <description></description>
+      <author>nicoco</author>
+      <guid isPermaLink="false">22094307: https://codeberg.org/slidge/slidge/src/branch/buildx</guid>
+      <pubDate>Thu, 16 Jan 2025 08:16:31 +0000</pubDate>
+    </item>
+    <item>
+      <title>nicoco pushed to dev at slidge/slidge</title>
+      <link>https://codeberg.org/slidge/slidge/commit/97a2c6d48ec1fc2fd085c3e4ff49ac60a17a76f9</link>
+      <description>&lt;a href=&#34;https://codeberg.org/slidge/slidge/commit/97a2c6d48ec1fc2fd085c3e4ff49ac60a17a76f9&#34;&gt;97a2c6d48ec1fc2fd085c3e4ff49ac60a17a76f9&lt;/a&gt;&#xA;fixup! ci</description>
+      <content:encoded><![CDATA[<a href="https://codeberg.org/slidge/slidge/commit/97a2c6d48ec1fc2fd085c3e4ff49ac60a17a76f9" rel="nofollow">97a2c6d48ec1fc2fd085c3e4ff49ac60a17a76f9</a>
+fixup! ci]]></content:encoded>
+      <author>nicoco</author>
+      <guid isPermaLink="false">22077338: https://codeberg.org/slidge/slidge/commit/97a2c6d48ec1fc2fd085c3e4ff49ac60a17a76f9</guid>
+      <pubDate>Wed, 15 Jan 2025 21:03:37 +0000</pubDate>
+    </item>
+    <item>
+      <title>nicoco pushed to dev at slidge/slidge</title>
+      <link>https://codeberg.org/slidge/slidge/commit/3100ed625b7c10eac11161b0aa89f8947ed93df9</link>
+      <description>&lt;a href=&#34;https://codeberg.org/slidge/slidge/commit/3100ed625b7c10eac11161b0aa89f8947ed93df9&#34;&gt;3100ed625b7c10eac11161b0aa89f8947ed93df9&lt;/a&gt;&#xA;fixup! ci</description>
+      <content:encoded><![CDATA[<a href="https://codeberg.org/slidge/slidge/commit/3100ed625b7c10eac11161b0aa89f8947ed93df9" rel="nofollow">3100ed625b7c10eac11161b0aa89f8947ed93df9</a>
+fixup! ci]]></content:encoded>
+      <author>nicoco</author>
+      <guid isPermaLink="false">22077169: https://codeberg.org/slidge/slidge/commit/3100ed625b7c10eac11161b0aa89f8947ed93df9</guid>
+      <pubDate>Wed, 15 Jan 2025 20:57:50 +0000</pubDate>
+    </item>
+    <item>
+      <title>nicoco pushed to dev at slidge/slidge</title>
+      <link>https://codeberg.org/slidge/slidge/commit/f1b58dc97cd7ecef06d4a37466021854ff32d801</link>
+      <description>&lt;a href=&#34;https://codeberg.org/slidge/slidge/commit/f1b58dc97cd7ecef06d4a37466021854ff32d801&#34;&gt;f1b58dc97cd7ecef06d4a37466021854ff32d801&lt;/a&gt;&#xA;fixup! ci</description>
+      <content:encoded><![CDATA[<a href="https://codeberg.org/slidge/slidge/commit/f1b58dc97cd7ecef06d4a37466021854ff32d801" rel="nofollow">f1b58dc97cd7ecef06d4a37466021854ff32d801</a>
+fixup! ci]]></content:encoded>
+      <author>nicoco</author>
+      <guid isPermaLink="false">22076086: https://codeberg.org/slidge/slidge/commit/f1b58dc97cd7ecef06d4a37466021854ff32d801</guid>
+      <pubDate>Wed, 15 Jan 2025 20:22:45 +0000</pubDate>
+    </item>
+    <item>
+      <title>nicoco pushed to dev at slidge/slidge</title>
+      <link>https://codeberg.org/slidge/slidge/commit/c3445fd943872f214535621e901aaa364ed7f195</link>
+      <description>&lt;a href=&#34;https://codeberg.org/slidge/slidge/commit/c3445fd943872f214535621e901aaa364ed7f195&#34;&gt;c3445fd943872f214535621e901aaa364ed7f195&lt;/a&gt;&#xA;fixup! ci</description>
+      <content:encoded><![CDATA[<a href="https://codeberg.org/slidge/slidge/commit/c3445fd943872f214535621e901aaa364ed7f195" rel="nofollow">c3445fd943872f214535621e901aaa364ed7f195</a>
+fixup! ci]]></content:encoded>
+      <author>nicoco</author>
+      <guid isPermaLink="false">22075973: https://codeberg.org/slidge/slidge/commit/c3445fd943872f214535621e901aaa364ed7f195</guid>
+      <pubDate>Wed, 15 Jan 2025 20:15:09 +0000</pubDate>
+    </item>
+    <item>
+      <title>nicoco pushed to dev at slidge/slidge</title>
+      <link>https://codeberg.org/slidge/slidge/commit/ff2e19117bc440b1de05acc78a4c6f0c6f072262</link>
+      <description>&lt;a href=&#34;https://codeberg.org/slidge/slidge/commit/ff2e19117bc440b1de05acc78a4c6f0c6f072262&#34;&gt;ff2e19117bc440b1de05acc78a4c6f0c6f072262&lt;/a&gt;&#xA;fixup! ci</description>
+      <content:encoded><![CDATA[<a href="https://codeberg.org/slidge/slidge/commit/ff2e19117bc440b1de05acc78a4c6f0c6f072262" rel="nofollow">ff2e19117bc440b1de05acc78a4c6f0c6f072262</a>
+fixup! ci]]></content:encoded>
+      <author>nicoco</author>
+      <guid isPermaLink="false">22075651: https://codeberg.org/slidge/slidge/commit/ff2e19117bc440b1de05acc78a4c6f0c6f072262</guid>
+      <pubDate>Wed, 15 Jan 2025 19:59:07 +0000</pubDate>
+    </item>
+    <item>
+      <title>nicoco pushed to dev at slidge/slidge</title>
+      <link>https://codeberg.org/slidge/slidge/commit/c18cdbb3238b81ba30b259c5e31de843e0014d6f</link>
+      <description>&lt;a href=&#34;https://codeberg.org/slidge/slidge/commit/c18cdbb3238b81ba30b259c5e31de843e0014d6f&#34;&gt;c18cdbb3238b81ba30b259c5e31de843e0014d6f&lt;/a&gt;&#xA;fixup! ci</description>
+      <content:encoded><![CDATA[<a href="https://codeberg.org/slidge/slidge/commit/c18cdbb3238b81ba30b259c5e31de843e0014d6f" rel="nofollow">c18cdbb3238b81ba30b259c5e31de843e0014d6f</a>
+fixup! ci]]></content:encoded>
+      <author>nicoco</author>
+      <guid isPermaLink="false">22075168: https://codeberg.org/slidge/slidge/commit/c18cdbb3238b81ba30b259c5e31de843e0014d6f</guid>
+      <pubDate>Wed, 15 Jan 2025 19:45:33 +0000</pubDate>
+    </item>
+    <item>
+      <title>c3p0-slidge pushed to main at slidge/pages</title>
+      <link>https://codeberg.org/slidge/pages/commit/40966a722929d092bb3eebc4729dfa73d47fde6d</link>
+      <description>&lt;a href=&#34;https://codeberg.org/slidge/pages/commit/40966a722929d092bb3eebc4729dfa73d47fde6d&#34;&gt;40966a722929d092bb3eebc4729dfa73d47fde6d&lt;/a&gt;&#xA;deploy docs for dfa0cd369d50fac8a4afb121a0a84dd43b310da7</description>
+      <content:encoded><![CDATA[<a href="https://codeberg.org/slidge/pages/commit/40966a722929d092bb3eebc4729dfa73d47fde6d" rel="nofollow">40966a722929d092bb3eebc4729dfa73d47fde6d</a>
+deploy docs for dfa0cd369d50fac8a4afb121a0a84dd43b310da7]]></content:encoded>
+      <author>c3p0-slidge</author>
+      <guid isPermaLink="false">22068872: https://codeberg.org/slidge/pages/commit/40966a722929d092bb3eebc4729dfa73d47fde6d</guid>
+      <pubDate>Wed, 15 Jan 2025 15:54:01 +0000</pubDate>
+    </item>
+    <item>
+      <title>nicoco pushed to dev at slidge/slidge</title>
+      <link>https://codeberg.org/slidge/slidge/commit/dfa0cd369d50fac8a4afb121a0a84dd43b310da7</link>
+      <description>&lt;a href=&#34;https://codeberg.org/slidge/slidge/commit/dfa0cd369d50fac8a4afb121a0a84dd43b310da7&#34;&gt;dfa0cd369d50fac8a4afb121a0a84dd43b310da7&lt;/a&gt;&#xA;fixup! ci</description>
+      <content:encoded><![CDATA[<a href="https://codeberg.org/slidge/slidge/commit/dfa0cd369d50fac8a4afb121a0a84dd43b310da7" rel="nofollow">dfa0cd369d50fac8a4afb121a0a84dd43b310da7</a>
+fixup! ci]]></content:encoded>
+      <author>nicoco</author>
+      <guid isPermaLink="false">22063456: https://codeberg.org/slidge/slidge/commit/dfa0cd369d50fac8a4afb121a0a84dd43b310da7</guid>
+      <pubDate>Wed, 15 Jan 2025 14:27:05 +0000</pubDate>
+    </item>
+    <item>
+      <title>nicoco pushed to dev at slidge/slidge</title>
+      <link>https://codeberg.org/slidge/slidge/commit/3686603bae3b714f831e11714e0774707c26562b</link>
+      <description>&lt;a href=&#34;https://codeberg.org/slidge/slidge/commit/3686603bae3b714f831e11714e0774707c26562b&#34;&gt;3686603bae3b714f831e11714e0774707c26562b&lt;/a&gt;&#xA;fixup! ci</description>
+      <content:encoded><![CDATA[<a href="https://codeberg.org/slidge/slidge/commit/3686603bae3b714f831e11714e0774707c26562b" rel="nofollow">3686603bae3b714f831e11714e0774707c26562b</a>
+fixup! ci]]></content:encoded>
+      <author>nicoco</author>
+      <guid isPermaLink="false">22063164: https://codeberg.org/slidge/slidge/commit/3686603bae3b714f831e11714e0774707c26562b</guid>
+      <pubDate>Wed, 15 Jan 2025 14:23:05 +0000</pubDate>
+    </item>
+    <item>
+      <title>nicoco pushed to dev at slidge/slidge</title>
+      <link>https://codeberg.org/slidge/slidge/commit/c6387ee4f1303de3cc3d1d1d0857c9062cbae795</link>
+      <description>&lt;a href=&#34;https://codeberg.org/slidge/slidge/commit/c6387ee4f1303de3cc3d1d1d0857c9062cbae795&#34;&gt;c6387ee4f1303de3cc3d1d1d0857c9062cbae795&lt;/a&gt;&#xA;fixup! ci</description>
+      <content:encoded><![CDATA[<a href="https://codeberg.org/slidge/slidge/commit/c6387ee4f1303de3cc3d1d1d0857c9062cbae795" rel="nofollow">c6387ee4f1303de3cc3d1d1d0857c9062cbae795</a>
+fixup! ci]]></content:encoded>
+      <author>nicoco</author>
+      <guid isPermaLink="false">22063114: https://codeberg.org/slidge/slidge/commit/c6387ee4f1303de3cc3d1d1d0857c9062cbae795</guid>
+      <pubDate>Wed, 15 Jan 2025 14:20:08 +0000</pubDate>
+    </item>
+  </channel>
+</rss>

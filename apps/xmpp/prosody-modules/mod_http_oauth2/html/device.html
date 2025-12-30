@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>{site_name} - Authorize{client&d} Device</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+{error&
+	<dialog open="" class="error">
+		<p>{error.text}</p>
+		<form method="dialog"><button>dismiss</button></form>
+	</dialog>}
+	<header>
+	<h1>{site_name}</h1>
+	</header>
+	<main>
+	<fieldset>
+	<legend>Device Authorization</legend>
+{client&
+	<p>Authorization completed. You can go back to
+	<em>{client.client_name}</em>.</p>}
+{client~
+	<p>Enter the code to continue.</p>
+	<form method="get">
+		<input type="text" name="user_code" placeholder="XXXX-XXXX" aria-label="Code" required="" />
+		<button type="submit">Continue</button>
+	</form>}
+	</fieldset>
+	</main>
+</body>
+</html>

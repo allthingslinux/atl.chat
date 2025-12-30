@@ -1,0 +1,39 @@
+Copyright of the assets included in the assets/ folder:
+
+generic.svg:
+
+	(C) Matthew Wild 2020
+	Distributed under the MIT license of the prosody-modules project.
+	Derived from the XMPP logo of the XMPP Standards Foundation:
+	Source: https://en.wikipedia.org/wiki/XMPP#/media/File:XMPP_logo.svg
+	License (MIT): https://opensource.org/licenses/mit-license.php
+
+gajim.svg:
+
+	Source: https://dev.gajim.org/gajim/gajim/-/blob/master/gajim/data/icons/hicolor/scalable/apps/org.gajim.Gajim.svg
+	License (GPLv3): https://dev.gajim.org/gajim/gajim/-/blob/master/COPYING
+
+dino.svg:
+
+	Source: https://github.com/dino/dino/blob/3a00177a51e48d6bafc1e67bab26bc510e6400d8/main/data/icons/im.dino.Dino.svg
+	License (GPLv3): https://github.com/dino/dino/blob/3a00177a51e48d6bafc1e67bab26bc510e6400d8/LICENSE
+
+conversations.svg:
+
+	Source: https://github.com/iNPUTmice/Conversations/blob/master/art/ic_launcher.svg
+	License (CC-BY-SA 4.0): https://github.com/iNPUTmice/Conversations/blob/master/art/LICENSE
+
+siskin-im.png:
+
+	Source: https://github.com/tigase/siskin-im/blob/master/SiskinIM%20-%20Share/Assets.xcassets/AppIcon.appiconset/IMG_1607_3-120.png
+	License (GPLv3): https://github.com/tigase/siskin-im/blob/master/COPYING
+
+beagle-im.png:
+
+	Source: https://github.com/tigase/beagle-im/blob/master/BeagleIM/Assets.xcassets/AppIcon.appiconset/IMG_0720_256-1.png
+	License (GPLv3): https://github.com/tigase/beagle-im/blob/master/LICENSE
+
+yaxim.svg:
+
+	Source: https://github.com/yaxim-org/yaxim/blob/master/asset-graphics/yak/yak-front-grass.svg
+	License (GPLv3): https://github.com/yaxim-org/yaxim/blob/master/LICENSE.txt

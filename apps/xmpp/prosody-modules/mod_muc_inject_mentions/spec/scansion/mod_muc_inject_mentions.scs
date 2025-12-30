@@ -1,0 +1,92 @@
+# mod_muc_inject_mentions
+
+[Client] Romeo
+	jid: romeo@example.org
+	password: 1234
+
+-----
+
+Romeo connects
+
+Romeo sends:
+	<presence to='room@chat.example.org/Romeo'>
+		<x xmlns='http://jabber.org/protocol/muc'/>
+	</presence>
+
+Romeo receives:
+	<presence from='room@chat.example.org/Romeo'>
+		<x xmlns='vcard-temp:x:update'>
+			<photo xmlns='vcard-temp:x:update'/>
+		</x>
+		<x xmlns='http://jabber.org/protocol/muc#user'>
+			<status code='201'/>
+				<item jid="${Romeo's full JID}" affiliation='owner' role='moderator'/>
+			<status code='110'/>
+		</x>
+	</presence>
+
+Romeo sends:
+	<iq from="${Romeo's full JID}"
+		id='muc_register1'
+		to='room@chat.example.org'
+		type='set'>
+		<query xmlns='jabber:iq:register'>
+			<x xmlns='jabber:x:data' type='submit'>
+				<field var='FORM_TYPE'>
+					<value>http://jabber.org/protocol/muc#register</value>
+				</field>
+				<field var='muc#register_roomnick'>
+					<value>Romeo</value>
+				</field>
+			</x>
+		</query>
+	</iq>
+
+Romeo receives:
+#	<iq from='room@chat.example.org'
+#		id='muc_register1'
+#		to="{Romeo's full JID}"
+#		type='result'/>
+	<presence from='room@chat.example.org/Romeo' to="${Romeo's full JID}">
+		<x xmlns='vcard-temp:x:update'>
+			<photo xmlns='vcard-temp:x:update'/>
+		</x>
+		<x xmlns='http://jabber.org/protocol/muc#user'>
+			<item affiliation='owner' xmlns='http://jabber.org/protocol/muc#user' role='moderator' jid="${Romeo's full JID}"/>
+			<status code='110' xmlns='http://jabber.org/protocol/muc#user'/>
+		</x>
+	</presence>
+
+
+Romeo sends:
+	<message from="${Romeo's full JID}" id='mentions1' to='room@chat.example.org' type='groupchat'>
+		<body>
+			Hey Romeo how are you doing Romeo? Good To see you Romeo!
+			Romeo is very nice!
+			So Romeo is Romeo and I am not Romeo
+			Romeo!
+			!Romeo
+			Romeo
+			Haha !Romeo
+			@Romeo haha
+			You are awesome Romeo!
+		</body>
+	</message>
+
+Romeo receives:
+	<message to="${Romeo's full JID}" id='mentions1' type='groupchat' from='room@chat.example.org/Romeo'>
+		<body>
+		Hey Romeo how are you doing Romeo? Good To see you Romeo!    Romeo is very nice!    So Romeo is Romeo and I am not Romeo    Romeo!    !Romeo    Romeo    Haha !Romeo    @Romeo haha    You are awesome Romeo!
+		</body>
+		<reference begin='8' end='12' xmlns='urn:xmpp:reference:0' type='mention' uri='xmpp:romeo@example.org'/>
+		<reference begin='32' end='36' xmlns='urn:xmpp:reference:0' type='mention' uri='xmpp:romeo@example.org'/>
+		<reference begin='55' end='59' xmlns='urn:xmpp:reference:0' type='mention' uri='xmpp:romeo@example.org'/>
+		<reference begin='65' end='69' xmlns='urn:xmpp:reference:0' type='mention' uri='xmpp:romeo@example.org'/>
+		<reference begin='91' end='95' xmlns='urn:xmpp:reference:0' type='mention' uri='xmpp:romeo@example.org'/>
+		<reference begin='100' end='104' xmlns='urn:xmpp:reference:0' type='mention' uri='xmpp:romeo@example.org'/>
+		<reference begin='119' end='123' xmlns='urn:xmpp:reference:0' type='mention' uri='xmpp:romeo@example.org'/>
+		<reference begin='128' end='132' xmlns='urn:xmpp:reference:0' type='mention' uri='xmpp:romeo@example.org'/>
+		<reference begin='148' end='152' xmlns='urn:xmpp:reference:0' type='mention' uri='xmpp:romeo@example.org'/>
+		<reference begin='173' end='177' xmlns='urn:xmpp:reference:0' type='mention' uri='xmpp:romeo@example.org'/>
+		<reference begin='203' end='207' xmlns='urn:xmpp:reference:0' type='mention' uri='xmpp:romeo@example.org'/>
+	</message>

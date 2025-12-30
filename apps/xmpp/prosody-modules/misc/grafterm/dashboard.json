@@ -1,0 +1,121 @@
+{
+  "version": "v1",
+  "datasources": {
+    "prometheus": {
+      "prometheus": {
+        "address": "http://127.0.0.1:9090"
+      }
+    }
+  },
+  "dashboard": {
+    "variables": {
+      "job": {
+        "constant": {
+          "value": "prosody"
+        }
+      }
+    },
+    "widgets": [
+      {
+        "title": "CPU",
+        "gridPos": {
+          "w": 50
+        },
+        "graph": {
+          "visualization": {
+            "yAxis": {
+              "unit": "percent",
+              "decimals": 2
+            }
+          },
+          "queries": [
+            {
+              "datasourceID": "prometheus",
+              "expr": "rate(process_cpu_seconds_total{job=\"{{.job}}\"}[5m])",
+              "legend": "CPU"
+            }
+          ]
+        }
+      },
+      {
+        "title": "Memory",
+        "gridPos": {
+          "w": 50
+        },
+        "graph": {
+          "visualization": {
+            "yAxis": {
+              "unit": "bytes"
+            }
+          },
+          "queries": [
+            {
+              "datasourceID": "prometheus",
+              "expr": "max_over_time(process_resident_memory_bytes{job=\"{{.job}}\"}[5m])",
+              "legend": "RSS"
+            },
+            {
+              "datasourceID": "prometheus",
+              "expr": "max_over_time(malloc_heap_used_bytes{job=\"{{.job}}\"}[5m])",
+              "legend": "Malloc"
+            },
+            {
+              "datasourceID": "prometheus",
+              "expr": "max_over_time(lua_heap_bytes{job=\"{{.job}}\"}[5m])",
+              "legend": "Lua"
+            }
+          ]
+        }
+      },
+      {
+        "title": "C2S",
+        "gridPos": {
+          "x": 50,
+          "w": 50
+        },
+        "graph": {
+          "visualization": {
+            "yAxis": {
+              "unit": "none",
+              "decimals": 0
+            }
+          },
+          "queries": [
+            {
+              "datasourceID": "prometheus",
+              "expr": "sum(prosody_mod_c2s__connections{type=\"c2s\",job=\"{{.job}}\"})",
+              "legend": "c2s"
+            }
+          ]
+        }
+      },
+      {
+        "title": "S2S",
+        "gridPos": {
+          "x": 50,
+          "w": 50
+        },
+        "graph": {
+          "visualization": {
+            "yAxis": {
+              "unit": "none",
+              "decimals": 0
+            }
+          },
+          "queries": [
+            {
+              "datasourceID": "prometheus",
+              "expr": "sum(prosody_mod_s2s__connections_inbound{type=\"s2sin\",job=\"{{.job}}\"})",
+              "legend": "s2sin"
+            },
+            {
+              "datasourceID": "prometheus",
+              "expr": "sum(prosody_mod_s2s__connections_outbound{type=\"s2sout\",job=\"{{.job}}\"})",
+              "legend": "s2sout"
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

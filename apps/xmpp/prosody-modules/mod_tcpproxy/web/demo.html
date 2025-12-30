@@ -1,0 +1,34 @@
+<html>
+<head>
+	<script type="text/javascript" src="xmpp.io.js"></script>
+	<script type="text/javascript" src="strophe.js"></script>
+	<script type="text/javascript" src="src/jquery-1.4.2.min.js"></script>
+	<script type="text/javascript">
+		function handle_connection_status(status, err)
+		{
+			console.log("XMPP status: "+Strophe.Status.CONNECTED);
+			if(status == Strophe.Status.CONNECTED)
+			{
+				var conn = new XMPPIO(xmppconn, "tcp.localhost");
+				conn.addListener("connect", function () {
+					var req = "GET / HTTP/1.0\r\nHost: example.com\r\n\r\n";
+					console.log("Sending request: "+req);
+					conn.write(req);
+				});
+				conn.addListener("data", function (data)
+				{
+					$("<div/>").text(data).appendTo("body");
+				});
+				console.log("Connecting to example.com:80...");
+				conn.connect("example.com", 80);
+			}
+		}
+
+		var xmppconn = new Strophe.Connection("/http-bind");
+		xmppconn.connect("anon.localhost", null, handle_connection_status, 50);
+
+	</script>
+</head>
+<body>
+</body>
+</html>

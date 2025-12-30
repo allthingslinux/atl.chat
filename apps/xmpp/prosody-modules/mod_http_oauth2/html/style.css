@@ -1,0 +1,103 @@
+:root
+{
+	color-scheme:light dark;
+}
+body
+{
+	text-align:center;
+	font-family:sans-serif
+}
+
+h1
+{
+	font-size:xx-large;
+}
+
+legend {
+	font-size:x-large;
+}
+p
+{
+	font-size:large;
+}
+
+.error
+{
+	margin: 0.75em auto;
+	background-color: #f8d7da;
+	color: #842029;
+	border: solid 1px #f5c2c7;
+}
+
+.oob
+{
+	background-color: #d7daf8;
+	border: solid 1px #c2c7f5;
+	color: #202984;
+	margin: 0.75em;
+}
+.oob input {
+	font-size: xx-large;
+	font-family: monospace;
+	background-color: inherit;
+	color: inherit;
+	border: none;
+	padding: 1ex 2em;
+}
+
+input {
+	margin: 0.3rem;
+	padding: 0.2rem;
+	line-height: 1.5rem;
+	font-size: 110%;
+}
+h1, h2 {
+	text-align: left;
+}
+
+header, main, footer {
+	max-width: 600px;
+	padding: 0 1.5em 1.5em 1.5em;
+}
+
+dt
+{
+	font-weight: bold;
+	margin: 0.5em 0 0 0;
+}
+
+dd
+{
+	margin: 0;
+}
+
+button, input[type=submit]
+{
+	padding: 0.5rem;
+	margin: 0.75rem;
+}
+
+@media(prefers-color-scheme:dark)
+{
+	.error {
+		color: #f8d7da;
+		background-color: #842029;
+	}
+	.oob {
+		color: #d7daf8;
+		background-color: #202984;
+	}
+}
+
+@media(min-width: 768px)
+{
+	body {
+		margin-top:14vh;
+	}
+	header, main, footer
+	{
+		margin-left: auto;
+		margin-right: auto;
+	}
+
+}

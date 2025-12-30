@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Invite</title>
+	<link rel="stylesheet" href="bootstrap.min.css">
+</head>
+<body>
+	<div class="container col-md-4 col-md-offset-4" style="margin-top: 100px">
+		<div class="panel panel-default">
+			<div class="panel-heading">
+				<div class="panel-title">Account creation</div>
+			</div>
+
+			<div class="panel-body" style="padding: 20px">
+
+				<div class="alert alert-success">
+					<p>Already have an XMPP account? <a href="xmpp:{{user}}?roster">Add {{user}} to your contact list.</a></p>
+				</div>
+				
+				<p>{{user}} invites you to create an XMPP account on the server {{server}}.</p>
+
+				<form action="/invite" method="post" class="form-horizontal">
+					<div class="form-group" style="margin-right: 0px;">
+						<label for="user" class="col-sm-2 control-label">Username:</label>
+						<div class="input-group col-sm-10">
+							<input type="text" name="user" class="form-control" placeholder="user">
+							<div class="input-group-addon">@{{server}}</div>
+						</div>
+					</div>
+					<div class="form-group" style="margin-right: 0px;">
+						<label for="password" class="col-sm-2 control-label">Password:</label>
+						<div class="input-group col-sm-10">
+							<input type="password" name="password" class="form-control" placeholder="password">
+						</div>
+					</div>
+					<input type="hidden" name="token" value="{{token}}">
+					<button type="submit" class="btn btn-primary btn-lg">Create</button>
+				</form>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

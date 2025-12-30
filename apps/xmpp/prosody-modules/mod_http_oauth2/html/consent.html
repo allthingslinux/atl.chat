@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>{site_name} - Authorize {client.client_name}</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+{state.error&
+	<dialog open="" class="error">
+		<p>{state.error}</p>
+		<form method="dialog"><button>dismiss</button></form>
+	</dialog>}
+	<header>
+	<h1>{site_name}</h1>
+	</header>
+	<main>
+	<fieldset>
+	<legend>Authorize new application</legend>
+	<p>A new application wants to connect to your account.</p>
+	<form method="post">
+	<dl>
+		<dt>Name</dt>
+		<dd>{client.client_name}</dd>
+		<dt>Website</dt>
+		<dd><a href="{client.client_uri}">{client.client_uri}</a></dd>
+
+		{client.tos_uri&
+		<dt>Terms of Service</dt>
+		<dd><a href="{client.tos_uri}">View terms</a></dd>}
+
+		{client.policy_uri&
+		<dt>Policy</dt>
+		<dd><a href="{client.policy_uri}">View policy</a></dd>}
+
+		<dt>Requested permissions</dt>
+		<dd>
+			<dl>{scopes#
+				<dt><input class="scope" type="checkbox" id="scope_{idx}" name="scope" value="{item.claim}" checked="" />
+			<label class="scope" for="scope_{idx}">{item.title?{item.claim}}</label></dt>
+				{item.description&<dd>{item.description}</dd>}}
+			</ul>
+		</dd>
+	</dl>
+
+	<p>To allow <em>{client.client_name}</em> to access your account
+	<em>{state.user.username}@{state.user.host}</em> and associated data,
+	select 'Allow'. Otherwise, select 'Deny'.
+	</p>
+
+	<input type="hidden" name="user_token" value="{state.user.token}" />
+	<button type="submit" name="consent" value="denied">Deny</button>
+	<button type="submit" name="consent" value="granted">Allow</button>
+	</form>
+	</fieldset>
+	</main>
+</body>
+</html>

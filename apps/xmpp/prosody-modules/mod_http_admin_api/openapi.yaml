@@ -1,0 +1,852 @@
+openapi: 3.0.1
+info:
+  title: Prosody administration API
+  description: Prosody administration API
+  contact:
+    email: developers@prosody.im
+  license:
+    name: MIT
+    url: https://prosody.im/source/mit
+  version: 1.0.0
+servers:
+- url: /admin_api
+tags:
+- name: user
+  description: Manage user accounts
+- name: invite
+  description: Pending invitations
+- name: group
+  description: User groups
+paths:
+  /users:
+    get:
+      tags:
+      - user
+      summary: List users
+      description: Returns an array of users.
+      operationId: listUsers
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserList'
+  /users/{username}:
+    get:
+      tags:
+      - user
+      summary: Get user by user name
+      operationId: getUserByName
+      parameters:
+      - name: username
+        in: path
+        description: The name that needs to be fetched
+        required: true
+        schema:
+          type: string
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        400:
+          description: Invalid username supplied
+          content: {}
+        404:
+          description: User not found
+          content: {}
+    put:
+      tags:
+      - user
+      summary: Updated user
+      description: Update a user
+      operationId: updateUser
+      parameters:
+      - name: username
+        in: path
+        description: user that need to be updated
+        required: true
+        schema:
+          type: string
+      requestBody:
+        description: Updated user object
+        content:
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/User'
+        required: true
+      responses:
+        400:
+          description: Invalid user supplied
+          content: {}
+        404:
+          description: User not found
+          content: {}
+      x-codegen-request-body-name: body
+    delete:
+      tags:
+      - user
+      summary: Delete user
+      description: Delete a user account
+      operationId: deleteUser
+      parameters:
+      - name: username
+        in: path
+        description: The name that needs to be deleted
+        required: true
+        schema:
+          type: string
+      responses:
+        400:
+          description: Invalid username supplied
+          content: {}
+        404:
+          description: User not found
+          content: {}
+  /users/{username}/groups:
+    get:
+      tags:
+      - user
+      summary: List groups that user is a member of
+      operationId: getUserGroups
+      parameters:
+      - name: username
+        in: path
+        description: The name of the user to fetch
+        required: true
+        schema:
+          type: string
+      responses:
+        200:
+          description: Returns an array of group IDs that the user belongs to
+          content:
+            application/json:
+              schema:
+                type: array
+                description: "An array of group IDs that the user belongs to"
+                items:
+                  type: string
+                  description: "Group ID"
+        400:
+          description: Invalid username supplied
+          content: {}
+        404:
+          description: User not found
+          content: {}
+  /users/{username}/debug:
+    get:
+      tags:
+      - user
+      summary: Get user debug info
+      operationId: getUserDebugInfo
+      parameters:
+      - name: username
+        in: path
+        description: The name of the user to fetch
+        required: true
+        schema:
+          type: string
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDebugInfo'
+        400:
+          description: Invalid username supplied
+          content: {}
+        404:
+          description: User not found
+          content: {}
+
+  /invites:
+    get:
+      tags:
+      - invite
+      summary: List invites
+      description: Returns an array of users.
+      operationId: listInvites
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InviteList'
+  /invites/account:
+    post:
+      tags:
+      - invite
+      summary: Create invitation to register a new account
+      description: Creates a new invitation
+      operationId: createInviteForAccount
+      requestBody:
+        description: "Invite parameters (optional)"
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewAccountInvite"
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invite'
+  /invites/group:
+    post:
+      tags:
+      - invite
+      summary: Create group invitation
+      description: |
+        Creates a new group invitation. Group invitations may be
+        shared with multiple people and each account created via
+        a group invitation will automatically be contacts of
+        every other account created through the same invitation.
+        
+        You can create an invitation to an existing group by including
+        the existing group's id in the 'group' property of the request.
+        If no existing group is specified, a new one will be created
+        automatically (using the 'group_options' property as a template
+        if provided).
+        
+        If no 'ttl' is specified then the invitation link will be valid
+        until it is manually revoked.
+      operationId: createInviteForGroup
+      requestBody:
+        description: "Invite parameters (optional)"
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewGroupInvite"
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invite'
+  /invites/reset:
+    post:
+      tags:
+      - invite
+      summary: Create account reset invitation
+      description: |
+        Creates a new invitation to reset the specified account.
+        
+        The created link is valid for a shorter time period (24 hours) by default
+        and should only be shared securely with the user who owns the account.
+        
+        The returned link will allow the user to regain access to their account,
+        for example if they have lost their password.
+      operationId: createInviteForAccountReset
+      requestBody:
+        description: "Invite parameters"
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewResetInvite"
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invite'
+
+  /invites/{id}:
+    get:
+      tags:
+      - invite
+      summary: Get invite by id
+      operationId: getInviteById
+      parameters:
+      - name: id
+        in: path
+        description: The id of the invite to fetch
+        required: true
+        schema:
+          type: string
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invite'
+        404:
+          description: Invite not found
+          content: {}
+    delete:
+      tags:
+      - invite
+      summary: Delete invite
+      description: Delete a pending invite
+      operationId: deleteInvite
+      parameters:
+      - name: id
+        in: path
+        description: The id of the invite to be deleted
+        required: true
+        schema:
+          type: string
+      responses:
+        404:
+          description: Invite not found
+          content: {}
+
+  /groups:
+    get:
+      tags:
+      - group
+      summary: List groups
+      description: Returns an array of groups.
+      operationId: listGroups
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GroupList'
+    post:
+      tags:
+      - group
+      summary: Create group
+      description: Creates a new user group
+      operationId: createGroup
+      requestBody:
+        description: "Group parameters"
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewGroup"
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Group'
+
+  /groups/{id}:
+    get:
+      tags:
+      - group
+      summary: Get group by id
+      operationId: getGroupById
+      parameters:
+      - name: id
+        in: path
+        description: The id of the group to fetch
+        required: true
+        schema:
+          type: string
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Group'
+        404:
+          description: Group not found
+          content: {}
+    delete:
+      tags:
+      - group
+      summary: Delete group
+      description: Delete a group (does not delete users or existing subscriptions)
+      operationId: deleteGroup
+      parameters:
+      - name: id
+        in: path
+        description: The id of the group to be deleted
+        required: true
+        schema:
+          type: string
+      responses:
+        404:
+          description: Group not found
+
+  /groups/{id}/members/{username}:
+    put:
+      tags:
+      - group
+      summary: Create group membership
+      operationId: addGroupMember
+      parameters:
+      - name: id
+        in: path
+        description: The id of the group to modify
+        required: true
+        schema:
+          type: string
+      - name: username
+        in: path
+        description: The username to add to the group
+        required: true
+        schema:
+          type: string
+      responses:
+        200:
+          description: successful operation
+        404:
+          description: Group not found
+    delete:
+      tags:
+      - group
+      summary: Delete a group membership
+      operationId: deleteGroupMember
+      parameters:
+      - name: id
+        in: path
+        description: The id of the group to modify
+        required: true
+        schema:
+          type: string
+      - name: username
+        in: path
+        description: The username to remove from the group
+        required: true
+        schema:
+          type: string
+      responses:
+        200:
+          description: successful operation
+        404:
+          description: Group not found
+  /server/info:
+    get:
+      tags:
+      - server
+      summary: Get information about the server
+      operationId: getServerInfo
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerInfo'
+  /server/metrics:
+    get:
+      tags:
+      - server
+      summary: Get metrics from the running server
+      operationId: getServerMetrics
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerMetrics'
+  /server/announcement:
+    post:
+      tags:
+      - server
+      summary: Post an announcement to some or all users
+      operationId: postServerAnnouncement
+      requestBody:
+        description: Announcement parameters
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Announcement"
+      responses:
+        201:
+          description: Announcement has been sent
+components:
+  schemas:
+    UserList:
+      type: array
+      items:
+        $ref: '#/components/schemas/User'
+    User:
+      type: object
+      properties:
+        username:
+          type: string
+          description: XMPP username of the user
+        display_name:
+          type: string
+          description: Display name of the user
+          nullable: true
+        role:
+          type: string
+          description: Primary role of the user
+          nullable: true
+        secondary_roles:
+          type: array
+          description: List of additional roles assigned to the user
+          items:
+            type: string
+        roles:
+          type: array
+          description: List of roles assigned to the user (Legacy)
+          deprecated: true
+          items:
+            type: string
+        email:
+          type: string
+          description: Optional email address for the user (NYI)
+          nullable: true
+        phone:
+          type: string
+          description: Optional phone number for the user (NYI)
+          nullable: true
+        groups:
+          type: array
+          description: List of group IDs user is a member of
+          items:
+            type: string
+            description: Group ID
+    InviteList:
+      type: array
+      items:
+        $ref: '#/components/schemas/Invite'
+    Invite:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique ID of the invite
+        type:
+          type: string
+          description: The type (action) of the invite (register, roster, etc.)
+        reusable:
+          type: boolean
+          description: Whether the invite may be used more than once (until expiry or revocation)
+        inviter:
+          type: string
+          description: (Optional) JID of the inviter
+          nullable: true
+        jid:
+          type: string
+          description: The JID of the invite, interpretation varies based by invite
+            type
+        token:
+          type: string
+          description: Invite token
+        uri:
+          type: string
+          description: XMPP URI of the invite
+        landing_page:
+          type: string
+          description: HTTPS URL of invite page (use in preference to XMPP URI when available)
+          nullable: true
+        note:
+          type: string
+          nullable: true
+          description: Free-form text note/annotation to help identify the invitation
+        created_at:
+          type: integer
+          description: Unix timestamp of invite creation
+        expires:
+          type: integer
+          description: Unix timestamp of invite expiration
+        groups:
+          type: array
+          description: Array of group IDs that an accepting user will be added to
+          items:
+            type: string
+            description: Group ID
+        roles:
+          type: array
+          description: Array of role names that accepting users will have (primary first)
+          items:
+            type: string
+            description: Role name
+        source:
+          type: string
+          description: |
+            String that identifies how and by whom the invite was created.
+            
+            Invites created by this API will have the source string
+            'admin_api/USERNAME', where USERNAME is the name of the user
+            that requested creation of the invite.
+        reset:
+          type: boolean
+          description: "Indicates that this is an account reset for the account identified by 'username'"
+    NewAccountInvite:
+      type: object
+      properties:
+        username:
+          type: string
+          description: Optionally restrict the registered account to the specified username
+          nullable: true
+        ttl:
+          type: number
+          description: The time in seconds that the invitation will be valid for (uses a sensible default if not provided).
+          nullable: true
+        groups:
+          type: array
+          nullable: true
+          description: "IDs of existing groups to add the new account to"
+          items:
+            type: string
+            description: "Group ID"
+        roles:
+          type: array
+          nullable: true
+          description: "List of roles the new account should have (primary role first)"
+          items:
+            type: string
+            description: "Role name"
+        note:
+          type: string
+          nullable: true
+          description: Free-form text note/annotation to help identify the invitation
+    NewGroupInvite:
+      type: object
+      properties:
+        ttl:
+          type: number
+          description: Specify that the invitation will only be valid for the specified number of seconds. If not provided, the invitation will be valid until it is manually deleted.
+        groups:
+          type: array
+          nullable: true
+          items:
+            type: string
+            description: "Group ID"
+          description: "IDs of existing group to add the new accounts to"
+        group_options:
+          $ref: '#/components/schemas/NewGroup'
+        roles:
+          type: array
+          nullable: true
+          description: "List of roles the new accounts should have (primary role first)"
+          items:
+            type: string
+            description: "Role name"
+        note:
+          type: string
+          nullable: true
+          description: Free-form text note/annotation to help identify the invitation
+    NewResetInvite:
+      type: object
+      properties:
+        username:
+          type: string
+          description: "Username of the account to create a password reset link for"
+        ttl:
+          type: number
+          description: Time in seconds that the link will be valid. Defaults to 24 hours.
+          nullable: true
+    NewGroup:
+      type: object
+      properties:
+        name:
+          type: string
+          description: "Display name of the group"
+        create_muc:
+          type: boolean
+          description: Create a MUC associated with the group
+    Group:
+      type: object
+      properties:
+        id:
+          type: string
+          description: id of the group
+        name:
+          type: string
+          description: Display name of the group
+        muc_jid:
+          type: string
+          nullable: true
+          description: JID of the associated MUC, if any.
+    GroupList:
+      type: array
+      items:
+        $ref: '#/components/schemas/Group'
+    UserDebugInfo:
+      type: object
+      properties:
+        sessions:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserDebugSessionInfo'
+        push_registrations:
+          $ref: '#/components/schemas/UserDebugPushRegistrations'
+        omemo:
+          $ref: '#/components/schemas/UserDebugOmemo'
+    UserDebugSessionInfo:
+      type: object
+      properties:
+        full_jid:
+          type: string
+          description: "Full JID of the session"
+        ip:
+          type: string
+          description: "IP address of the session, human-readable"
+          nullable: true
+        since:
+          type: integer
+          description: "Unix timestamp of session establishment"
+        status:
+          type: object
+          properties:
+            connected:
+              type: boolean
+              description: "Whether the session is connected"
+            hibernating:
+              type: boolean
+              description: "Whether the session is waiting to be resumed"
+            active:
+              type: boolean
+              description: "Whether the session is active (CSI)"
+              nullable: true
+        features:
+          type: object
+          properties:
+            encrypted:
+              type: boolean
+              description: "Whether the session enabled transport encryption"
+            carbons:
+              type: boolean
+              description: "Whether the session enabled carbons"
+            acks:
+              type: boolean
+              description: "Whether the session enabled acknowledgements"
+            resumption:
+              type: boolean
+              description: "Whether the session enabled resumption"
+            mobile_optimization:
+              type: boolean
+              description: "Whether the session enabled mobile optimizations"
+            push_notifications:
+              type: boolean
+              description: "Whether the session enabled push notifications"
+            history:
+              type: boolean
+              description: "Whether the session requested history"
+        queues:
+          type: object
+          properties:
+            held_stanzas:
+              type: integer
+              description: "Number of stanzas held due to mobile optimizations"
+              nullable: true
+            awaiting_acks:
+              type: integer
+              description: "Number of stanzas awaiting acknowledgement"
+              nullable: true
+        push_info:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: string
+              description: "ID of the push registration used by this session"
+            wakeup_push_sent:
+              type: integer
+              description: "Unix timestamp of the first wakeup push sent (if any)"
+              nullable: true
+    UserDebugPushRegistrations:
+      type: object
+      description: |
+        Push registrations of the user. The key of the object is the registration
+        identifier. If a session is using a push registration, this identifier is
+        found in `session.push_info.id`. It is possible to have push registrations
+        with no active sessions attached.
+      properties:
+        since:
+          type: integer
+          description: "Unix timestamp of creation of this registration"
+        service:
+          type: string
+          description: "The JID of the push service that notifications will be sent to"
+        node:
+          type: string
+          description: "The identifier/token that the remote push service assigned to this registration."
+        error_count:
+          type: number
+          description: "A count of recent errors for this push registration (reset on successful push)."
+    UserDebugOmemo:
+      type: object
+      description: "Information about user's published OMEMO devices and keys"
+      properties:
+        status:
+          type: object
+          description: "Status of the OMEMO device list"
+          properties:
+            valid:
+              type: boolean
+              description: "Indicates whether the overall OMEMO configuration appears to be valid (including all devices)"
+            config_valid:
+              type: boolean
+              description: "Indicates whether configuration of the device list appears to be valid"
+        devices:
+          type: array
+          items:
+            type: object
+            description: "OMEMO device descriptor"
+            properties:
+              id:
+                type: integer
+                description: "The integer OMEMO device id of this device. May be missing if invalid."
+                nullable: true
+              have_bundle:
+                type: boolean
+                description: "True when a matching descriptor (bundle) is found for this device."
+              valid:
+                type: boolean
+                description: "Whether the bundle config appears to be valid."
+    ServerInfo:
+      type: object
+      description: Information about the current server
+      properties:
+        site_name:
+          type: string
+          description: A friendly name for the service
+        version:
+          type: string
+          description: A human-readable version string
+    ServerMetrics:
+      type: object
+      description: A selection of instantaneous metrics of the prosody server
+      properties:
+        memory:
+          type: integer
+          description: RSS in bytes
+        cpu:
+          type: object
+          description: CPU time counter
+          required:
+          - value
+          - since
+          properties:
+            since:
+              type: number
+              description: The metric epoch as UNIX timestamp
+            value:
+              type: number
+              description: Seconds of CPU time used since the metric epoch
+        c2s:
+          type: integer
+          description: Number of active c2s sessions
+        uploads:
+          type: integer
+          description: Disk space used by uploaded files
+    Announcement:
+      type: object
+      description: An announcemen to post to users on the server
+      required:
+      - body
+      - recipients
+      properties:
+        body:
+          type: string
+          description: The message body to send
+        recipients:
+          description: List of recipients or one of the strings "online" or "all"

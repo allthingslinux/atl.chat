@@ -1,0 +1,34 @@
+# https://editorconfig.org/
+
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+indent_style = tab
+insert_final_newline = true
+trim_trailing_whitespace = true
+max_line_length = 150
+
+[*.json]
+# json_pp -json_opt canonical,pretty
+indent_size = 3
+indent_style = space
+
+[{README,COPYING,CONTRIBUTING,TODO}{,.markdown,.md}]
+# pandoc -s -t markdown
+indent_size = 4
+indent_style = space
+
+[*.py]
+indent_size = 4
+indent_style = space
+
+[*.{xml,svg}]
+# xmllint --nsclean --encode UTF-8 --noent --format -
+indent_size = 2
+indent_style = space
+
+[*.yaml]
+indent_size = 2
+indent_style = space

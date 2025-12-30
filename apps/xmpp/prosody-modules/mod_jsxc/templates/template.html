@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+{header_style#
+<link rel="stylesheet" type="text/css" media="screen" href="{item}"/>}
+{header_scripts#
+<script charset="utf-8" src="{item}"></script>}
+<title>{service_name?Prosody IM and JSXC}</title>
+{header_tags#
+{item!}}
+</head>
+<body>
+	<form id="jsxc_login_form" action="javascript:">
+		<dl>
+			<dt><label for="jsxc_username">Username</label></dt>
+			<dd><input id="jsxc_username" name="username" placeholder="Alice"/></dd>
+			<dt><label for="jsxc_password">Password</label></dt>
+			<dd><input id="jsxc_password" name="password" type="password"/></dd>
+		</dl>
+		<button type="submit">Login</button>
+	</form>
+
+<script>{jsxcjs.startup.script!}</script>
+</body>
+</html>

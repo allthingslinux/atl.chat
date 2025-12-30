@@ -1,0 +1,81 @@
+@charset "UTF-8";
+/* Style for mod_http_muc_log */
+:link, :visited { color: #3465a4; text-decoration: none; }
+
+:link:hover, :link:hover, :visited:hover, :visited:hover { color: #6197df; }
+
+body { background-color: #eeeeec; margin: 1ex 0; padding-bottom: 3em; font-family: Arial,Helvetica,sans-serif; }
+
+ul, ol { padding: 0; }
+
+li { list-style: none; }
+
+li.edited { display: none; }
+
+li:target { outline: 1px gray dotted; display: inherit; }
+
+hr { visibility: hidden; clear: both; }
+
+br { clear: both; }
+
+header, footer { margin: 1ex 1em; }
+
+footer { font-size: smaller; color: #babdb6; }
+
+footer nav .up { display: none; }
+
+nav { font-size: large; margin: 1ex 1ex; clear: both; line-height: 1.5em; }
+
+nav a { padding: 1ex; }
+
+nav li, nav dt { margin: 1ex; }
+
+nav .up { font-size: smaller; display: block; clear: both; }
+
+nav .up::before { content: "↑ "; }
+
+nav .prev { float: left; }
+
+nav .prev::before { content: "← "; }
+
+nav .next { float: right; }
+
+nav .next::after { content: " →"; }
+
+nav .last::after { content: " ⇥"; }
+
+nav :empty::after, nav :empty::before { content: ""; }
+
+@media screen and (min-width: 460px) { nav { font-size: x-large; margin: 1ex 1em; } }
+
+table { display: inline-block; margin: 1ex 1em; vertical-align: top; }
+
+th { font-size: x-small; }
+
+td { text-align: right; color: #bababa; }
+
+td > a, td > span { padding: 0.4em; }
+
+.content { background-color: white; padding: 1em; list-style-position: inside; }
+
+.time { margin-left: 1em; font-size: small; }
+
+.description { font-size: smaller; }
+
+.body { white-space: pre-line; margin: 1pt 0 1ex; }
+
+.presence .verb { font-style: normal; color: #30c030; }
+
+.unavailable .verb { color: #c03030; }
+
+.button { display: inline-block; }
+
+.button > a { color: white; background-color: orange; border-radius: 4px; }
+
+.reaction { font-size: smaller; outline: 1px solid silver; border-radius: 2px; }
+
+form { text-align: right; }
+
+figure img { max-height: 9em; max-width: 16em; }
+
+@media (prefers-color-scheme: dark) { html { color: #eee; } body { background-color: #161616; } .content { background-color: #1c1c1c; } footer { color: #444; } td { color: #444; } .button > a { background-color: #282828; } }
