@@ -90,4 +90,8 @@ A classic IRC server powered by UnrealIRCd with Atheme services for channel mana
 
 ## 📄 License
 
-MIT License. See individual directories for specific licensing details if applicable.
+Copyright 2025 All Things Linux and Contributors
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use this project except in compliance with the License. You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
+
+Some modules used are licensed under different terms; please refer to their respective documentation for details.
