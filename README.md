@@ -1,97 +1,214 @@
-# atl.chat Monorepo
+# atl.chat
 
-Welcome to the `atl.chat` ecosystem! This monorepo houses the full stack for the **allthingslinux** chat platform, integrating modern web technologies with established chat protocols like XMPP and IRC.
+Unified chat infrastructure for All Things Linux, supporting IRC, XMPP, and web protocols.
 
-## 🚀 Repository Structure
+## Architecture
 
-The project is managed as a **pnpm workspace** using **Turborepo** for orchestration.
+This monorepo contains three core services and bridge infrastructure:
 
-| Path | Application | Description | Tech Stack |
-|------|-------------|-------------|------------|
-| **[`apps/web`](./apps/web)** | **Landing Page** | The main landing page for `atl.chat`. | Next.js 14, React, Tailwind |
-| **[`apps/xmpp`](./apps/xmpp)** | **XMPP Server** | Prosody-based XMPP server with custom modules. | Prosody (Lua), Docker, PostgreSQL |
-| **[`apps/irc`](./apps/irc)** | **IRC Server** | UnrealIRCd server with Atheme services. | UnrealIRCd (C), Atheme, Docker |
+```
+apps/
+├── irc/        UnrealIRCd + Atheme services
+├── xmpp/       Prosody XMPP server
+├── web/        Next.js web application
+└── bridge/     Protocol bridges (IRC ↔ XMPP)
+```
 
-## 🛠️ Getting Started
+## Quick Start
 
 ### Prerequisites
 
-- **Node.js** (LTS recommended)
-- **pnpm** (v9.x or later)
-- **Docker** & **Docker Compose** (for XMPP and IRC services)
+- Docker & Docker Compose
+- Node.js 20+ (for web app)
+- pnpm 9+ (for web app)
+- just (optional, for task running)
 
-### Installation
-
-Install dependencies for all workspaces:
+### Setup
 
 ```bash
-pnpm install
-```
+# Clone and install
+git clone https://github.com/allthingslinux/atl.chat.git
+cd atl.chat
+cp .env.example .env
 
-### 💻 Development
+# Edit .env with your configuration
+nano .env
 
-You can start the entire ecosystem in specific modes using Turborepo.
-
-**Start all applications (Unified):**
-The project includes a root `docker-compose.yml` that orchestrates both XMPP and IRC stacks.
-```bash
+# Start all services
 docker compose up -d
+
+# Or use just
+just up
 ```
 
-**Start specific applications (Development):**
-```bash
-pnpm run dev
-```
-
-**Run specific applications:**
+### Development
 
 ```bash
-# Web Application (Next.js)
-pnpm --filter web dev
+# XMPP (with dev tools: Adminer, Dozzle, Converse.js)
+cd apps/xmpp
+docker compose --profile dev up -d
 
-# XMPP Server (Docker)
-pnpm --filter xmpp dev
+# IRC
+cd apps/irc
+docker compose up -d
 
-# IRC Server (Docker)
-pnpm --filter irc dev
+# Web app
+cd apps/web
+pnpm install
+pnpm dev
 ```
 
-### 🏗️ Building
-
-To build all applications for production:
-
-```bash
-pnpm run build
-```
-
-## 📦 Application Details
-
-### Web (`apps/web`)
-The landing page for `atl.chat`. It serves as the main entry point for the project.
-- **Port**: `3000` (default)
-
-### XMPP (`apps/xmpp`)
-A robust XMPP server powered by Prosody. It supports modern extensions (XEPs) and integrates with the web platform.
-- **Ports**: `5222` (c2s), `5269` (s2s), `5280` (http)
-- **Commands**: Wraps `make` commands via `package.json` (e.g., `npm run test` -> `make test`).
+## Services
 
 ### IRC (`apps/irc`)
-A classic IRC server powered by UnrealIRCd with Atheme services for channel management.
-- **Ports**: `6697` (TLS), `6900` (Linking)
-- **Services**: NickServ, ChanServ, OperServ
 
-## 🤝 Contributing
+UnrealIRCd 6.x with Atheme services.
 
-1.  Clone the repository.
-2.  Install dependencies: `pnpm install`
-3.  Create a branch: `git checkout -b feature/my-feature`
-4.  Commit changes (conforming to conventional commits).
-5.  Push and open a Pull Request.
+**Ports**: 6697 (TLS), 6900 (server linking), 8000 (WebSocket)
+**Services**: NickServ, ChanServ, OperServ, MemoServ, BotServ
+**Management**: Web panel on port 8080
 
-## 📄 License
+```bash
+# Common tasks
+just irc logs          # View logs
+just irc shell         # Access container
+just irc reload        # Reload config
+```
+
+See [`docs/services/irc/`](docs/services/irc/) for detailed documentation.
+
+### XMPP (`apps/xmpp`)
+
+Prosody XMPP server with PostgreSQL backend.
+
+**Ports**: 5222 (C2S), 5269 (S2S), 5280 (HTTP/BOSH), 5281 (HTTPS)
+**Database**: PostgreSQL 17
+**TURN**: Coturn for audio/video calls
+
+```bash
+# Common tasks
+just xmpp up           # Start with dev tools
+just xmpp up-prod      # Production mode
+just xmpp logs         # View logs
+just xmpp shell        # Access Prosody shell
+```
+
+**Development tools** (with `--profile dev`):
+- Adminer (database UI) on port 8081
+- Dozzle (log viewer) on port 8082
+- Converse.js (web client) on port 8083
+
+See [`docs/services/xmpp/`](docs/services/xmpp/) for detailed documentation.
+
+### Web (`apps/web`)
+
+Next.js 15 application with Turborepo.
+
+**Port**: 3000 (development)
+**Stack**: React, TypeScript, Tailwind CSS
+
+```bash
+cd apps/web
+pnpm dev
+```
+
+See [`docs/services/web/`](docs/services/web/) for detailed documentation.
+
+### Bridges (`apps/bridge`)
+
+Protocol bridges for cross-platform communication.
+
+- **Biboumi**: IRC gateway for XMPP clients
+- **Matterbridge**: Multi-protocol relay
+
+## Task Running
+
+This project uses [just](https://github.com/casey/just) for task orchestration:
+
+```bash
+# Root-level commands
+just up              # Start all services
+just down            # Stop all services
+just logs            # View all logs
+
+# Service-specific commands
+just irc <task>      # IRC tasks
+just xmpp <task>     # XMPP tasks
+just web <task>      # Web tasks
+
+# List all available tasks
+just --list
+```
+
+## Environment Variables
+
+All configuration is managed through a single `.env` file at the repository root.
+
+```bash
+cp .env.example .env
+```
+
+Key variables:
+- **Database**: `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`
+- **TURN**: `TURN_SECRET`, `TURN_REALM`, `TURN_DOMAIN`
+- **SSL**: `LETSENCRYPT_EMAIL`, `PROSODY_DOMAIN`
+- **IRC**: `IRC_DOMAIN`, `IRC_NETWORK_NAME`, `IRC_OPER_PASSWORD`
+
+See [`.env.example`](.env.example) for complete documentation.
+
+## Docker Compose Profiles
+
+Services use profiles for environment-specific configurations:
+
+```bash
+# Production (default)
+docker compose up -d
+
+# Development (includes debug tools)
+docker compose --profile dev up -d
+
+# Certificate issuance
+docker compose --profile cert-issue up atl-xmpp-certbot
+```
+
+## Networking
+
+All services communicate via the `atl-chat` Docker network:
+
+```bash
+# Create network (if not exists)
+docker network create atl-chat
+
+# Services automatically join on startup
+```
+
+For inter-host communication, Tailscale is used (configured separately).
+
+## Documentation
+
+- **Infrastructure**: [`docs/infra/`](docs/infra/)
+  - [Containerization](docs/infra/containerization.md)
+  - [Networking](docs/infra/networking.md)
+  - [SSL/TLS](docs/infra/ssl.md)
+
+- **Services**: [`docs/services/`](docs/services/)
+  - [IRC Documentation](docs/services/irc/)
+  - [XMPP Documentation](docs/services/xmpp/)
+  - [Web Documentation](docs/services/web/)
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feat/my-feature`
+3. Make your changes
+4. Run tests: `just test`
+5. Commit using conventional commits: `git commit -m "feat: add feature"`
+6. Push and open a pull request
+
+## License
 
 Copyright 2025 All Things Linux and Contributors
 
-Licensed under the Apache License, Version 2.0 (the "License"); you may not use this project except in compliance with the License. You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
+Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) for details.
 
-Some modules used are licensed under different terms; please refer to their respective documentation for details.
+Some components use different licenses; refer to their respective documentation.
