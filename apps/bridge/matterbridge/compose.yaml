@@ -1,0 +1,16 @@
+name: "atl-chat-bridge-matterbridge"
+
+services:
+  matterbridge:
+    build:
+      context: .
+      dockerfile: Containerfile
+    container_name: matterbridge
+    hostname: matterbridge
+    restart: unless-stopped
+    profiles:
+      - bridge
+    volumes:
+      - ./matterbridge.toml:/etc/matterbridge/matterbridge.toml:ro
+    networks:
+      - atl-network
