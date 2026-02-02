@@ -1,11 +1,11 @@
 ---
-name: "irc.atl.chat"
+name: atl-irc
 
 services:
   # ============================================================================
   # UNREALIRCD - Main IRC Server
   # ============================================================================
-  unrealircd:
+  atl-irc-server:
     # Build configuration
     build:
       context: ./src/backend/unrealircd
@@ -16,8 +16,8 @@ services:
         GID: ${PGID:-1000}
 
     # Container configuration
-    container_name: unrealircd
-    hostname: unrealircd
+    container_name: atl-irc-server
+    hostname: atl-irc-server
     init: true
 
     # Volume mounts - aligned with Containerfile paths
@@ -35,22 +35,22 @@ services:
     # Port mappings
     ports:
       # - '${IRC_PORT:-6667}:6667'              # Standard IRC port (disabled - TLS only)
-      - '${IRC_TLS_PORT:-6697}:6697'          # IRC over SSL/TLS
-      - '${IRC_SERVER_PORT:-6900}:6900'       # Server-to-server TLS
-      - '${ATHEME_UPLINK_PORT:-6901}:6901'    # Atheme services connection (plaintext)
-      - '${IRC_RPC_PORT:-8600}:8600'          # JSON-RPC API
-      - '${IRC_WEBSOCKET_PORT:-8000}:8000'    # WebSocket for web IRC clients
+      - '${IRC_TLS_PORT:-6697}:6697' # IRC over SSL/TLS
+      - '${IRC_SERVER_PORT:-6900}:6900' # Server-to-server TLS
+      - '${ATHEME_UPLINK_PORT:-6901}:6901' # Atheme services connection (plaintext)
+      - '${IRC_RPC_PORT:-8600}:8600' # JSON-RPC API
+      - '${IRC_WEBSOCKET_PORT:-8000}:8000' # WebSocket for web IRC clients
 
     # Network configuration
     networks:
-      - irc-network
+      - atl-chat
 
     # Restart policy
     restart: unless-stopped
 
     # Health monitoring
     healthcheck:
-      test: ['CMD', 'nc', '-z', 'localhost', '6697']
+      test: [ 'CMD', 'nc', '-z', 'localhost', '6697' ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -62,7 +62,7 @@ services:
   # ============================================================================
   # ATHEME - IRC Services (NickServ, ChanServ, etc.)
   # ============================================================================
-  atheme:
+  atl-irc-services:
     # Build configuration
     build:
       context: ./src/backend/atheme
@@ -72,12 +72,12 @@ services:
         GID: ${PGID:-1000}
 
     # Container configuration
-    container_name: atheme
-    # hostname: atheme  # Removed when using network_mode
+    container_name: atl-irc-services
+    # hostname: atl-irc-services  # Removed when using network_mode
 
     # Dependencies
     depends_on:
-      unrealircd:
+      atl-irc-server:
         condition: service_healthy
         restart: true
 
@@ -94,14 +94,14 @@ services:
       - PGID=${PGID:-1000}
 
     # Network configuration - Share network with UnrealIRCd for localhost services connection
-    network_mode: service:unrealircd
+    network_mode: service:atl-irc-server
 
     # Restart policy
     restart: unless-stopped
 
     # Health monitoring
     healthcheck:
-      test: ['CMD', 'pgrep', '-f', 'atheme-services']
+      test: [ 'CMD', 'pgrep', '-f', 'atheme-services' ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -113,24 +113,24 @@ services:
   # ============================================================================
   # UNREALIRCD WEBPANEL - Web-based Administration Interface
   # ============================================================================
-  unrealircd-webpanel:
+  atl-irc-webpanel:
     # Build configuration
     build:
       context: .
       dockerfile: src/frontend/webpanel/Containerfile
 
     # Container configuration
-    container_name: unrealircd-webpanel
-    hostname: unrealircd-webpanel
+    container_name: atl-irc-webpanel
+    hostname: atl-irc-webpanel
 
     # Dependencies
     depends_on:
-      unrealircd:
+      atl-irc-server:
         condition: service_healthy
 
     # Volume mounts
     volumes:
-      - unrealircd-webpanel-data:/var/www/html/unrealircd-webpanel/data
+      - atl-irc-webpanel-data:/var/www/html/unrealircd-webpanel/data
 
     # Environment file
     env_file:
@@ -146,14 +146,14 @@ services:
 
     # Network configuration
     networks:
-      - irc-network
+      - atl-chat
 
     # Restart policy
     restart: unless-stopped
 
     # Health monitoring
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/"]
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -175,10 +175,10 @@ services:
 
     # Volume mounts
     volumes:
-      - ./scripts:/scripts:ro                    # SSL management scripts (read-only)
-      - ./src/backend/unrealircd/conf/tls:/tls       # SSL certificates directory
-      - ./data/letsencrypt:/letsencrypt           # Let's Encrypt data
-      - ./cloudflare-credentials.ini:/cloudflare-credentials.ini:ro  # Cloudflare API credentials
+      - ./scripts:/scripts:ro # SSL management scripts (read-only)
+      - ./src/backend/unrealircd/conf/tls:/tls # SSL certificates directory
+      - ./data/letsencrypt:/letsencrypt # Let's Encrypt data
+      - ./cloudflare-credentials.ini:/cloudflare-credentials.ini:ro # Cloudflare API credentials
 
     # Environment file
     env_file:
@@ -192,7 +192,7 @@ services:
 
     # Network configuration
     networks:
-      - irc-network
+      - atl-chat
 
     # Restart policy
     restart: unless-stopped
@@ -216,7 +216,6 @@ services:
           sleep 14400;
         done
       "
-
   # ============================================================================
   # COMMENTED OUT SERVICES - Available for future use
   # ============================================================================
@@ -263,18 +262,18 @@ services:
   #     - '9000:9000'
   #   restart: unless-stopped
 
-# ============================================================================
-# NETWORKS
-# ============================================================================
+  # ============================================================================
+  # NETWORKS
+  # ============================================================================
 networks:
-  irc-network:
-    name: irc-network
-    driver: bridge
+  atl-chat:
+    name: atl-chat
+    external: true
 
 # ============================================================================
 # VOLUMES
 # ============================================================================
 volumes:
-  unrealircd-webpanel-data:
-    name: unrealircd-webpanel-data
+  atl-irc-webpanel-data:
+    name: atl-irc-webpanel-data
     driver: local
