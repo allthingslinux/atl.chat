@@ -1,0 +1,36 @@
+name: Reusable Security Scan
+
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        required: true
+        type: string
+      scan-image:
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Run GitLeaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and Scan Image
+        if: inputs.scan-image
+        run: |
+          cd ${{ inputs.working-directory }}
+          docker build -t scan-target .
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "$PWD:/tmp/work" \
+            ghcr.io/aquasecurity/trivy:latest image \
+            --severity CRITICAL \
+            scan-target

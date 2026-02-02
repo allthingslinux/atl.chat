@@ -1,0 +1,37 @@
+name: Reusable Linting
+
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        required: true
+        type: string
+      language:
+        required: true
+        type: string
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Shell Lint
+        if: inputs.language == 'shell'
+        uses: luizm/action-sh-checker@master
+        with:
+          sh_checker_comment: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Lua Lint
+        if: inputs.language == 'lua'
+        uses: lunarmodules/luacheck@v1
+        with:
+          args: ${{ inputs.working-directory }}
+
+      - name: YAML/JSON Lint
+        if: inputs.language == 'yaml' || inputs.language == 'json'
+        uses: ibiqlik/action-yamllint@v3
+        with:
+          file_or_dir: ${{ inputs.working-directory }}

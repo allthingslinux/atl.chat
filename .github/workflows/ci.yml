@@ -1,0 +1,72 @@
+name: Global CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      irc: ${{ steps.filter.outputs.irc }}
+      xmpp: ${{ steps.filter.outputs.xmpp }}
+      web: ${{ steps.filter.outputs.web }}
+      infra: ${{ steps.filter.outputs.infra }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            irc:
+              - 'apps/irc/**'
+            xmpp:
+              - 'apps/xmpp/**'
+            web:
+              - 'apps/web/**'
+            infra:
+              - 'compose.yaml'
+              - '.github/workflows/**'
+              - 'docs/**'
+
+  lint-irc:
+    needs: changes
+    if: needs.changes.outputs.irc == 'true'
+    uses: ./.github/workflows/lint.yml
+    with:
+      working-directory: apps/irc
+      language: shell
+
+  lint-xmpp:
+    needs: changes
+    if: needs.changes.outputs.xmpp == 'true'
+    uses: ./.github/workflows/lint.yml
+    with:
+      working-directory: apps/xmpp
+      language: lua
+
+  security-global:
+    needs: changes
+    if: needs.changes.outputs.irc == 'true' || needs.changes.outputs.xmpp == 'true'
+    uses: ./.github/workflows/security.yml
+    with:
+      working-directory: .
+      scan-image: false
+
+  docker-irc:
+    needs: changes
+    if: needs.changes.outputs.irc == 'true'
+    uses: ./.github/workflows/docker.yml
+    with:
+      working-directory: apps/irc
+      image-name: atl-irc
+
+  docker-xmpp:
+    needs: changes
+    if: needs.changes.outputs.xmpp == 'true'
+    uses: ./.github/workflows/docker.yml
+    with:
+      working-directory: apps/xmpp
+      image-name: atl-xmpp
