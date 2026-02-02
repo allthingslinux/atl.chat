@@ -1,0 +1,7 @@
+name: atl_chat
+
+include:
+  - path: apps/xmpp/compose.yaml
+  - path: apps/irc/compose.yaml
+  - path: apps/bridge/biboumi/compose.yaml
+  - path: apps/bridge/matterbridge/compose.yaml
