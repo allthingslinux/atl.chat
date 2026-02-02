@@ -1,0 +1,556 @@
+# ============================================================================
+# DOCKER COMPOSE CONFIGURATION - Profile-Based Multi-Environment
+# ============================================================================
+# Professional Prosody XMPP Server
+# ============================================================================
+# Usage:
+#   Production: docker compose up -d
+#   Development: docker compose --profile dev up -d
+# ============================================================================
+
+name: atl-xmpp
+
+services:
+  # ==========================================================================
+  # PROSODY XMPP SERVER
+  # ==========================================================================
+  atl-xmpp-server:
+    build:
+      context: .
+      dockerfile: Containerfile
+    image: allthingslinux/prosody:latest
+    container_name: atl-xmpp-server
+    hostname: atl-xmpp-server
+    restart: unless-stopped
+    init: true
+
+    # Environment configuration
+    env_file:
+      - path: .env
+        required: false
+
+    # Security configuration
+    security_opt:
+      - no-new-privileges:true
+      - apparmor:docker-default
+
+    # Logging configuration
+    logging:
+      driver: json-file
+      options:
+        max-size: "${LOG_MAX_SIZE:-50m}"
+        max-file: "${LOG_MAX_FILES:-5}"
+        compress: "true"
+
+    # Port mappings
+    ports:
+      - "${PROSODY_C2S_PORT:-5222}:5222" # XMPP client connections
+      - "${PROSODY_S2S_PORT:-5269}:5269" # XMPP server-to-server
+      - "${PROSODY_C2S_DIRECT_TLS_PORT:-5223}:5223" # XMPP client TLS
+      - "${PROSODY_S2S_DIRECT_TLS_PORT:-5270}:5270" # XMPP server-to-server TLS
+      - "${PROSODY_HTTP_PORT:-5280}:5280" # HTTP/BOSH
+      - "${PROSODY_HTTPS_PORT:-5281}:5281" # HTTPS/BOSH
+      - "${PROSODY_PROXY65_PORT:-5000}:5000" # Proxy65 file transfers
+
+    # Volume mounts
+    volumes:
+      - ./config/prosody:/etc/prosody/config:ro
+      - ./scripts:/opt/prosody/scripts:ro
+      - ./.runtime/certs:/etc/prosody/certs
+      - ./.runtime/logs:/var/log/prosody
+      - ./web/assets:/usr/share/prosody/www:ro
+      - atl-xmpp-data:/var/lib/prosody/data
+      - atl-xmpp-uploads:/var/lib/prosody/uploads
+
+    # Health monitoring
+    healthcheck:
+      test: [ "CMD", "/usr/local/bin/health-check.sh" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: "${PROSODY_MEMORY_LIMIT:-1G}"
+          cpus: "${PROSODY_CPU_LIMIT:-2.0}"
+        reservations:
+          memory: "${PROSODY_MEMORY_RESERVATION:-256M}"
+          cpus: "${PROSODY_CPU_RESERVATION:-0.5}"
+
+    # System optimizations
+    sysctls:
+      - net.core.somaxconn=65535
+      - net.ipv4.tcp_keepalive_time=600
+      - net.ipv4.ip_local_port_range=1024 65535
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+      nproc:
+        soft: 32768
+        hard: 32768
+
+    # Service dependencies
+    depends_on:
+      atl-xmpp-db:
+        condition: service_healthy
+
+    # Network configuration
+    networks:
+      - atl-chat
+
+    # Graceful shutdown
+    stop_grace_period: 60s
+
+  # ==========================================================================
+  # POSTGRESQL DATABASE
+  # ==========================================================================
+  atl-xmpp-db:
+    image: postgres:17-alpine
+    container_name: atl-xmpp-db
+    hostname: atl-xmpp-db
+    restart: unless-stopped
+
+    # Environment configuration
+    env_file:
+      - path: .env
+        required: false
+
+    # Database initialization
+    environment:
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
+
+    # Logging configuration
+    logging:
+      driver: json-file
+      options:
+        max-size: "${LOG_MAX_SIZE:-50m}"
+        max-file: "${LOG_MAX_FILES:-5}"
+        compress: "true"
+
+    # Port mapping (optional, for external access)
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+
+    # Volume mounts
+    volumes:
+      - atl-xmpp-db-data:/var/lib/postgresql/data
+      - ./database/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+
+    # Database optimization
+    command: >
+      postgres
+        -c max_connections=${POSTGRES_MAX_CONNECTIONS:-100}
+        -c shared_buffers=${POSTGRES_SHARED_BUFFERS:-256MB}
+        -c effective_cache_size=${POSTGRES_EFFECTIVE_CACHE_SIZE:-1GB}
+        -c maintenance_work_mem=${POSTGRES_MAINTENANCE_WORK_MEM:-64MB}
+        -c checkpoint_completion_target=0.9
+        -c wal_buffers=16MB
+        -c default_statistics_target=100
+        -c random_page_cost=1.1
+        -c effective_io_concurrency=200
+        -c work_mem=${POSTGRES_WORK_MEM:-4MB}
+
+    # Health monitoring
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-prosody}" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+    # Network configuration
+    networks:
+      - atl-chat
+
+    # Graceful shutdown
+    stop_grace_period: 60s
+
+  # ==========================================================================
+  # NGINX REVERSE PROXY
+  # ==========================================================================
+  atl-xmpp-proxy:
+    image: nginx:stable
+    container_name: atl-xmpp-proxy
+    hostname: atl-xmpp-proxy
+    restart: unless-stopped
+    init: true
+
+    # Security configuration
+    security_opt:
+      - no-new-privileges:true
+      - apparmor:docker-default
+
+    # Logging configuration
+    logging:
+      driver: json-file
+      options:
+        max-size: "${LOG_MAX_SIZE:-50m}"
+        max-file: "${LOG_MAX_FILES:-5}"
+        compress: "true"
+
+    # Port mappings
+    ports:
+      - "${NGINX_HTTP_PORT:-80}:80"
+      - "${NGINX_HTTPS_PORT:-443}:443"
+
+    # Volume mounts
+    volumes:
+      - ./config/nginx-docker.conf:/etc/nginx/nginx.conf:ro
+      - ./.runtime/certs:/opt/xmpp.atl.chat/certs:ro
+      - ./web/assets:/usr/share/nginx/html:ro
+
+    # Service dependencies
+    depends_on:
+      - atl-xmpp-server
+
+    # Network configuration
+    networks:
+      - atl-chat
+
+    # Graceful shutdown
+    stop_signal: SIGQUIT
+    stop_grace_period: 30s
+
+  # ==========================================================================
+  # COTURN - TURN/STUN SERVER
+  # ==========================================================================
+  atl-xmpp-turn:
+    image: coturn/coturn:latest
+    container_name: atl-xmpp-turn
+    hostname: atl-xmpp-turn
+    restart: unless-stopped
+
+    # Environment configuration
+    env_file:
+      - path: .env
+        required: false
+
+    # Logging configuration
+    logging:
+      driver: json-file
+      options:
+        max-size: "${LOG_MAX_SIZE:-50m}"
+        max-file: "${LOG_MAX_FILES:-5}"
+        compress: "true"
+
+    # Port mappings for TURN/STUN
+    ports:
+      - "${TURN_PORT:-3478}:3478"
+      - "${TURN_PORT:-3478}:3478/udp"
+      - "${TURN_TLS_PORT:-5349}:5349"
+      - "${TURN_TLS_PORT:-5349}:5349/udp"
+      - "49300-49350:49152-49202/udp" # Relay ports
+
+    # TURN server configuration
+    environment:
+      - TURN_NO_LOOPBACK_PEERS=false
+      - TURN_NO_MULTICAST_PEERS=true
+      - TURN_STALE_NONCE=true
+      - TURN_SECURE_STUN=true
+      - TURN_LOG_FILE=stdout
+
+    # Volume mounts
+    volumes:
+      - atl-xmpp-turn-data:/var/lib/coturn
+
+    # TURN server command
+    command: >
+      turnserver
+        --listening-port=3478
+        --min-port=49152
+        --max-port=49200
+        --realm=${TURN_REALM:-xmpp.atl.chat}
+        --server-name=${TURN_DOMAIN:-xmpp.atl.chat}
+        --use-auth-secret
+        --static-auth-secret=${TURN_SECRET}
+        --mobility
+        --no-cli
+        --log-file=stdout
+
+    # Network configuration
+    networks:
+      - atl-chat
+
+  # ==========================================================================
+  # ADMINER - DATABASE MANAGEMENT (Development Only)
+  # ==========================================================================
+  atl-xmpp-admin:
+    profiles: [ "dev" ]
+    image: adminer:latest
+    container_name: atl-xmpp-admin
+    hostname: atl-xmpp-admin
+    restart: unless-stopped
+
+    # Environment configuration
+    env_file:
+      - path: .env
+        required: false
+
+    # Logging configuration
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+        compress: "true"
+
+    # Port mapping
+    ports:
+      - "${ADMINER_PORT:-8081}:8080"
+
+    # Adminer configuration
+    environment:
+      ADMINER_DEFAULT_DRIVER: "${ADMINER_DEFAULT_DRIVER:-pgsql}"
+      ADMINER_DEFAULT_SERVER: "${ADMINER_DEFAULT_SERVER:-atl-xmpp-db}"
+      ADMINER_DEFAULT_DB: "${ADMINER_DEFAULT_DB:-prosody}"
+      ADMINER_DEFAULT_USERNAME: "${ADMINER_DEFAULT_USERNAME:-prosody}"
+      ADMINER_DEFAULT_PASSWORD: "${ADMINER_DEFAULT_PASSWORD}"
+      ADMINER_AUTO_LOGIN: "${ADMINER_AUTO_LOGIN:-true}"
+      ADMINER_DESIGN: "nette"
+
+    # Custom Adminer files (dev profile only)
+    configs:
+      - source: adminer-index.php
+        target: /var/www/html/index.php
+      - source: adminer-theme.css
+        target: /var/www/html/adminer.css
+
+    # Service dependencies
+    depends_on:
+      atl-xmpp-db:
+        condition: service_healthy
+
+    # Network configuration
+    networks:
+      - atl-chat
+
+  # ==========================================================================
+  # CONVERSE.JS WEB CLIENT (Development Only)
+  # ==========================================================================
+  atl-xmpp-webclient:
+    profiles: [ "dev" ]
+    image: nginx:stable-alpine
+    container_name: atl-xmpp-webclient
+    hostname: atl-xmpp-webclient
+    restart: unless-stopped
+    init: true
+
+    # Security configuration
+    security_opt:
+      - no-new-privileges:true
+      - apparmor:docker-default
+
+    # Logging configuration
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+        compress: "true"
+
+    # Port mapping
+    ports:
+      - "${CONVERSEJS_PORT:-8083}:80"
+
+    # Volume mounts
+    volumes:
+      - ./web/conversejs:/usr/share/nginx/html:ro
+
+    # Service dependencies
+    depends_on:
+      - atl-xmpp-server
+
+    # Network configuration
+    networks:
+      - atl-chat
+
+    # Graceful shutdown
+    stop_signal: SIGQUIT
+    stop_grace_period: 30s
+
+  # ==========================================================================
+  # DOZZLE - LOG VIEWER (Development Only)
+  # ==========================================================================
+  atl-xmpp-logs:
+    profiles: [ "dev" ]
+    image: amir20/dozzle:latest
+    container_name: atl-xmpp-logs
+    hostname: atl-xmpp-logs
+    restart: unless-stopped
+
+    # Port mapping
+    ports:
+      - "${DOZZLE_PORT:-8082}:8080"
+
+    # Docker socket access for log viewing
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+    # Dozzle configuration
+    environment:
+      - DOZZLE_FILTER=name=atl-xmpp-*
+      - DOZZLE_NO_ANALYTICS=true
+
+    # Network configuration
+    networks:
+      - atl-chat
+
+  # ==========================================================================
+  # CERTBOT - SSL CERTIFICATE ISSUANCE (Production)
+  # ==========================================================================
+  atl-xmpp-certbot:
+    profiles: [ "cert-issue" ]
+    image: certbot/dns-cloudflare:latest
+    container_name: atl-xmpp-certbot
+    hostname: atl-xmpp-certbot
+
+    # Environment configuration
+    env_file:
+      - path: .env
+        required: false
+
+    # Volume mounts
+    volumes:
+      - ./.runtime/certs:/etc/letsencrypt
+      - ./cloudflare-credentials.ini:/etc/letsencrypt/cloudflare-credentials.ini:ro
+
+    # SSL certificate issuance command
+    command: >
+      certonly --dns-cloudflare
+        --dns-cloudflare-credentials=/etc/letsencrypt/cloudflare-credentials.ini
+        --dns-cloudflare-propagation-seconds=60
+        --email ${LETSENCRYPT_EMAIL:-admin@example.com}
+        --agree-tos
+        --no-eff-email
+        --expand
+        --non-interactive
+        -d ${PROSODY_DOMAIN:-example.com}
+        -d "*.${PROSODY_DOMAIN:-example.com}"
+
+    # Network configuration
+    networks:
+      - atl-chat
+
+  # ==========================================================================
+  # CERTBOT - SSL CERTIFICATE RENEWAL (Production)
+  # ==========================================================================
+  atl-xmpp-certbot-renew:
+    image: certbot/dns-cloudflare:latest
+    container_name: atl-xmpp-certbot-renew
+    hostname: atl-xmpp-certbot-renew
+
+    # Environment configuration
+    env_file:
+      - path: .env
+        required: false
+
+    # Volume mounts
+    volumes:
+      - ./.runtime/certs:/etc/letsencrypt
+      - ./cloudflare-credentials.ini:/etc/letsencrypt/cloudflare-credentials.ini:ro
+
+    # SSL certificate renewal command
+    command: renew --quiet --no-random-sleep-on-renew
+
+    # Network configuration
+    networks:
+      - atl-chat
+
+  # ==========================================================================
+  # CERTIFICATE MONITORING (Production)
+  # ==========================================================================
+  atl-xmpp-cert-monitor:
+    image: alpine:latest
+    container_name: atl-xmpp-cert-monitor
+    hostname: atl-xmpp-cert-monitor
+
+    # Environment configuration
+    env_file:
+      - path: .env
+        required: false
+
+    # Volume mounts
+    volumes:
+      - ./.runtime:/app/.runtime
+      - ./scripts:/app/scripts:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+    # Working directory
+    working_dir: /app
+
+    # Certificate monitoring command
+    command: >
+      sh -c "
+        apk add --no-cache bash curl jq openssl docker-cli &&
+        /app/scripts/cert-monitor-runner.sh
+      "
+
+    # Service configuration
+    init: true
+    restart: unless-stopped
+
+    # Service dependencies
+    depends_on:
+      - atl-xmpp-server
+
+    # Network configuration
+    networks:
+      - atl-chat
+
+    # Graceful shutdown
+    stop_grace_period: 10s
+
+# ============================================================================
+# VOLUMES
+# ============================================================================
+volumes:
+  atl-xmpp-data:
+    name: atl-xmpp-data
+    driver: local
+  atl-xmpp-uploads:
+    name: atl-xmpp-uploads
+    driver: local
+  atl-xmpp-db-data:
+    name: atl-xmpp-db-data
+    driver: local
+  atl-xmpp-turn-data:
+    name: atl-xmpp-turn-data
+    driver: local
+  atl-xmpp-certs:
+    name: atl-xmpp-certs
+    driver: local
+
+# ============================================================================
+# NETWORKS
+# ============================================================================
+networks:
+  atl-chat:
+    name: atl-chat
+    external: true
+
+# ============================================================================
+# CONFIGS
+# ============================================================================
+configs:
+  adminer-index.php:
+    content: |
+      <?php
+        // Only auto-login in development environments
+        if (getenv('ADMINER_AUTO_LOGIN') === 'true' && empty($_GET)) {
+          $_POST['auth'] = [
+            'server' => getenv('ADMINER_DEFAULT_SERVER'),
+            'username' => getenv('ADMINER_DEFAULT_USERNAME'),
+            'password' => getenv('ADMINER_DEFAULT_PASSWORD'),
+            'driver' => getenv('ADMINER_DEFAULT_DRIVER'),
+            'db' => getenv('ADMINER_DEFAULT_DB'),
+          ];
+        }
+        include './adminer.php';
+      ?>
+
+  adminer-theme.css:
+    file: ./web/themes/adminer-theme.css
