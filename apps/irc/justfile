@@ -1,0 +1,314 @@
+# IRC Service Justfile
+# Unified command orchestration for the IRC service (UnrealIRCd + Atheme + WebPanel)
+
+# Start development environment
+[group('Development')]
+up:
+    @echo "Starting IRC.atl.chat"
+    @echo "Running comprehensive setup..."
+    ./scripts/init.sh
+    ./scripts/prepare-config.sh
+    docker compose up -d
+    @echo "Services started!"
+    @echo "IRC Server: localhost:6697 (TLS only)"
+    @echo "WebPanel: http://localhost:8080"
+    @echo "Log files accessible at: logs/atl-irc-server/"
+
+# Stop development environment
+[group('Development')]
+down:
+    @echo "Stopping Services"
+    docker compose down
+    @echo "All services stopped and removed."
+
+# Setup only (no start)
+[group('Development')]
+setup:
+    @echo "Setup Only"
+    @echo "Running setup without starting services..."
+    ./scripts/init.sh
+    ./scripts/prepare-config.sh
+    docker compose up -d
+    @echo "Setup completed! Use 'just irc start-only' to start services."
+
+# Start services only (assumes setup is done)
+[group('Development')]
+start-only:
+    @echo "Starting Services Only"
+    docker compose up -d
+    @echo "Services started!"
+
+# Restart all services
+[group('Development')]
+restart:
+    @echo "Restarting Services"
+    docker compose restart
+    @echo "Services restarted successfully!"
+
+# Build services
+[group('Building')]
+build:
+    @echo "Building Services"
+    docker compose build
+    @echo "All services built successfully!"
+
+# Rebuild services (no cache)
+[group('Building')]
+rebuild:
+    @echo "Rebuilding Services (No Cache)"
+    docker compose build --no-cache
+    @echo "All services rebuilt successfully!"
+
+# View development logs
+[group('Logging')]
+logs:
+    @echo "Service Logs"
+    docker compose logs -f
+
+# View UnrealIRCd logs
+[group('Logging')]
+logs-ircd:
+    @echo "UnrealIRCd Logs"
+    docker compose logs -f atl-irc-server
+
+# View Atheme logs
+[group('Logging')]
+logs-atheme:
+    @echo "Atheme Logs"
+    docker compose logs -f atl-irc-services
+
+# View WebPanel logs
+[group('Logging')]
+logs-webpanel:
+    @echo "WebPanel Logs"
+    docker compose logs -f atl-irc-server-webpanel
+
+# View logs with timestamps
+[group('Logging')]
+dev-logs:
+    @echo "All Logs with Timestamps"
+    docker compose logs -f --timestamps
+
+# Status and monitoring
+[group('Monitoring')]
+status:
+    @echo "Service Status"
+    docker compose ps
+    @echo ""
+    @echo "Health checks:"
+    docker compose ps --format "table {{{{.Name}}}}\t{{{{.Status}}}}\t{{{{.Ports}}}}"
+
+# Open shell in running IRCd container
+[group('Development')]
+shell:
+    @echo "Development Shell"
+    docker compose exec ircd bash
+
+# Run comprehensive test suite
+[group('Testing')]
+test:
+    @echo "Running Comprehensive Tests"
+    @echo "Running test suite with uv..."
+    @uv run pytest tests/
+    @echo "Test suite completed!"
+
+# Run environment validation tests
+[group('Testing')]
+test-env:
+    @echo "Environment Validation Tests"
+    @uv run pytest tests/unit/test_environment_validation.py tests/unit/test_docker_client.py -v
+
+# Run IRC functionality tests
+[group('Testing')]
+test-irc:
+    @echo "IRC Functionality Tests"
+    @uv run pytest tests/integration/test_irc_functionality.py tests/integration/test_protocol.py -v
+
+# Run unit tests
+[group('Testing')]
+test-unit:
+    @echo "Unit Tests"
+    @uv run pytest tests/unit/ -v
+
+# Run integration tests
+[group('Testing')]
+test-integration:
+    @echo "Integration Tests"
+    @uv run pytest tests/integration/ -v
+
+# Run end-to-end tests
+[group('Testing')]
+test-e2e:
+    @echo "End-to-End Tests"
+    @uv run pytest tests/e2e/ -v
+
+# Run protocol tests
+[group('Testing')]
+test-protocol:
+    @echo "Protocol Tests"
+    @uv run pytest tests/protocol/ -v
+
+# Run performance tests
+[group('Testing')]
+test-performance:
+    @echo "Performance Tests"
+    @uv run pytest -m performance -v
+
+# Run service tests
+[group('Testing')]
+test-services:
+    @echo "Service Tests"
+    @uv run pytest -m atheme -v
+
+# Run docker tests
+[group('Testing')]
+test-docker:
+    @echo "Docker-related Tests"
+    @uv run pytest -m docker -v
+
+# Quick environment check
+[group('Testing')]
+test-quick:
+    @echo "Quick Environment Check"
+    docker compose config --quiet
+    @if docker compose ps | grep -q "Up"; then \
+        echo "Services are running!"; \
+    else \
+        echo "No services are currently running."; \
+    fi
+
+# List available modules
+[group('Modules')]
+modules-list:
+    @echo "Available Modules"
+    docker compose exec atl-irc-server manage-modules.sh list
+
+# List installed modules
+[group('Modules')]
+modules-installed:
+    @echo "Installed Modules"
+    docker compose exec atl-irc-server manage-modules.sh installed
+
+# One-command SSL setup
+[group('SSL')]
+ssl-setup:
+    @echo "SSL Setup"
+    @./scripts/ssl-manager.sh issue
+    @docker compose up -d ssl-monitor
+    @echo "SSL setup complete."
+
+# Check SSL certificate status
+[group('SSL')]
+ssl-status:
+    @echo "SSL Certificate Status"
+    @if [[ -f "src/backend/unrealircd/conf/tls/server.cert.pem" ]]; then \
+        ./scripts/ssl-manager.sh check; \
+        docker compose ps ssl-monitor | grep -q "Up" && echo "SSL monitoring is running" || echo "SSL monitoring is not running"; \
+    else \
+        echo "No SSL certificates found. Run 'just irc ssl-setup' to get started."; \
+    fi
+
+# Force certificate renewal
+[group('SSL')]
+ssl-renew:
+    @echo "Forcing SSL Certificate Renewal"
+    @if [[ -f "src/backend/unrealircd/conf/tls/server.cert.pem" ]]; then \
+        ./scripts/ssl-manager.sh renew; \
+    else \
+        echo "No SSL certificates found. Run 'just irc ssl-setup' first."; \
+    fi
+
+# View SSL logs
+[group('SSL')]
+ssl-logs:
+    @echo "SSL Monitoring Logs"
+    docker compose logs -f ssl-monitor --tail=50
+
+# Stop SSL monitoring
+[group('SSL')]
+ssl-stop:
+    @echo "Stopping SSL Monitoring"
+    docker compose down ssl-monitor
+    @echo "SSL monitoring stopped"
+
+# Remove SSL certificates
+[group('SSL')]
+ssl-clean:
+    @echo "WARNING: This will DELETE your SSL certificates!"
+    @echo "This action cannot be undone."
+    @read -p "Are you sure you want to continue? (type 'yes' to confirm): " confirm && \
+    if [[ "$confirm" == "yes" ]]; then \
+        echo "Removing SSL certificates..."; \
+        rm -rf data/letsencrypt src/backend/unrealircd/conf/tls; \
+        docker compose down ssl-monitor; \
+        echo "SSL certificates and monitoring removed."; \
+    else \
+        echo "SSL cleanup cancelled."; \
+    fi
+
+# Generate IRC operator password
+[group('Utilities')]
+generate-password:
+    @echo "Generating IRC Operator Password"
+    @./src/backend/unrealircd/scripts/generate-oper-password.sh
+
+# Linting
+[group('Maintenance')]
+lint:
+    @echo "Linting Scripts"
+    @if command -v shellcheck >/dev/null 2>&1; then \
+        echo "Running shellcheck..."; \
+        shellcheck scripts/*.sh; \
+        echo "Shellcheck completed!"; \
+    else \
+        echo "shellcheck not found. Install it for script validation."; \
+    fi
+    @if command -v hadolint >/dev/null 2>&1; then \
+        echo "Running hadolint..."; \
+        hadolint src/backend/unrealircd/Containerfile src/backend/atheme/Containerfile src/frontend/webpanel/Containerfile src/frontend/gamja/Containerfile; \
+        echo "Hadolint completed!"; \
+    else \
+        echo "hadolint not found. Install it for Containerfile validation."; \
+    fi
+
+# Clean up unused resources
+[group('Maintenance')]
+clean:
+    @echo "Cleaning Up"
+    docker compose down
+    docker image prune -f
+    @echo "Cleanup completed!"
+
+# Reset everything (Destructive)
+[group('Maintenance')]
+reset:
+    @echo "WARNING: This will DELETE all data!"
+    @echo "This includes: containers, images, volumes, and data directories"
+    @read -p "Are you sure you want to continue? (type 'yes' to confirm): " confirm && \
+    if [[ "$confirm" == "yes" ]]; then \
+        echo "Stopping services..."; \
+        docker compose down -v; \
+        echo "Removing images..."; \
+        docker image prune -f; \
+        echo "Removing data directories..."; \
+        rm -rf data/ logs/; \
+        echo "Complete reset done."; \
+    else \
+        echo "Reset cancelled."; \
+    fi
+
+# Show system information
+[group('Utilities')]
+info:
+    @echo "System Information"
+    @echo "Docker version:"
+    docker --version
+    @echo ""
+    @echo "Docker Compose version:"
+    docker compose --version
+    @echo ""
+    @echo "Available disk space:"
+    df -h . | tail -1
+    @echo ""
+    @echo "Memory usage:"
+    free -h
