@@ -1,0 +1,175 @@
+[project]
+name = "atl-chat-monorepo"
+version = "0.1.0"
+requires-python = ">=3.11"
+description = "Monorepo for atl.chat ecosystem (IRC, XMPP, Web)"
+readme = "README.md"
+license = "MIT"
+authors = [{ name = "All Things Linux", email = "admin@allthingslinux.org" }]
+maintainers = [
+    { name = "All Things Linux", email = "admin@allthingslinux.org" },
+]
+# Root project has no runtime dependencies, only dev tool dependencies.
+dependencies = ["atl-chat-irc"]
+
+[tool.uv.sources]
+atl-chat-irc = { workspace = true }
+
+[project.urls]
+repository = "https://github.com/allthingslinux/atl.chat"
+homepage = "https://atl.chat"
+
+# WORKSPACE DEFINITION
+[tool.uv.workspace]
+members = ["apps/irc"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-mock>=3.12.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-xdist>=3.0.0",
+    "pytest-html>=4.0.0",
+    "pytest-timeout>=2.4.0",
+    "pytest-sugar>=1.1.1",
+    "pytest-docker>=3.0.0",
+    "pytest-docker-tools>=3.1.0",
+    "pytest-github-actions-annotate-failures>=0.3.0",
+    "ruff>=0.6.0",
+    "basedpyright>=0.6.0",
+    "pre-commit>=3.0.0",
+]
+
+[tool.pytest.ini_options]
+# Test discovery - Pointing to the apps
+testpaths = ["apps/irc/tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+# Default options for all pytest runs
+addopts = [
+    # Output formatting
+    "--strict-markers",
+    "--tb=short",
+    # Verbose logging
+    "-v",
+    "--color=yes",
+    "--durations=10",
+    # Async support
+    "--asyncio-mode=auto",
+]
+
+# Markers
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+    "docker: marks tests that require Docker",
+    "irc: marks tests that require IRC server",
+    "network: marks tests that require network access",
+    "e2e: marks tests as end-to-end tests",
+    "atheme: marks tests that require Atheme services",
+    "webpanel: marks tests that require WebPanel",
+    "ssl: marks tests that require SSL functionality",
+    "performance: marks tests as performance tests",
+    "async: marks tests as async tests",
+    "protocol: marks tests for IRC protocol compliance",
+    "unrealircd: marks tests specific to UnrealIRCd",
+    "ircv3: marks tests for IRCv3 features",
+
+    # IRC specification markers (from irctest)
+    "RFC1459",
+    "RFC2812",
+    "IRCv3",
+    "modern",
+    "ircdocs",
+    "Ergo",
+    "strict",
+    "deprecated",
+    "services",
+
+    # IRCv3 capabilities
+    "account-notify",
+    "account-tag",
+    "away-notify",
+    "batch",
+    "echo-message",
+    "extended-join",
+    "extended-monitor",
+    "labeled-response",
+    "message-tags",
+    "metadata-2",
+    "draft/multiline",
+    "multi-prefix",
+    "server-time",
+    "setname",
+    "sts",
+
+    # ISUPPORT tokens
+    "BOT",
+    "ELIST",
+    "INVEX",
+    "MONITOR",
+    "PREFIX",
+    "STATUSMSG",
+    "TARGMAX",
+    "UTF8ONLY",
+    "WHOX",
+]
+
+# Filter warnings
+filterwarnings = ["error", "ignore::UserWarning", "ignore::DeprecationWarning"]
+
+# Minimum version
+minversion = "8.0"
+
+# Test timeout (in seconds)
+timeout = 300
+
+# AsyncIO configuration
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+
+# Directories to skip during test discovery
+norecursedirs = [
+    ".git",
+    ".venv",
+    "venv",
+    "__pycache__",
+    ".pytest_cache",
+    "logs",
+    "data",
+    "tests/legacy/**",
+]
+
+[tool.ruff]
+exclude = [".venv", "__pycache__", ".pytest_cache", "logs", "data"]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+ignore = [
+    "E501",    # Line too long (handled by formatter)
+    "PLR0913", # Too many arguments
+    "PLR2004", # Magic value comparison
+]
+select = [
+    "E",   # pycodestyle-error
+    "F",   # pyflakes
+    "I",   # isort
+    "N",   # pep8-naming
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "SIM", # flake8-simplify
+    "PL",  # pylint
+    "RUF", # ruff
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+
+[tool.uv]
+cache-dir = ".uv_cache"
