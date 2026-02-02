@@ -1,0 +1,99 @@
+# 🚀 MONOREPO ROOT .dockerignore
+# ================================================================================
+
+# 🐙 Version Control
+.git
+.gitignore
+.gitattributes
+.github/
+
+# 📚 Documentation
+docs/
+*.md
+README*
+LICENSE
+CHANGELOG*
+CONTRIBUTING*
+
+# 🔧 IDE & Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# 📦 Dependency Directories (Global & Local)
+node_modules/
+.venv/
+venv/
+env/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.uv_cache/
+.tox/
+.coverage
+coverage.xml
+
+# 🏗️ Build Artifacts
+build/
+dist/
+target/
+.next/
+out/
+*.egg-info/
+*.so
+*.pyc
+*.pyo
+
+# 📝 Logs & Temp
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pip-log.txt
+*.tmp
+*.temp
+tmp/
+temp/
+
+# 🔒 Secrets & Environment
+.env*
+!.env.example
+!.env.shared.example
+*.pem
+*.key
+*.crt
+cloudflare-credentials.ini*
+
+# 🏃 Runtime & Data (keep out of images)
+data/
+cert/
+certs/
+.runtime/
+ircd_data/
+ircd_logs/
+atheme_data/
+atheme_logs/
+webpanel_data/
+
+# 🧪 Tests
+tests/
+test/
+
+# 🛠️ CI/CD & Configs
+.circleci/
+.travis.yml
+.gitlab-ci.yml
+renovate.json
+
+# 🐳 Docker itself (avoid recursive copy if context is root)
+docker-compose.yml
+docker-compose.*.yml
+compose.*.yaml
+!compose.yaml
+Dockerfile
+Containerfile
+.dockerignore
