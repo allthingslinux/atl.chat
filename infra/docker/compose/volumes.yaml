@@ -7,13 +7,9 @@
 
 volumes:
   # SSL/TLS certificates (shared across services)
+  # Includes Let's Encrypt, self-signed, or manually managed certs
   atl-certs:
     name: atl-certs
-    driver: local
-
-  # Let's Encrypt data
-  atl-letsencrypt:
-    name: atl-letsencrypt
     driver: local
 
   # PostgreSQL database data
