@@ -1,7 +1,31 @@
-name: atl_chat
+# =============================================================================
+# ATL Chat - Root Docker Compose
+# =============================================================================
+# Orchestrates all services across the entire stack
+# Usage:
+#   docker compose up -d              # Start all services
+#   docker compose --profile dev up   # Start with dev services
+# =============================================================================
 
+name: atl-chat
+
+# Use root .env file
+env_file:
+  - .env
+
+# Include shared infrastructure
 include:
-  - path: apps/xmpp/compose.yaml
-  - path: apps/irc/compose.yaml
-  - path: apps/bridge/biboumi/compose.yaml
-  - path: apps/bridge/matterbridge/compose.yaml
+  - infra/docker/compose/networks.yaml
+  - infra/docker/compose/volumes.yaml
+  - apps/irc/compose.yaml
+  - apps/xmpp/compose.yaml
+
+# Root-level services (monitoring, logging, etc.)
+services:
+  # Placeholder for future root-level services
+  # Examples: Prometheus, Grafana, Traefik, etc.
+  placeholder:
+    image: alpine:latest
+    command: echo "Root compose loaded successfully"
+    profiles:
+      - placeholder

@@ -1,0 +1,36 @@
+# =============================================================================
+# ATL Alpine Base Image
+# =============================================================================
+# Common base image for Alpine-based services (IRC)
+# Includes essential tools and security updates
+# =============================================================================
+
+FROM alpine:3.23@sha256:51183f2cfa6320055da30872f211093f9ff1d3cf06f39a0bdb212314c5dc7375
+
+LABEL maintainer="All Things Linux"
+LABEL description="Base Alpine image for ATL services"
+LABEL org.opencontainers.image.source="https://github.com/allthingslinux/atl.chat"
+
+# Install common runtime dependencies
+# hadolint ignore=DL3018
+RUN apk update && apk add --no-cache \
+  # Core utilities
+  curl \
+  wget \
+  bash \
+  # Security
+  ca-certificates \
+  ca-certificates-bundle \
+  openssl \
+  # Process management
+  tini \
+  su-exec \
+  # Networking
+  netcat-openbsd \
+  && rm -rf /var/cache/apk/*
+
+# Set up tini as init system
+ENTRYPOINT ["/sbin/tini", "-s", "--"]
+
+# Default command (override in child images)
+CMD ["/bin/bash"]

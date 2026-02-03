@@ -1,0 +1,37 @@
+# =============================================================================
+# Shared Docker Volumes
+# =============================================================================
+# Define common named volumes for persistent data
+# Include this file in app compose files with: include: ../../infra/docker/compose/volumes.yaml
+# =============================================================================
+
+volumes:
+  # SSL/TLS certificates (shared across services)
+  atl-certs:
+    name: atl-certs
+    driver: local
+
+  # Let's Encrypt data
+  atl-letsencrypt:
+    name: atl-letsencrypt
+    driver: local
+
+  # PostgreSQL database data
+  atl-postgres-data:
+    name: atl-postgres-data
+    driver: local
+
+  # IRC server data
+  atl-irc-data:
+    name: atl-irc-data
+    driver: local
+
+  # XMPP server data
+  atl-xmpp-data:
+    name: atl-xmpp-data
+    driver: local
+
+  # Logs (optional, for centralized logging)
+  atl-logs:
+    name: atl-logs
+    driver: local

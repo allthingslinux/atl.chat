@@ -1,0 +1,15 @@
+# =============================================================================
+# Shared Docker Network
+# =============================================================================
+# Single network for all ATL Chat services
+# Include this file in app compose files with: include: ../../infra/docker/compose/networks.yaml
+# =============================================================================
+
+networks:
+  # Unified network for all ATL Chat services (IRC, XMPP, bridges, web)
+  atl-chat:
+    name: atl-chat
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
