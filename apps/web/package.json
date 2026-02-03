@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "ultracite check",
+    "fix": "ultracite fix",
+    "check": "ultracite check"
   },
   "dependencies": {
     "@cloudflare/next-on-pages": "catalog:",
@@ -21,13 +23,13 @@
     "tailwindcss-animate": "catalog:"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.3.13",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
-    "eslint": "catalog:",
-    "eslint-config-next": "catalog:",
     "postcss": "catalog:",
     "tailwindcss": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "ultracite": "7.1.3"
   }
 }

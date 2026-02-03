@@ -1,0 +1,46 @@
+# Web Application Justfile
+# Unified command orchestration for the Next.js web application
+
+# Helper to run pnpm commands
+_run cmd:
+    pnpm {{ cmd }}
+
+# Default: List available commands
+default:
+    @just --list
+
+# Start development server
+[group('Development')]
+dev:
+    @echo "Starting Next.js development server..."
+    NEXT_PUBLIC_IRC_WS_URL="ws://localhost:8000" NEXT_PUBLIC_XMPP_BOSH_URL="http://localhost:5280/http-bind" just _run dev
+
+# Build the application
+[group('Building')]
+build:
+    @echo "Building Next.js application..."
+    @just _run build
+
+# Start production server
+[group('Production')]
+start:
+    @echo "Starting production server..."
+    @just _run start
+
+# Run linting (Ultracite Check)
+[group('Verification')]
+lint:
+    @echo "Running Ultracite Check..."
+    @just _run check
+
+# Fix linting issues (Ultracite Fix)
+[group('Verification')]
+fix:
+    @echo "Running Ultracite Fix..."
+    @just _run fix
+
+# Run type checking (if separate from build)
+[group('Verification')]
+type-check:
+    @echo "Running Type Check..."
+    @pnpm tsc --noEmit
