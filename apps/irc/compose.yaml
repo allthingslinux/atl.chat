@@ -1,6 +1,11 @@
 ---
 name: atl-irc
 
+# Include shared infrastructure
+include:
+  - ../../infra/docker/compose/networks.yaml
+  - ../../infra/docker/compose/volumes.yaml
+
 services:
   # ============================================================================
   # UNREALIRCD - Main IRC Server
