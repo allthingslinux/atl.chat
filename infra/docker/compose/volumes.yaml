@@ -1,33 +1,60 @@
 # =============================================================================
 # Shared Docker Volumes
 # =============================================================================
-# Define common named volumes for persistent data
+# Define ALL named volumes used across the ATL Chat stack
 # Include this file in app compose files with: include: ../../infra/docker/compose/volumes.yaml
 # =============================================================================
 
 volumes:
-  # SSL/TLS certificates (shared across services)
+  # =============================================================================
+  # Shared Volumes (used by multiple services)
+  # =============================================================================
+
+  # SSL/TLS certificates (shared across all services)
   # Includes Let's Encrypt, self-signed, or manually managed certs
   atl-certs:
     name: atl-certs
     driver: local
 
-  # PostgreSQL database data
-  atl-postgres-data:
-    name: atl-postgres-data
+  # Centralized logs (optional, for log aggregation)
+  atl-logs:
+    name: atl-logs
     driver: local
 
-  # IRC server data
+  # =============================================================================
+  # IRC App Volumes
+  # =============================================================================
+
+  # IRC server data (UnrealIRCd)
   atl-irc-data:
     name: atl-irc-data
     driver: local
 
-  # XMPP server data
+  # IRC webpanel data
+  atl-irc-webpanel-data:
+    name: atl-irc-webpanel-data
+    driver: local
+
+  # =============================================================================
+  # XMPP App Volumes
+  # =============================================================================
+
+  # XMPP server data (Prosody)
   atl-xmpp-data:
     name: atl-xmpp-data
     driver: local
 
-  # Logs (optional, for centralized logging)
-  atl-logs:
-    name: atl-logs
+  # XMPP file uploads
+  atl-xmpp-uploads:
+    name: atl-xmpp-uploads
+    driver: local
+
+  # XMPP database data (PostgreSQL)
+  atl-xmpp-db-data:
+    name: atl-xmpp-db-data
+    driver: local
+
+  # XMPP TURN server data (coturn)
+  atl-xmpp-turn-data:
+    name: atl-xmpp-turn-data
     driver: local
