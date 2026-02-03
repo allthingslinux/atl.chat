@@ -15,6 +15,10 @@ include:
   - ../../infra/docker/compose/networks.yaml
   - ../../infra/docker/compose/volumes.yaml
 
+# Use root .env file for environment variables
+env_file:
+  - ../../.env
+
 services:
   # ==========================================================================
   # PROSODY XMPP SERVER
