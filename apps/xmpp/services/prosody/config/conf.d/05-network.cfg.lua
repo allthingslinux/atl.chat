@@ -187,8 +187,7 @@ turn_external_secret = Lua.os.getenv("TURN_SECRET") or "devsecret"
 
 -- DNS hostname of the TURN (and STUN) server
 -- Use dedicated TURN subdomain for clean separation
-turn_external_host = Lua.os.getenv("TURN_DOMAIN") or
-    Lua.os.getenv("PROSODY_DOMAIN") or "localhost"
+turn_external_host = Lua.os.getenv("TURN_EXTERNAL_HOST") or "turn.atl.network"
 
 -- Port number used by TURN (and STUN) server
 turn_external_port = Lua.tonumber(Lua.os.getenv("TURN_PORT")) or 3478
