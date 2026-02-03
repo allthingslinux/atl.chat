@@ -1,0 +1,40 @@
+# Setup phase
+FROM node:current-alpine3.22@sha256:3e843c608bb5232f39ecb2b25e41214b958b0795914707374c8acc28487dea17 AS base
+
+LABEL maintainer="AllThingsLinux IRC Infrastructure" \
+    description="Gamja - Lightweight IRC web client" \
+    version="1.0.0" \
+    org.opencontainers.image.source="https://github.com/allthingslinux/irc.atl.chat"
+
+ENV GAMJA_VERSION="1.0.0-beta.11"
+
+RUN addgroup -S gamja && \
+    adduser -S -G gamja gamja
+
+# Building phase
+FROM base AS builder
+
+RUN mkdir -p /var/www/html && \
+    chgrp gamja /var/www/html && \
+    chmod 775 /var/www/html
+
+WORKDIR /var/www/html
+
+USER gamja:gamja
+
+RUN wget -q "https://codeberg.org/emersion/gamja/archive/v${GAMJA_VERSION}.tar.gz" && \
+    tar xvf "v${GAMJA_VERSION}.tar.gz"
+
+WORKDIR /var/www/html/gamja
+
+RUN npm install --omit=dev
+
+# Development server phase
+FROM base AS dev
+
+COPY --from=builder --chown=gamja:gamja /var/www/html/gamja/ /var/www/html/gamja
+COPY --chown=gamja:gamja src/frontend/gamja/conf/config.json /var/www/html/gamja/config.json
+
+WORKDIR /var/www/html/gamja
+
+EXPOSE 8080

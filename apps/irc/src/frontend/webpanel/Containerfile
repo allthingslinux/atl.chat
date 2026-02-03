@@ -1,0 +1,31 @@
+# hadolint ignore=DL3006
+FROM composer/composer AS builder
+
+WORKDIR /app
+
+# Clone the webpanel source and install dependencies
+RUN git clone --depth 1 https://github.com/unrealircd/unrealircd-webpanel.git . && \
+    composer install --no-dev --optimize-autoloader
+
+# hadolint ignore=DL3006
+FROM trafex/php-nginx
+
+USER root
+
+# hadolint ignore=DL3018
+RUN apk add --no-cache php84-sodium
+
+USER nobody
+
+# Set working directory
+WORKDIR /var/www/html
+
+# Copy application files from the builder stage
+COPY --from=builder /app /var/www/html
+
+# Fix permissions for webpanel to write config files
+USER root
+RUN chown -R nobody:nobody /var/www/html && \
+    chmod -R 755 /var/www/html/data /var/www/html/config /var/www/html/logs
+
+USER nobody
