@@ -37,8 +37,8 @@ class TestConfigurationValidation:
 
     def test_dockerfile_exists(self, project_root):
         """Test that Dockerfiles exist."""
-        unrealircd_dockerfile = project_root / "src/backend/unrealircd/Containerfile"
-        atheme_dockerfile = project_root / "src/backend/atheme/Containerfile"
+        unrealircd_dockerfile = project_root / "services/unrealircd/Containerfile"
+        atheme_dockerfile = project_root / "services/atheme/Containerfile"
         webpanel_dockerfile = project_root / "src/frontend/webpanel/Containerfile"
         gamja_dockerfile = project_root / "src/frontend/gamja/Containerfile"
 

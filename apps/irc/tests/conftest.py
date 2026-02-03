@@ -33,7 +33,7 @@ def prepared_config_dir(tmp_path):
     config_dir.mkdir(exist_ok=True)
 
     # Source directory with real configs
-    source_dir = Path("src/backend/unrealircd/conf")
+    source_dir = Path("services/unrealircd/conf")
 
     # Copy all config files
     for config_file in source_dir.glob("*.conf"):

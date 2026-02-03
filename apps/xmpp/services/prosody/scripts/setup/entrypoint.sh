@@ -265,7 +265,7 @@ setup_community_modules() {
     local enabled_dir="/usr/local/lib/prosody/prosody-modules-enabled"
     if [[ ! -d "$enabled_dir" ]]; then
         log_warn "Community modules not found"
-        log_info "To set up modules locally, run: ./scripts/setup-modules-locally.sh"
+        log_info "To set up modules locally, run: ../../scripts/xmpp/setup-modules-locally.sh"
         log_info "Then rebuild the Docker image"
         return 0
     else

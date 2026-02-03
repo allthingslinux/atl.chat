@@ -59,7 +59,7 @@ docker compose exec unrealircd ./unrealircd module list
 
 1. **Edit the configuration file**:
    ```bash
-   nano src/backend/unrealircd/third-party-modules.list
+   nano services/unrealircd/third-party-modules.list
    ```
 
 2. **Add the module name** (one per line):
@@ -76,7 +76,7 @@ docker compose exec unrealircd ./unrealircd module list
 
 1. **Remove from the configuration file**:
    ```bash
-   nano src/backend/unrealircd/third-party-modules.list
+   nano services/unrealircd/third-party-modules.list
    ```
 
 2. **Comment out or delete the line**:

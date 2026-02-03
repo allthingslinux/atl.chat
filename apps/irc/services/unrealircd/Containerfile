@@ -117,8 +117,8 @@ COPY --from=builder /tmp/unrealircd-${UNREALIRCD_VERSION} /tmp/unrealircd-${UNRE
 
 # Copy third-party modules configuration, installation and management scripts
 COPY third-party-modules.list /home/unrealircd/third-party-modules.list
-COPY scripts/install-modules.sh /usr/local/bin/install-modules.sh
-COPY scripts/manage-modules.sh /usr/local/bin/manage-modules.sh
+COPY ./scripts/install-modules.sh /usr/local/bin/install-modules.sh
+COPY ./scripts/manage-modules.sh /usr/local/bin/manage-modules.sh
 RUN chmod +x /usr/local/bin/install-modules.sh
 RUN chmod +x /usr/local/bin/manage-modules.sh
 

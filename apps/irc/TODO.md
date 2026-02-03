@@ -8,7 +8,7 @@ When enabling Atheme's JSON-RPC API for programmatic NickServ registration (Port
 
 | Change | Details |
 |--------|---------|
-| **Enable modules** | Uncomment `misc/httpd` and `transport/jsonrpc` in [atheme.conf.template](src/backend/atheme/conf/atheme.conf.template) (lines 289-291) |
+| **Enable modules** | Uncomment `misc/httpd` and `transport/jsonrpc` in [atheme.conf.template](services/atheme/conf/atheme.conf.template) (lines 289-291) |
 | **Avoid port conflict** | Change `httpd` port from 8080 to 8081 (WebPanel uses 8080) in the `httpd {}` block |
 | **Add env var** | Add `ATHEME_HTTPD_PORT=8081` to [env.example](env.example) and use in template |
 | **Expose port** | Add `'${ATHEME_HTTPD_PORT:-8081}:8081'` to the unrealircd service ports in [compose.yaml](compose.yaml) |

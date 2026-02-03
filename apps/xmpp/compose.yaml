@@ -16,7 +16,7 @@ services:
   # ==========================================================================
   atl-xmpp-server:
     build:
-      context: .
+      context: ./services/prosody
       dockerfile: Containerfile
     image: allthingslinux/prosody:latest
     container_name: atl-xmpp-server
@@ -54,8 +54,8 @@ services:
 
     # Volume mounts
     volumes:
-      - ./config/prosody:/etc/prosody/config:ro
-      - ./scripts:/opt/prosody/scripts:ro
+      - ./services/prosody/config/prosody:/etc/prosody/config:ro
+      - ./services/prosody/scripts:/opt/prosody/scripts:ro
       - ./.runtime/certs:/etc/prosody/certs
       - ./.runtime/logs:/var/log/prosody
       - ./web/assets:/usr/share/prosody/www:ro
@@ -138,7 +138,7 @@ services:
     # Volume mounts
     volumes:
       - atl-xmpp-db-data:/var/lib/postgresql/data
-      - ./database/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+      - ./services/prosody/database/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
 
     # Database optimization
     command: >
@@ -199,7 +199,7 @@ services:
 
     # Volume mounts
     volumes:
-      - ./config/nginx-docker.conf:/etc/nginx/nginx.conf:ro
+      - ./services/prosody/config/nginx-docker.conf:/etc/nginx/nginx.conf:ro
       - ./.runtime/certs:/opt/xmpp.atl.chat/certs:ro
       - ./web/assets:/usr/share/nginx/html:ro
 
@@ -476,7 +476,7 @@ services:
     # Volume mounts
     volumes:
       - ./.runtime:/app/.runtime
-      - ./scripts:/app/scripts:ro
+      - ./services/prosody/scripts:/app/scripts:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
 
     # Working directory

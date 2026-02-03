@@ -107,7 +107,7 @@ db-backup:
 [group('Modules')]
 setup-modules:
     @echo "Setting up Prosody community modules locally..."
-    ./scripts/setup-modules-locally.sh
+    ./services/prosody/scripts/setup-modules-locally.sh
 
 # Update local Prosody community modules
 [group('Modules')]

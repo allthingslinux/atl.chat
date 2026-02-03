@@ -18,7 +18,7 @@ class TestInitScript:
         """Create a temporary project structure for testing init.sh."""
         # Copy essential files to temp directory
         project_files = ["scripts/init.sh", "env.example"]
-        project_dirs = ["src/backend/unrealircd/conf", "src/backend/atheme/conf", "docs/examples/unrealircd/tls"]
+        project_dirs = ["services/unrealircd/conf", "services/atheme/conf", "docs/examples/unrealircd/tls"]
 
         for file in project_files:
             src = Path(__file__).parent.parent.parent / file
@@ -34,8 +34,8 @@ class TestInitScript:
                 shutil.copytree(src, dst, dirs_exist_ok=True)
 
         # Create minimal template files if they don't exist
-        unreal_template = tmp_path / "src/backend/unrealircd/conf/unrealircd.conf.template"
-        atheme_template = tmp_path / "src/backend/atheme/conf/atheme.conf.template"
+        unreal_template = tmp_path / "services/unrealircd/conf/unrealircd.conf.template"
+        atheme_template = tmp_path / "services/atheme/conf/atheme.conf.template"
 
         if not unreal_template.exists():
             unreal_template.parent.mkdir(parents=True, exist_ok=True)
@@ -110,7 +110,7 @@ ATHEME_SEND_PASSWORD=testpass
             "data/letsencrypt",
             "logs/unrealircd",
             "logs/atheme",
-            "src/backend/unrealircd/conf/tls",
+            "services/unrealircd/conf/tls",
         ]
 
         for dir_path in expected_dirs:
@@ -210,8 +210,8 @@ ATHEME_SEND_PASSWORD=testpass
         assert result.returncode == 0
 
         # Check that config files were generated
-        unreal_config = temp_project / "src/backend/unrealircd/conf/unrealircd.conf"
-        atheme_config = temp_project / "src/backend/atheme/conf/atheme.conf"
+        unreal_config = temp_project / "services/unrealircd/conf/unrealircd.conf"
+        atheme_config = temp_project / "services/atheme/conf/atheme.conf"
 
         if unreal_config.exists():
             content = unreal_config.read_text()
@@ -236,8 +236,8 @@ class TestPrepareConfigScript:
         script_dst.chmod(script_dst.stat().st_mode | stat.S_IEXEC)
 
         # Create template files
-        unreal_template = tmp_path / "src/backend/unrealircd/conf/unrealircd.conf.template"
-        atheme_template = tmp_path / "src/backend/atheme/conf/atheme.conf.template"
+        unreal_template = tmp_path / "services/unrealircd/conf/unrealircd.conf.template"
+        atheme_template = tmp_path / "services/atheme/conf/atheme.conf.template"
 
         unreal_template.parent.mkdir(parents=True, exist_ok=True)
         atheme_template.parent.mkdir(parents=True, exist_ok=True)
@@ -290,8 +290,8 @@ ATHEME_NETNAME=TestNet
         assert result.returncode == 0, f"Script failed: {result.stderr}"
 
         # Check that config files were created with substituted values
-        unreal_config = temp_project_with_templates / "src/backend/unrealircd/conf/unrealircd.conf"
-        atheme_config = temp_project_with_templates / "src/backend/atheme/conf/atheme.conf"
+        unreal_config = temp_project_with_templates / "services/unrealircd/conf/unrealircd.conf"
+        atheme_config = temp_project_with_templates / "services/atheme/conf/atheme.conf"
 
         if unreal_config.exists():
             content = unreal_config.read_text()
@@ -341,8 +341,8 @@ ATHEME_NETNAME=TestNet
         assert "All configuration files prepared successfully" in result.stdout
 
         # Verify configuration files were created with substituted values
-        unrealircd_conf = temp_project_with_templates / "src/backend/unrealircd/conf/unrealircd.conf"
-        atheme_conf = temp_project_with_templates / "src/backend/atheme/conf/atheme.conf"
+        unrealircd_conf = temp_project_with_templates / "services/unrealircd/conf/unrealircd.conf"
+        atheme_conf = temp_project_with_templates / "services/atheme/conf/atheme.conf"
 
         if unrealircd_conf.exists():
             content = unrealircd_conf.read_text()
@@ -570,7 +570,7 @@ ATHEME_SEND_PASSWORD=int_pass
         assert result2.returncode == 0, f"Config script failed: {result2.stderr}"
 
         # Verify integration worked
-        unreal_config = tmp_path / "src/backend/unrealircd/conf/unrealircd.conf"
+        unreal_config = tmp_path / "services/unrealircd/conf/unrealircd.conf"
         if unreal_config.exists():
             content = unreal_config.read_text()
             assert "integration.test" in content

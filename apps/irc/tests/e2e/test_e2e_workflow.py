@@ -161,7 +161,7 @@ class E2EWorkflowTest:
         project_dir = e2e_env_setup
 
         # Test template processing
-        unreal_template = project_dir / "src/backend/unrealircd/conf/unrealircd.conf.template"
+        unreal_template = project_dir / "services/unrealircd/conf/unrealircd.conf.template"
         if unreal_template.exists():
             # Create mock environment
             test_env = {

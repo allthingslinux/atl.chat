@@ -8,7 +8,7 @@ services:
   atl-irc-server:
     # Build configuration
     build:
-      context: ./src/backend/unrealircd
+      context: ./services/unrealircd
       dockerfile: Containerfile
       args:
         UNREALIRCD_VERSION: ${UNREALIRCD_VERSION:-6.2.0.1}
@@ -22,7 +22,7 @@ services:
 
     # Volume mounts - aligned with Containerfile paths
     volumes:
-      - ./src/backend/unrealircd/conf:/home/unrealircd/unrealircd/conf
+      - ./services/unrealircd/conf:/home/unrealircd/unrealircd/conf
       - ./logs/unrealircd:/home/unrealircd/unrealircd/logs
       - ./data/unrealircd:/home/unrealircd/unrealircd/data
 
@@ -65,7 +65,7 @@ services:
   atl-irc-services:
     # Build configuration
     build:
-      context: ./src/backend/atheme
+      context: ./services/atheme
       dockerfile: Containerfile
       args:
         UID: ${PUID:-1000}
@@ -83,7 +83,7 @@ services:
 
     # Volume mounts
     volumes:
-      - ./src/backend/atheme/conf:/usr/local/atheme/etc:ro
+      - ./services/atheme/conf:/usr/local/atheme/etc:ro
       - ./data/atheme:/usr/local/atheme/data
       - ./logs/atheme:/usr/local/atheme/logs
 
@@ -176,7 +176,7 @@ services:
     # Volume mounts
     volumes:
       - ./scripts:/scripts:ro # SSL management scripts (read-only)
-      - ./src/backend/unrealircd/conf/tls:/tls # SSL certificates directory
+      - ./services/unrealircd/conf/tls:/tls # SSL certificates directory
       - ./data/letsencrypt:/letsencrypt # Let's Encrypt data
       - ./cloudflare-credentials.ini:/cloudflare-credentials.ini:ro # Cloudflare API credentials
 

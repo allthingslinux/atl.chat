@@ -18,7 +18,7 @@ class TestConfigurationValidation:
     def temp_project_with_configs(self, tmp_path):
         """Create a temporary project with configuration files."""
         # Copy configuration files and templates
-        config_paths = ["src/backend/unrealircd/conf", "src/backend/atheme/conf", "compose.yaml", "env.example"]
+        config_paths = ["services/unrealircd/conf", "services/atheme/conf", "compose.yaml", "env.example"]
 
         for path in config_paths:
             src = Path(__file__).parent.parent.parent / path
@@ -71,7 +71,7 @@ class TestConfigurationValidation:
     @pytest.mark.integration
     def test_unrealircd_config_template_validation(self, temp_project_with_configs):
         """Test UnrealIRCd configuration template validation."""
-        template_file = temp_project_with_configs / "src/backend/unrealircd/conf/unrealircd.conf.template"
+        template_file = temp_project_with_configs / "services/unrealircd/conf/unrealircd.conf.template"
 
         if not template_file.exists():
             pytest.skip("UnrealIRCd template not found")
@@ -94,7 +94,7 @@ class TestConfigurationValidation:
     @pytest.mark.integration
     def test_atheme_config_template_validation(self, temp_project_with_configs):
         """Test Atheme configuration template validation."""
-        template_file = temp_project_with_configs / "src/backend/atheme/conf/atheme.conf.template"
+        template_file = temp_project_with_configs / "services/atheme/conf/atheme.conf.template"
 
         if not template_file.exists():
             pytest.skip("Atheme template not found")
@@ -151,8 +151,8 @@ class TestConfigurationValidation:
             "ATHEME_SEND_PASSWORD": "test_password",
         }
 
-        unreal_template = temp_project_with_configs / "src/backend/unrealircd/conf/unrealircd.conf.template"
-        atheme_template = temp_project_with_configs / "src/backend/atheme/conf/atheme.conf.template"
+        unreal_template = temp_project_with_configs / "services/unrealircd/conf/unrealircd.conf.template"
+        atheme_template = temp_project_with_configs / "services/atheme/conf/atheme.conf.template"
 
         if unreal_template.exists():
             # Test envsubst substitution
@@ -180,8 +180,8 @@ class TestConfigurationValidation:
     def test_configuration_file_permissions(self, temp_project_with_configs):
         """Test that configuration files have appropriate permissions."""
         conf_dirs = [
-            temp_project_with_configs / "src/backend/unrealircd/conf",
-            temp_project_with_configs / "src/backend/atheme/conf",
+            temp_project_with_configs / "services/unrealircd/conf",
+            temp_project_with_configs / "services/atheme/conf",
         ]
 
         for conf_dir in conf_dirs:
@@ -223,7 +223,7 @@ class TestConfigurationValidation:
     @pytest.mark.integration
     def test_configuration_backup_creation(self, temp_project_with_configs):
         """Test configuration backup creation during updates."""
-        unreal_config = temp_project_with_configs / "src/backend/unrealircd/conf/unrealircd.conf"
+        unreal_config = temp_project_with_configs / "services/unrealircd/conf/unrealircd.conf"
 
         if not unreal_config.exists():
             unreal_config.write_text('# Original config\nme { name "test"; };')
@@ -246,8 +246,8 @@ class TestConfigurationValidation:
     def test_template_syntax_validation(self, temp_project_with_configs):
         """Test that configuration templates have valid syntax."""
         template_files = [
-            temp_project_with_configs / "src/backend/unrealircd/conf/unrealircd.conf.template",
-            temp_project_with_configs / "src/backend/atheme/conf/atheme.conf.template",
+            temp_project_with_configs / "services/unrealircd/conf/unrealircd.conf.template",
+            temp_project_with_configs / "services/atheme/conf/atheme.conf.template",
         ]
 
         for template_file in template_files:
