@@ -117,7 +117,7 @@ services:
     # Build configuration
     build:
       context: .
-      dockerfile: src/frontend/webpanel/Containerfile
+      dockerfile: services/webpanel/Containerfile
 
     # Container configuration
     container_name: atl-irc-webpanel
@@ -224,14 +224,14 @@ services:
   # gamja:
   #   build:
   #     context: .
-  #     dockerfile: src/frontend/gamja/Containerfile
+  #     dockerfile: services/gamja/Containerfile
   #   container_name: gamja
   #   hostname: gamja
   #   depends_on:
   #     unrealircd:
   #       condition: service_healthy
   #   volumes:
-  #     - ./src/frontend/gamja:/var/www/html/gamja:ro
+  #     - ./services/gamja:/var/www/html/gamja:ro
   #   environment:
   #     - TZ=UTC
   #   ports:

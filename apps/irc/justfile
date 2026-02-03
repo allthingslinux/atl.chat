@@ -265,7 +265,7 @@ lint:
     fi
     @if command -v hadolint >/dev/null 2>&1; then \
         echo "Running hadolint..."; \
-        hadolint services/unrealircd/Containerfile services/atheme/Containerfile src/frontend/webpanel/Containerfile src/frontend/gamja/Containerfile; \
+        hadolint services/unrealircd/Containerfile services/atheme/Containerfile services/webpanel/Containerfile services/gamja/Containerfile; \
         echo "Hadolint completed!"; \
     else \
         echo "hadolint not found. Install it for Containerfile validation."; \
