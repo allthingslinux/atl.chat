@@ -16,11 +16,6 @@ volumes:
     name: atl-certs
     driver: local
 
-  # Centralized logs (optional, for log aggregation)
-  atl-logs:
-    name: atl-logs
-    driver: local
-
   # =============================================================================
   # IRC App Volumes
   # =============================================================================
