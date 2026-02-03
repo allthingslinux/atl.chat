@@ -510,34 +510,6 @@ services:
     stop_grace_period: 10s
 
 # ============================================================================
-# VOLUMES
-# ============================================================================
-volumes:
-  atl-xmpp-data:
-    name: atl-xmpp-data
-    driver: local
-  atl-xmpp-uploads:
-    name: atl-xmpp-uploads
-    driver: local
-  atl-xmpp-db-data:
-    name: atl-xmpp-db-data
-    driver: local
-  atl-xmpp-turn-data:
-    name: atl-xmpp-turn-data
-    driver: local
-  atl-xmpp-certs:
-    name: atl-xmpp-certs
-    driver: local
-
-# ============================================================================
-# NETWORKS
-# ============================================================================
-networks:
-  atl-chat:
-    name: atl-chat
-    external: true
-
-# ============================================================================
 # CONFIGS
 # ============================================================================
 configs:
