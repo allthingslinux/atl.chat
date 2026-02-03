@@ -1,0 +1,42 @@
+---
+name: atl-bridge
+
+include:
+  - ../../infra/docker/compose/networks.yaml
+
+services:
+  # ============================================================================
+  # BIBOUMI - XMPP-IRC Gateway
+  # ============================================================================
+  xmpp-biboumi:
+    image: louiz/biboumi:9.0
+    container_name: xmpp-biboumi
+    hostname: xmpp-biboumi
+    restart: unless-stopped
+
+    environment:
+      # Connects to the centralized XMPP server on the shared network
+      - BIBOUMI_PASSWORD=${BIBOUMI_PASSWORD:-biboumi_secret}
+      - BIBOUMI_XMPP_SERVER_IP=${ATL_XMPP_HOST:-atl-xmpp-server}
+      - BIBOUMI_XMPP_SERVER_PORT=5347
+      - BIBOUMI_HOSTNAME=irc.${ATL_BASE_DOMAIN:-atl.chat}
+
+    networks:
+      - atl-chat
+
+  # ============================================================================
+  # MATTERBRIDGE - Multi-Protocol Bridge
+  # ============================================================================
+  matterbridge:
+    build:
+      context: ./matterbridge
+      dockerfile: Containerfile
+    container_name: matterbridge
+    hostname: matterbridge
+    restart: unless-stopped
+
+    volumes:
+      - ./matterbridge/matterbridge.toml:/etc/matterbridge/matterbridge.toml:ro
+
+    networks:
+      - atl-chat
