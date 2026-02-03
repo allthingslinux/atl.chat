@@ -3,15 +3,13 @@
   "private": true,
   "packageManager": "pnpm@9.15.0",
   "scripts": {
-    "dev": "turbo dev",
-    "build": "turbo build",
-    "lint": "turbo lint",
-    "test": "turbo test"
+    "dev": "just dev",
+    "build": "just build",
+    "lint": "just lint",
+    "test": "just test"
   },
   "workspaces": [
     "apps/*"
   ],
-  "devDependencies": {
-    "turbo": "^2.7.2"
-  }
+  "devDependencies": {}
 }

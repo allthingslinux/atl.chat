@@ -9,19 +9,41 @@
 
 name: atl-chat
 
-# Include shared infrastructure
+# Include all sub-stacks
 include:
+  # Infrastructure
   - infra/docker/compose/networks.yaml
-  - infra/docker/compose/volumes.yaml
+  - infra/docker/cert-manager/compose.yaml
+
+  # Applications
   - apps/irc/compose.yaml
   - apps/xmpp/compose.yaml
+  - apps/bridge/compose.yaml
 
-# Root-level services (monitoring, logging, etc.)
 services:
-  # Placeholder for future root-level services
-  # Examples: Prometheus, Grafana, Traefik, etc.
-  placeholder:
-    image: alpine:latest
-    command: echo "Root compose loaded successfully"
-    profiles:
-      - placeholder
+  atl-logs:
+    image: amir20/dozzle:v8
+    container_name: atl-logs
+    restart: unless-stopped
+    profiles: [ "dev" ]
+    ports:
+      - "${DOZZLE_PORT:-8082}:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - DOZZLE_FILTER=name=atl-*
+    networks:
+      - atl-chat
+
+  atl-adminer:
+    image: adminer:4
+    container_name: atl-adminer
+    restart: unless-stopped
+    profiles: [ "dev" ]
+    ports:
+      - "${ADMINER_PORT:-8081}:8080"
+    environment:
+      ADMINER_DEFAULT_DRIVER: pgsql
+      ADMINER_DESIGN: "dracula"
+    networks:
+      - atl-chat

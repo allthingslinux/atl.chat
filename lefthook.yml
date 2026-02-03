@@ -14,7 +14,7 @@ pre-commit:
     lint-web:
       root: apps/web/
       glob: "*.{js,ts,jsx,tsx}"
-      run: npx eslint {files}
+      run: pnpm run fix {files} && pnpm run check {files}
     yaml-lint:
       glob: "*.{yml,yaml}"
       run: yamllint {files}

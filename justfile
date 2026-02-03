@@ -7,17 +7,35 @@ mod xmpp './apps/xmpp'
 # IRC Service (UnrealIRCd)
 mod irc './apps/irc'
 
+# Web Application (Next.js)
+mod web './apps/web'
+
 set export := true
 
-# Spin up the entire stack (or specific profiles)
-[group('Orchestration')]
-up profile="":
-    docker compose ${profile:+--profile "$profile"} up -d
 
-# Spin up the local development stack with overrides
+
+# Spin up the local development stack
 [group('Orchestration')]
-dev profile="":
-    docker compose ${profile:+--profile "$profile"} -f compose.yaml -f compose.override.yaml up -d
+dev:
+    export PROSODY_DOMAIN="localhost"
+    export PROSODY_UPLOAD_EXTERNAL_URL="http://localhost:5280/upload/"
+    export PROSODY_PROXY_ADDRESS="localhost"
+    export PROSODY_SSL_KEY="certs/live/localhost/privkey.pem"
+    export PROSODY_SSL_CERT="certs/live/localhost/fullchain.pem"
+    export IRC_DOMAIN="localhost"
+    export IRC_SSL_CERT_PATH="/home/unrealircd/unrealircd/conf/tls/live/localhost/fullchain.pem"
+    export IRC_SSL_KEY_PATH="/home/unrealircd/unrealircd/conf/tls/live/localhost/privkey.pem"
+    docker compose --profile dev up -d
+
+# Spin up the staging stack
+[group('Orchestration')]
+staging:
+    docker compose --profile staging up -d
+
+# Spin up the production stack (default profile)
+[group('Orchestration')]
+prod:
+    docker compose --profile prod up -d
 
 # Stop all services
 [group('Orchestration')]
