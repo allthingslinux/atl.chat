@@ -1,6 +1,10 @@
 ---
 name: atl-irc
 
+# Use root .env file for all services
+env_file:
+  - ../../.env
+
 services:
   # ============================================================================
   # UNREALIRCD - Main IRC Server
