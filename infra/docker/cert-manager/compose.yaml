@@ -1,0 +1,23 @@
+name: atl-cert-manager
+
+include:
+  - ../compose/networks.yaml
+
+services:
+  cert-manager:
+    image: goacme/lego:latest
+    container_name: atl-cert-manager
+    hostname: atl-cert-manager
+    restart: unless-stopped
+    entrypoint: /scripts/run.sh
+
+    environment:
+      - CLOUDFLARE_DNS_API_TOKEN=${CLOUDFLARE_DNS_API_TOKEN}
+      - LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL}
+
+    volumes:
+      - ../../../data/certs:/data
+      - ./scripts:/scripts:ro
+
+    networks:
+      - atl-chat
