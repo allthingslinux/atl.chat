@@ -9,10 +9,6 @@
 
 name: atl-chat
 
-# Use root .env file
-env_file:
-  - .env
-
 # Include shared infrastructure
 include:
   - infra/docker/compose/networks.yaml
