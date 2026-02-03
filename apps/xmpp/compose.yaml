@@ -31,7 +31,7 @@ services:
 
     # Environment configuration
     env_file:
-      - path: .env
+      - path: ../../.env
         required: false
 
     # Security configuration
@@ -121,7 +121,7 @@ services:
 
     # Environment configuration
     env_file:
-      - path: .env
+      - path: ../../.env
         required: false
 
     # Database initialization
@@ -231,7 +231,7 @@ services:
 
     # Environment configuration
     env_file:
-      - path: .env
+      - path: ../../.env
         required: false
 
     # Logging configuration
@@ -292,7 +292,7 @@ services:
 
     # Environment configuration
     env_file:
-      - path: .env
+      - path: ../../.env
         required: false
 
     # Logging configuration
@@ -415,7 +415,7 @@ services:
 
     # Environment configuration
     env_file:
-      - path: .env
+      - path: ../../.env
         required: false
 
     # Volume mounts
@@ -450,7 +450,7 @@ services:
 
     # Environment configuration
     env_file:
-      - path: .env
+      - path: ../../.env
         required: false
 
     # Volume mounts
@@ -475,7 +475,7 @@ services:
 
     # Environment configuration
     env_file:
-      - path: .env
+      - path: ../../.env
         required: false
 
     # Volume mounts
