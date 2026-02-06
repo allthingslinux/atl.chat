@@ -36,19 +36,19 @@ services:
       - IRC_DOMAIN=${IRC_DOMAIN}
       - IRC_SSL_CERT_PATH=${IRC_SSL_CERT_PATH}
       - IRC_SSL_KEY_PATH=${IRC_SSL_KEY_PATH}
+      - ATL_GATEWAY_IP=${ATL_GATEWAY_IP}
       - TZ=UTC
       - PUID=${PUID:-1000}
       - PGID=${PGID:-1000}
 
-    # Port mappings
-    # Binding to 0.0.0.0 (or specific Host IP) so NPM upstream can reach us
-    # NPM sends PROXY protocol headers, so UnrealIRCd must be configured with 'proxy' block
+    # Port mappings - Bound to Tailscale IP (ATL_CHAT_IP) for security
+    # This prevents public access to the atl.chat VPS IP
     ports:
-      - '${IRC_TLS_PORT:-6697}:6697' # IRC over SSL/TLS (+ Proxy Protocol allowed)
-      - '${IRC_SERVER_PORT:-6900}:6900' # Server-to-server TLS
-      - '${ATHEME_UPLINK_PORT:-6901}:6901' # Atheme connection (internal)
-      - '${IRC_RPC_PORT:-8600}:8600' # JSON-RPC API
-      - '${IRC_WEBSOCKET_PORT:-8000}:8000' # WebSocket (for Webclient)
+      - '${ATL_CHAT_IP:-127.0.0.1}:${IRC_TLS_PORT:-6697}:6697' # IRC over SSL/TLS (NPM Upstream)
+      - '${ATL_CHAT_IP:-127.0.0.1}:${IRC_SERVER_PORT:-6900}:6900' # Server-to-server TLS
+      - '${ATL_CHAT_IP:-127.0.0.1}:${IRC_RPC_PORT:-8600}:8600' # JSON-RPC API
+      - '${ATL_CHAT_IP:-127.0.0.1}:${IRC_WEBSOCKET_PORT:-8000}:8000' # WebSocket (for Webclient)
+      # Port 6901 is internal-only, no mapping needed to host if shared network used
 
     networks:
       - atl-chat

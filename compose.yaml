@@ -21,9 +21,9 @@ include:
   - apps/bridge/compose.yaml
 
 services:
-  atl-logs:
+  dozzle:
     image: amir20/dozzle:v8
-    container_name: atl-logs
+    container_name: dozzle
     restart: unless-stopped
     profiles: [ "dev" ]
     ports:
@@ -35,9 +35,9 @@ services:
     networks:
       - atl-chat
 
-  atl-adminer:
+  adminer:
     image: adminer:4
-    container_name: atl-adminer
+    container_name: adminer
     restart: unless-stopped
     profiles: [ "dev" ]
     ports:

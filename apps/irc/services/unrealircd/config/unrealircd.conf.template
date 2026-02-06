@@ -20,6 +20,12 @@ me {
 	sid "001";
 }
 
+/* Trust the Nginx Proxy Manager (NPM) gateway on Tailscale */
+proxy {
+	ip "${ATL_GATEWAY_IP}";
+	type forwarded;
+}
+
 admin {
 	"${IRC_ADMIN_NAME}";
 	"admin";
@@ -55,7 +61,7 @@ listen {
 listen {
 	ip *;
 	port 6697;
-	options { tls; }  /* Allows both clients and servers */
+	options { tls; proxy; }  /* Support both direct TLS and Proxy Protocol via NPM */
 }
 
 listen {
@@ -84,16 +90,17 @@ listen {
 	ip *;
 	port 8000;
 	options {
-		tls;
+		/* tls; */ /* Disabled because SSL is terminated at NPM */
 		websocket { type text; }
+		proxy;
 	}
-	tls-options {
+	/* tls-options {
 		certificate "${IRC_SSL_CERT_PATH}";
 		key "${IRC_SSL_KEY_PATH}";
 		options {
 			no-client-certificate;
 		}
-	}
+	} */
 }
 
 /* ============================================================================
