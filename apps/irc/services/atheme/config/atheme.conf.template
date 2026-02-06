@@ -358,8 +358,8 @@ uplink "${IRC_DOMAIN}" {
     host = "${ATHEME_UPLINK_HOST}";
     #vhost = "192.0.2.5";
     port = ${ATHEME_UPLINK_PORT};
-    send_password = "${ATHEME_SEND_PASSWORD}";
-    receive_password = "${ATHEME_RECEIVE_PASSWORD}";
+    send_password = "${IRC_SERVICES_PASSWORD}";
+    receive_password = "${IRC_SERVICES_PASSWORD}";
 };
 
 nickserv {
