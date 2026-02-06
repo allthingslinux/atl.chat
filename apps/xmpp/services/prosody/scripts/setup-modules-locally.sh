@@ -39,26 +39,22 @@ fi
 # Create enabled directory
 mkdir -p "$ENABLED_DIR"
 
-# Default modules to enable
-DEFAULT_MODULES=(
-    "mod_cloud_notify"
-    "mod_cloud_notify_extensions"
-    "mod_muc_notifications"
-    "mod_muc_offline_delivery"
-    "mod_http_status"
-    "mod_compliance_latest"
-    "mod_anti_spam"
-    "mod_admin_blocklist"
-    "mod_spam_reporting"
-    "mod_csi_battery_saver"
-    "mod_invites"
-    "mod_vcard_muc"
-    "mod_s2s_status"
-    "mod_log_slow_events"
-    "mod_pastebin"
-    "mod_reload_modules"
-    "mod_pubsub_subscription"
-)
+# Read modules from modules.list
+MODULES_FILE="modules.list"
+if [[ -f "$MODULES_FILE" ]]; then
+    echo "📄 Reading enabled modules from $MODULES_FILE..."
+    mapfile -t DEFAULT_MODULES < <(grep -v '^#' "$MODULES_FILE" | grep -v '^$')
+else
+    echo "⚠️  $MODULES_FILE not found, using hardcoded defaults."
+    DEFAULT_MODULES=(
+        "mod_cloud_notify"
+        "mod_cloud_notify_extensions"
+        "mod_muc_notifications"
+        "mod_muc_offline_delivery"
+        "mod_http_status"
+        "mod_compliance_latest"
+    )
+fi
 
 echo "🔗 Creating symlinks for default modules..."
 for module in "${DEFAULT_MODULES[@]}"; do

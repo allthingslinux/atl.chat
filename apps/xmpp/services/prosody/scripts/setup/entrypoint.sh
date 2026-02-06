@@ -164,10 +164,9 @@ setup_certificates() {
     openssl genrsa -out "$key_file" 4096 2> /dev/null
 
     # Generate certificate with proper Subject Alternative Names
-    openssl req -new -x509 -key "$key_file" -out "$cert_file" -days 365 \
+    openssl req -new -x509 -nodes -key "$key_file" -out "$cert_file" -days 365 \
         -subj "/CN=${PROSODY_DOMAIN}" \
-        -addext "subjectAltName=DNS:${PROSODY_DOMAIN},DNS:*.${PROSODY_DOMAIN},DNS:muc.${PROSODY_DOMAIN},DNS:upload.${PROSODY_DOMAIN}" \
-        2> /dev/null
+        -addext "subjectAltName=DNS:${PROSODY_DOMAIN},DNS:*.${PROSODY_DOMAIN},DNS:muc.${PROSODY_DOMAIN},DNS:upload.${PROSODY_DOMAIN}"
 
     # Set proper permissions (only if running as root)
     if [[ $EUID -eq 0 ]]; then
@@ -235,48 +234,29 @@ setup_community_modules() {
     log_info "Setting up community modules..."
 
     # Check if community modules source exists
-    local source_dir="/usr/local/lib/prosody/community-modules/source"
+    local source_dir="/usr/local/lib/prosody/prosody-modules"
     if [[ ! -d "$source_dir" ]]; then
-        log_warn "Community modules source not found at $source_dir"
+        log_warn "Community modules repository not found at $source_dir"
         log_warn "Modules will need to be installed manually or via prosodyctl"
         return 0
     fi
 
-    # Install default modules if PROSODY_EXTRA_MODULES is not set
-    local modules_to_install=()
-    if [[ -n "${PROSODY_EXTRA_MODULES:-}" ]]; then
-        IFS=',' read -ra modules_to_install <<< "$PROSODY_EXTRA_MODULES"
-    else
-        # Default modules to install
-        modules_to_install=(
-            "mod_cloud_notify"
-            "mod_cloud_notify_extensions"
-            "mod_muc_notifications"
-            "mod_muc_offline_delivery"
-            "mod_http_status"
-            "mod_admin_web"
-            "mod_compliance_latest"
-        )
-    fi
-
-    log_info "Installing community modules: ${modules_to_install[*]}"
-
-    # Check if modules are available from local directories
+    # Check if modules are available from enabled directory
     local enabled_dir="/usr/local/lib/prosody/prosody-modules-enabled"
     if [[ ! -d "$enabled_dir" ]]; then
-        log_warn "Community modules not found"
-        log_info "To set up modules locally, run: ../../scripts/xmpp/setup-modules-locally.sh"
-        log_info "Then rebuild the Docker image"
+        log_warn "Enabled community modules directory not found at $enabled_dir"
         return 0
     else
-        log_info "Using community modules from local directories"
+        log_info "Community modules found in $enabled_dir"
         local module_count
-        module_count=$(find "$enabled_dir" -maxdepth 1 -type f 2> /dev/null | wc -l)
-        log_info "Enabled modules: $module_count modules"
+        module_count=$(find "$enabled_dir" -maxdepth 1 -o -type l 2> /dev/null | wc -l)
+        log_info "Enabled modules: $module_count"
     fi
 
-    # Ensure proper ownership
-    chown -R prosody:prosody /usr/local/lib/prosody/prosody-modules-enabled 2> /dev/null || true
+    # Ensure proper ownership (only if running as root)
+    if [[ $EUID -eq 0 ]]; then
+        chown -R "$PROSODY_USER:$PROSODY_USER" "$source_dir" "$enabled_dir" 2> /dev/null || true
+    fi
 }
 
 # ============================================================================
@@ -367,22 +347,7 @@ main() {
     # Switch to prosody user and start in foreground
     exec gosu "$PROSODY_USER" prosody \
         --config="$PROSODY_CONFIG_FILE" \
-        --foreground &
-
-    PROSODY_PID=$!
-    log_info "Prosody started with PID: $PROSODY_PID"
-
-    # Wait for Prosody process
-    wait $PROSODY_PID
-    local exit_code=$?
-
-    if [[ $exit_code -eq 0 ]]; then
-        log_info "Prosody exited normally"
-    else
-        log_error "Prosody exited with code: $exit_code"
-    fi
-
-    exit $exit_code
+        --foreground
 }
 
 # ============================================================================
