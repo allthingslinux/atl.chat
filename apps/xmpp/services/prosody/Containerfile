@@ -81,7 +81,30 @@ RUN ./configure --with-lua=/usr && \
 WORKDIR /usr/src/luarocks
 RUN rm -rf luarocks*
 
-# --- 2. Runtime stage: Minimal image ---
+# --- 2. Module stage: Fetch and prepare community modules ---
+WORKDIR /usr/local/lib/prosody
+COPY modules.list ./
+
+RUN hg clone https://hg.prosody.im/prosody-modules/ prosody-modules && \
+    mkdir -p prosody-modules-enabled && \
+    while IFS= read -r module || [[ -n "$module" ]]; do \
+    # Skip empty lines and comments \
+    [[ -z "$module" || "$module" =~ ^# ]] && continue; \
+    if [[ -d "prosody-modules/$module" ]]; then \
+    ln -s "../prosody-modules/$module" "prosody-modules-enabled/$module"; \
+    echo "✅ $module -> enabled"; \
+    # Fix module structure for community modules that have subdirectories \
+    module_name="${module##*mod_}"; \
+    if [[ -d "prosody-modules/$module/$module_name" && -f "prosody-modules/$module/$module_name/mod_$module_name.lua" ]]; then \
+    ln -sf "$module/$module_name/mod_$module_name.lua" "prosody-modules-enabled/$module.lua"; \
+    echo "✅ Fixed structure for $module_name"; \
+    fi \
+    else \
+    echo "❌ $module not found in repository"; \
+    fi \
+    done < modules.list
+
+# --- 3. Runtime stage: Minimal image ---
 FROM debian:bookworm-slim
 
 # Set shell options for better error handling
@@ -111,7 +134,7 @@ RUN apt-get update && \
     curl \
     dumb-init \
     gosu \
-    jq \
+    openssl \
     rsync \
     wget \
     tar \
@@ -135,13 +158,9 @@ COPY --chown=prosody:prosody scripts/maintenance/health-check.sh /usr/local/bin/
 
 RUN chmod +x /usr/local/bin/entrypoint.sh /usr/local/bin/health-check.sh
 
-# Using local cache approach: modules are cloned locally and enabled via symlinks
-# Copy both the full repository and the enabled modules directory
-COPY prosody-modules /usr/local/lib/prosody/prosody-modules
-COPY prosody-modules-enabled /usr/local/lib/prosody/prosody-modules-enabled
-
-# Ensure the directories exist even if cache is not available
-RUN mkdir -p /usr/local/lib/prosody/prosody-modules /usr/local/lib/prosody/prosody-modules-enabled
+# Copy prepared community modules from builder
+COPY --from=builder /usr/local/lib/prosody/prosody-modules /usr/local/lib/prosody/prosody-modules
+COPY --from=builder /usr/local/lib/prosody/prosody-modules-enabled /usr/local/lib/prosody/prosody-modules-enabled
 
 # --- Expose all relevant ports ---
 EXPOSE 5222 5223 5269 5270 5280 5281 5347 5000
@@ -153,8 +172,8 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 CMD /usr
 VOLUME ["/var/lib/prosody", "/var/log/prosody", "/certs"]
 
 # Set Lua paths for modules and C libraries
-ENV LUA_PATH="/usr/lib/prosody/?.lua;/usr/lib/prosody/?/init.lua;/usr/local/lib/prosody/?.lua;/usr/local/lib/prosody/?/init.lua;/usr/local/lib/prosody/prosody-modules-enabled/?.lua;/usr/local/lib/prosody/prosody-modules-enabled/?/init.lua;/var/lib/prosody/custom_plugins/?.lua;/var/lib/prosody/custom_plugins/?/init.lua;;" \
-    LUA_CPATH="/usr/lib/prosody/?.so;/usr/local/lib/prosody/?.so;;"
+ENV LUA_PATH="/usr/local/lib/prosody/?.lua;/usr/local/lib/prosody/?/init.lua;/usr/local/lib/prosody/prosody-modules-enabled/?.lua;/usr/local/lib/prosody/prosody-modules-enabled/?/init.lua;/var/lib/prosody/custom_plugins/?.lua;/var/lib/prosody/custom_plugins/?/init.lua;;" \
+    LUA_CPATH="/usr/local/lib/prosody/?.so;;"
 
 WORKDIR /var/lib/prosody
 

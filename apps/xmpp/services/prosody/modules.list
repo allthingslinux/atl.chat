@@ -1,0 +1,16 @@
+mod_cloud_notify_extensions
+mod_muc_notifications
+mod_muc_offline_delivery
+mod_http_status
+mod_compliance_latest
+mod_anti_spam
+mod_admin_blocklist
+mod_spam_reporting
+mod_csi_battery_saver
+mod_invites
+mod_vcard_muc
+mod_s2s_status
+mod_log_slow_events
+mod_pastebin
+mod_reload_modules
+mod_pubsub_subscription
