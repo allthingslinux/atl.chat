@@ -34,16 +34,3 @@ services:
       - DOZZLE_FILTER=name=atl-*
     networks:
       - atl-chat
-
-  adminer:
-    image: adminer:4
-    container_name: adminer
-    restart: unless-stopped
-    profiles: [ "dev" ]
-    ports:
-      - "${ADMINER_PORT:-8081}:8080"
-    environment:
-      ADMINER_DEFAULT_DRIVER: pgsql
-      ADMINER_DESIGN: "dracula"
-    networks:
-      - atl-chat

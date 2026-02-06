@@ -15,22 +15,10 @@ admins = { Lua.os.getenv("PROSODY_ADMIN_JID") or "admin@localhost" }
 
 default_storage = "sql"
 
--- PostgreSQL configuration
+-- SQLite configuration
 sql = {
-	driver = Lua.os.getenv("PROSODY_DB_DRIVER") or "PostgreSQL",
-	database = Lua.os.getenv("PROSODY_DB_NAME") or "prosody",
-	username = Lua.os.getenv("PROSODY_DB_USER") or "prosody",
-	password = Lua.os.getenv("PROSODY_DB_PASSWORD") or "prosody",
-	host = Lua.os.getenv("PROSODY_DB_HOST") or "localhost",
-	port = Lua.tonumber(Lua.os.getenv("PROSODY_DB_PORT")) or 5432,
-
-	-- Connection pooling
-	pool_size = 10,
-	pool_overflow = 20,
-	pool_timeout = 30,
-
-	-- TLS for database connection
-	ssl = { mode = "prefer", protocol = "tlsv1_2+" },
+	driver = "SQLite3",
+	database = "data/prosody.sqlite",
 }
 
 -- Storage backend assignments

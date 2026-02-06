@@ -17,17 +17,10 @@ set export := true
 # Spin up the local development stack
 [group('Orchestration')]
 dev:
-    export PROSODY_DOMAIN="xmpp.localhost"
-    export PROSODY_UPLOAD_EXTERNAL_URL="http://xmpp.localhost:5280/upload/"
-    export PROSODY_PROXY_ADDRESS="xmpp.localhost"
-    export PROSODY_SSL_KEY="certs/live/xmpp.localhost/privkey.pem"
-    export PROSODY_SSL_CERT="certs/live/xmpp.localhost/fullchain.pem"
-    export IRC_DOMAIN="irc.localhost"
-    export IRC_SSL_CERT_PATH="/home/unrealircd/unrealircd/config/tls/live/irc.localhost/fullchain.pem"
-    export IRC_SSL_KEY_PATH="/home/unrealircd/unrealircd/config/tls/live/irc.localhost/privkey.pem"
-    @echo "Running IRC initialization..."
-    @./apps/irc/scripts/init.sh
-    docker compose --profile dev up -d
+    @echo "Initializing Development Environment..."
+    @set -a && . ./.env.dev && set +a && \
+     ./apps/irc/scripts/init.sh
+    docker compose --env-file .env --env-file .env.dev --profile dev up -d
 
 # Spin up the staging stack
 [group('Orchestration')]

@@ -1,108 +1,12 @@
 # IRC Service Justfile
-# Unified command orchestration for the IRC service (UnrealIRCd + Atheme + WebPanel)
-
-# Start development environment
-[group('Development')]
-up:
-    @echo "Starting IRC.atl.chat"
-    @echo "Running comprehensive setup..."
-    ./scripts/init.sh
-    ./scripts/prepare-config.sh
-    docker compose up -d
-    @echo "Services started!"
-    @echo "IRC Server: localhost:6697 (TLS only)"
-    @echo "WebPanel: http://localhost:8080"
-    @echo "Log files accessible at: logs/atl-irc-server/"
-
-# Stop development environment
-[group('Development')]
-down:
-    @echo "Stopping Services"
-    docker compose down
-    @echo "All services stopped and removed."
-
-# Setup only (no start)
-[group('Development')]
-setup:
-    @echo "Setup Only"
-    @echo "Running setup without starting services..."
-    ./scripts/init.sh
-    ./scripts/prepare-config.sh
-    docker compose up -d
-    @echo "Setup completed! Use 'just irc start-only' to start services."
-
-# Start services only (assumes setup is done)
-[group('Development')]
-start-only:
-    @echo "Starting Services Only"
-    docker compose up -d
-    @echo "Services started!"
-
-# Restart all services
-[group('Development')]
-restart:
-    @echo "Restarting Services"
-    docker compose restart
-    @echo "Services restarted successfully!"
-
-# Build services
-[group('Building')]
-build:
-    @echo "Building Services"
-    docker compose build
-    @echo "All services built successfully!"
-
-# Rebuild services (no cache)
-[group('Building')]
-rebuild:
-    @echo "Rebuilding Services (No Cache)"
-    docker compose build --no-cache
-    @echo "All services rebuilt successfully!"
-
-# View development logs
-[group('Logging')]
-logs:
-    @echo "Service Logs"
-    docker compose logs -f
-
-# View UnrealIRCd logs
-[group('Logging')]
-logs-ircd:
-    @echo "UnrealIRCd Logs"
-    docker compose logs -f atl-irc-server
-
-# View Atheme logs
-[group('Logging')]
-logs-atheme:
-    @echo "Atheme Logs"
-    docker compose logs -f atl-irc-services
-
-# View WebPanel logs
-[group('Logging')]
-logs-webpanel:
-    @echo "WebPanel Logs"
-    docker compose logs -f atl-irc-server-webpanel
-
-# View logs with timestamps
-[group('Logging')]
-dev-logs:
-    @echo "All Logs with Timestamps"
-    docker compose logs -f --timestamps
-
-# Status and monitoring
-[group('Monitoring')]
-status:
-    @echo "Service Status"
-    docker compose ps
-    @echo ""
-    @echo "Health checks:"
-    docker compose ps --format "table {{{{.Name}}}}\t{{{{.Status}}}}\t{{{{.Ports}}}}"
+# Component-specific utilities
+# Use root 'just' for lifecycle management (up, down, logs)
 
 # Open shell in running IRCd container
 [group('Development')]
 shell:
     @echo "Development Shell"
-    docker compose exec ircd bash
+    docker compose -p atl-chat exec atl-irc-server bash
 
 # Run comprehensive test suite
 [group('Testing')]

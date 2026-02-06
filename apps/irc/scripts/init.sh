@@ -56,8 +56,8 @@ create_directories() {
 
     # Log directories
     local log_dirs=(
-        "$PROJECT_ROOT/logs/unrealircd"
-        "$PROJECT_ROOT/logs/atheme"
+        "$PROJECT_ROOT/data/irc/logs"
+        "$PROJECT_ROOT/data/atheme/logs"
     )
 
     # SSL directories
@@ -117,20 +117,19 @@ set_permissions() {
         log_info "Set permissions for Atheme data directory"
   fi
 
-    # Set ownership for log directories (if they exist)
-    if [ -d "$PROJECT_ROOT/logs" ]; then
-        sudo chown -R "$current_uid:$current_gid" "$PROJECT_ROOT/logs"
-        # Ensure directories are writable by owner
-        find "$PROJECT_ROOT/logs" -type d -exec chmod 755 {} \;
-        log_info "Set ownership for logs directory"
-  fi
+    # Set ownership for UnrealIRCd logs
+    if [ -d "$PROJECT_ROOT/data/irc/logs" ]; then
+        sudo chown -R "$current_uid:$current_gid" "$PROJECT_ROOT/data/irc/logs"
+        chmod 755 "$PROJECT_ROOT/data/irc/logs"
+        log_info "Set ownership for UnrealIRCd logs"
+    fi
 
     # Set ownership for Atheme logs with correct UID
-    if [ -d "$PROJECT_ROOT/logs/atheme" ]; then
-        sudo chown -R "$atheme_uid:$atheme_gid" "$PROJECT_ROOT/logs/atheme"
-        chmod 755 "$PROJECT_ROOT/logs/atheme"
+    if [ -d "$PROJECT_ROOT/data/atheme/logs" ]; then
+        sudo chown -R "$atheme_uid:$atheme_gid" "$PROJECT_ROOT/data/atheme/logs"
+        chmod 755 "$PROJECT_ROOT/data/atheme/logs"
         log_info "Set permissions for Atheme logs directory"
-  fi
+    fi
 
     # Set permissions for SSL certificates
     if [ ! -d "$APPS_IRC_ROOT/services/unrealircd/config/tls" ]; then
@@ -143,7 +142,6 @@ set_permissions() {
     # Make sure data directories are writable
     find "$PROJECT_ROOT/data" -type d -exec chmod 755 {} \; 2> /dev/null || true
     find "$PROJECT_ROOT/atheme" -type d -exec chmod 755 {} \; 2> /dev/null || true
-    find "$PROJECT_ROOT/logs" -type d -exec chmod 755 {} \; 2> /dev/null || true
 
     log_success "Permissions set successfully"
 }
@@ -207,37 +205,46 @@ setup_ca_bundle() {
 }
 
 # Function to generate self-signed certificates for dev mode
-generate_dev_certs() {
-    log_info "Setting up self-signed certificates for dev mode..."
-
-    local tls_dir="$APPS_IRC_ROOT/services/unrealircd/config/tls"
-    local cert_domain="${IRC_DOMAIN:-localhost}"
-    local live_dir="$tls_dir/live/$cert_domain"
+generate_cert() {
+    local domain="$1"
+    local base_dir="$2"
+    local live_dir="$base_dir/live/$domain"
 
     # Ensure directory exists
     mkdir -p "$live_dir"
 
     # Generate self-signed cert if it doesn't exist
     if [ ! -f "$live_dir/fullchain.pem" ] || [ ! -f "$live_dir/privkey.pem" ]; then
-        log_info "Generating self-signed certificate for $cert_domain..."
+        log_info "Generating self-signed certificate for $domain..."
         openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
             -keyout "$live_dir/privkey.pem" \
             -out "$live_dir/fullchain.pem" \
-            -subj "/CN=$cert_domain" \
-            -addext "subjectAltName = DNS:$cert_domain, DNS:localhost, IP:127.0.0.1" 2>/dev/null
+            -subj "/CN=$domain" \
+            -addext "subjectAltName = DNS:$domain, DNS:*.$domain, DNS:localhost, IP:127.0.0.1" 2>/dev/null
 
-        log_success "Generated self-signed certificate for $cert_domain"
+        log_success "Generated self-signed certificate for $domain"
     else
-        log_info "Self-signed certificate already exists for $cert_domain"
+        log_info "Self-signed certificate already exists for $domain"
+    fi
+}
+
+generate_dev_certs() {
+    log_info "Setting up self-signed certificates for dev mode..."
+
+    # IRC Certificates
+    local irc_tls_dir="$APPS_IRC_ROOT/services/unrealircd/config/tls"
+    generate_cert "${IRC_DOMAIN:-irc.localhost}" "$irc_tls_dir"
+
+    # Legacy compatibility for IRC
+    if [ ! -f "$irc_tls_dir/server.cert.pem" ]; then
+        cp "$irc_tls_dir/live/${IRC_DOMAIN:-irc.localhost}/fullchain.pem" "$irc_tls_dir/server.cert.pem"
+        cp "$irc_tls_dir/live/${IRC_DOMAIN:-irc.localhost}/privkey.pem" "$irc_tls_dir/server.key.pem"
+        log_info "Created legacy IRC certificate copies"
     fi
 
-    # Also generate the legacy server.cert.pem/server.key.pem for compatibility if needed
-    # (though we updated unrealircd.conf to use the live/localhost/ ones)
-    if [ ! -f "$tls_dir/server.cert.pem" ]; then
-        cp "$live_dir/fullchain.pem" "$tls_dir/server.cert.pem"
-        cp "$live_dir/privkey.pem" "$tls_dir/server.key.pem"
-        log_info "Created legacy certificate symlinks/copies"
-    fi
+    # XMPP Certificates
+    local xmpp_cert_dir="$PROJECT_ROOT/data/certs"
+    generate_cert "${PROSODY_DOMAIN:-xmpp.localhost}" "$xmpp_cert_dir"
 
     log_success "Dev certificate setup completed"
 }

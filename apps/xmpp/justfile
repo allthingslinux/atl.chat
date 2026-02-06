@@ -3,61 +3,25 @@
 
 set export := true
 
-# Start development environment (with dev tools)
-[group('Development')]
-up:
-    docker compose --profile dev up -d
-    @echo "Development environment started!"
-    @echo "Adminer: http://localhost:8081"
-    @echo "Logs:    http://localhost:8082"
-    @echo "Web Client: http://localhost:8083"
-
-# Start production environment (no dev tools)
-[group('Production')]
-up-prod:
-    docker compose up -d
-    @echo "Production environment started!"
-
-# Stop all services
-[group('Development')]
-down:
-    docker compose --profile dev down
-
-# View logs
-[group('Development')]
-logs:
-    docker compose --profile dev logs -f
-
-# Build containers
-[group('Development')]
-build:
-    docker compose --profile dev build --no-cache
-
-# Clean environment (targeted)
-[group('Development')]
-clean:
-    @echo "Performing targeted cleanup..."
-    docker compose --profile dev down -v --remove-orphans
-    @echo "Removing XMPP networks..."
-    -docker network ls --filter "label=com.docker.compose.project=atl-xmpp" -q | xargs -r docker network rm
-    @echo "Removing XMPP volumes..."
-    -docker volume ls --filter "label=com.docker.compose.project=atl-xmpp" -q | xargs -r docker volume rm
+# XMPP Service Justfile
+# Component-specific utilities
+# Use root 'just' for lifecycle management (up, down, logs)
 
 # Open shell in running Prosody container
 [group('Management')]
 shell:
-    @CONTAINER=$(docker compose ps -q atl-xmpp-server 2>/dev/null); \
+    @CONTAINER=$(docker compose -p atl-chat ps -q atl-xmpp-server 2>/dev/null); \
     if [ -n "$CONTAINER" ]; then \
         docker exec -it $CONTAINER /bin/bash; \
     else \
-        echo "XMPP server not running"; \
+        echo "XMPP server not running (or project name mismatch)"; \
     fi
 
 # Reload Prosody configuration
 [group('Management')]
 reload:
     @echo "Reloading Prosody configuration..."
-    @CONTAINER=$(docker compose ps -q atl-xmpp-server 2>/dev/null); \
+    @CONTAINER=$(docker compose -p atl-chat ps -q atl-xmpp-server 2>/dev/null); \
     if [ -n "$CONTAINER" ]; then \
         docker exec $CONTAINER prosodyctl reload; \
     else \
@@ -68,7 +32,7 @@ reload:
 [group('User Management')]
 adduser user password="":
     @echo "Adding user: $user"
-    @CONTAINER=$(docker compose ps -q atl-xmpp-server 2>/dev/null); \
+    @CONTAINER=$(docker compose -p atl-chat ps -q atl-xmpp-server 2>/dev/null); \
     if [ -n "$CONTAINER" ]; then \
         if [ -n "$password" ]; then \
             docker exec $CONTAINER bash -c "echo -e '$password\n$password' | prosodyctl adduser $user"; \
@@ -83,7 +47,7 @@ adduser user password="":
 [group('User Management')]
 deluser user:
     @echo "Deleting user: $user"
-    @CONTAINER=$(docker compose ps -q atl-xmpp-server 2>/dev/null); \
+    @CONTAINER=$(docker compose -p atl-chat ps -q atl-xmpp-server 2>/dev/null); \
     if [ -n "$CONTAINER" ]; then \
         docker exec $CONTAINER prosodyctl deluser $user; \
     else \
@@ -94,7 +58,7 @@ deluser user:
 [group('Database')]
 db-backup:
     @echo "Backing up database..."
-    @CONTAINER=$(docker compose ps -q atl-xmpp-db 2>/dev/null); \
+    @CONTAINER=$(docker compose -p atl-chat ps -q atl-xmpp-db 2>/dev/null); \
     if [ -n "$CONTAINER" ]; then \
         BACKUP_FILE="backup_$(date +%Y%m%d_%H%M%S).sql"; \
         docker exec $CONTAINER pg_dumpall -U prosody > $BACKUP_FILE; \
@@ -124,7 +88,7 @@ update-modules:
 [group('Certificates')]
 check-cert domain:
     @echo "Checking certificate for: $domain"
-    @CONTAINER=$(docker compose ps -q atl-xmpp-server 2>/dev/null); \
+    @CONTAINER=$(docker compose -p atl-chat ps -q atl-xmpp-server 2>/dev/null); \
     if [ -n "$CONTAINER" ]; then \
         docker exec $CONTAINER /usr/local/bin/certificate-monitor.sh check "$domain"; \
     else \

@@ -669,11 +669,11 @@ ldap {
 /* File-based logging configuration - SINGLE LOG FILE */
 /*
  * Single comprehensive log file capturing everything
- * All log categories are written to logs/atheme/atheme.log
+ * All log categories are written to logs/atheme.log
  */
 
 /* Single comprehensive log file - captures everything */
-logfile "logs/atheme/atheme.log" { debug; };                /* ALL LOGGING - Everything goes here */
+logfile "logs/atheme.log" { debug; };                /* ALL LOGGING - Everything goes here */
 
 /* Optional: Log to IRC channels (uncomment if needed) */
 #logfile "#services" { debug; };

@@ -74,39 +74,5 @@ services:
       retries: 3
       start_period: 60s
 
-    depends_on:
-      atl-xmpp-db:
-        condition: service_healthy
-
-    networks:
-      - atl-chat
-
-  # ==========================================================================
-  # POSTGRESQL DATABASE
-  # ==========================================================================
-  atl-xmpp-db:
-    image: postgres:17-alpine
-    container_name: atl-xmpp-db
-    hostname: atl-xmpp-db
-    restart: unless-stopped
-
-    env_file:
-      - path: ../../.env
-        required: false
-
-    environment:
-      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
-
-    volumes:
-      - ../../data/postgres:/var/lib/postgresql/data
-      - ./services/prosody/database/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
-
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-prosody}" ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
-
     networks:
       - atl-chat
