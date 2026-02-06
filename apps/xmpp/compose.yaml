@@ -65,7 +65,7 @@ services:
       - ./web/assets:/usr/share/prosody/www:ro
       - ../../data/xmpp/data:/var/lib/prosody/data
       - ../../data/xmpp/uploads:/var/lib/prosody/uploads
-      - ../../data/certs:/etc/prosody/certs:ro
+      - ../../data/certs:/etc/prosody/certs
 
     healthcheck:
       test: [ "CMD", "/usr/local/bin/health-check.sh" ]
