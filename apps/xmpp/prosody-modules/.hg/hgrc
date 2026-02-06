@@ -1,5 +1,0 @@
-[paths]
-default = https://hg.prosody.im/prosody-modules/
-bundle = ../prosody-modules.zstd-v2
-
-# Use bundle when available, fall back to official repo
