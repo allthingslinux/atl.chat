@@ -20,45 +20,30 @@ chown -R "${USER_ID}:${GROUP_ID}" /home/unrealircd/unrealircd/data /home/unreali
 chmod 755 /home/unrealircd/unrealircd/data 2> /dev/null || true
 
 # Validate config exists
-if [ ! -f "/home/unrealircd/unrealircd/conf/unrealircd.conf" ]; then
+if [ ! -f "/home/unrealircd/unrealircd/config/unrealircd.conf" ]; then
     echo "ERROR: Configuration file not found!"
     exit 1
 fi
 
-# Install third-party modules if needed (only on first run)
-MODULES_INSTALLED_FLAG="/home/unrealircd/.modules_installed"
-if [ ! -f "$MODULES_INSTALLED_FLAG" ] && [ -f "/usr/local/bin/install-modules.sh" ]; then
-    echo "Installing third-party modules (first run)..."
-    if [ "$(id -u)" = "0" ]; then
-        # Running as root, switch to the specified user for module installation
-        if su-exec "${USER_ID}:${GROUP_ID}" /usr/local/bin/install-modules.sh; then
-            touch "$MODULES_INSTALLED_FLAG"
-            chown "${USER_ID}:${GROUP_ID}" "$MODULES_INSTALLED_FLAG" 2> /dev/null || true
-            echo "Third-party modules installed successfully!"
-    else
-            echo "Module installation failed, continuing..."
-    fi
-  else
-        # Already running as the correct user
-        if /usr/local/bin/install-modules.sh; then
-            touch "$MODULES_INSTALLED_FLAG"
-            echo "Third-party modules installed successfully!"
-    else
-            echo "Module installation failed, continuing..."
-    fi
-  fi
-elif [ -f "$MODULES_INSTALLED_FLAG" ]; then
-    echo "Third-party modules already installed (skipping)"
-else
-    echo "Module installation script not found, skipping..."
-fi
+# Ownership and permissions are handled by Containerfile and user switching
 
-# Start UnrealIRCd as the specified user
-echo "Starting UnrealIRCd..."
-if [ "$(id -u)" = "0" ]; then
-    # Running as root, switch to the specified user
-    exec su-exec "${USER_ID}:${GROUP_ID}" /home/unrealircd/unrealircd/bin/unrealircd -F "$@"
-else
-    # Already running as the correct user (Containerfile sets USER unrealircd)
-    exec /home/unrealircd/unrealircd/bin/unrealircd -F "$@"
-fi
+# Handle commands
+case "$1" in
+    start)
+        shift
+        echo "Starting UnrealIRCd in foreground..."
+        if [ "$(id -u)" = "0" ]; then
+            exec su-exec "${USER_ID}:${GROUP_ID}" /home/unrealircd/unrealircd/bin/unrealircd -F "$@"
+        else
+            exec /home/unrealircd/unrealircd/bin/unrealircd -F "$@"
+        fi
+        ;;
+    *)
+        echo "Running command: $1"
+        if [ "$(id -u)" = "0" ]; then
+            exec su-exec "${USER_ID}:${GROUP_ID}" /home/unrealircd/unrealircd/unrealircd "$@"
+        else
+            exec /home/unrealircd/unrealircd/unrealircd "$@"
+        fi
+        ;;
+esac

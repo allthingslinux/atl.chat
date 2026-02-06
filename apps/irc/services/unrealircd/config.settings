@@ -5,7 +5,7 @@
 BASEPATH="/home/unrealircd/unrealircd"
 BINDIR="/home/unrealircd/unrealircd/bin"
 DATADIR="/home/unrealircd/unrealircd/data"
-CONFDIR="/home/unrealircd/unrealircd/conf"
+CONFDIR="/home/unrealircd/unrealircd/config"
 MODULESDIR="/home/unrealircd/unrealircd/modules"
 LOGDIR="/home/unrealircd/unrealircd/logs"
 CACHEDIR="/home/unrealircd/unrealircd/cache"
