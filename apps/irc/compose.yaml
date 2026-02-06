@@ -23,10 +23,9 @@ services:
     restart: unless-stopped
 
     volumes:
-      - ./services/unrealircd/conf:/home/unrealircd/unrealircd/conf
+      - ./services/unrealircd/config:/home/unrealircd/unrealircd/config
       - ../../data/irc/data:/home/unrealircd/unrealircd/data
       - ../../data/irc/logs:/home/unrealircd/unrealircd/logs
-      - ../../data/certs:/home/unrealircd/unrealircd/conf/tls:ro
 
     env_file:
       - path: ../../.env

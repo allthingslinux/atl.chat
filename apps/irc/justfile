@@ -201,7 +201,7 @@ ssl-setup:
 [group('SSL')]
 ssl-status:
     @echo "SSL Certificate Status"
-    @if [[ -f "services/unrealircd/conf/tls/server.cert.pem" ]]; then \
+    @if [[ -f "services/unrealircd/config/tls/server.cert.pem" ]]; then \
         ./scripts/ssl-manager.sh check; \
         docker compose ps ssl-monitor | grep -q "Up" && echo "SSL monitoring is running" || echo "SSL monitoring is not running"; \
     else \
@@ -212,7 +212,7 @@ ssl-status:
 [group('SSL')]
 ssl-renew:
     @echo "Forcing SSL Certificate Renewal"
-    @if [[ -f "services/unrealircd/conf/tls/server.cert.pem" ]]; then \
+    @if [[ -f "services/unrealircd/config/tls/server.cert.pem" ]]; then \
         ./scripts/ssl-manager.sh renew; \
     else \
         echo "No SSL certificates found. Run 'just irc ssl-setup' first."; \
@@ -239,7 +239,7 @@ ssl-clean:
     @read -p "Are you sure you want to continue? (type 'yes' to confirm): " confirm && \
     if [[ "$confirm" == "yes" ]]; then \
         echo "Removing SSL certificates..."; \
-        rm -rf data/letsencrypt services/unrealircd/conf/tls; \
+        rm -rf data/letsencrypt services/unrealircd/config/tls; \
         docker compose down ssl-monitor; \
         echo "SSL certificates and monitoring removed."; \
     else \
