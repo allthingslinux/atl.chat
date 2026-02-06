@@ -20,10 +20,10 @@ me {
 	sid "001";
 }
 
-/* Trust the Nginx Proxy Manager (NPM) gateway on Tailscale */
-proxy {
-	ip "${ATL_GATEWAY_IP}";
-	type forwarded;
+/* Support Proxy Protocol from NPM on the same network */
+webirc {
+	mask ${ATL_GATEWAY_IP}/32;
+	password "change_me_webirc_password";
 }
 
 admin {
@@ -61,7 +61,7 @@ listen {
 listen {
 	ip *;
 	port 6697;
-	options { tls; proxy; }  /* Support both direct TLS and Proxy Protocol via NPM */
+	options { tls; }  /* Support direct TLS. Proxy Protocol handled via webirc block. */
 }
 
 listen {
@@ -81,8 +81,8 @@ listen {
      port 8600;
      options { rpc; tls; }
      tls-options {
-         certificate "/home/unrealircd/unrealircd/conf/tls/server.cert.pem";
-         key "/home/unrealircd/unrealircd/conf/tls/server.key.pem";
+         certificate "/home/unrealircd/unrealircd/config/tls/live/localhost/fullchain.pem";
+         key "/home/unrealircd/unrealircd/config/tls/live/localhost/privkey.pem";
      }
 }
 
@@ -92,7 +92,6 @@ listen {
 	options {
 		/* tls; */ /* Disabled because SSL is terminated at NPM */
 		websocket { type text; }
-		proxy;
 	}
 	/* tls-options {
 		certificate "${IRC_SSL_CERT_PATH}";
@@ -116,7 +115,7 @@ set {
 		certificate "${IRC_SSL_CERT_PATH}";
 		key "${IRC_SSL_KEY_PATH}";
 		/* CA certificate bundle for certificate validation */
-		trusted-ca-file "/home/unrealircd/unrealircd/conf/tls/curl-ca-bundle.crt";
+		trusted-ca-file "/home/unrealircd/unrealircd/config/tls/curl-ca-bundle.crt";
 
 		/* Modern TLS protocols - TLS 1.2 and 1.3 only (no older insecure versions) */
 		protocols "TLSv1.2,+TLSv1.3";
@@ -191,8 +190,9 @@ link ${IRC_SERVICES_SERVER} {
 	incoming {
 		/* Allow all connections for services - Docker shared network */
 		mask *;
+		password "${IRC_SERVICES_PASSWORD}";
 	}
-	password "${ATHEME_SEND_PASSWORD}";
+	password "${IRC_SERVICES_PASSWORD}";
 	class servers;
 }
 
