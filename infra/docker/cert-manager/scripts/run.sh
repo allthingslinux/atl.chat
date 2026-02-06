@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 set -e
 
 # Configuration
@@ -12,8 +12,9 @@ echo "Email: $EMAIL"
 
 # Ensure we have credentials
 if [ -z "$CLOUDFLARE_DNS_API_TOKEN" ]; then
-    echo "Error: CLOUDFLARE_DNS_API_TOKEN is not set."
-    exit 1
+    echo "Warning: CLOUDFLARE_DNS_API_TOKEN is not set. Certificate generation skipped."
+    echo "To enable Let's Encrypt, set CLOUDFLARE_DNS_API_TOKEN in your .env file."
+    exec sleep infinity
 fi
 
 # Initial issuance
