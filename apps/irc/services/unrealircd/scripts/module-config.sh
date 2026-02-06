@@ -14,7 +14,7 @@ PURPLE='\033[0;35m'
 NC='\033[0m'
 
 # Configuration
-CONFIG_FILE="/usr/local/unrealircd/conf/unrealircd.conf"
+CONFIG_FILE="/home/unrealircd/unrealircd/config/unrealircd.conf"
 BACKUP_SUFFIX=".backup.$(date +%Y%m%d_%H%M%S)"
 
 # Print functions
@@ -26,8 +26,8 @@ print_header() { echo -e "${PURPLE}=== $1 ===${NC}"; }
 
 # Check if we're running as the correct user
 check_user() {
-  if [ "$(id -u)" != "1001" ]; then
-    print_error "This script must run as the ircd user (UID 1001)"
+  if [ "$(id -u)" != "1000" ]; then
+    print_error "This script must run as the ircd user (UID 1000)"
     exit 1
   fi
 }
@@ -69,8 +69,8 @@ add_module() {
   fi
 
   # Check if module file exists
-  if [ ! -f "/usr/local/unrealircd/modules/third/$module_name.so" ]; then
-    print_warning "Module file not found: /usr/local/unrealircd/modules/third/$module_name.so"
+  if [ ! -f "/home/unrealircd/unrealircd/modules/third/$module_name.so" ]; then
+    print_warning "Module file not found: /home/unrealircd/unrealircd/modules/third/$module_name.so"
     print_warning "Make sure to install the module first using: manage-modules.sh install $module_name"
   fi
 

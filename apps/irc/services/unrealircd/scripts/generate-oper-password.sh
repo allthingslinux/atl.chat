@@ -49,7 +49,7 @@ generate_password() {
 
   # Generate the hash using the container's unrealircd mkpasswd command
   local hash
-  if hash=$(docker compose exec -T "$container_name" /usr/local/unrealircd/bin/unrealircd mkpasswd) && [ -n "$hash" ]; then
+  if hash=$(docker compose exec -T "$container_name" /home/unrealircd/unrealircd/unrealircd mkpasswd) && [ -n "$hash" ]; then
     log_success "Password hash generated successfully!"
     echo
     echo "================================================================="
@@ -80,11 +80,11 @@ show_usage() {
   echo "  $0 [container-name]"
   echo
   echo "Arguments:"
-  echo "  container-name    Name of the IRC container (default: unrealircd)"
+  echo "  container-name    Name of the IRC container (default: atl-irc-server)"
   echo
   echo "Examples:"
-  echo "  $0                # Use default container 'unrealircd'"
-  echo "  $0 unrealircd     # Use container 'unrealircd'"
+  echo "  $0                # Use default container 'atl-irc-server'"
+  echo "  $0 atl-irc-server # Use container 'atl-irc-server'"
   echo
   echo "Requirements:"
   echo "  - IRC container must be running"
@@ -95,12 +95,12 @@ show_usage() {
   echo "  2. Add it to your .env file:"
   echo '     IRC_OPER_PASSWORD="$hash"'
   echo "  3. Restart the IRC container:"
-  echo "     docker compose restart unrealircd"
+  echo "     docker compose restart atl-irc-server"
 }
 
 # Main function
 main() {
-  local container_name="${1:-unrealircd}"
+  local container_name="${1:-atl-irc-server}"
 
   # Show usage if requested
   if [[ ${1:-} == "--help" ]] || [[ ${1:-} == "-h" ]]; then

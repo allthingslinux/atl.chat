@@ -14,11 +14,11 @@ PURPLE='\033[0;35m'
 NC='\033[0m' # No Color
 
 # Configuration
-UNREALIRCD_BIN="/usr/local/bin/unrealircd"
-UNREALIRCD_DIR="/usr/local/unrealircd"
-CONTRIB_DIR="/usr/local/unrealircd/contrib"
-MODULES_DIR="/usr/local/unrealircd/modules"
-CONFIG_DIR="/usr/local/unrealircd/conf"
+UNREALIRCD_BIN="/home/unrealircd/unrealircd/unrealircd"
+UNREALIRCD_DIR="/home/unrealircd/unrealircd"
+CONTRIB_DIR="/home/unrealircd/unrealircd/contrib"
+MODULES_DIR="/home/unrealircd/unrealircd/modules"
+CONFIG_DIR="/home/unrealircd/unrealircd/config"
 
 # Print functions
 print_status() { echo -e "${BLUE}[INFO]${NC} $1"; }
