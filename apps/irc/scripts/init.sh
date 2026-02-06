@@ -7,7 +7,8 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+APPS_IRC_ROOT="$(dirname "$SCRIPT_DIR")"
+PROJECT_ROOT="$(dirname "$(dirname "$APPS_IRC_ROOT")")"
 
 # Load environment variables from .env file if it exists
 if [ -f "$PROJECT_ROOT/.env" ]; then
@@ -51,19 +52,18 @@ create_directories() {
     local data_dirs=(
         "$PROJECT_ROOT/data/unrealircd"
         "$PROJECT_ROOT/data/atheme"
-        "$PROJECT_ROOT/data/letsencrypt"
-  )
+    )
 
     # Log directories
     local log_dirs=(
         "$PROJECT_ROOT/logs/unrealircd"
         "$PROJECT_ROOT/logs/atheme"
-  )
+    )
 
     # SSL directories
     local ssl_dirs=(
-        "$PROJECT_ROOT/src/backend/unrealircd/conf/tls"
-  )
+        "$APPS_IRC_ROOT/services/unrealircd/config/tls"
+    )
 
     # Create all directories
     for dir in "${data_dirs[@]}" "${log_dirs[@]}" "${ssl_dirs[@]}"; do
@@ -133,10 +133,12 @@ set_permissions() {
   fi
 
     # Set permissions for SSL certificates
-    if [ -d "$PROJECT_ROOT/src/backend/unrealircd/conf/tls" ]; then
-        chmod 755 "$PROJECT_ROOT/src/backend/unrealircd/conf/tls" || log_warning "Could not set permissions for SSL directory"
-        log_info "Set permissions for SSL directory"
-  fi
+    if [ ! -d "$APPS_IRC_ROOT/services/unrealircd/config/tls" ]; then
+        sudo mkdir -p "$APPS_IRC_ROOT/services/unrealircd/config/tls"
+    fi
+    sudo chown "$current_uid:$current_gid" "$APPS_IRC_ROOT/services/unrealircd/config/tls" 2> /dev/null || true
+    chmod 755 "$APPS_IRC_ROOT/services/unrealircd/config/tls" || sudo chmod 755 "$APPS_IRC_ROOT/services/unrealircd/config/tls" || log_warning "Could not set permissions for SSL directory"
+    log_info "Set permissions for SSL directory"
 
     # Make sure data directories are writable
     find "$PROJECT_ROOT/data" -type d -exec chmod 755 {} \; 2> /dev/null || true
@@ -151,7 +153,7 @@ setup_ca_bundle() {
     log_info "Setting up CA certificate bundle..."
 
     local ca_template_dir="$PROJECT_ROOT/docs/examples/unrealircd/tls"
-    local ca_runtime_dir="$PROJECT_ROOT/src/backend/unrealircd/conf/tls"
+    local ca_runtime_dir="$APPS_IRC_ROOT/services/unrealircd/config/tls"
     local ca_bundle_file="curl-ca-bundle.crt"
 
     # Ensure runtime directory exists
@@ -187,7 +189,7 @@ setup_ca_bundle() {
 
         # Copy to runtime directory if it doesn't exist
         if [ ! -f "$ca_runtime_dir/$ca_bundle_file" ]; then
-            if cp "$system_ca_bundle" "$ca_runtime_dir/$ca_bundle_file"; then
+            if cp "$system_ca_bundle" "$ca_runtime_dir/$ca_bundle_file" 2> /dev/null || sudo cp "$system_ca_bundle" "$ca_runtime_dir/$ca_bundle_file"; then
                 log_success "Created CA certificate bundle in runtime directory"
       else
                 log_warning "Could not create CA certificate bundle in runtime directory"
@@ -202,6 +204,42 @@ setup_ca_bundle() {
   fi
 
     log_success "CA certificate bundle setup completed"
+}
+
+# Function to generate self-signed certificates for dev mode
+generate_dev_certs() {
+    log_info "Setting up self-signed certificates for dev mode..."
+
+    local tls_dir="$APPS_IRC_ROOT/services/unrealircd/config/tls"
+    local cert_domain="${IRC_DOMAIN:-localhost}"
+    local live_dir="$tls_dir/live/$cert_domain"
+
+    # Ensure directory exists
+    mkdir -p "$live_dir"
+
+    # Generate self-signed cert if it doesn't exist
+    if [ ! -f "$live_dir/fullchain.pem" ] || [ ! -f "$live_dir/privkey.pem" ]; then
+        log_info "Generating self-signed certificate for $cert_domain..."
+        openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+            -keyout "$live_dir/privkey.pem" \
+            -out "$live_dir/fullchain.pem" \
+            -subj "/CN=$cert_domain" \
+            -addext "subjectAltName = DNS:$cert_domain, DNS:localhost, IP:127.0.0.1" 2>/dev/null
+
+        log_success "Generated self-signed certificate for $cert_domain"
+    else
+        log_info "Self-signed certificate already exists for $cert_domain"
+    fi
+
+    # Also generate the legacy server.cert.pem/server.key.pem for compatibility if needed
+    # (though we updated unrealircd.conf to use the live/localhost/ ones)
+    if [ ! -f "$tls_dir/server.cert.pem" ]; then
+        cp "$live_dir/fullchain.pem" "$tls_dir/server.cert.pem"
+        cp "$live_dir/privkey.pem" "$tls_dir/server.key.pem"
+        log_info "Created legacy certificate symlinks/copies"
+    fi
+
+    log_success "Dev certificate setup completed"
 }
 
 # Function to prepare configuration files from templates
@@ -229,8 +267,8 @@ prepare_config_files() {
   fi
 
     # Prepare UnrealIRCd configuration
-    local unreal_template="$PROJECT_ROOT/src/backend/unrealircd/conf/unrealircd.conf.template"
-    local unreal_config="$PROJECT_ROOT/src/backend/unrealircd/conf/unrealircd.conf"
+    local unreal_template="$APPS_IRC_ROOT/services/unrealircd/config/unrealircd.conf.template"
+    local unreal_config="$APPS_IRC_ROOT/services/unrealircd/config/unrealircd.conf"
 
     if [ -f "$unreal_template" ]; then
         log_info "Creating UnrealIRCd configuration from template..."
@@ -246,8 +284,8 @@ prepare_config_files() {
   fi
 
     # Prepare Atheme configuration
-    local atheme_template="$PROJECT_ROOT/src/backend/atheme/conf/atheme.conf.template"
-    local atheme_config="$PROJECT_ROOT/src/backend/atheme/conf/atheme.conf"
+    local atheme_template="$APPS_IRC_ROOT/services/atheme/config/atheme.conf.template"
+    local atheme_config="$APPS_IRC_ROOT/services/atheme/config/atheme.conf"
 
     if [ -f "$atheme_template" ]; then
         log_info "Creating Atheme configuration from template..."
@@ -336,6 +374,9 @@ main() {
 
     # Set up CA certificate bundle
     setup_ca_bundle
+
+    # Generate dev certs
+    generate_dev_certs
 
     # Create .env if needed
     create_env_template

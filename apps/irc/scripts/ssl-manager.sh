@@ -9,9 +9,10 @@
 
 set -euo pipefail
 
-# Get script directory and project root
+# Get script directory, app root, and repository root
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+APPS_IRC_ROOT="$(dirname "$SCRIPT_DIR")"
+REPO_ROOT="$(dirname "$(dirname "$APPS_IRC_ROOT")")"
 
 # Parse command line arguments for debug mode
 DEBUG=false
@@ -34,12 +35,12 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Load environment variables from .env if it exists
-if [ -f "$PROJECT_ROOT/.env" ]; then
+if [ -f "$REPO_ROOT/.env" ]; then
   echo "[$(date)] SSL: Loading environment variables from .env"
   # shellcheck disable=SC1091
-  source "$PROJECT_ROOT/.env"
+  source "$REPO_ROOT/.env"
 else
-  echo "[$(date)] SSL ERROR: .env file not found at $PROJECT_ROOT/.env" >&2
+  echo "[$(date)] SSL ERROR: .env file not found at $REPO_ROOT/.env" >&2
   echo "[$(date)] SSL ERROR: Please create .env file with required variables" >&2
   exit 1
 fi
@@ -81,9 +82,9 @@ validate_configuration() {
 # Simple configuration
 DOMAIN="${IRC_ROOT_DOMAIN}"
 EMAIL="${LETSENCRYPT_EMAIL}"
-TLS_DIR="./src/backend/unrealircd/conf/tls"
-LETSENCRYPT_DIR="./data/letsencrypt"
-CREDENTIALS_FILE="./cloudflare-credentials.ini"
+TLS_DIR="$APPS_IRC_ROOT/services/unrealircd/config/tls"
+LETSENCRYPT_DIR="$REPO_ROOT/data/letsencrypt"
+CREDENTIALS_FILE="$APPS_IRC_ROOT/services/unrealircd/cloudflare-credentials.ini"
 
 # Validate configuration early
 validate_configuration
@@ -475,7 +476,7 @@ copy_certificates() {
 
   # Ensure CA certificate bundle exists (required for SSL validation)
   local ca_bundle_target="$TLS_DIR/curl-ca-bundle.crt"
-  local ca_bundle_source="docs/examples/unrealircd/tls/curl-ca-bundle.crt"
+  local ca_bundle_source="$REPO_ROOT/apps/irc/services/unrealircd/config/examples/tls/curl-ca-bundle.crt"
 
   if [[ ! -f $ca_bundle_target ]]; then
     log_verbose "CA certificate bundle not found, restoring from template..."
@@ -591,7 +592,7 @@ restart_services() {
   log_verbose "Docker socket is accessible"
 
   # Check if containers exist before trying to restart them
-  local containers=("unrealircd" "unrealircd-webpanel")
+  local containers=("atl-irc-server" "atl-irc-webpanel")
   local restart_needed=()
   local restart_succeeded=()
   local restart_failed=()
@@ -671,9 +672,9 @@ ENVIRONMENT VARIABLES (from .env file):
     LETSENCRYPT_EMAIL  - Email for Let's Encrypt notifications
 
 FILES:
-    ./cloudflare-credentials.ini  - Cloudflare API token
-    ./data/letsencrypt/           - Let's Encrypt data directory
-    ./src/backend/unrealircd/conf/tls/        - UnrealIRCd TLS certificates
+    ./cloudflare-credentials.ini           - Cloudflare API token
+    $REPO_ROOT/data/letsencrypt/           - Let's Encrypt data directory
+    $APPS_IRC_ROOT/services/unrealircd/config/tls/ - UnrealIRCd TLS certificates
 
 For more information, see the SSL documentation.
 EOF

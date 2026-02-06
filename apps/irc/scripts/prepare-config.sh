@@ -7,7 +7,8 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+APPS_IRC_ROOT="$(dirname "$SCRIPT_DIR")"
+PROJECT_ROOT="$(dirname "$(dirname "$APPS_IRC_ROOT")")"
 
 # Colors for output
 RED='\033[0;31m'
@@ -35,8 +36,8 @@ log_error() {
 
 # Function to prepare configuration
 prepare_config() {
-  local unreal_config="$PROJECT_ROOT/src/backend/unrealircd/conf/unrealircd.conf"
-  local atheme_config="$PROJECT_ROOT/src/backend/atheme/conf/atheme.conf"
+  local unreal_config="$APPS_IRC_ROOT/services/unrealircd/config/unrealircd.conf"
+  local atheme_config="$APPS_IRC_ROOT/services/atheme/config/atheme.conf"
 
   log_info "Preparing IRC configuration files with environment variables..."
 
@@ -58,7 +59,7 @@ prepare_config() {
   fi
 
   # Prepare UnrealIRCd configuration
-  local unreal_template="$PROJECT_ROOT/src/backend/unrealircd/conf/unrealircd.conf.template"
+  local unreal_template="$APPS_IRC_ROOT/services/unrealircd/config/unrealircd.conf.template"
   if [ -f "$unreal_template" ]; then
     log_info "Preparing UnrealIRCd configuration from template..."
 
@@ -104,7 +105,7 @@ prepare_config() {
   fi
 
   # Prepare Atheme configuration
-  local atheme_template="$PROJECT_ROOT/src/backend/atheme/conf/atheme.conf.template"
+  local atheme_template="$APPS_IRC_ROOT/services/atheme/config/atheme.conf.template"
   if [ -f "$atheme_template" ]; then
     log_info "Preparing Atheme configuration from template..."
 
