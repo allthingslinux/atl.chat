@@ -1,7 +1,7 @@
 -- Plugin paths for community and custom modules
 plugin_paths = {
     "/usr/local/lib/prosody/prosody-modules-enabled",
-    "/usr/local/lib/prosody/prosody-modules", "/var/lib/prosody/custom_plugins"
+    "/var/lib/prosody/custom_plugins"
 }
 
 plugin_server = "https://modules.prosody.im/rocks/"
