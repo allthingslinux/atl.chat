@@ -1,4 +1,5 @@
 mod_cloud_notify_extensions
+mod_cloud_notify_filters
 mod_cloud_notify_encrypted
 mod_compliance_2023
 mod_muc_notifications
