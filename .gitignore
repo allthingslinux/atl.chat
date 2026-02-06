@@ -64,6 +64,8 @@ venv
 .luarc.json
 prosody-hg
 .prosody-modules
+prosody-modules/
+prosody-modules-enabled/
 research/
 .kiro/
 
@@ -101,3 +103,5 @@ atheme_logs/
 webpanel_data/
 webpanel_config/
 .turbo
+apps/irc/services/atheme/config/atheme.conf
+apps/irc/services/unrealircd/config/unrealircd.conf
