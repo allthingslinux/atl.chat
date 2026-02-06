@@ -10,6 +10,3 @@ networks:
   atl-chat:
     name: atl-chat
     driver: bridge
-    ipam:
-      config:
-        - subnet: 172.20.0.0/16
