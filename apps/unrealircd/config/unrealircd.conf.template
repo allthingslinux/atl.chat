@@ -390,25 +390,25 @@ listen {
 }
 
 listen {
-        ip *;
-        port 6900;
-        options { tls; serversonly; }
+	ip *;
+	port 6900;
+	options { tls; serversonly; }
 }
 
 listen {
-        ip *;
-        port 6901;
-        options { serversonly; }
+	ip *;
+	port 6901;
+	options { serversonly; }
 }
 
 listen {
-     ip *;
-     port 8600;
-     options { rpc; tls; }
-     tls-options {
-         certificate "/home/unrealircd/unrealircd/certs/live/${IRC_DOMAIN}/fullchain.pem";
-         key "/home/unrealircd/unrealircd/certs/live/${IRC_DOMAIN}/privkey.pem";
-     }
+	ip *;
+	port 8600;
+	options { rpc; tls; }
+	tls-options {
+		certificate "/home/unrealircd/unrealircd/certs/live/${IRC_DOMAIN}/fullchain.pem";
+		key "/home/unrealircd/unrealircd/certs/live/${IRC_DOMAIN}/privkey.pem";
+	}
 }
 
 listen {
@@ -825,88 +825,88 @@ set {
 		}
 	};
 
-        /* Restrict commands for new users (security hardening) */
-        restrict-commands {
-                list {
-                        except { identified yes; reputation-score 24; }
-                        connect-delay 60s;
-                }
-                invite {
-                        except { identified yes; reputation-score 24; }
-                        connect-delay 120s;
-                }
-        }
+	/* Restrict commands for new users (security hardening) */
+	restrict-commands {
+		list {
+			except { identified yes; reputation-score 24; }
+			connect-delay 60s;
+		}
+		invite {
+			except { identified yes; reputation-score 24; }
+			connect-delay 120s;
+		}
+	}
 
-        /* Anti-flood settings for enhanced security */
-        anti-flood {
-                /* Channel anti-flood protection (UnrealIRCd 6.2.0+) */
-                channel {
-                        /* Default profile for all channels - can be overridden with +F mode */
-                        default-profile normal;
+	/* Anti-flood settings for enhanced security */
+	anti-flood {
+		/* Channel anti-flood protection (UnrealIRCd 6.2.0+) */
+		channel {
+			/* Default profile for all channels - can be overridden with +F mode */
+			default-profile normal;
 
-                        /* Custom profiles - these override the built-in ones if needed */
-                        profile very-strict { flood-mode "[7c#C15,10j#R10,10k#K15,30m#M10,10n#N15]:15"; }
-                        profile strict { flood-mode "[7c#C15,15j#R10,10k#K15,40m#M10,10n#N15]:15"; }
-                        profile normal { flood-mode "[7c#C15,30j#R10,10k#K15,40m#M10,10n#N15]:15"; }
-                        profile relaxed { flood-mode "[7c#C15,45j#R10,10k#K15,60m#M10,10n#N15]:15"; }
-                        profile very-relaxed { flood-mode "[7c#C15,60j#R10,10k#K15,90m#M10,10n#N15]:15"; }
-                }
+			/* Custom profiles - these override the built-in ones if needed */
+			profile very-strict { flood-mode "[7c#C15,10j#R10,10k#K15,30m#M10,10n#N15]:15"; }
+			profile strict { flood-mode "[7c#C15,15j#R10,10k#K15,40m#M10,10n#N15]:15"; }
+			profile normal { flood-mode "[7c#C15,30j#R10,10k#K15,40m#M10,10n#N15]:15"; }
+			profile relaxed { flood-mode "[7c#C15,45j#R10,10k#K15,60m#M10,10n#N15]:15"; }
+			profile very-relaxed { flood-mode "[7c#C15,60j#R10,10k#K15,90m#M10,10n#N15]:15"; }
+		}
 
-                /* Settings that apply to everyone */
-                everyone {
-                        /* Connection flood protection - relaxed for testing: 20 connections per 10 seconds per IP */
-                        connect-flood 20:10;
+		/* Settings that apply to everyone */
+		everyone {
+			/* Connection flood protection - relaxed for testing: 20 connections per 10 seconds per IP */
+			connect-flood 20:10;
 
-                        /* Handshake data flood protection */
-                        handshake-data-flood {
-                                amount 4k;
-                                ban-action zline;
-                                ban-time 10m;
-                        }
+			/* Handshake data flood protection */
+			handshake-data-flood {
+				amount 4k;
+				ban-action zline;
+				ban-time 10m;
+			}
 
-                        /* Target flood protection - prevents high-rate flooding of channels/users */
-                        target-flood {
-                                channel-privmsg 45:5;
-                                channel-notice 15:5;
-                                channel-tagmsg 15:5;
-                                private-privmsg 30:5;
-                                private-notice 10:5;
-                                private-tagmsg 10:5;
-                        }
-                }
+			/* Target flood protection - prevents high-rate flooding of channels/users */
+			target-flood {
+				channel-privmsg 45:5;
+				channel-notice 15:5;
+				channel-tagmsg 15:5;
+				private-privmsg 30:5;
+				private-notice 10:5;
+				private-tagmsg 10:5;
+			}
+		}
 
-                /* Settings for known users (registered/trusted users) */
-                known-users {
-                        nick-flood 4:60;        /* 4 nick changes per 60 seconds */
-                        join-flood 4:90;        /* 4 rejoins to same channel per 90 seconds */
-                        away-flood 4:120;       /* 4 away changes per 120 seconds */
-                        invite-flood 5:60;      /* 5 invites per 60 seconds */
-                        knock-flood 4:120;      /* 4 knocks per 120 seconds */
-                        vhost-flood 3:90;       /* 3 vhost changes per 90 seconds */
-                        max-concurrent-conversations {
-                                users 12;               /* Can message 12 different users */
-                                new-user-every 10s;     /* Then 1 new user every 10 seconds */
-                        }
-                        lag-penalty 600;        /* Lower lag penalty for trusted users */
-                        lag-penalty-bytes 200;  /* More bytes allowed before extra penalty */
-                }
+		/* Settings for known users (registered/trusted users) */
+		known-users {
+			nick-flood 4:60;        /* 4 nick changes per 60 seconds */
+			join-flood 4:90;        /* 4 rejoins to same channel per 90 seconds */
+			away-flood 4:120;       /* 4 away changes per 120 seconds */
+			invite-flood 5:60;      /* 5 invites per 60 seconds */
+			knock-flood 4:120;      /* 4 knocks per 120 seconds */
+			vhost-flood 3:90;       /* 3 vhost changes per 90 seconds */
+			max-concurrent-conversations {
+				users 12;               /* Can message 12 different users */
+				new-user-every 10s;     /* Then 1 new user every 10 seconds */
+			}
+			lag-penalty 600;        /* Lower lag penalty for trusted users */
+			lag-penalty-bytes 200;  /* More bytes allowed before extra penalty */
+		}
 
-                /* Settings for unknown users (new/untrusted users) */
-                unknown-users {
-                        nick-flood 2:60;        /* 2 nick changes per 60 seconds */
-                        join-flood 2:90;        /* 2 rejoins to same channel per 90 seconds */
-                        away-flood 3:120;       /* 3 away changes per 120 seconds */
-                        invite-flood 2:60;      /* 2 invites per 60 seconds */
-                        knock-flood 2:120;      /* 2 knocks per 120 seconds */
-                        vhost-flood 2:90;       /* 2 vhost changes per 90 seconds */
-                        max-concurrent-conversations {
-                                users 4;                /* Can message 4 different users */
-                                new-user-every 20s;     /* Then 1 new user every 20 seconds */
-                        }
-                        lag-penalty 1200;       /* Higher lag penalty for unknown users */
-                        lag-penalty-bytes 80;   /* Fewer bytes allowed before extra penalty */
-                }
-        }
+		/* Settings for unknown users (new/untrusted users) */
+		unknown-users {
+			nick-flood 2:60;        /* 2 nick changes per 60 seconds */
+			join-flood 2:90;        /* 2 rejoins to same channel per 90 seconds */
+			away-flood 3:120;       /* 3 away changes per 120 seconds */
+			invite-flood 2:60;      /* 2 invites per 60 seconds */
+			knock-flood 2:120;      /* 2 knocks per 120 seconds */
+			vhost-flood 2:90;       /* 2 vhost changes per 90 seconds */
+			max-concurrent-conversations {
+				users 4;                /* Can message 4 different users */
+				new-user-every 20s;     /* Then 1 new user every 20 seconds */
+			}
+			lag-penalty 1200;       /* Higher lag penalty for unknown users */
+			lag-penalty-bytes 80;   /* Fewer bytes allowed before extra penalty */
+		}
+	}
 }
 
 /*
