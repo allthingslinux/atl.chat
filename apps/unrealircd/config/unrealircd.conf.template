@@ -419,8 +419,8 @@ listen {
 		websocket { type text; }
 	}
 	/* tls-options {
-		certificate "${IRC_SSL_CERT_PATH}";
-		key "${IRC_SSL_KEY_PATH}";
+		certificate "/home/unrealircd/unrealircd/certs/live/${IRC_DOMAIN}/fullchain.pem";
+		key "/home/unrealircd/unrealircd/certs/live/${IRC_DOMAIN}/privkey.pem";
 		options {
 			no-client-certificate;
 		}
@@ -436,9 +436,9 @@ listen {
 
 set {
 	tls {
-		/* Certificate configuration - paths from environment variables for flexibility */
-		certificate "${IRC_SSL_CERT_PATH}";
-		key "${IRC_SSL_KEY_PATH}";
+		/* Certificate configuration - data/certs mounted at certs/, live/<domain>/ layout */
+		certificate "/home/unrealircd/unrealircd/certs/live/${IRC_DOMAIN}/fullchain.pem";
+		key "/home/unrealircd/unrealircd/certs/live/${IRC_DOMAIN}/privkey.pem";
 		/* CA certificate bundle for certificate validation */
 		trusted-ca-file "/home/unrealircd/unrealircd/config/tls/curl-ca-bundle.crt";
 
