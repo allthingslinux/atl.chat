@@ -59,10 +59,9 @@ third/showwebirc
 
 ### Installation Process
 
-1. **Build Time**: Modules listed in `third-party-modules.list` are installed during container build
-2. **First Run**: Installation script runs automatically on first container startup
-3. **Persistence**: Installed modules persist across container restarts
-4. **Flag File**: `.modules_installed` prevents re-installation
+1. **Build Time**: Modules listed in `third-party-modules.list` are installed during container build (see Containerfile)
+2. **Runtime**: Use `manage-modules.sh install <module>` for additional modules without rebuilding
+3. **Persistence**: Installed modules persist across container restarts (modules dir is in image)
 
 ## Module Management Commands
 

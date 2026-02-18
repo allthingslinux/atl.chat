@@ -208,11 +208,14 @@ loadmodule "third/showwebirc";   // WebIRC support
 IRC.atl.chat includes support for third-party modules:
 
 ```bash
-# List available third-party modules
-ls apps/unrealircd/third-party-modules.list
+# Edit apps/unrealircd/third-party-modules.list, then rebuild the image
+# Modules are installed during the Docker build
 
-# Install modules
-./apps/unrealircd/scripts/install-modules.sh
+# List available modules (container running)
+just irc modules-list
+
+# Install module at runtime (after container is running)
+docker compose exec atl-irc-server manage-modules.sh install module-name
 ```
 
 ## Security Features

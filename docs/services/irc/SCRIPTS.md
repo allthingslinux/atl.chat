@@ -9,8 +9,7 @@ IRC.atl.chat includes several management scripts:
 ```
 scripts/
 ├── init.sh              # System initialization
-├── prepare-config.sh    # Configuration processing
-└── health-check.sh      # Host-side IRC port health check
+└── prepare-config.sh    # Configuration processing
 ```
 
 SSL: Use cert-manager (Lego) via `just irc ssl-setup`. See SSL.md.
@@ -55,23 +54,7 @@ VERBOSE=1 ./scripts/prepare-config.sh
 3. Generates `.conf` files from templates
 4. Sets proper file permissions
 
-### Health Check (`scripts/health-check.sh`)
-
-**Purpose**: Check if UnrealIRCd is responding on the IRC port.
-
-**Usage**:
-```bash
-# Check IRC port (default 6697)
-./scripts/health-check.sh
-
-# Check specific port
-IRC_PORT=6697 ./scripts/health-check.sh
-```
-
-**What it does**:
-1. Tests connectivity to IRC port
-2. Returns exit code 0 (success) or 1 (failure)
-3. Used by Docker health checks
+> **Note**: UnrealIRCd health is checked by Docker via JSON-RPC over the Unix socket (compose healthcheck). No host-side health script is needed.
 
 ## Script Features
 
@@ -109,8 +92,8 @@ Scripts are environment-driven:
 # Start services
 docker compose up -d
 
-# Check health
-./scripts/health-check.sh
+# Check health (Docker healthcheck handles this)
+docker compose ps
 ```
 
 ### Maintenance Tasks
@@ -122,7 +105,7 @@ docker compose up -d
 ./scripts/ssl-manager.sh renew
 
 # Verify service health
-./scripts/health-check.sh
+docker compose ps
 ```
 
 ### Troubleshooting
