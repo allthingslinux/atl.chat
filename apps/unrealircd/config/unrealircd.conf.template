@@ -81,8 +81,8 @@ listen {
      port 8600;
      options { rpc; tls; }
      tls-options {
-         certificate "/home/unrealircd/unrealircd/config/tls/live/localhost/fullchain.pem";
-         key "/home/unrealircd/unrealircd/config/tls/live/localhost/privkey.pem";
+         certificate "/home/unrealircd/unrealircd/certs/live/${IRC_DOMAIN}/fullchain.pem";
+         key "/home/unrealircd/unrealircd/certs/live/${IRC_DOMAIN}/privkey.pem";
      }
 }
 
