@@ -138,7 +138,8 @@ RUN mkdir -p /home/unrealircd/unrealircd/config \
 # Copy entrypoint and utility scripts
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 COPY ./scripts/module-config.sh /usr/local/bin/module-config.sh
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh /usr/local/bin/module-config.sh
+COPY ./scripts/manage-modules.sh /usr/local/bin/manage-modules.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh /usr/local/bin/module-config.sh /usr/local/bin/manage-modules.sh
 
 # Set working directory
 WORKDIR /home/unrealircd/unrealircd
