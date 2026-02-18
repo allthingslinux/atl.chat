@@ -2,10 +2,10 @@ default:
     @just --list
 
 # XMPP Service (Prosody)
-mod xmpp './apps/xmpp'
+mod xmpp './apps/prosody'
 
-# IRC Service (UnrealIRCd)
-mod irc './apps/irc'
+# IRC Services (UnrealIRCd, Atheme, WebPanel)
+mod irc './apps/unrealircd'
 
 # Web Application (Next.js)
 mod web './apps/web'
@@ -19,14 +19,14 @@ set export := true
 [group('Orchestration')]
 init:
     @echo "Initializing project (data dirs, config, dev certs)..."
-    ./apps/irc/scripts/init.sh
+    ./scripts/init.sh
 
 # Spin up the local development stack
 [group('Orchestration')]
 dev:
     @echo "Initializing Development Environment..."
     @set -a && . ./.env.dev && set +a && \
-     ./apps/irc/scripts/init.sh
+     ./scripts/init.sh
     docker compose --env-file .env --env-file .env.dev --profile dev up -d
 
 # Spin up the staging stack
@@ -81,10 +81,10 @@ scan:
 build:
     docker compose build
 
-# Run tests (IRC pytest; add web/xmpp as needed)
+# Run tests (IRC pytest; add web/prosody as needed)
 [group('Build')]
 test:
-    just irc test
+    uv run pytest tests/
 
 # Clean up unused Docker resources
 [group('Maintenance')]

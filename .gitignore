@@ -108,5 +108,5 @@ atheme_logs/
 webpanel_data/
 webpanel_config/
 .turbo
-apps/irc/services/atheme/config/atheme.conf
-apps/irc/services/unrealircd/config/unrealircd.conf
+apps/atheme/config/atheme.conf
+apps/unrealircd/config/unrealircd.conf

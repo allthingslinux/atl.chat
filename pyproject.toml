@@ -9,11 +9,18 @@ authors = [{ name = "All Things Linux", email = "admin@allthingslinux.org" }]
 maintainers = [
     { name = "All Things Linux", email = "admin@allthingslinux.org" },
 ]
-# Root is a workspace orchestrator; atl-chat-irc for pytest discovery.
-dependencies = ["atl-chat-irc"]
-
-[tool.uv.sources]
-atl-chat-irc = { workspace = true }
+# Root is a workspace orchestrator; includes IRC test dependencies.
+dependencies = [
+    "docker>=7.1.0",
+    "pyyaml>=6.0.2",
+    "requests>=2.32.5",
+    "psutil>=5.9.0",
+    "irc>=20.5.0",
+    "irc-toolkit>=0.2.0",
+    "pydle>=1.1.0",
+    "unrealircd-rpc-py>=2.0.0",
+    "websocket-client>=1.0.0",
+]
 
 [project.urls]
 repository = "https://github.com/allthingslinux/atl.chat"
@@ -21,7 +28,7 @@ homepage = "https://atl.chat"
 
 # WORKSPACE DEFINITION
 [tool.uv.workspace]
-members = ["apps/irc"]
+members = []
 
 [dependency-groups]
 dev = [
@@ -42,7 +49,7 @@ dev = [
 
 [tool.pytest.ini_options]
 # Test discovery - Pointing to the apps
-testpaths = ["apps/irc/tests"]
+testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]

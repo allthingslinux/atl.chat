@@ -7,7 +7,5 @@ rules:
 
 # Exclude directories from linting
 ignore: |
-  apps/xmpp/prosody-modules/
-  apps/xmpp/prosody-modules-enabled/
   .git/
   node_modules/

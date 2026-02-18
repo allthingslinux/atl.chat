@@ -3,8 +3,6 @@ std = "min"
 max_line_length = 300
 
 exclude_files = {
-   "apps/xmpp/prosody-modules",
-   "apps/xmpp/prosody-modules-enabled",
    "node_modules",
    "**/node_modules",
    ".git"
@@ -22,16 +20,4 @@ globals = {
    "authentication", "sasl_mechanisms",
    -- Modules
    "modules_enabled", "modules_disabled",
-}
-
--- Specific configuration for Prosody Modules
-files["apps/xmpp/prosody-modules/**/*.lua"] = {
-   std = "min",
-   max_line_length = 150,
-   read_globals = {
-      "prosody", "import", "module"
-   },
-   globals = {
-      "module.ready", "module.unload", "module.hook"
-   }
 }

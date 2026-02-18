@@ -5,8 +5,8 @@ pre-commit:
   parallel: true
   commands:
     lint-irc:
-      root: apps/irc/
-      glob: "*.sh"
+      root: .
+      glob: "scripts/**/*.sh"
       run: shellcheck {files}
     lint-xmpp:
       glob: "*.lua"

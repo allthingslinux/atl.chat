@@ -45,11 +45,11 @@ just up
 
 ```bash
 # XMPP (with dev tools: Adminer, Dozzle, Converse.js)
-cd apps/xmpp
+cd apps/prosody
 docker compose --profile dev up -d
 
 # IRC
-cd apps/irc
+cd apps/unrealircd
 docker compose up -d
 
 # Web app
@@ -60,7 +60,7 @@ pnpm dev
 
 ## Services
 
-### IRC (`apps/irc`)
+### IRC (`apps/unrealircd`, `apps/atheme`, `apps/webpanel`)
 
 UnrealIRCd 6.x with Atheme services.
 
@@ -77,7 +77,7 @@ just irc reload        # Reload config
 
 See [`docs/services/irc/`](docs/services/irc/) for detailed documentation.
 
-### XMPP (`apps/xmpp`)
+### XMPP (`apps/prosody`)
 
 Prosody XMPP server with PostgreSQL backend.
 

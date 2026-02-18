@@ -2,12 +2,6 @@
 # Consolidated for atl.chat monorepo
 
 [allowlist]
-description = "Allowlist for prosody-modules directories"
-paths = [
-    "apps/xmpp/prosody-modules",
-    "apps/xmpp/prosody-modules-enabled"
-]
-
 # Avoid false positives in test/example files
 files = ["**/*.test.*", "**/*.spec.*", "**/*.example.*", "**/*.sample.*"]
 

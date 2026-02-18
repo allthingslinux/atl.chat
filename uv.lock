@@ -2,16 +2,10 @@ version = 1
 revision = 3
 requires-python = ">=3.11"
 
-[manifest]
-members = [
-    "atl-chat-irc",
-    "atl-chat-monorepo",
-]
-
 [[package]]
-name = "atl-chat-irc"
+name = "atl-chat-monorepo"
 version = "0.1.0"
-source = { editable = "apps/irc" }
+source = { virtual = "." }
 dependencies = [
     { name = "docker" },
     { name = "irc" },
@@ -22,27 +16,6 @@ dependencies = [
     { name = "requests" },
     { name = "unrealircd-rpc-py" },
     { name = "websocket-client" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "docker", specifier = ">=7.1.0" },
-    { name = "irc", specifier = ">=20.5.0" },
-    { name = "irc-toolkit", specifier = ">=0.2.0" },
-    { name = "psutil", specifier = ">=5.9.0" },
-    { name = "pydle", specifier = ">=1.1.0" },
-    { name = "pyyaml", specifier = ">=6.0.2" },
-    { name = "requests", specifier = ">=2.32.5" },
-    { name = "unrealircd-rpc-py", specifier = ">=2.0.0" },
-    { name = "websocket-client", specifier = ">=1.0.0" },
-]
-
-[[package]]
-name = "atl-chat-monorepo"
-version = "0.1.0"
-source = { virtual = "." }
-dependencies = [
-    { name = "atl-chat-irc" },
 ]
 
 [package.dev-dependencies]
@@ -63,7 +36,17 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "atl-chat-irc", editable = "apps/irc" }]
+requires-dist = [
+    { name = "docker", specifier = ">=7.1.0" },
+    { name = "irc", specifier = ">=20.5.0" },
+    { name = "irc-toolkit", specifier = ">=0.2.0" },
+    { name = "psutil", specifier = ">=5.9.0" },
+    { name = "pydle", specifier = ">=1.1.0" },
+    { name = "pyyaml", specifier = ">=6.0.2" },
+    { name = "requests", specifier = ">=2.32.5" },
+    { name = "unrealircd-rpc-py", specifier = ">=2.0.0" },
+    { name = "websocket-client", specifier = ">=1.0.0" },
+]
 
 [package.metadata.requires-dev]
 dev = [
