@@ -89,6 +89,7 @@ modules_enabled = {
     "bosh",          -- BOSH (HTTP binding) for web clients (XEP-0124, XEP-0206)
     "websocket",     -- WebSocket connections for web clients (RFC 7395)
     "http_files",    -- Static file serving over HTTP
+    "conversejs",    -- Converse.js web client at /conversejs (auto-config from VirtualHost)
     "http_status",   -- HTTP status API for monitoring (XEP-0156)
     -- "proxy65", -- Disabled here; provided via dedicated Component `proxy.atl.chat`
     "turn_external", -- External TURN server support (XEP-0215)
@@ -104,7 +105,8 @@ modules_enabled = {
     -- ===============================================
     -- MONITORING & METRICS
     -- ===============================================
-    "http_openmetrics" -- Prometheus-compatible metrics endpoint
+    "http_openmetrics", -- Prometheus-compatible metrics endpoint
+    "measure_modules"  -- Module status as OpenMetrics (gauge 0=ok, 1=info, 2=warn, 3=error)
 
     -- Note: MUC (multi-user chat) is loaded as a component in 30-vhosts-components.cfg.lua
     -- Note: HTTP file sharing is handled by dedicated upload component
@@ -698,7 +700,8 @@ modules_enabled = {
     "muc_mam", -- Message Archive Management for MUC events
     -- "vcard_muc", -- Conflicts with built-in muc_vcard on Prosody 13
     "muc_notifications", -- Push notifications for MUC events
-    "muc_offline_delivery" -- Offline delivery for MUC events
+    "muc_offline_delivery", -- Offline delivery for MUC events
+    "muc_thread_polyfill" -- Infer thread from XEP-0461 reply when client lacks thread UI
     -- "muc_local_only",
     -- "pastebin",
 }

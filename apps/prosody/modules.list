@@ -4,7 +4,10 @@ mod_cloud_notify_encrypted
 mod_compliance_2023
 mod_muc_notifications
 mod_muc_offline_delivery
+mod_muc_thread_polyfill
+mod_conversejs
 mod_http_status
+mod_measure_modules
 mod_http_file_share
 mod_compliance_latest
 mod_cloud_notify_priority_tag

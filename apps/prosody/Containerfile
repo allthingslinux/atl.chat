@@ -164,11 +164,9 @@ RUN groupadd -r prosody && \
     mkdir -p /var/lib/prosody /var/lib/prosody/custom_plugins /var/log/prosody /var/run/prosody /certs /etc/prosody/certs && \
     chown -R prosody:prosody /var/lib/prosody /var/log/prosody /var/run/prosody /certs /etc/prosody/certs
 
-# Copy scripts and make executable
-COPY --chown=prosody:prosody scripts/setup/entrypoint.sh /usr/local/bin/entrypoint.sh
-COPY --chown=prosody:prosody scripts/maintenance/health-check.sh /usr/local/bin/health-check.sh
-
-RUN chmod +x /usr/local/bin/entrypoint.sh /usr/local/bin/health-check.sh
+# Copy entrypoint
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Copy prepared community modules from builder
 COPY --from=builder /usr/local/lib/prosody/prosody-modules /usr/local/lib/prosody/prosody-modules
@@ -178,7 +176,7 @@ COPY --from=builder /usr/local/lib/prosody/prosody-modules-enabled /usr/local/li
 EXPOSE 5222 5223 5269 5270 5280 5281 5347 5000
 
 # --- Healthcheck, volumes, and final setup ---
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 CMD /usr/local/bin/health-check.sh
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 CMD curl -sf http://localhost:5280/status || exit 1
 
 # Create volumes for persistent data
 VOLUME ["/var/lib/prosody", "/var/log/prosody", "/certs"]
@@ -191,4 +189,4 @@ WORKDIR /var/lib/prosody
 
 # --- Entrypoint as PID 1 for signal handling ---
 ENTRYPOINT ["/usr/bin/dumb-init", "--"]
-CMD ["/usr/local/bin/entrypoint.sh"]
+CMD ["/usr/local/bin/docker-entrypoint.sh"]

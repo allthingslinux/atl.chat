@@ -1,0 +1,69 @@
+# Prosody (XMPP) Service Justfile
+# Loaded via root: mod xmpp './apps/prosody'
+
+set export := true
+
+[group('Management')]
+shell:
+    @CONTAINER=$(docker compose -p atl-chat ps -q atl-xmpp-server 2>/dev/null); \
+    if [ -n "$CONTAINER" ]; then \
+        docker exec -it $CONTAINER /bin/bash; \
+    else \
+        echo "XMPP server not running (or project name mismatch)"; \
+    fi
+
+[group('Management')]
+reload:
+    @echo "Reloading Prosody configuration..."
+    @CONTAINER=$(docker compose -p atl-chat ps -q atl-xmpp-server 2>/dev/null); \
+    if [ -n "$CONTAINER" ]; then \
+        docker exec $CONTAINER prosodyctl reload; \
+    else \
+        echo "XMPP server not running"; \
+    fi
+
+[group('User Management')]
+adduser user password="":
+    @echo "Adding user: $user"
+    @CONTAINER=$(docker compose -p atl-chat ps -q atl-xmpp-server 2>/dev/null); \
+    if [ -n "$CONTAINER" ]; then \
+        if [ -n "$password" ]; then \
+            docker exec $CONTAINER bash -c "echo -e '$password\n$password' | prosodyctl adduser $user"; \
+        else \
+            docker exec -it $CONTAINER prosodyctl adduser $user; \
+        fi; \
+    else \
+        echo "XMPP server not running"; \
+    fi
+
+[group('User Management')]
+deluser user:
+    @echo "Deleting user: $user"
+    @CONTAINER=$(docker compose -p atl-chat ps -q atl-xmpp-server 2>/dev/null); \
+    if [ -n "$CONTAINER" ]; then \
+        docker exec $CONTAINER prosodyctl deluser $user; \
+    else \
+        echo "XMPP server not running"; \
+    fi
+
+[group('Database')]
+db-backup:
+    @echo "Backing up database..."
+    @CONTAINER=$(docker compose -p atl-chat ps -q atl-xmpp-db 2>/dev/null); \
+    if [ -n "$CONTAINER" ]; then \
+        BACKUP_FILE="backup_$(date +%Y%m%d_%H%M%S).sql"; \
+        docker exec $CONTAINER pg_dumpall -U prosody > $BACKUP_FILE; \
+        echo "Database backup saved to: $BACKUP_FILE"; \
+    else \
+        echo "Database not running"; \
+    fi
+
+[group('Certificates')]
+check-cert domain:
+    @echo "Checking certificate for: $domain"
+    @CONTAINER=$(docker compose -p atl-chat ps -q atl-xmpp-server 2>/dev/null); \
+    if [ -n "$CONTAINER" ]; then \
+        docker exec $CONTAINER /usr/local/bin/certificate-monitor.sh check "$domain"; \
+    else \
+        echo "XMPP server not running"; \
+    fi

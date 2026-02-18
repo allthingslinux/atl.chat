@@ -1,8 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
-# Professional Prosody XMPP Server Entrypoint
-# Modern Docker initialization script for production deployment
+# Prosody XMPP Server Docker entrypoint
+# Handles env validation, cert setup, DB wait, and starts Prosody in foreground
 
 # ============================================================================
 # CONSTANTS AND CONFIGURATION
@@ -249,7 +249,7 @@ setup_community_modules() {
     else
         log_info "Community modules found in $enabled_dir"
         local module_count
-        module_count=$(find "$enabled_dir" -maxdepth 1 -o -type l 2> /dev/null | wc -l)
+        module_count=$(find "$enabled_dir" -maxdepth 1 -type l 2> /dev/null | wc -l)
         log_info "Enabled modules: $module_count"
     fi
 
