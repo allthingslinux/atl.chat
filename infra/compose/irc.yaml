@@ -75,6 +75,7 @@ services:
       context: ../../apps/atheme
       dockerfile: Containerfile
       args:
+        ATHEME_VERSION: ${ATHEME_VERSION:-master}
         UID: ${PUID:-1000}
         GID: ${PGID:-1000}
 
