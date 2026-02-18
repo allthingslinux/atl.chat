@@ -221,12 +221,12 @@ listen {
 
 1. **Check if RPC is enabled:**
    ```bash
-   grep -A5 "listen.*rpc" src/backend/unrealircd/conf/unrealircd.conf
+   grep -A5 "listen.*rpc" apps/irc/services/unrealircd/config/unrealircd.conf
    ```
 
 2. **Verify RPC user configuration:**
    ```bash
-   grep -A5 "rpc-user" src/backend/unrealircd/conf/unrealircd.conf
+   grep -A5 "rpc-user" apps/irc/services/unrealircd/config/unrealircd.conf
    ```
 
 3. **Test connectivity:**
@@ -240,7 +240,7 @@ listen {
 
 1. **Check WebSocket listener:**
    ```bash
-   grep -A5 "websocket" src/backend/unrealircd/conf/unrealircd.conf
+   grep -A5 "websocket" apps/irc/services/unrealircd/config/unrealircd.conf
    ```
 
 2. **Test WebSocket connection:**

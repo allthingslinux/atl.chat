@@ -107,8 +107,8 @@ make test-quick
 ### Template Changes
 ```bash
 # Edit configuration templates
-vim src/backend/unrealircd/conf/unrealircd.conf.template
-vim src/backend/atheme/conf/atheme.conf.template
+vim apps/irc/services/unrealircd/config/unrealircd.conf.template
+vim apps/irc/services/atheme/config/atheme.conf.template
 
 # Regenerate configurations
 make build
@@ -228,7 +228,7 @@ docker compose logs -f
 ### Adding New Modules
 ```bash
 # Edit module list
-vim src/backend/unrealircd/third-party-modules.list
+vim apps/irc/services/unrealircd/third-party-modules.list
 
 # Rebuild container
 make rebuild
@@ -252,7 +252,7 @@ make ssl-logs
 ### Configuration Changes
 ```bash
 # Edit templates
-vim src/backend/*/conf/*.template
+vim apps/irc/services/*/config/*.template
 
 # Regenerate configs
 make build

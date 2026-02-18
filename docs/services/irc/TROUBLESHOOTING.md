@@ -101,7 +101,7 @@ cat cloudflare-credentials.ini
 make test-env
 
 # Check generated configs
-ls -la src/backend/*/conf/*.conf
+ls -la apps/irc/services/*/config/*.conf
 
 # Regenerate configurations
 make build
@@ -140,7 +140,7 @@ make logs-ircd
 make test-irc
 
 # Check configuration syntax
-docker compose exec atl-irc-server unrealircd -c /home/unrealircd/unrealircd/conf/unrealircd.conf
+docker compose exec atl-irc-server unrealircd -c /home/unrealircd/unrealircd/config/unrealircd.conf
 ```
 
 ### Atheme Issues

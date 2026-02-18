@@ -11,7 +11,7 @@ Services:
 ├── atl-irc-server      - Main IRC server
 ├── atl-irc-services    - IRC services (NickServ, etc.)
 ├── atl-irc-webpanel    - Web administration interface
-└── ssl-monitor         - SSL certificate automation
+└── atl-cert-manager    - SSL certificate automation (Lego)
 ```
 
 ## Container Configuration
@@ -20,11 +20,11 @@ Services:
 ```yaml
 atl-irc-server:
   build:
-    context: ./src/backend/unrealircd
+    context: ./apps/irc/services/unrealircd
     dockerfile: Containerfile
   container_name: atl-irc-server
   volumes:
-    - ./src/backend/unrealircd/conf:/home/unrealircd/unrealircd/conf
+    - ./apps/irc/services/unrealircd/config:/home/unrealircd/unrealircd/config
     - ./logs/atl-irc-server:/home/unrealircd/unrealircd/logs
     - ./data/atl-irc-server:/home/unrealircd/unrealircd/data
   ports:
@@ -42,14 +42,14 @@ atl-irc-server:
 ```yaml
 atheme:
   build:
-    context: ./src/backend/atheme
+    context: ./apps/irc/services/atheme
     dockerfile: Containerfile
   container_name: atl-irc-services
   depends_on:
     atl-irc-server:
       condition: service_healthy
   volumes:
-    - ./src/backend/atheme/conf:/usr/local/atheme/etc:ro
+    - ./apps/irc/services/atheme/config:/usr/local/atheme/etc:ro
     - ./data/atheme:/usr/local/atheme/data
     - ./logs/atheme:/usr/local/atheme/logs
   network_mode: service:atl-irc-server  # Shares network with IRCd
@@ -60,8 +60,8 @@ atheme:
 ```yaml
 atl-irc-webpanel:
   build:
-    context: .
-    dockerfile: src/frontend/webpanel/Containerfile
+    context: ../../apps/irc
+    dockerfile: services/webpanel/Containerfile
   container_name: atl-irc-webpanel
   depends_on:
     atl-irc-server:
@@ -88,7 +88,7 @@ volumes:
 ### Bind Mounts
 ```yaml
 volumes:
-  - ./src/backend/unrealircd/conf:/home/unrealircd/unrealircd/conf
+  - ./apps/irc/services/unrealircd/config:/home/unrealircd/unrealircd/config
   - ./logs/atl-irc-server:/home/unrealircd/unrealircd/logs
   - ./data/atl-irc-server:/home/unrealircd/unrealircd/data
 ```

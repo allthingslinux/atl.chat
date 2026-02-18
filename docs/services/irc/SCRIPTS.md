@@ -10,9 +10,10 @@ IRC.atl.chat includes several management scripts:
 scripts/
 ├── init.sh              # System initialization
 ├── prepare-config.sh    # Configuration processing
-├── ssl-manager.sh       # SSL certificate management
-└── health-check.sh      # System health monitoring
+└── health-check.sh      # Host-side IRC port health check
 ```
+
+SSL: Use cert-manager (Lego) via `just irc ssl-setup`. See SSL.md.
 
 ## Core Scripts
 
@@ -53,34 +54,6 @@ VERBOSE=1 ./scripts/prepare-config.sh
 2. Processes all `.template` files with `envsubst`
 3. Generates `.conf` files from templates
 4. Sets proper file permissions
-
-### SSL Manager (`scripts/ssl-manager.sh`)
-
-**Purpose**: Automated SSL certificate management via Let's Encrypt.
-
-**Usage**:
-```bash
-# Check certificate status
-./scripts/ssl-manager.sh check
-
-# Issue new certificates
-./scripts/ssl-manager.sh issue
-
-# Renew certificates
-./scripts/ssl-manager.sh renew
-
-# Copy certificates to UnrealIRCd
-./scripts/ssl-manager.sh copy
-
-# Restart services after certificate update
-./scripts/ssl-manager.sh restart
-```
-
-**What it does**:
-1. Validates Cloudflare credentials
-2. Issues/renews Let's Encrypt certificates
-3. Copies certificates to UnrealIRCd
-4. Restarts services when needed
 
 ### Health Check (`scripts/health-check.sh`)
 

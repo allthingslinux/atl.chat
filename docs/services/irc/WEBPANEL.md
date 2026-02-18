@@ -67,7 +67,7 @@ The WebPanel is automatically configured through Docker. Key settings:
 
 3. **Verify RPC configuration:**
    ```bash
-   grep -A5 "listen.*rpc" src/backend/unrealircd/conf/unrealircd.conf
+   grep -A5 "listen.*rpc" apps/irc/services/unrealircd/config/unrealircd.conf
    ```
 
 ### Performance Issues

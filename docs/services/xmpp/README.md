@@ -36,6 +36,36 @@ Use the root `justfile` for most operations:
 | View Logs | `just logs atl-xmpp-server` |
 | XMPP Shell | `just shell atl-xmpp-server` |
 | Status | `just status` |
+| Add user | `just xmpp adduser user@domain` |
+| Delete user | `just xmpp deluser user@domain` |
+| Reload config | `just xmpp reload` |
+
+## Admin User Setup
+
+Prosody requires an admin account to be registered before you can use admin features (HTTP admin, MUC room creation, etc.). The admin JID is configured via `PROSODY_ADMIN_JID` in `.env` (default: `admin@${PROSODY_DOMAIN}`).
+
+**Create the admin account** after the XMPP stack is running:
+
+```bash
+# Using just (recommended)
+just xmpp adduser admin@your-domain.tld
+# You will be prompted for a password interactively
+
+# Or with password inline (for scripts/automation)
+just xmpp adduser admin@your-domain.tld your-secure-password
+```
+
+**Using docker exec directly** (e.g. when not using the root justfile):
+
+```bash
+# Interactive (prompts for password)
+docker compose -f compose.yaml exec atl-xmpp-server prosodyctl adduser admin@your-domain.tld
+
+# Non-interactive (for scripts)
+docker compose -f compose.yaml exec atl-xmpp-server bash -c "echo -e 'password\npassword' | prosodyctl adduser admin@your-domain.tld"
+```
+
+**Important:** The JID you register must match `PROSODY_ADMIN_JID` in your `.env`. For local development with `PROSODY_DOMAIN=localhost`, use `admin@localhost`.
 
 ## Infrastructure Alignment
 - **Networking**: See [Networking Registry](../../docs/infra/networking.md) for XMPP port (5222).

@@ -16,7 +16,7 @@ This guide covers the configuration and management of the UnrealIRCd IRC server,
 
 ```
 unrealircd/
-├── conf/                    # Configuration files
+├── config/                    # Configuration files
 │   ├── unrealircd.conf     # Main server configuration
 │   ├── modules.*.conf      # Module loading
 │   ├── operclass.*.conf    # Operator permissions
@@ -94,8 +94,8 @@ listen {
         clientsonly;
     };
     tls-options {
-        certificate "/home/unrealircd/unrealircd/conf/tls/server.cert.pem";
-        key "/home/unrealircd/unrealircd/conf/tls/server.key.pem";
+        certificate "/home/unrealircd/unrealircd/config/tls/server.cert.pem";
+        key "/home/unrealircd/unrealircd/config/tls/server.key.pem";
     };
 }
 ```
@@ -209,10 +209,10 @@ IRC.atl.chat includes support for third-party modules:
 
 ```bash
 # List available third-party modules
-ls src/backend/unrealircd/third-party-modules.list
+ls apps/irc/services/unrealircd/third-party-modules.list
 
 # Install modules
-./src/backend/unrealircd/scripts/install-modules.sh
+./apps/irc/services/unrealircd/scripts/install-modules.sh
 ```
 
 ## Security Features
@@ -430,17 +430,17 @@ Configuration is generated from templates:
 ./scripts/prepare-config.sh
 
 # Check generated config
-cat src/backend/unrealircd/conf/unrealircd.conf
+cat apps/irc/services/unrealircd/config/unrealircd.conf
 ```
 
 ### Backup and Recovery
 
 ```bash
 # Backup configuration
-cp src/backend/unrealircd/conf/unrealircd.conf backup/
+cp apps/irc/services/unrealircd/config/unrealircd.conf backup/
 
 # Restore from backup
-cp backup/unrealircd.conf src/backend/unrealircd/conf/
+cp backup/unrealircd.conf apps/irc/services/unrealircd/config/
 ```
 
 ## Advanced Features

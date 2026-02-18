@@ -10,9 +10,9 @@ IRC.atl.chat enforces **TLS-only connections** for security. All IRC clients mus
 
 - **Certificate Authority**: Let's Encrypt (free, automated certificates)
 - **Challenge Method**: DNS-01 via Cloudflare API
-- **Automation**: Custom SSL manager script with Docker integration
-- **Storage**: Certificates stored in `data/letsencrypt/` and copied to UnrealIRCd
-- **Renewal**: Automatic renewal with service restart
+- **Automation**: cert-manager (Lego) in `infra/compose/cert-manager.yaml`
+- **Storage**: Certificates in `data/certs/certificates/` (Lego layout: `_.<domain>.crt`, `_.<domain>.key`)
+- **Renewal**: Automatic renewal every 24h by cert-manager container
 
 ## Prerequisites
 
@@ -35,47 +35,38 @@ IRC.atl.chat enforces **TLS-only connections** for security. All IRC clients mus
 Ensure your `.env` file has the required SSL variables:
 
 ```bash
-# Required for SSL
-IRC_ROOT_DOMAIN=yourdomain.com
+# Required for cert-manager (Lego)
+CLOUDFLARE_DNS_API_TOKEN=your-cloudflare-api-token
 LETSENCRYPT_EMAIL=admin@yourdomain.com
+
+# Optional: domain (default: atl.chat)
+IRC_ROOT_DOMAIN=yourdomain.com
 ```
 
 ## SSL Setup Process
 
 ### Step 1: Configure Cloudflare Credentials
 
-```bash
-# Copy the template
-cp cloudflare-credentials.ini.template cloudflare-credentials.ini
+Add `CLOUDFLARE_DNS_API_TOKEN` to your `.env` file. See `docs/examples/cloudflare-credentials.ini.example` for format reference.
 
-# Edit with your API token
-vim cloudflare-credentials.ini
-# Add: dns_cloudflare_api_token = your-actual-token-here
-
-# Secure the file
-chmod 600 cloudflare-credentials.ini
-```
-
-### Step 2: Initial SSL Certificate Issuance
+### Step 2: Start cert-manager
 
 ```bash
-# Issue initial certificates
-make ssl-setup
+# Start cert-manager (Lego) - issues certs to data/certs/certificates/
+just irc ssl-setup
 
-# This runs the SSL manager script which:
-# 1. Validates configuration
-# 2. Issues certificates via Let's Encrypt
-# 3. Copies certificates to UnrealIRCd
-# 4. Restarts services
+# Or directly:
+docker compose up -d cert-manager
 ```
 
-**Important**: SSL setup must complete before starting services. UnrealIRCd configuration expects certificates to exist.
+**Important**: cert-manager must run before IRC/XMPP services to populate `data/certs/`. For dev, `just init` creates self-signed certs in `config/tls/`.
 
 ### Step 3: Start Services
 
 ```bash
-# Start all services (SSL certificates must exist first)
-make up
+# Start all services (cert-manager populates data/certs/ for prod)
+just dev
+# or: docker compose up -d
 ```
 
 ## Certificate Management
@@ -84,41 +75,36 @@ make up
 
 ```bash
 # Quick status check
-make ssl-status
+just irc ssl-status
 
-# Detailed certificate information
-./scripts/ssl-manager.sh check --verbose
+# View cert-manager logs
+just irc ssl-logs
 ```
 
-### Manual Certificate Operations
+### cert-manager Operations
 
 ```bash
-# Check certificates
-./scripts/ssl-manager.sh check
+# Start cert-manager
+just irc ssl-setup
 
-# Issue new certificates (force renewal)
-./scripts/ssl-manager.sh issue
+# Restart to trigger renewal check
+just irc ssl-renew
 
-# Renew if needed (checks expiry first)
-./scripts/ssl-manager.sh renew
-
-# Copy certificates to UnrealIRCd
-./scripts/ssl-manager.sh copy
-
-# Restart services after certificate update
-./scripts/ssl-manager.sh restart
+# Stop cert-manager
+just irc ssl-stop
 ```
 
 ### Certificate Locations
 
+**cert-manager (Lego) output:**
 ```
-data/letsencrypt/
-├── live/yourdomain.com/
-│   ├── fullchain.pem    # Certificate chain
-│   ├── privkey.pem      # Private key
-│   └── cert.pem         # Certificate only
+data/certs/
+├── certificates/
+│   ├── _.atl.chat.crt   # Wildcard cert (Lego format)
+│   └── _.atl.chat.key   # Private key
+└── accounts/            # ACME account data
 
-src/backend/unrealircd/conf/tls/
+apps/irc/services/unrealircd/config/tls/
 ├── server.cert.pem     # Certificate for UnrealIRCd
 ├── server.key.pem      # Private key for UnrealIRCd
 └── curl-ca-bundle.crt  # CA bundle for SSL validation
@@ -128,44 +114,33 @@ src/backend/unrealircd/conf/tls/
 
 ### Automatic Renewal
 
-Certificates are automatically renewed when:
-- Expiry is within 30 days (warning threshold)
-- Expiry is within 7 days (critical threshold)
-
-The renewal process:
-1. Checks certificate expiry
-2. Renews via Let's Encrypt if needed
-3. Copies new certificates to UnrealIRCd
-4. Restarts affected services
+cert-manager (Lego) runs a renewal loop every 24 hours. Certificates are renewed automatically when nearing expiry.
 
 ### Monitoring Commands
 
 ```bash
 # Check SSL status
-make ssl-status
+just irc ssl-status
 
-# View SSL logs
-make ssl-logs
+# View cert-manager logs
+just irc ssl-logs
 
 # Check overall service health
-make status
+just status
 ```
 
 ## Troubleshooting
 
 ### Common Issues
 
-#### "Cloudflare credentials not found"
+#### "CLOUDFLARE_DNS_API_TOKEN not set"
 ```bash
-# Check if credentials file exists
-ls -la cloudflare-credentials.ini
+# Add to .env file
+echo "CLOUDFLARE_DNS_API_TOKEN=your-token" >> .env
 
-# Verify file permissions (should be 600)
-chmod 600 cloudflare-credentials.ini
-
-# Check file format
-cat cloudflare-credentials.ini
-# Should contain: dns_cloudflare_api_token = your-token
+# Restart cert-manager
+just irc ssl-stop
+just irc ssl-setup
 ```
 
 #### "DNS challenge failed"
@@ -182,17 +157,17 @@ dig TXT _acme-challenge.*.yourdomain.com
 
 #### "Certificate expiry warnings"
 ```bash
-# Check current certificate details
-./scripts/ssl-manager.sh check --verbose
+# Restart cert-manager to trigger renewal check
+just irc ssl-renew
 
-# Force renewal if needed
-./scripts/ssl-manager.sh issue
+# Check cert validity
+openssl x509 -in data/certs/certificates/_.atl.chat.crt -noout -dates
 ```
 
 #### "Services won't start after certificate update"
 ```bash
 # Check certificate file permissions
-ls -la src/backend/unrealircd/conf/tls/
+ls -la apps/irc/services/unrealircd/config/tls/
 
 # Manually restart services
 docker restart unrealircd atl-irc-webpanel
@@ -203,26 +178,25 @@ make logs
 
 ### Debug Mode
 
-Enable detailed logging for troubleshooting:
+View cert-manager logs for troubleshooting:
 
 ```bash
-# Debug SSL operations
-./scripts/ssl-manager.sh --debug check
-./scripts/ssl-manager.sh --debug issue
+# Follow cert-manager logs
+just irc ssl-logs
 
-# Verbose output
-./scripts/ssl-manager.sh --verbose renew
+# Or directly
+docker compose logs -f cert-manager
 ```
 
 ### Certificate Validation
 
 ```bash
 # Verify certificate chain
-openssl verify -CAfile src/backend/unrealircd/conf/tls/curl-ca-bundle.crt \
-               src/backend/unrealircd/conf/tls/server.cert.pem
+openssl verify -CAfile apps/irc/services/unrealircd/config/tls/curl-ca-bundle.crt \
+               apps/irc/services/unrealircd/config/tls/server.cert.pem
 
 # Check certificate details
-openssl x509 -in src/backend/unrealircd/conf/tls/server.cert.pem -text -noout
+openssl x509 -in apps/irc/services/unrealircd/config/tls/server.cert.pem -text -noout
 
 # Test SSL connection
 openssl s_client -connect yourdomain.com:6697 -servername yourdomain.com
@@ -258,7 +232,7 @@ openssl s_client -connect yourdomain.com:6697 -servername yourdomain.com
 The SSL manager uses these default paths (configurable in the script):
 
 ```bash
-TLS_DIR="./src/backend/unrealircd/conf/tls"
+TLS_DIR="./apps/irc/services/unrealircd/config/tls"
 LETSENCRYPT_DIR="./data/letsencrypt"
 CREDENTIALS_FILE="./cloudflare-credentials.ini"
 ```
@@ -269,7 +243,7 @@ The current setup issues certificates for:
 - `yourdomain.com`
 - `*.yourdomain.com`
 
-For additional domains, modify the certbot command in `ssl-manager.sh`.
+For additional domains, set `IRC_ROOT_DOMAIN` in `.env` and restart cert-manager.
 
 ### Rate Limiting
 
@@ -284,10 +258,10 @@ Let's Encrypt has rate limits:
 
 ```bash
 # Weekly: Check certificate status
-make ssl-status
+just irc ssl-status
 
 # Monthly: Verify automation works
-./scripts/ssl-manager.sh renew --verbose
+just irc ssl-renew
 
 # Quarterly: Review SSL configuration
 # Check UnrealIRCd TLS settings
@@ -300,13 +274,12 @@ If certificates expire unexpectedly:
 
 1. **Immediate action**: Check why renewal failed
    ```bash
-   make ssl-logs
-   ./scripts/ssl-manager.sh check --debug
+   just irc ssl-logs
    ```
 
 2. **Manual renewal**: Force certificate issuance
    ```bash
-   ./scripts/ssl-manager.sh issue --verbose
+   just irc ssl-setup
    ```
 
 3. **Service restart**: Ensure services use new certificates
@@ -320,10 +293,10 @@ Certificates are automatically backed up in `data/letsencrypt/`. To restore:
 
 ```bash
 # Copy from Let's Encrypt backup
-./scripts/ssl-manager.sh copy
+# cert-manager writes directly to data/certs - no copy needed
 
 # Restart services
-./scripts/ssl-manager.sh restart
+docker compose restart atl-irc-server
 ```
 
 ## Related Documentation
