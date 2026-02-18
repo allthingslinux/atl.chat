@@ -9,7 +9,7 @@ authors = [{ name = "All Things Linux", email = "admin@allthingslinux.org" }]
 maintainers = [
     { name = "All Things Linux", email = "admin@allthingslinux.org" },
 ]
-# Root project has no runtime dependencies, only dev tool dependencies.
+# Root is a workspace orchestrator; atl-chat-irc for pytest discovery.
 dependencies = ["atl-chat-irc"]
 
 [tool.uv.sources]

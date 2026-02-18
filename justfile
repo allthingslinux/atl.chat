@@ -14,6 +14,13 @@ set export := true
 
 
 
+# Initialize project: create data/ dirs, generate config, dev certs
+# Run before first docker compose up. data/ is gitignored.
+[group('Orchestration')]
+init:
+    @echo "Initializing project (data dirs, config, dev certs)..."
+    ./apps/irc/scripts/init.sh
+
 # Spin up the local development stack
 [group('Orchestration')]
 dev:
@@ -68,6 +75,16 @@ scan:
     @echo "Running security scans..."
     # Placeholder for actual scan commands
     just --groups Verification
+
+# Build all services (delegates to docker compose)
+[group('Build')]
+build:
+    docker compose build
+
+# Run tests (IRC pytest; add web/xmpp as needed)
+[group('Build')]
+test:
+    just irc test
 
 # Clean up unused Docker resources
 [group('Maintenance')]
