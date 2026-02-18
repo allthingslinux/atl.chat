@@ -345,13 +345,13 @@ log {
 
 ```bash
 # View recent logs
-tail -f data/atheme/logs/atheme/atheme.log
+tail -f data/atheme/logs/atheme.log
 
 # Search for specific events
-grep "REGISTER" logs/atheme/atheme.log
+grep "REGISTER" data/atheme/logs/atheme.log
 
 # Monitor failed authentications
-grep "BADPASSWORD" logs/atheme/atheme.log
+grep "BADPASSWORD" data/atheme/logs/atheme.log
 ```
 
 ### Service Health Checks
@@ -430,7 +430,7 @@ docker exec atheme atheme-services -c /usr/local/atheme/etc/atheme.conf
 #### Authentication Problems
 ```bash
 # Check password hash
-grep "BADPASSWORD" logs/atheme/atheme.log
+grep "BADPASSWORD" data/atheme/logs/atheme.log
 
 # Verify user registration
 sqlite3 data/atheme/data/services.db "SELECT * FROM nick_table WHERE nick='nickname';"
