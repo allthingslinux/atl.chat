@@ -59,7 +59,7 @@ just irc ssl-setup
 docker compose up -d cert-manager
 ```
 
-**Important**: cert-manager must run before IRC/XMPP services to populate `data/certs/`. For dev, `just init` creates self-signed certs in `config/tls/`.
+**Important**: cert-manager must run before IRC/XMPP services to populate `data/certs/`. For dev, `just init` creates self-signed certs in `data/certs/live/<domain>/` (Let's Encrypt layout, shared by IRC and XMPP).
 
 ### Step 3: Start Services
 
@@ -96,18 +96,23 @@ just irc ssl-stop
 
 ### Certificate Locations
 
-**cert-manager (Lego) output:**
+**Certificate layout:**
 ```
 data/certs/
-├── certificates/
-│   ├── _.atl.chat.crt   # Wildcard cert (Lego format)
-│   └── _.atl.chat.key   # Private key
-└── accounts/            # ACME account data
+├── certificates/       # cert-manager (Lego) output
+│   ├── _.atl.chat.crt
+│   └── _.atl.chat.key
+├── live/               # Let's Encrypt layout (dev certs from init, or certbot/copied prod certs)
+│   ├── irc.atl.chat/
+│   │   ├── fullchain.pem
+│   │   └── privkey.pem
+│   └── xmpp.atl.chat/
+│       ├── fullchain.pem
+│       └── privkey.pem
+└── accounts/           # ACME account data (cert-manager)
 
 apps/unrealircd/config/tls/
-├── server.cert.pem     # Certificate for UnrealIRCd
-├── server.key.pem      # Private key for UnrealIRCd
-└── curl-ca-bundle.crt  # CA bundle for SSL validation
+└── curl-ca-bundle.crt  # CA bundle for TLS peer validation (server certs live in data/certs)
 ```
 
 ## Automation and Monitoring
@@ -167,7 +172,7 @@ openssl x509 -in data/certs/certificates/_.atl.chat.crt -noout -dates
 #### "Services won't start after certificate update"
 ```bash
 # Check certificate file permissions
-ls -la apps/unrealircd/config/tls/
+ls -la data/certs/live/
 
 # Manually restart services
 docker restart unrealircd atl-irc-webpanel
@@ -191,12 +196,12 @@ docker compose logs -f cert-manager
 ### Certificate Validation
 
 ```bash
-# Verify certificate chain
+# Verify certificate chain (replace irc.atl.chat with your IRC_DOMAIN)
 openssl verify -CAfile apps/unrealircd/config/tls/curl-ca-bundle.crt \
-               apps/unrealircd/config/tls/server.cert.pem
+               data/certs/live/irc.atl.chat/fullchain.pem
 
 # Check certificate details
-openssl x509 -in apps/unrealircd/config/tls/server.cert.pem -text -noout
+openssl x509 -in data/certs/live/irc.atl.chat/fullchain.pem -text -noout
 
 # Test SSL connection
 openssl s_client -connect yourdomain.com:6697 -servername yourdomain.com
@@ -229,12 +234,11 @@ openssl s_client -connect yourdomain.com:6697 -servername yourdomain.com
 
 ### Custom Certificate Paths
 
-The SSL manager uses these default paths (configurable in the script):
+IRC and XMPP both use `data/certs/live/<domain>/` (Let's Encrypt layout). Override in `.env`:
 
 ```bash
-TLS_DIR="./apps/unrealircd/config/tls"
-LETSENCRYPT_DIR="./data/letsencrypt"
-CREDENTIALS_FILE="./cloudflare-credentials.ini"
+IRC_SSL_CERT_PATH=/home/unrealircd/unrealircd/certs/live/irc.atl.chat/fullchain.pem
+IRC_SSL_KEY_PATH=/home/unrealircd/unrealircd/certs/live/irc.atl.chat/privkey.pem
 ```
 
 ### Multiple Domains
@@ -289,12 +293,9 @@ If certificates expire unexpectedly:
 
 ### Backup and Recovery
 
-Certificates are automatically backed up in `data/letsencrypt/`. To restore:
+Certificates live in `data/certs/`. cert-manager writes to `data/certs/certificates/`; dev certs and Let's Encrypt-style layouts use `data/certs/live/`. To restore:
 
 ```bash
-# Copy from Let's Encrypt backup
-# cert-manager writes directly to data/certs - no copy needed
-
 # Restart services
 docker compose restart atl-irc-server
 ```

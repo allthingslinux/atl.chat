@@ -94,8 +94,8 @@ listen {
         clientsonly;
     };
     tls-options {
-        certificate "/home/unrealircd/unrealircd/config/tls/server.cert.pem";
-        key "/home/unrealircd/unrealircd/config/tls/server.key.pem";
+        certificate "/home/unrealircd/unrealircd/certs/live/irc.atl.chat/fullchain.pem";
+        key "/home/unrealircd/unrealircd/certs/live/irc.atl.chat/privkey.pem";
     };
 }
 ```
