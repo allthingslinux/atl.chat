@@ -1,0 +1,32 @@
+# =============================================================================
+# Cert Manager - Lego for Let's Encrypt
+# =============================================================================
+# Paths relative to this file's directory (infra/compose/)
+# Scripts remain in infra/docker/cert-manager/scripts/
+# =============================================================================
+
+name: atl-cert-manager
+
+include:
+  - networks.yaml
+
+services:
+  cert-manager:
+    image: goacme/lego:latest
+    container_name: atl-cert-manager
+    hostname: atl-cert-manager
+    restart: unless-stopped
+    entrypoint: /scripts/run.sh
+
+    environment:
+      - CLOUDFLARE_DNS_API_TOKEN=${CLOUDFLARE_DNS_API_TOKEN}
+      - LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL}
+      - IRC_ROOT_DOMAIN=${IRC_ROOT_DOMAIN:-atl.chat}
+      - SSL_DOMAIN=${SSL_DOMAIN:-}
+
+    volumes:
+      - ../../data/certs:/data
+      - ../../infra/docker/cert-manager/scripts:/scripts:ro
+
+    networks:
+      - atl-chat

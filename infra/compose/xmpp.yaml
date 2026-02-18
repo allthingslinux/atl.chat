@@ -1,0 +1,70 @@
+# =============================================================================
+# XMPP Stack - Prosody
+# =============================================================================
+# Paths are relative to this file's directory (infra/compose/)
+# =============================================================================
+
+name: atl-xmpp
+
+include:
+  - networks.yaml
+
+services:
+  atl-xmpp-server:
+    build:
+      context: ../../apps/xmpp/services/prosody
+      dockerfile: Containerfile
+    image: allthingslinux/prosody:latest
+    container_name: atl-xmpp-server
+    hostname: atl-xmpp-server
+    restart: unless-stopped
+    init: true
+
+    env_file:
+      - path: ../../.env
+        required: false
+
+    environment:
+      - PROSODY_DOMAIN=${PROSODY_DOMAIN}
+      - PROSODY_UPLOAD_EXTERNAL_URL=${PROSODY_UPLOAD_EXTERNAL_URL}
+      - PROSODY_PROXY_ADDRESS=${PROSODY_PROXY_ADDRESS}
+      - PROSODY_SSL_KEY=${PROSODY_SSL_KEY}
+      - PROSODY_SSL_CERT=${PROSODY_SSL_CERT}
+
+    security_opt:
+      - no-new-privileges:true
+      - apparmor:docker-default
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "${LOG_MAX_SIZE:-50m}"
+        max-file: "${LOG_MAX_FILES:-5}"
+        compress: "true"
+
+    ports:
+      - "${PROSODY_C2S_PORT:-5222}:5222"
+      - "${PROSODY_S2S_PORT:-5269}:5269"
+      - "${PROSODY_C2S_DIRECT_TLS_PORT:-5223}:5223"
+      - "${PROSODY_S2S_DIRECT_TLS_PORT:-5270}:5270"
+      - "${PROSODY_HTTP_PORT:-5280}:5280"
+      - "${PROSODY_HTTPS_PORT:-5281}:5281"
+      - "${PROSODY_PROXY65_PORT:-5000}:5000"
+
+    volumes:
+      - ../../apps/xmpp/services/prosody/config:/etc/prosody/config:ro
+      - ../../apps/xmpp/services/prosody/scripts:/opt/prosody/scripts:ro
+      - ../../apps/xmpp/web/assets:/usr/share/prosody/www:ro
+      - ../../data/xmpp/data:/var/lib/prosody/data
+      - ../../data/xmpp/uploads:/var/lib/prosody/uploads
+      - ../../data/certs:/etc/prosody/certs
+
+    healthcheck:
+      test: [ "CMD", "/usr/local/bin/health-check.sh" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+    networks:
+      - atl-chat

@@ -1,13 +1,15 @@
 #!/bin/sh
 set -e
 
-# Configuration
-DOMAINS="*.atl.chat atl.chat"
+# Configuration - domains from env (e.g. IRC_ROOT_DOMAIN=atl.chat or SSL_DOMAIN=example.com)
+ROOT_DOMAIN=${IRC_ROOT_DOMAIN:-${SSL_DOMAIN:-atl.chat}}
+WILDCARD_DOMAIN="*.$ROOT_DOMAIN"
 EMAIL=${LETSENCRYPT_EMAIL:-admin@allthingslinux.org}
 DATA_DIR="/data"
 
+# Lego outputs: certificates/_.<domain>.crt and _.<domain>.key for wildcards
 echo "Starting Cert Manager..."
-echo "Domains: $DOMAINS"
+echo "Domains: $WILDCARD_DOMAIN $ROOT_DOMAIN"
 echo "Email: $EMAIL"
 
 # Ensure we have credentials
@@ -19,12 +21,12 @@ fi
 
 # Initial issuance
 echo "Requesting initial certificates..."
-lego --email "$EMAIL" --dns cloudflare --domains "*.atl.chat" --domains "atl.chat" --path "$DATA_DIR" --accept-tos run
+lego --email "$EMAIL" --dns cloudflare --domains "$WILDCARD_DOMAIN" --domains "$ROOT_DOMAIN" --path "$DATA_DIR" --accept-tos run
 
 # Renewal loop
 while true; do
     echo "Sleeping for 24 hours..."
     sleep 86400
     echo "Checking for renewal..."
-    lego --email "$EMAIL" --dns cloudflare --domains "*.atl.chat" --domains "atl.chat" --path "$DATA_DIR" --accept-tos renew
+    lego --email "$EMAIL" --dns cloudflare --domains "$WILDCARD_DOMAIN" --domains "$ROOT_DOMAIN" --path "$DATA_DIR" --accept-tos renew
 done

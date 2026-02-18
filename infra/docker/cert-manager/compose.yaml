@@ -14,6 +14,8 @@ services:
     environment:
       - CLOUDFLARE_DNS_API_TOKEN=${CLOUDFLARE_DNS_API_TOKEN}
       - LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL}
+      - IRC_ROOT_DOMAIN=${IRC_ROOT_DOMAIN:-atl.chat}
+      - SSL_DOMAIN=${SSL_DOMAIN:-}
 
     volumes:
       - ../../../data/certs:/data
