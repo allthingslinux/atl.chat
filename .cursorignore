@@ -1,0 +1,17 @@
+# References: include dir but exclude junk (vendor, VCS, build artifacts, caches)
+!references/
+
+references/**/.git/
+references/**/vendor/
+references/**/node_modules/
+references/**/__pycache__/
+references/**/dist/
+references/**/build/
+references/**/.venv/
+references/**/venv/
+references/**/target/
+references/**/.mypy_cache/
+references/**/.ruff_cache/
+references/**/.nox/
+references/**/_sources/
+references/**/_static/
