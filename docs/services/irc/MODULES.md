@@ -33,7 +33,7 @@ Third-party modules are automatically installed during container build using the
 
 ```bash
 # Edit the modules list
-vim apps/irc/services/unrealircd/third-party-modules.list
+vim apps/unrealircd/third-party-modules.list
 
 # Add modules (one per line)
 third/showwebirc
@@ -220,7 +220,7 @@ docker compose exec atl-irc-server ./unrealircd module list
 
 1. **Edit the configuration file**:
    ```bash
-   nano apps/irc/services/unrealircd/third-party-modules.list
+   nano apps/unrealircd/third-party-modules.list
    ```
 
 2. **Add the module name** (one per line):
@@ -237,7 +237,7 @@ docker compose exec atl-irc-server ./unrealircd module list
 
 1. **Remove from the configuration file**:
    ```bash
-   nano apps/irc/services/unrealircd/third-party-modules.list
+   nano apps/unrealircd/third-party-modules.list
    ```
 
 2. **Comment out or delete the line**:

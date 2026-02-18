@@ -20,11 +20,11 @@ Services:
 ```yaml
 atl-irc-server:
   build:
-    context: ./apps/irc/services/unrealircd
+    context: ./apps/unrealircd
     dockerfile: Containerfile
   container_name: atl-irc-server
   volumes:
-    - ./apps/irc/services/unrealircd/config:/home/unrealircd/unrealircd/config
+    - ./apps/unrealircd/config:/home/unrealircd/unrealircd/config
     - ./logs/atl-irc-server:/home/unrealircd/unrealircd/logs
     - ./data/atl-irc-server:/home/unrealircd/unrealircd/data
   ports:
@@ -42,14 +42,14 @@ atl-irc-server:
 ```yaml
 atheme:
   build:
-    context: ./apps/irc/services/atheme
+    context: ./apps/atheme
     dockerfile: Containerfile
   container_name: atl-irc-services
   depends_on:
     atl-irc-server:
       condition: service_healthy
   volumes:
-    - ./apps/irc/services/atheme/config:/usr/local/atheme/etc:ro
+    - ./apps/atheme/config:/usr/local/atheme/etc:ro
     - ./data/atheme:/usr/local/atheme/data
     - ./logs/atheme:/usr/local/atheme/logs
   network_mode: service:atl-irc-server  # Shares network with IRCd
@@ -60,7 +60,7 @@ atheme:
 ```yaml
 atl-irc-webpanel:
   build:
-    context: ../../apps/irc
+    context: ../../apps/webpanel
     dockerfile: services/webpanel/Containerfile
   container_name: atl-irc-webpanel
   depends_on:

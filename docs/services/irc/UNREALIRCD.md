@@ -209,10 +209,10 @@ IRC.atl.chat includes support for third-party modules:
 
 ```bash
 # List available third-party modules
-ls apps/irc/services/unrealircd/third-party-modules.list
+ls apps/unrealircd/third-party-modules.list
 
 # Install modules
-./apps/irc/services/unrealircd/scripts/install-modules.sh
+./apps/unrealircd/scripts/install-modules.sh
 ```
 
 ## Security Features
@@ -430,17 +430,17 @@ Configuration is generated from templates:
 ./scripts/prepare-config.sh
 
 # Check generated config
-cat apps/irc/services/unrealircd/config/unrealircd.conf
+cat apps/unrealircd/config/unrealircd.conf
 ```
 
 ### Backup and Recovery
 
 ```bash
 # Backup configuration
-cp apps/irc/services/unrealircd/config/unrealircd.conf backup/
+cp apps/unrealircd/config/unrealircd.conf backup/
 
 # Restore from backup
-cp backup/unrealircd.conf apps/irc/services/unrealircd/config/
+cp backup/unrealircd.conf apps/unrealircd/config/
 ```
 
 ## Advanced Features

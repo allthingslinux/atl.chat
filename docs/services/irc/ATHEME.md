@@ -38,14 +38,14 @@ Atheme runs in a dedicated Docker container:
 ```yaml
 atheme:
   build:
-    context: ./apps/irc/services/atheme
+    context: ./apps/atheme
     dockerfile: Containerfile
   container_name: atl-irc-services
   depends_on:
     atl-irc-server:
       condition: service_healthy
   volumes:
-    - ./apps/irc/services/atheme/config:/usr/local/atheme/etc:ro
+    - ./apps/atheme/config:/usr/local/atheme/etc:ro
     - ./data/atheme:/usr/local/atheme/data
     - ./logs/atheme:/usr/local/atheme/logs
   network_mode: service:atl-irc-server  # Shares network with IRCd
@@ -529,7 +529,7 @@ httpd {
 sqlite3 data/atheme/atheme.db ".backup backup/atheme-$(date +%Y%m%d).db"
 
 # Configuration backup
-cp apps/irc/services/atheme/config/atheme.conf backup/
+cp apps/atheme/config/atheme.conf backup/
 ```
 
 #### Recovery Process
@@ -541,7 +541,7 @@ docker stop atheme
 cp backup/atheme-latest.db data/atheme/atheme.db
 
 # Restore configuration
-cp backup/atheme.conf apps/irc/services/atheme/config/
+cp backup/atheme.conf apps/atheme/config/
 
 # Restart services
 make up

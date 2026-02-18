@@ -101,7 +101,7 @@ cat cloudflare-credentials.ini
 make test-env
 
 # Check generated configs
-ls -la apps/irc/services/*/config/*.conf
+ls -la apps/unrealircd/config/*.conf apps/atheme/config/*.conf
 
 # Regenerate configurations
 make build
