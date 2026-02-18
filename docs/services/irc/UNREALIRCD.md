@@ -164,44 +164,11 @@ link services.atl.chat {
 
 ## Module System
 
-### Core Modules
+### Consolidated Configuration
 
-UnrealIRCd uses a modular architecture. Core modules are loaded in `modules.default.conf`:
+All modules (core, optional, RPC) are defined in `unrealircd.conf.template`. On upgrade, manually diff against the new UnrealIRCd release's `modules.default.conf` and `modules.optional.conf` to pick up changes.
 
-#### Authentication & Security
-```
-loadmodule "cloak_sha256";      // Hostname cloaking
-loadmodule "usermodes/secureonlymsg";  // SSL-only messaging
-loadmodule "usermodes/regonlymsg";     // Registered users only
-```
-
-#### User Modes
-```
-loadmodule "usermodes/bot";         // Bot identification
-loadmodule "usermodes/censor";      // Content filtering
-loadmodule "usermodes/privdeaf";    // Private message blocking
-loadmodule "usermodes/noctcp";      // CTCP blocking
-```
-
-#### Channel Modes
-```
-loadmodule "chanmodes/admin";       // Admin channel mode
-loadmodule "chanmodes/auditorium";  // Auditorium mode
-loadmodule "chanmodes/ban";         // Ban management
-loadmodule "chanmodes/inviteonly";  // Invite-only channels
-```
-
-### Custom Modules
-
-Additional modules can be loaded in `modules.custom.conf`:
-
-```c
-// Third-party modules
-loadmodule "third/showwebirc";   // WebIRC support
-
-// Custom modules
-// loadmodule "my_custom_module";
-```
+### Third-Party Modules
 
 ### Third-Party Modules
 

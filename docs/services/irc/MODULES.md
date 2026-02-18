@@ -118,42 +118,15 @@ MODULE UNLOAD mymodule
 
 ## Module Configuration
 
-### Configuration Files
+### Consolidated Configuration
 
-#### modules.default.conf
-Contains core modules required for basic functionality:
+All module loading is inlined in `unrealircd.conf.template`. On UnrealIRCd upgrade, diff against the new release's `modules.default.conf` and `modules.optional.conf` to pick up any changes.
 
 ```c
-// Core modules - DO NOT REMOVE
+// Core + optional modules are defined at the top of unrealircd.conf.template
+// Third-party modules (e.g. third/showwebirc) are loaded near the end
 loadmodule "cloak_sha256";
-loadmodule "usermodes/secureonlymsg";
-loadmodule "chanmodes/ban";
-loadmodule "chanmodes/inviteonly";
-
-// Standard extensions
-loadmodule "extensions/ircv3";
-loadmodule "extensions/sasl";
-```
-
-#### modules.custom.conf
-Site-specific modules:
-
-```c
-// Third-party modules
 loadmodule "third/showwebirc";
-loadmodule "third/geoip";
-
-// Custom modules
-// loadmodule "mymodule";
-```
-
-#### modules.optional.conf
-Optional features:
-
-```c
-// Load as needed
-// loadmodule "chanmodes/auditorium";
-// loadmodule "usermodes/censor";
 ```
 
 ## Currently Installed Modules

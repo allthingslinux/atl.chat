@@ -182,10 +182,9 @@ PONG :server
 Configure the JSON-RPC API in `unrealircd.conf`:
 
 ```c
-// Enable RPC modules
-include "rpc.modules.default.conf";
+// RPC modules, Unix socket, and rpc-class blocks are inlined in unrealircd.conf.template
 
-// Listen on RPC port
+// Listen on RPC port (TLS)
 listen {
     ip *;
     port 8600;

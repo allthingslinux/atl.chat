@@ -152,9 +152,7 @@ chmod 644 unrealircd.conf
 #### UnrealIRCd Templates
 ```
 apps/unrealircd/config/
-├── unrealircd.conf.template     # Main server config
-├── modules.default.conf         # Core modules
-├── modules.custom.conf          # Custom modules
+├── unrealircd.conf.template     # Main server config (modules inlined)
 ├── operclass.default.conf       # Operator classes
 └── aliases/atheme.conf          # Service aliases
 ```
@@ -393,7 +391,7 @@ envsubst < custom.conf.template > custom.conf
 ```c
 // Include additional config files
 include "custom.conf";
-include "modules.custom.conf";
+// Modules are inlined in unrealircd.conf.template
 ```
 
 ### Configuration Overrides
