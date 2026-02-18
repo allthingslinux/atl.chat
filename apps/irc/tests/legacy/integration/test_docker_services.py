@@ -231,7 +231,7 @@ class TestRealDockerIntegration:
             restart_policy = container.attrs.get("HostConfig", {}).get("RestartPolicy", {})
 
             # Most services should have unless-stopped policy
-            if "ssl-monitor" not in container.name:  # SSL monitor might have different policy
+            if "cert-manager" not in container.name:  # cert-manager may have different policy
                 assert restart_policy.get("Name") in ["unless-stopped", "always"], (
                     f"Container {container.name} should have restart policy"
                 )

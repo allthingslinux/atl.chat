@@ -16,33 +16,44 @@ class E2EWorkflowTest:
 
     @pytest.fixture(scope="class")
     def temp_project_dir(self, tmp_path_factory):
-        """Create a temporary copy of the project for E2E testing."""
+        """Create a temporary copy of the project for E2E testing (repo-root structure)."""
         temp_dir = tmp_path_factory.mktemp("irc_atl_chat_e2e")
-
-        # Copy project files to temp directory
         project_root = Path(__file__).parent.parent.parent
+        repo_root = project_root.parent.parent
 
-        # Copy essential files
-        files_to_copy = ["compose.yaml", "Makefile", "pyproject.toml", "env.example"]
+        # Copy root compose and infra (single source of truth)
+        compose_src = repo_root / "compose.yaml"
+        if compose_src.exists():
+            shutil.copy2(compose_src, temp_dir / "compose.yaml")
 
-        dirs_to_copy = ["scripts", "src", "docs"]
+        infra_compose = temp_dir / "infra" / "compose"
+        infra_compose.mkdir(parents=True, exist_ok=True)
+        for f in (repo_root / "infra" / "compose").iterdir():
+            if f.is_file():
+                shutil.copy2(f, infra_compose / f.name)
 
-        for file in files_to_copy:
-            src = project_root / file
-            if src.exists():
-                if src.is_file():
-                    shutil.copy2(src, temp_dir / file)
-                else:
-                    shutil.copytree(src, temp_dir / file, dirs_exist_ok=True)
-
-        for dir_name in dirs_to_copy:
+        # Copy apps/irc (scripts, services)
+        apps_irc = temp_dir / "apps" / "irc"
+        apps_irc.mkdir(parents=True, exist_ok=True)
+        for dir_name in ["scripts", "services"]:
             src = project_root / dir_name
             if src.exists():
-                shutil.copytree(src, temp_dir / dir_name, dirs_exist_ok=True)
+                shutil.copytree(src, apps_irc / dir_name, dirs_exist_ok=True)
+        pyproject = project_root / "pyproject.toml"
+        if pyproject.exists():
+            shutil.copy2(pyproject, apps_irc / "pyproject.toml")
 
-        # Create necessary directories
-        (temp_dir / "data").mkdir(exist_ok=True)
-        (temp_dir / "logs").mkdir(exist_ok=True)
+        # Copy justfile, .env.example
+        if (repo_root / "justfile").exists():
+            shutil.copy2(repo_root / "justfile", temp_dir / "justfile")
+        if (repo_root / ".env.example").exists():
+            shutil.copy2(repo_root / ".env.example", temp_dir / ".env.example")
+
+        # Create data dirs
+        (temp_dir / "data" / "irc" / "data").mkdir(parents=True, exist_ok=True)
+        (temp_dir / "data" / "irc" / "logs").mkdir(parents=True, exist_ok=True)
+        (temp_dir / "data" / "atheme" / "data").mkdir(parents=True, exist_ok=True)
+        (temp_dir / "data" / "atheme" / "logs").mkdir(parents=True, exist_ok=True)
 
         return temp_dir
 
@@ -54,9 +65,8 @@ class E2EWorkflowTest:
         os.chdir(temp_project_dir)
 
         # Create .env file from example
-        env_example = temp_project_dir / "env.example"
+        env_example = temp_project_dir / ".env.example"
         env_file = temp_project_dir / ".env"
-
         if env_example.exists():
             shutil.copy2(env_example, env_file)
 
@@ -82,7 +92,7 @@ class E2EWorkflowTest:
             assert (project_dir / ".env").exists(), "Environment file should exist"
 
             # Step 2: Configuration preparation
-            prepare_script = project_dir / "scripts" / "prepare-config.sh"
+            prepare_script = project_dir / "apps" / "irc" / "scripts" / "prepare-config.sh"
             if prepare_script.exists():
                 result = subprocess.run(
                     [str(prepare_script)],
@@ -107,7 +117,7 @@ class E2EWorkflowTest:
 
             # Step 4: Service startup (limited for E2E)
             result = subprocess.run(
-                ["docker", "compose", "up", "-d", "--scale", "ssl-monitor=0"],
+                ["docker", "compose", "up", "-d"],
                 check=False,
                 cwd=project_dir,
                 capture_output=True,
@@ -120,7 +130,7 @@ class E2EWorkflowTest:
             time.sleep(10)
 
             # Step 5: Verify services are running
-            containers = docker_client.containers.list(filters={"label": "com.docker.compose.project=irc.atl.chat"})
+            containers = docker_client.containers.list(filters={"label": "com.docker.compose.project=atl-chat"})
             assert len(containers) >= 2, "Should have at least 2 containers running"
 
             # Step 6: Test IRC connectivity
@@ -161,7 +171,7 @@ class E2EWorkflowTest:
         project_dir = e2e_env_setup
 
         # Test template processing
-        unreal_template = project_dir / "services/unrealircd/conf/unrealircd.conf.template"
+        unreal_template = project_dir / "apps/irc/services/unrealircd/config/unrealircd.conf.template"
         if unreal_template.exists():
             # Create mock environment
             test_env = {
@@ -205,7 +215,7 @@ class E2EWorkflowTest:
             time.sleep(15)
 
             # Verify startup sequence
-            containers = docker_client.containers.list(filters={"label": "com.docker.compose.project=irc.atl.chat"})
+            containers = docker_client.containers.list(filters={"label": "com.docker.compose.project=atl-chat"})
 
             unrealircd_container = None
             atheme_container = None

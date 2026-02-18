@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "make up",
-    "build": "make build",
-    "test": "make test",
-    "lint": "make lint"
+    "dev": "just dev",
+    "build": "docker compose build",
+    "test": "just irc test",
+    "lint": "just irc lint"
   }
 }

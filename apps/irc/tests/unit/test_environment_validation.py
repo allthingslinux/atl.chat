@@ -33,8 +33,8 @@ class TestEnvironmentValidation:
             pytest.fail(f"Invalid compose file: {e}")
 
     def test_required_directories_exist(self, project_root):
-        """Test that required directories exist."""
-        required_dirs = ["data", "logs", "scripts", "src", "tests"]
+        """Test that required directories exist (scripts, services, tests at apps/irc)."""
+        required_dirs = ["scripts", "services", "tests"]
 
         for dir_name in required_dirs:
             dir_path = project_root / dir_name
@@ -55,11 +55,11 @@ class TestEnvironmentValidation:
         info = docker_client.info()
         assert "ServerVersion" in info
 
-    def test_makefile_exists(self, project_root):
-        """Test that Makefile exists."""
-        makefile = project_root / "Makefile"
-        assert makefile.exists()
-        assert makefile.is_file()
+    def test_justfile_exists(self, project_root):
+        """Test that justfile exists (project uses just, not make)."""
+        justfile = project_root / "justfile"
+        assert justfile.exists(), "justfile should exist"
+        assert justfile.is_file()
 
     def test_test_structure(self, project_root):
         """Test that test directory structure is correct."""
@@ -86,16 +86,16 @@ class TestEnvironmentValidation:
         assert version.minor >= 11
 
     @patch("subprocess.run")
-    def test_docker_compose_config_check(self, mock_run, project_root):
+    def test_docker_compose_config_check(self, mock_run, repo_root):
         """Test Docker Compose configuration validation."""
         mock_run.return_value = subprocess.CompletedProcess(
             args=["docker", "compose", "config"], returncode=0, stdout="", stderr=""
         )
 
         result = subprocess.run(
-            ["docker", "compose", "config"],
+            ["docker", "compose", "-f", str(repo_root / "compose.yaml"), "config"],
             check=False,
-            cwd=project_root,
+            cwd=repo_root,
             capture_output=True,
             text=True,
         )

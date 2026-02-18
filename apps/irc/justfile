@@ -2,11 +2,11 @@
 # Component-specific utilities
 # Use root 'just' for lifecycle management (up, down, logs)
 
-# Open shell in running IRCd container
+# Open shell in running IRCd container (uses root compose)
 [group('Development')]
 shell:
     @echo "Development Shell"
-    docker compose -p atl-chat exec atl-irc-server bash
+    docker compose -f ../../compose.yaml -p atl-chat exec atl-irc-server bash
 
 # Run comprehensive test suite
 [group('Testing')]
@@ -93,49 +93,49 @@ modules-installed:
     @echo "Installed Modules"
     docker compose exec atl-irc-server manage-modules.sh installed
 
-# One-command SSL setup
+# Start cert-manager (Lego) for Let's Encrypt certs. Requires CLOUDFLARE_DNS_API_TOKEN in .env.
 [group('SSL')]
 ssl-setup:
-    @echo "SSL Setup"
-    @./scripts/ssl-manager.sh issue
-    @docker compose up -d ssl-monitor
-    @echo "SSL setup complete."
+    @echo "Starting cert-manager (Lego)..."
+    docker compose -f ../../compose.yaml --env-file ../../.env up -d cert-manager
+    @echo "Cert-manager started. Certs will appear in data/certs/certificates/"
 
-# Check SSL certificate status
+# Check SSL certificate status (cert-manager or dev certs)
 [group('SSL')]
 ssl-status:
     @echo "SSL Certificate Status"
-    @if [[ -f "services/unrealircd/config/tls/server.cert.pem" ]]; then \
-        ./scripts/ssl-manager.sh check; \
-        docker compose ps ssl-monitor | grep -q "Up" && echo "SSL monitoring is running" || echo "SSL monitoring is not running"; \
+    @if [[ -d "../../data/certs/certificates" ]] && ls ../../data/certs/certificates/*.crt 1>/dev/null 2>&1; then \
+        echo "Cert-manager certs found:"; \
+        ls -la ../../data/certs/certificates/*.crt 2>/dev/null || true; \
+        docker compose -f ../../compose.yaml ps cert-manager 2>/dev/null | grep -q "Up" && echo "Cert-manager is running" || echo "Cert-manager not running"; \
+    elif [[ -f "services/unrealircd/config/tls/server.cert.pem" ]]; then \
+        echo "Dev certs found (init.sh)"; \
+        openssl x509 -in services/unrealircd/config/tls/server.cert.pem -noout -dates 2>/dev/null || true; \
     else \
-        echo "No SSL certificates found. Run 'just irc ssl-setup' to get started."; \
+        echo "No SSL certificates found. Run 'just irc ssl-setup' for Let's Encrypt or 'just init' for dev certs."; \
     fi
 
-# Force certificate renewal
+# Cert-manager renews automatically every 24h. This restarts it to trigger a check.
 [group('SSL')]
 ssl-renew:
-    @echo "Forcing SSL Certificate Renewal"
-    @if [[ -f "services/unrealircd/config/tls/server.cert.pem" ]]; then \
-        ./scripts/ssl-manager.sh renew; \
-    else \
-        echo "No SSL certificates found. Run 'just irc ssl-setup' first."; \
-    fi
+    @echo "Restarting cert-manager to trigger renewal check..."
+    docker compose -f ../../compose.yaml restart cert-manager
+    @echo "Cert-manager restarted."
 
-# View SSL logs
+# View cert-manager logs
 [group('SSL')]
 ssl-logs:
-    @echo "SSL Monitoring Logs"
-    docker compose logs -f ssl-monitor --tail=50
+    @echo "Cert-manager Logs"
+    docker compose -f ../../compose.yaml logs -f --tail=50 cert-manager
 
-# Stop SSL monitoring
+# Stop cert-manager
 [group('SSL')]
 ssl-stop:
-    @echo "Stopping SSL Monitoring"
-    docker compose down ssl-monitor
-    @echo "SSL monitoring stopped"
+    @echo "Stopping cert-manager"
+    docker compose -f ../../compose.yaml stop cert-manager
+    @echo "Cert-manager stopped."
 
-# Remove SSL certificates
+# Remove SSL certificates (cert-manager output and dev certs)
 [group('SSL')]
 ssl-clean:
     @echo "WARNING: This will DELETE your SSL certificates!"
@@ -143,9 +143,9 @@ ssl-clean:
     @read -p "Are you sure you want to continue? (type 'yes' to confirm): " confirm && \
     if [[ "$confirm" == "yes" ]]; then \
         echo "Removing SSL certificates..."; \
-        rm -rf data/letsencrypt services/unrealircd/config/tls; \
-        docker compose down ssl-monitor; \
-        echo "SSL certificates and monitoring removed."; \
+        docker compose -f ../../compose.yaml stop cert-manager 2>/dev/null || true; \
+        rm -rf ../../data/certs/certificates ../../data/certs/accounts services/unrealircd/config/tls; \
+        echo "SSL certificates removed."; \
     else \
         echo "SSL cleanup cancelled."; \
     fi

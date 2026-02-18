@@ -48,16 +48,16 @@ log_error() {
 create_directories() {
     log_info "Creating required directory structure..."
 
-    # Data directories
+    # Data directories (must match compose volume mounts)
     local data_dirs=(
-        "$PROJECT_ROOT/data/unrealircd"
-        "$PROJECT_ROOT/data/atheme"
-    )
-
-    # Log directories
-    local log_dirs=(
+        "$PROJECT_ROOT/data/irc/data"
         "$PROJECT_ROOT/data/irc/logs"
+        "$PROJECT_ROOT/data/irc/webpanel-data"
+        "$PROJECT_ROOT/data/atheme/data"
         "$PROJECT_ROOT/data/atheme/logs"
+        "$PROJECT_ROOT/data/xmpp/data"
+        "$PROJECT_ROOT/data/xmpp/uploads"
+        "$PROJECT_ROOT/data/certs"
     )
 
     # SSL directories
@@ -66,7 +66,7 @@ create_directories() {
     )
 
     # Create all directories
-    for dir in "${data_dirs[@]}" "${log_dirs[@]}" "${ssl_dirs[@]}"; do
+    for dir in "${data_dirs[@]}" "${ssl_dirs[@]}"; do
         if [ ! -d "$dir" ]; then
             mkdir -p "$dir"
             log_info "Created directory: $dir"
@@ -103,11 +103,11 @@ set_permissions() {
         log_info "Set ownership for data directory"
   fi
 
-    # Ensure UnrealIRCd data directory specifically has correct permissions
-    if [ -d "$PROJECT_ROOT/data/unrealircd" ]; then
-        sudo chown -R "$current_uid:$current_gid" "$PROJECT_ROOT/data/unrealircd"
-        chmod 755 "$PROJECT_ROOT/data/unrealircd"
-        log_info "Set permissions for UnrealIRCd data directory"
+    # Set ownership for IRC data directory
+    if [ -d "$PROJECT_ROOT/data/irc" ]; then
+        sudo chown -R "$current_uid:$current_gid" "$PROJECT_ROOT/data/irc"
+        chmod -R 755 "$PROJECT_ROOT/data/irc"
+        log_info "Set permissions for IRC data directory"
   fi
 
     # Set ownership for Atheme data directory with correct UID
@@ -141,7 +141,7 @@ set_permissions() {
 
     # Make sure data directories are writable
     find "$PROJECT_ROOT/data" -type d -exec chmod 755 {} \; 2> /dev/null || true
-    find "$PROJECT_ROOT/atheme" -type d -exec chmod 755 {} \; 2> /dev/null || true
+    find "$PROJECT_ROOT/data/atheme" -type d -exec chmod 755 {} \; 2> /dev/null || true
 
     log_success "Permissions set successfully"
 }

@@ -25,15 +25,17 @@ class TestConfigurationValidation:
         content = env_example.read_text()
         assert "UNREALIRCD_" in content or "ATHEME_" in content, "Should contain IRC service configuration"
 
-    def test_compose_file_exists(self, project_root):
-        """Test that docker-compose.yml exists and is valid."""
-        compose_file = project_root / "compose.yaml"
-        assert compose_file.exists(), "compose.yaml file should exist"
+    def test_compose_file_exists(self, repo_root):
+        """Test that root compose.yaml exists and includes IRC stack."""
+        compose_file = repo_root / "compose.yaml"
+        assert compose_file.exists(), "Root compose.yaml should exist"
 
-        # Basic validation - should be YAML and contain services
-        content = compose_file.read_text()
-        assert "services:" in content, "Should contain services section"
-        assert "unrealircd" in content.lower(), "Should contain unrealircd service"
+        irc_compose = repo_root / "infra" / "compose" / "irc.yaml"
+        assert irc_compose.exists(), "infra/compose/irc.yaml should exist"
+
+        content = irc_compose.read_text()
+        assert "services:" in content, "IRC compose should contain services section"
+        assert "atl-irc-server" in content or "unrealircd" in content.lower(), "Should define IRC server"
 
     def test_dockerfile_exists(self, project_root):
         """Test that Dockerfiles exist."""
@@ -87,16 +89,16 @@ class TestDockerServices:
 
     @pytest.mark.docker
     @pytest.mark.integration
-    def test_docker_compose_config_valid(self, project_root, docker_client):
+    def test_docker_compose_config_valid(self, repo_root, docker_client):
         """Test that docker-compose configuration is valid."""
-        compose_file = project_root / "compose.yaml"
+        compose_file = repo_root / "compose.yaml"
 
         try:
             # Test that docker-compose can parse the file
             result = subprocess.run(
-                ["docker", "compose", "config"],
+                ["docker", "compose", "-f", str(compose_file), "config"],
                 check=False,
-                cwd=project_root,
+                cwd=repo_root,
                 capture_output=True,
                 text=True,
                 timeout=30,
@@ -178,11 +180,11 @@ class TestScripts:
         assert init_script.exists(), "Init script should exist"
         assert init_script.stat().st_mode & 0o111, "Script should be executable"
 
-    def test_ssl_manager_script_exists(self, project_root):
-        """Test that SSL manager script exists."""
-        ssl_script = project_root / "scripts/ssl-manager.sh"
-        assert ssl_script.exists(), "SSL manager script should exist"
-        assert ssl_script.stat().st_mode & 0o111, "Script should be executable"
+    def test_cert_manager_run_script_exists(self, project_root):
+        """Test that cert-manager run script exists (replaces ssl-manager.sh)."""
+        cert_manager_script = project_root.parent.parent / "infra/docker/cert-manager/scripts/run.sh"
+        assert cert_manager_script.exists(), "Cert-manager run script should exist"
+        assert cert_manager_script.stat().st_mode & 0o111, "Script should be executable"
 
     def test_prepare_config_script_exists(self, project_root):
         """Test that prepare config script exists."""
@@ -239,27 +241,18 @@ class TestScripts:
 class TestSSLManagement:
     """Test SSL certificate management and HTTPS setup."""
 
-    def test_cloudflare_credentials_template_exists(self, project_root):
-        """Test that Cloudflare credentials template exists."""
-        cf_template = project_root / "cloudflare-credentials.ini.template"
-        assert cf_template.exists(), "Cloudflare credentials template should exist"
+    def test_cloudflare_credentials_example_exists(self, project_root):
+        """Test that Cloudflare credentials example exists (for cert-manager)."""
+        cf_example = project_root.parent.parent / "docs/examples/cloudflare-credentials.ini.example"
+        assert cf_example.exists(), "Cloudflare credentials example should exist"
 
-        content = cf_template.read_text()
-        assert "dns_cloudflare_api_token" in content, "Should contain API token config"
+        content = cf_example.read_text()
+        assert "dns_cloudflare" in content or "api_token" in content, "Should contain API token config"
 
-    def test_ssl_manager_can_run(self, project_root):
-        """Test that SSL manager script can execute."""
-        ssl_script = project_root / "scripts/ssl-manager.sh"
-
-        try:
-            result = subprocess.run(
-                [str(ssl_script), "--help"], check=False, cwd=project_root, capture_output=True, text=True, timeout=10
-            )
-
-            assert result.returncode in [0, 1, 2], "SSL script should be executable"
-
-        except (subprocess.TimeoutExpired, FileNotFoundError):
-            pytest.skip("SSL script not available in test environment")
+    def test_cert_manager_compose_exists(self, project_root):
+        """Test that cert-manager compose file exists (replaces ssl-manager.sh)."""
+        cert_manager_compose = project_root.parent.parent / "infra/compose/cert-manager.yaml"
+        assert cert_manager_compose.exists(), "Cert-manager compose should exist"
 
     @pytest.mark.integration
     def test_https_accessibility(self):

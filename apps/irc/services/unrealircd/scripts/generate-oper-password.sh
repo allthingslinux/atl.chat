@@ -112,10 +112,10 @@ main() {
   log_info "==============================="
   echo
 
-  # Check if we're in the right directory
-  if [[ ! -f "compose.yaml" ]] && [[ ! -f "docker-compose.yml" ]]; then
-    log_error "No compose.yaml or docker-compose.yml found in current directory"
-    log_info "Make sure you're in the IRC project root directory"
+  # Check for compose (root compose.yaml or legacy local compose)
+  if [[ ! -f "compose.yaml" ]] && [[ ! -f "docker-compose.yml" ]] && [[ ! -f "../../compose.yaml" ]]; then
+    log_error "No compose.yaml found (expected at repo root or apps/irc)"
+    log_info "Run from repo root or apps/irc directory"
     exit 1
   fi
 

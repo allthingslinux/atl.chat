@@ -152,12 +152,10 @@ services:
       - SSL_CERT_FILE=/ssl/server.crt
       - SSL_KEY_FILE=/ssl/server.key
 
-  ssl-monitor:
-    image: nginx:alpine
-    ports:
-      - "80:80"
+  cert-manager:
+    image: goacme/lego:latest
     volumes:
-      - ./ssl:/etc/ssl/certs:ro
+      - ./ssl:/data:ro
 """
 
         compose_file = service_dir / "compose.yaml"

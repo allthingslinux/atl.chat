@@ -18,7 +18,7 @@ class TestInitScript:
         """Create a temporary project structure for testing init.sh."""
         # Copy essential files to temp directory
         project_files = ["scripts/init.sh", "env.example"]
-        project_dirs = ["services/unrealircd/conf", "services/atheme/conf", "docs/examples/unrealircd/tls"]
+        project_dirs = ["services/unrealircd/configig", "services/atheme/configig", "docs/examples/unrealircd/tls"]
 
         for file in project_files:
             src = Path(__file__).parent.parent.parent / file
@@ -34,8 +34,8 @@ class TestInitScript:
                 shutil.copytree(src, dst, dirs_exist_ok=True)
 
         # Create minimal template files if they don't exist
-        unreal_template = tmp_path / "services/unrealircd/conf/unrealircd.conf.template"
-        atheme_template = tmp_path / "services/atheme/conf/atheme.conf.template"
+        unreal_template = tmp_path / "services/unrealircd/config/unrealircd.conf.template"
+        atheme_template = tmp_path / "services/atheme/config/atheme.conf.template"
 
         if not unreal_template.exists():
             unreal_template.parent.mkdir(parents=True, exist_ok=True)
@@ -110,7 +110,7 @@ ATHEME_SEND_PASSWORD=testpass
             "data/letsencrypt",
             "logs/unrealircd",
             "logs/atheme",
-            "services/unrealircd/conf/tls",
+            "services/unrealircd/configig/tls",
         ]
 
         for dir_path in expected_dirs:
@@ -210,8 +210,8 @@ ATHEME_SEND_PASSWORD=testpass
         assert result.returncode == 0
 
         # Check that config files were generated
-        unreal_config = temp_project / "services/unrealircd/conf/unrealircd.conf"
-        atheme_config = temp_project / "services/atheme/conf/atheme.conf"
+        unreal_config = temp_project / "services/unrealircd/config/unrealircd.conf"
+        atheme_config = temp_project / "services/atheme/config/atheme.conf"
 
         if unreal_config.exists():
             content = unreal_config.read_text()
@@ -236,8 +236,8 @@ class TestPrepareConfigScript:
         script_dst.chmod(script_dst.stat().st_mode | stat.S_IEXEC)
 
         # Create template files
-        unreal_template = tmp_path / "services/unrealircd/conf/unrealircd.conf.template"
-        atheme_template = tmp_path / "services/atheme/conf/atheme.conf.template"
+        unreal_template = tmp_path / "services/unrealircd/config/unrealircd.conf.template"
+        atheme_template = tmp_path / "services/atheme/config/atheme.conf.template"
 
         unreal_template.parent.mkdir(parents=True, exist_ok=True)
         atheme_template.parent.mkdir(parents=True, exist_ok=True)
@@ -290,8 +290,8 @@ ATHEME_NETNAME=TestNet
         assert result.returncode == 0, f"Script failed: {result.stderr}"
 
         # Check that config files were created with substituted values
-        unreal_config = temp_project_with_templates / "services/unrealircd/conf/unrealircd.conf"
-        atheme_config = temp_project_with_templates / "services/atheme/conf/atheme.conf"
+        unreal_config = temp_project_with_templates / "services/unrealircd/config/unrealircd.conf"
+        atheme_config = temp_project_with_templates / "services/atheme/config/atheme.conf"
 
         if unreal_config.exists():
             content = unreal_config.read_text()
@@ -341,8 +341,8 @@ ATHEME_NETNAME=TestNet
         assert "All configuration files prepared successfully" in result.stdout
 
         # Verify configuration files were created with substituted values
-        unrealircd_conf = temp_project_with_templates / "services/unrealircd/conf/unrealircd.conf"
-        atheme_conf = temp_project_with_templates / "services/atheme/conf/atheme.conf"
+        unrealircd_conf = temp_project_with_templates / "services/unrealircd/config/unrealircd.conf"
+        atheme_conf = temp_project_with_templates / "services/atheme/config/atheme.conf"
 
         if unrealircd_conf.exists():
             content = unrealircd_conf.read_text()
@@ -447,87 +447,7 @@ class TestHealthCheckScript:
         assert "Checking UnrealIRCd health on port 9999" in result.stdout
 
 
-class TestSSLManagerScript:
-    """Test the ssl-manager.sh script functionality."""
-
-    @pytest.fixture
-    def ssl_manager_script(self, tmp_path):
-        """Create a copy of the ssl-manager.sh script for testing."""
-        script_src = Path(__file__).parent.parent.parent / "scripts/ssl-manager.sh"
-        script_dst = tmp_path / "ssl-manager.sh"
-        shutil.copy2(script_src, script_dst)
-        script_dst.chmod(script_dst.stat().st_mode | stat.S_IEXEC)
-        return script_dst
-
-    @pytest.fixture
-    def minimal_env_file(self, tmp_path):
-        """Create a minimal .env file for SSL manager testing."""
-        env_file = tmp_path / ".env"
-        env_file.write_text("""
-# Minimal SSL configuration for testing
-SSL_EMAIL=test@example.com
-SSL_DOMAIN=test.example.com
-""")
-        return env_file
-
-    @pytest.mark.integration
-    @pytest.mark.ssl
-    def test_ssl_manager_help_command(self, ssl_manager_script, tmp_path):
-        """Test that SSL manager shows help information."""
-        # Create a minimal .env file in the project root (tmp_path.parent)
-        env_file = tmp_path.parent / ".env"
-        env_file.write_text("SSL_EMAIL=test@example.com\nSSL_DOMAIN=test.example.com\n")
-
-        result = subprocess.run([str(ssl_manager_script), "--help"], cwd=tmp_path, capture_output=True, text=True)
-
-        # The SSL manager script doesn't have --help, so it will fail, but shouldn't fail due to missing .env
-        # Just check that it doesn't fail with the .env error
-        assert ".env file not found" not in result.stderr
-
-    @pytest.mark.integration
-    @pytest.mark.ssl
-    def test_ssl_manager_missing_env_file(self, ssl_manager_script, tmp_path):
-        """Test SSL manager behavior when .env file is missing."""
-        # Remove any existing .env file from the project root
-        env_file = tmp_path.parent / ".env"
-        if env_file.exists():
-            env_file.unlink()
-
-        result = subprocess.run([str(ssl_manager_script), "check"], cwd=tmp_path, capture_output=True, text=True)
-
-        # Should fail when .env is missing
-        assert result.returncode != 0
-        assert ".env file not found" in result.stderr
-
-    @pytest.mark.integration
-    @pytest.mark.ssl
-    def test_ssl_manager_invalid_command(self, ssl_manager_script, tmp_path):
-        """Test SSL manager with invalid command."""
-        # Create a minimal .env file in the project root (tmp_path.parent)
-        env_file = tmp_path.parent / ".env"
-        env_file.write_text("SSL_EMAIL=test@example.com\nSSL_DOMAIN=test.example.com\n")
-
-        result = subprocess.run(
-            [str(ssl_manager_script), "invalid_command"], cwd=tmp_path, capture_output=True, text=True
-        )
-
-        # Should fail (either due to invalid command or script logic)
-        assert result.returncode != 0
-
-    @pytest.mark.integration
-    @pytest.mark.ssl
-    @pytest.mark.slow
-    def test_ssl_manager_check_command(self, ssl_manager_script, tmp_path):
-        """Test SSL manager check command with minimal setup."""
-        # Create a minimal .env file in the project root (tmp_path.parent)
-        env_file = tmp_path.parent / ".env"
-        env_file.write_text("SSL_EMAIL=test@example.com\nSSL_DOMAIN=test.example.com\n")
-
-        result = subprocess.run([str(ssl_manager_script), "check"], cwd=tmp_path, capture_output=True, text=True)
-
-        # Should complete (may show that certificates don't exist)
-        # Just check that it doesn't fail due to missing .env
-        assert ".env file not found" not in result.stderr
+# TestSSLManagerScript removed - ssl-manager.sh deleted in favor of cert-manager (Lego)
 
 
 class TestScriptIntegration:
@@ -570,7 +490,7 @@ ATHEME_SEND_PASSWORD=int_pass
         assert result2.returncode == 0, f"Config script failed: {result2.stderr}"
 
         # Verify integration worked
-        unreal_config = tmp_path / "services/unrealircd/conf/unrealircd.conf"
+        unreal_config = tmp_path / "services/unrealircd/config/unrealircd.conf"
         if unreal_config.exists():
             content = unreal_config.read_text()
             assert "integration.test" in content

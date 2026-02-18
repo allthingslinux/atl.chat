@@ -15,12 +15,18 @@ import docker
 import pytest
 
 # Docker fixtures using pytest-docker-tools
-from pytest_docker_tools import container, image
+from pytest_docker_tools import build, container
 
 from .controllers.base_controllers import BaseServerController, TestCaseControllerConfig
 from .utils.base_test_cases import BaseServerTestCase
 
-unrealircd_image = image(name="ircatlchat-unrealircd:latest")
+# Build UnrealIRCd image from project Containerfile (self-contained tests)
+_unrealircd_build_path = Path(__file__).resolve().parent.parent / "services" / "unrealircd"
+unrealircd_image = build(
+    path=str(_unrealircd_build_path),
+    dockerfile="Containerfile",
+    tag="ircatlchat-unrealircd:latest",
+)
 
 
 @pytest.fixture(scope="function")
@@ -32,8 +38,9 @@ def prepared_config_dir(tmp_path):
     config_dir = tmp_path / "container_config"
     config_dir.mkdir(exist_ok=True)
 
-    # Source directory with real configs
-    source_dir = Path("services/unrealircd/conf")
+    # Source directory with real configs (relative to apps/irc)
+    _conftest_dir = Path(__file__).resolve().parent
+    source_dir = _conftest_dir.parent / "services" / "unrealircd" / "config"
 
     # Copy all config files
     for config_file in source_dir.glob("*.conf"):
@@ -57,10 +64,6 @@ def prepared_config_dir(tmp_path):
             shutil.copy2(file, dest_file)
             dest_file.chmod(0o644)
 
-    print(f"DEBUG: Prepared config dir: {config_dir}")
-    print(f"DEBUG: Files in config dir: {list(config_dir.glob('*'))}")
-    print(f"DEBUG: unrealircd.conf exists: {(config_dir / 'unrealircd.conf').exists()}")
-
     return config_dir
 
 
@@ -68,14 +71,12 @@ unrealircd_container = container(
     image="{unrealircd_image.id}",
     ports={
         "6697/tcp": None,  # Main IRC port (TLS only)
+        "8000/tcp": None,  # Plaintext/websocket port for tests using tls=False
     },
     volumes={
-        "{prepared_config_dir}": {"bind": "/home/unrealircd/unrealircd/conf", "mode": "rw"},
+        "{prepared_config_dir}": {"bind": "/home/unrealircd/unrealircd/config", "mode": "rw"},
     },
-    command=[
-        "-t",  # Test configuration
-        "-F",  # Don't fork
-    ],
+    command=["start"],  # Run server in foreground (entrypoint start case)
     scope="function",
 )
 
@@ -195,14 +196,20 @@ def irc_service(docker_ip, docker_services):
 
 @pytest.fixture(scope="session")
 def project_root() -> Path:
-    """Get the project root directory."""
+    """Get the IRC app root directory (apps/irc)."""
     return Path(__file__).parent.parent
 
 
 @pytest.fixture(scope="session")
-def compose_file(project_root: Path) -> Path:
-    """Get the docker-compose file path."""
-    return project_root / "compose.yaml"
+def repo_root(project_root: Path) -> Path:
+    """Get the monorepo root directory."""
+    return project_root.parent.parent
+
+
+@pytest.fixture(scope="session")
+def compose_file(repo_root: Path) -> Path:
+    """Get the root docker-compose file path (single source of truth)."""
+    return repo_root / "compose.yaml"
 
 
 @pytest.fixture
@@ -305,9 +312,9 @@ class DockerComposeHelper:
 
 
 @pytest.fixture
-def docker_compose_helper(compose_file: Path, project_root: Path) -> DockerComposeHelper:
-    """Provide a Docker Compose helper for tests."""
-    return DockerComposeHelper(compose_file, project_root)
+def docker_compose_helper(compose_file: Path, repo_root: Path) -> DockerComposeHelper:
+    """Provide a Docker Compose helper for tests (uses root compose)."""
+    return DockerComposeHelper(compose_file, repo_root)
 
 
 class IRCTestHelper:
@@ -450,11 +457,11 @@ def cleanup_files():
 
 # Environment setup fixture
 @pytest.fixture(scope="session", autouse=True)
-def setup_test_environment(project_root: Path, tmp_path_factory):
+def setup_test_environment(repo_root: Path, tmp_path_factory):
     """Setup test environment variables and configuration."""
     # Set test environment
     os.environ.setdefault("TESTING", "true")
-    os.environ.setdefault("DOCKER_COMPOSE_FILE", str(project_root / "compose.yaml"))
+    os.environ.setdefault("DOCKER_COMPOSE_FILE", str(repo_root / "compose.yaml"))
 
     # Create temporary test directories that get cleaned up automatically
     temp_test_root = tmp_path_factory.mktemp("irc_atl_test")
