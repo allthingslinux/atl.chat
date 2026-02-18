@@ -125,34 +125,34 @@ setup_directories() {
 setup_certificates() {
     log_info "Setting up SSL certificates..."
 
-    local cert_file="${PROSODY_CERT_DIR}/${PROSODY_DOMAIN}.crt"
-    local key_file="${PROSODY_CERT_DIR}/${PROSODY_DOMAIN}.key"
+    # Use live/<domain>/ layout (matches init.sh and Let's Encrypt)
+    local live_dir="${PROSODY_CERT_DIR}/live/${PROSODY_DOMAIN}"
+    local cert_file="${live_dir}/fullchain.pem"
+    local key_file="${live_dir}/privkey.pem"
 
-    # Check for Let's Encrypt certificates (preferred)
-    local le_cert="${PROSODY_CERT_DIR}/live/${PROSODY_DOMAIN}/fullchain.pem"
-    local le_key="${PROSODY_CERT_DIR}/live/${PROSODY_DOMAIN}/privkey.pem"
-
-    if [[ -f "$le_cert" && -f "$le_key" ]]; then
-        log_info "Let's Encrypt certificates found for ${PROSODY_DOMAIN}"
-        # Ensure Prosody can read the certificates
+    if [[ -f "$cert_file" && -f "$key_file" ]]; then
+        log_info "Certificates found for ${PROSODY_DOMAIN}"
         if [[ $EUID -eq 0 ]]; then
-            chown -R "$PROSODY_USER:$PROSODY_USER" "${PROSODY_CERT_DIR}/live/${PROSODY_DOMAIN}" || true
+            chown -R "$PROSODY_USER:$PROSODY_USER" "$live_dir" || true
         fi
-        chmod 644 "$le_cert" 2> /dev/null || true
-        chmod 600 "$le_key" 2> /dev/null || true
+        chmod 644 "$cert_file" 2> /dev/null || true
+        chmod 600 "$key_file" 2> /dev/null || true
         return 0
     fi
 
-    # Check for standard certificates
-    if [[ -f "$cert_file" && -f "$key_file" ]]; then
-        log_info "Standard certificates found for ${PROSODY_DOMAIN}"
-
-        # Check certificate validity
-        if openssl x509 -in "$cert_file" -noout -checkend 86400 > /dev/null 2>&1; then
-            log_info "Certificate is valid for at least 24 hours"
-        else
-            log_warn "Certificate expires within 24 hours - consider renewal"
+    # Fallback: check legacy layout (xmpp.localhost.crt / .key) for backwards compat
+    local legacy_cert="${PROSODY_CERT_DIR}/${PROSODY_DOMAIN}.crt"
+    local legacy_key="${PROSODY_CERT_DIR}/${PROSODY_DOMAIN}.key"
+    if [[ -f "$legacy_cert" && -f "$legacy_key" ]]; then
+        log_info "Legacy certificates found, copying to live/${PROSODY_DOMAIN}/"
+        mkdir -p "$live_dir"
+        cp "$legacy_cert" "$cert_file"
+        cp "$legacy_key" "$key_file"
+        if [[ $EUID -eq 0 ]]; then
+            chown -R "$PROSODY_USER:$PROSODY_USER" "$live_dir" || true
         fi
+        chmod 644 "$cert_file"
+        chmod 600 "$key_file"
         return 0
     fi
 
@@ -160,17 +160,15 @@ setup_certificates() {
     log_warn "No certificates found, generating self-signed certificate for ${PROSODY_DOMAIN}"
     log_warn "This is suitable for development only - use proper certificates in production"
 
-    # Generate private key
-    openssl genrsa -out "$key_file" 4096 2> /dev/null
-
-    # Generate certificate with proper Subject Alternative Names
-    openssl req -new -x509 -nodes -key "$key_file" -out "$cert_file" -days 365 \
+    mkdir -p "$live_dir"
+    openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+        -keyout "$key_file" \
+        -out "$cert_file" \
         -subj "/CN=${PROSODY_DOMAIN}" \
-        -addext "subjectAltName=DNS:${PROSODY_DOMAIN},DNS:*.${PROSODY_DOMAIN},DNS:muc.${PROSODY_DOMAIN},DNS:upload.${PROSODY_DOMAIN}"
+        -addext "subjectAltName=DNS:${PROSODY_DOMAIN},DNS:*.${PROSODY_DOMAIN},DNS:muc.${PROSODY_DOMAIN},DNS:upload.${PROSODY_DOMAIN},DNS:proxy.${PROSODY_DOMAIN},DNS:localhost,IP:127.0.0.1" 2>/dev/null
 
-    # Set proper permissions (only if running as root)
     if [[ $EUID -eq 0 ]]; then
-        chown "$PROSODY_USER:$PROSODY_USER" "$cert_file" "$key_file"
+        chown -R "$PROSODY_USER:$PROSODY_USER" "$live_dir" || true
     fi
     chmod 644 "$cert_file"
     chmod 600 "$key_file"
