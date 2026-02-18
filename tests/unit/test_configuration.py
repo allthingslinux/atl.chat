@@ -35,8 +35,8 @@ IRC_ADMIN_EMAIL=admin@test.com
 
     def test_template_file_exists(self, project_root):
         """Test that configuration templates exist."""
-        unreal_template = project_root / "services/unrealircd/conf/unrealircd.conf.template"
-        atheme_template = project_root / "services/atheme/conf/atheme.conf.template"
+        unreal_template = project_root / "apps/unrealircd/config/unrealircd.conf.template"
+        atheme_template = project_root / "apps/atheme/config/atheme.conf.template"
 
         assert unreal_template.exists(), "UnrealIRCd template should exist"
         assert atheme_template.exists(), "Atheme template should exist"
@@ -74,8 +74,8 @@ IRC_ADMIN_EMAIL=admin@test.com
 
     def test_configuration_directory_structure(self, project_root):
         """Test that configuration directories have correct structure."""
-        unrealircd_conf = project_root / "services/unrealircd/conf"
-        atheme_conf = project_root / "services/atheme/conf"
+        unrealircd_conf = project_root / "apps/unrealircd/config"
+        atheme_conf = project_root / "apps/atheme/config"
 
         assert unrealircd_conf.exists()
         assert atheme_conf.exists()
@@ -86,7 +86,7 @@ IRC_ADMIN_EMAIL=admin@test.com
 
     def test_configuration_validation(self, project_root):
         """Test configuration file validation."""
-        unreal_template = project_root / "services/unrealircd/conf/unrealircd.conf.template"
+        unreal_template = project_root / "apps/unrealircd/config/unrealircd.conf.template"
 
         if unreal_template.exists():
             content = unreal_template.read_text()
@@ -112,7 +112,7 @@ IRC_ADMIN_EMAIL=admin@test.com
     )
     def test_template_variables_presence(self, project_root, service, template_vars):
         """Test that required template variables are present in templates."""
-        template_file = project_root / f"services/{service}/conf/{service}.conf.template"
+        template_file = project_root / f"apps/{service}/config/{service}.conf.template"
 
         if template_file.exists():
             content = template_file.read_text()
@@ -123,8 +123,8 @@ IRC_ADMIN_EMAIL=admin@test.com
     def test_configuration_file_permissions(self, project_root):
         """Test configuration file permissions."""
         conf_dirs = [
-            project_root / "services/unrealircd/conf",
-            project_root / "services/atheme/conf",
+            project_root / "apps/unrealircd/config",
+            project_root / "apps/atheme/config",
         ]
 
         for conf_dir in conf_dirs:

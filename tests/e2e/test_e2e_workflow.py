@@ -32,16 +32,14 @@ class E2EWorkflowTest:
             if f.is_file():
                 shutil.copy2(f, infra_compose / f.name)
 
-        # Copy apps/irc (scripts, services)
-        apps_irc = temp_dir / "apps" / "irc"
-        apps_irc.mkdir(parents=True, exist_ok=True)
-        for dir_name in ["scripts", "services"]:
-            src = project_root / dir_name
-            if src.exists():
-                shutil.copytree(src, apps_irc / dir_name, dirs_exist_ok=True)
-        pyproject = project_root / "pyproject.toml"
-        if pyproject.exists():
-            shutil.copy2(pyproject, apps_irc / "pyproject.toml")
+        # Copy scripts and app configs
+        scripts_src = project_root / "scripts"
+        if scripts_src.exists():
+            shutil.copytree(scripts_src, temp_dir / "scripts", dirs_exist_ok=True)
+        for app_name in ["unrealircd", "atheme"]:
+            app_src = project_root / "apps" / app_name
+            if app_src.exists():
+                shutil.copytree(app_src, temp_dir / "apps" / app_name, dirs_exist_ok=True)
 
         # Copy justfile, .env.example
         if (repo_root / "justfile").exists():
@@ -92,7 +90,7 @@ class E2EWorkflowTest:
             assert (project_dir / ".env").exists(), "Environment file should exist"
 
             # Step 2: Configuration preparation
-            prepare_script = project_dir / "apps" / "irc" / "scripts" / "prepare-config.sh"
+            prepare_script = project_dir / "scripts" / "prepare-config.sh"
             if prepare_script.exists():
                 result = subprocess.run(
                     [str(prepare_script)],
@@ -171,7 +169,7 @@ class E2EWorkflowTest:
         project_dir = e2e_env_setup
 
         # Test template processing
-        unreal_template = project_dir / "apps/irc/services/unrealircd/config/unrealircd.conf.template"
+        unreal_template = project_dir / "apps/unrealircd/config/unrealircd.conf.template"
         if unreal_template.exists():
             # Create mock environment
             test_env = {

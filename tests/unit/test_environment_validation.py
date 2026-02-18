@@ -33,8 +33,8 @@ class TestEnvironmentValidation:
             pytest.fail(f"Invalid compose file: {e}")
 
     def test_required_directories_exist(self, project_root):
-        """Test that required directories exist (scripts, services, tests at apps/irc)."""
-        required_dirs = ["scripts", "services", "tests"]
+        """Test that required directories exist (scripts, tests at repo root)."""
+        required_dirs = ["scripts", "tests", "apps"]
 
         for dir_name in required_dirs:
             dir_path = project_root / dir_name

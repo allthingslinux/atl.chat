@@ -17,13 +17,13 @@ class TestConfigurationValidation:
     """Test configuration file validation and parsing."""
 
     def test_env_example_exists(self, project_root):
-        """Test that env.example file exists."""
-        env_example = project_root / "env.example"
-        assert env_example.exists(), "env.example file should exist"
+        """Test that .env.example file exists."""
+        env_example = project_root / ".env.example"
+        assert env_example.exists(), ".env.example file should exist"
 
         # Should contain basic configuration keys
         content = env_example.read_text()
-        assert "UNREALIRCD_" in content or "ATHEME_" in content, "Should contain IRC service configuration"
+        assert "IRC_" in content or "ATHEME_" in content, "Should contain IRC service configuration"
 
     def test_compose_file_exists(self, repo_root):
         """Test that root compose.yaml exists and includes IRC stack."""
@@ -39,24 +39,23 @@ class TestConfigurationValidation:
 
     def test_dockerfile_exists(self, project_root):
         """Test that Dockerfiles exist."""
-        unrealircd_dockerfile = project_root / "services/unrealircd/Containerfile"
-        atheme_dockerfile = project_root / "services/atheme/Containerfile"
-        webpanel_dockerfile = project_root / "src/frontend/webpanel/Containerfile"
-        gamja_dockerfile = project_root / "src/frontend/gamja/Containerfile"
+        unrealircd_dockerfile = project_root / "apps/unrealircd/Containerfile"
+        atheme_dockerfile = project_root / "apps/atheme/Containerfile"
+        webpanel_dockerfile = project_root / "apps/webpanel/Containerfile"
+        gamja_dockerfile = project_root / "apps/gamja/Containerfile"
 
         assert unrealircd_dockerfile.exists(), "UnrealIRCd Dockerfile should exist"
         assert atheme_dockerfile.exists(), "Atheme Dockerfile should exist"
         assert webpanel_dockerfile.exists(), "WebPanel Dockerfile should exist"
         assert gamja_dockerfile.exists(), "Gamja Dockerfile should exist"
 
-    def test_makefile_exists(self, project_root):
-        """Test that Makefile exists and has basic targets."""
-        makefile = project_root / "Makefile"
-        assert makefile.exists(), "Makefile should exist"
+    def test_justfile_exists(self, project_root):
+        """Test that justfile exists and has basic recipes."""
+        justfile = project_root / "justfile"
+        assert justfile.exists(), "justfile should exist"
 
-        content = makefile.read_text()
-        # Should have common targets
-        assert "help" in content or ".PHONY" in content, "Should have basic Makefile structure"
+        content = justfile.read_text()
+        assert "init" in content or "dev" in content, "Should have basic justfile structure"
 
 
 class TestDockerServices:
@@ -182,7 +181,7 @@ class TestScripts:
 
     def test_cert_manager_run_script_exists(self, project_root):
         """Test that cert-manager run script exists (replaces ssl-manager.sh)."""
-        cert_manager_script = project_root.parent.parent / "infra/docker/cert-manager/scripts/run.sh"
+        cert_manager_script = project_root / "scripts/cert-manager/run.sh"
         assert cert_manager_script.exists(), "Cert-manager run script should exist"
         assert cert_manager_script.stat().st_mode & 0o111, "Script should be executable"
 
@@ -251,7 +250,7 @@ class TestSSLManagement:
 
     def test_cert_manager_compose_exists(self, project_root):
         """Test that cert-manager compose file exists (replaces ssl-manager.sh)."""
-        cert_manager_compose = project_root.parent.parent / "infra/compose/cert-manager.yaml"
+        cert_manager_compose = project_root / "infra/compose/cert-manager.yaml"
         assert cert_manager_compose.exists(), "Cert-manager compose should exist"
 
     @pytest.mark.integration

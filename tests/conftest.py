@@ -21,7 +21,7 @@ from .controllers.base_controllers import BaseServerController, TestCaseControll
 from .utils.base_test_cases import BaseServerTestCase
 
 # Build UnrealIRCd image from project Containerfile (self-contained tests)
-_unrealircd_build_path = Path(__file__).resolve().parent.parent / "services" / "unrealircd"
+_unrealircd_build_path = Path(__file__).resolve().parent.parent / "apps" / "unrealircd"
 unrealircd_image = build(
     path=str(_unrealircd_build_path),
     dockerfile="Containerfile",
@@ -38,9 +38,9 @@ def prepared_config_dir(tmp_path):
     config_dir = tmp_path / "container_config"
     config_dir.mkdir(exist_ok=True)
 
-    # Source directory with real configs (relative to apps/irc)
+    # Source directory with real configs (relative to repo root)
     _conftest_dir = Path(__file__).resolve().parent
-    source_dir = _conftest_dir.parent / "services" / "unrealircd" / "config"
+    source_dir = _conftest_dir.parent / "apps" / "unrealircd" / "config"
 
     # Copy all config files
     for config_file in source_dir.glob("*.conf"):
@@ -196,14 +196,14 @@ def irc_service(docker_ip, docker_services):
 
 @pytest.fixture(scope="session")
 def project_root() -> Path:
-    """Get the IRC app root directory (apps/irc)."""
+    """Get the monorepo root directory."""
     return Path(__file__).parent.parent
 
 
 @pytest.fixture(scope="session")
 def repo_root(project_root: Path) -> Path:
-    """Get the monorepo root directory."""
-    return project_root.parent.parent
+    """Get the monorepo root directory (alias for project_root)."""
+    return project_root
 
 
 @pytest.fixture(scope="session")
