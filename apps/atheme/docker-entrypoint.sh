@@ -13,7 +13,7 @@ if [ "$(id -u)" = "0" ]; then
 fi
 
 # Create directories with proper ownership
-mkdir -p /usr/local/atheme/data /usr/local/atheme/logs /usr/local/atheme/logs/atheme /usr/local/atheme/var
+mkdir -p /usr/local/atheme/data /usr/local/atheme/logs /usr/local/atheme/var
 
 # Validate configuration exists
 if [ ! -f "/usr/local/atheme/etc/atheme.conf" ]; then
