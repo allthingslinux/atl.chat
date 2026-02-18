@@ -16,26 +16,32 @@ class TestInitScript:
     @pytest.fixture
     def temp_project(self, tmp_path):
         """Create a temporary project structure for testing init.sh."""
-        # Copy essential files to temp directory
-        project_files = ["scripts/init.sh", "env.example"]
-        project_dirs = ["services/unrealircd/configig", "services/atheme/configig", "docs/examples/unrealircd/tls"]
+        # Copy essential files to temp directory (paths match init.sh / compose)
+        project_root = Path(__file__).resolve().parent.parent.parent.parent
+        project_files = ["scripts/init.sh", "scripts/prepare-config.sh"]
+        project_dirs = ["apps/unrealircd/config", "apps/atheme/config"]
 
         for file in project_files:
-            src = Path(__file__).parent.parent.parent / file
+            src = project_root / file
             dst = tmp_path / file
             dst.parent.mkdir(parents=True, exist_ok=True)
             if src.exists():
                 shutil.copy2(src, dst)
 
         for dir_name in project_dirs:
-            src = Path(__file__).parent.parent.parent / dir_name
+            src = project_root / dir_name
             dst = tmp_path / dir_name
             if src.exists():
                 shutil.copytree(src, dst, dirs_exist_ok=True)
 
+        # env.example: init looks for env.example; project has .env.example
+        env_example_src = project_root / ".env.example"
+        if env_example_src.exists():
+            (tmp_path / "env.example").write_text(env_example_src.read_text())
+
         # Create minimal template files if they don't exist
-        unreal_template = tmp_path / "services/unrealircd/config/unrealircd.conf.template"
-        atheme_template = tmp_path / "services/atheme/config/atheme.conf.template"
+        unreal_template = tmp_path / "apps/unrealircd/config/unrealircd.conf.template"
+        atheme_template = tmp_path / "apps/atheme/config/atheme.conf.template"
 
         if not unreal_template.exists():
             unreal_template.parent.mkdir(parents=True, exist_ok=True)
@@ -103,14 +109,16 @@ ATHEME_SEND_PASSWORD=testpass
         # Check that script ran successfully
         assert result.returncode == 0, f"Init script failed: {result.stderr}"
 
-        # Check that required directories were created
+        # Check that required directories were created (canonical layout)
         expected_dirs = [
-            "data/unrealircd",
-            "data/atheme",
-            "data/letsencrypt",
-            "logs/unrealircd",
-            "logs/atheme",
-            "services/unrealircd/configig/tls",
+            "data/irc/data",
+            "data/irc/logs",
+            "data/irc/webpanel-data",
+            "data/atheme/data",
+            "data/atheme/logs",
+            "data/xmpp/data",
+            "data/xmpp/uploads",
+            "data/certs",
         ]
 
         for dir_path in expected_dirs:
@@ -172,13 +180,13 @@ ATHEME_SEND_PASSWORD=testpass
         assert "SUCCESS" in result.stdout
         assert "Initialization completed successfully" in result.stdout
 
-        # Verify directories were created
+        # Verify directories were created (canonical layout)
         assert (temp_project / "data").exists()
-        assert (temp_project / "logs").exists()
-        assert (temp_project / "data/unrealircd").exists()
-        assert (temp_project / "data/atheme").exists()
-        assert (temp_project / "logs/unrealircd").exists()
-        assert (temp_project / "logs/atheme").exists()
+        assert (temp_project / "data/irc/data").exists()
+        assert (temp_project / "data/irc/logs").exists()
+        assert (temp_project / "data/atheme/data").exists()
+        assert (temp_project / "data/atheme/logs").exists()
+        assert (temp_project / "data/certs").exists()
 
     @pytest.mark.integration
     def test_init_script_config_file_generation(self, temp_project):
@@ -210,8 +218,8 @@ ATHEME_SEND_PASSWORD=testpass
         assert result.returncode == 0
 
         # Check that config files were generated
-        unreal_config = temp_project / "services/unrealircd/config/unrealircd.conf"
-        atheme_config = temp_project / "services/atheme/config/atheme.conf"
+        unreal_config = temp_project / "apps/unrealircd/config/unrealircd.conf"
+        atheme_config = temp_project / "apps/atheme/config/atheme.conf"
 
         if unreal_config.exists():
             content = unreal_config.read_text()
@@ -229,15 +237,15 @@ class TestPrepareConfigScript:
     def temp_project_with_templates(self, tmp_path):
         """Create temporary project with configuration templates."""
         # Copy the prepare-config.sh script
-        script_src = Path(__file__).parent.parent.parent / "scripts/prepare-config.sh"
+        script_src = Path(__file__).resolve().parent.parent.parent.parent / "scripts/prepare-config.sh"
         script_dst = tmp_path / "scripts/prepare-config.sh"
         script_dst.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(script_src, script_dst)
         script_dst.chmod(script_dst.stat().st_mode | stat.S_IEXEC)
 
-        # Create template files
-        unreal_template = tmp_path / "services/unrealircd/config/unrealircd.conf.template"
-        atheme_template = tmp_path / "services/atheme/config/atheme.conf.template"
+        # Create template files (paths match prepare-config.sh)
+        unreal_template = tmp_path / "apps/unrealircd/config/unrealircd.conf.template"
+        atheme_template = tmp_path / "apps/atheme/config/atheme.conf.template"
 
         unreal_template.parent.mkdir(parents=True, exist_ok=True)
         atheme_template.parent.mkdir(parents=True, exist_ok=True)
@@ -290,8 +298,8 @@ ATHEME_NETNAME=TestNet
         assert result.returncode == 0, f"Script failed: {result.stderr}"
 
         # Check that config files were created with substituted values
-        unreal_config = temp_project_with_templates / "services/unrealircd/config/unrealircd.conf"
-        atheme_config = temp_project_with_templates / "services/atheme/config/atheme.conf"
+        unreal_config = temp_project_with_templates / "apps/unrealircd/config/unrealircd.conf"
+        atheme_config = temp_project_with_templates / "apps/atheme/config/atheme.conf"
 
         if unreal_config.exists():
             content = unreal_config.read_text()
@@ -341,8 +349,8 @@ ATHEME_NETNAME=TestNet
         assert "All configuration files prepared successfully" in result.stdout
 
         # Verify configuration files were created with substituted values
-        unrealircd_conf = temp_project_with_templates / "services/unrealircd/config/unrealircd.conf"
-        atheme_conf = temp_project_with_templates / "services/atheme/config/atheme.conf"
+        unrealircd_conf = temp_project_with_templates / "apps/unrealircd/config/unrealircd.conf"
+        atheme_conf = temp_project_with_templates / "apps/atheme/config/atheme.conf"
 
         if unrealircd_conf.exists():
             content = unrealircd_conf.read_text()
@@ -367,7 +375,7 @@ class TestScriptIntegration:
         """Test that init.sh and prepare-config.sh work together."""
         # Copy both scripts
         for script_name in ["init.sh", "prepare-config.sh"]:
-            src = Path(__file__).parent.parent.parent / f"scripts/{script_name}"
+            src = Path(__file__).resolve().parent.parent.parent.parent / f"scripts/{script_name}"
             dst = tmp_path / f"scripts/{script_name}"
             dst.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(src, dst)
@@ -397,8 +405,8 @@ ATHEME_SEND_PASSWORD=int_pass
 
         assert result2.returncode == 0, f"Config script failed: {result2.stderr}"
 
-        # Verify integration worked
-        unreal_config = tmp_path / "services/unrealircd/config/unrealircd.conf"
+        # Verify integration worked (prepare-config writes to apps/)
+        unreal_config = tmp_path / "apps/unrealircd/config/unrealircd.conf"
         if unreal_config.exists():
             content = unreal_config.read_text()
             assert "integration.test" in content

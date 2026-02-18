@@ -129,7 +129,7 @@ ssl-clean:
     if [[ "$confirm" == "yes" ]]; then \
         echo "Removing SSL certificates..."; \
         docker compose -f ../../compose.yaml stop cert-manager 2>/dev/null || true; \
-        rm -rf ../../data/certs/certificates ../../data/certs/accounts ../../data/certs/live config/tls; \
+        rm -rf ../../data/certs/certificates ../../data/certs/accounts ../../data/certs/live; \
         echo "SSL certificates removed."; \
     else \
         echo "SSL cleanup cancelled."; \

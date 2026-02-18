@@ -152,7 +152,7 @@ make logs-atheme
 docker compose exec atl-irc-services pgrep atheme-services
 
 # Check database
-ls -la data/atheme/
+ls -la data/atheme/data/
 ```
 
 ### WebPanel Issues

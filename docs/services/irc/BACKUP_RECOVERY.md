@@ -5,13 +5,13 @@ This guide covers essential backup procedures for IRC.atl.chat data and configur
 ## What to Backup
 
 ### Critical Data
-- **Atheme Database**: User accounts, channel registrations (`data/atheme/`)
-- **SSL Certificates**: Private keys and certificates (`data/letsencrypt/`)
+- **Atheme Database**: User accounts, channel registrations (`data/atheme/data/services.db`)
+- **SSL Certificates**: Private keys and certificates (`data/certs/`)
 - **Configuration**: Environment variables (`.env`)
 
 ### Optional Data
-- **Logs**: Service logs (`logs/`)
-- **Channel Data**: UnrealIRCd channel database (`data/unrealircd/`)
+- **Logs**: Service logs (`data/irc/logs/`, `data/atheme/logs/`)
+- **Channel Data**: UnrealIRCd runtime data (`data/irc/data/`)
 
 ## Backup Procedures
 
@@ -24,7 +24,7 @@ mkdir -p backup/$(date +%Y%m%d)
 cp -r data/atheme backup/$(date +%Y%m%d)/
 
 # Backup SSL certificates
-cp -r data/letsencrypt backup/$(date +%Y%m%d)/
+cp -r data/certs backup/$(date +%Y%m%d)/
 
 # Backup configuration
 cp .env backup/$(date +%Y%m%d)/

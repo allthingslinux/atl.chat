@@ -46,8 +46,8 @@ atheme:
       condition: service_healthy
   volumes:
     - ./apps/atheme/config:/usr/local/atheme/etc:ro
-    - ./data/atheme:/usr/local/atheme/data
-    - ./logs/atheme:/usr/local/atheme/logs
+    - ./data/atheme/data:/usr/local/atheme/data
+    - ./data/atheme/logs:/usr/local/atheme/logs
   network_mode: service:atl-irc-server  # Shares network with IRCd
 ```
 
@@ -123,7 +123,7 @@ loadmodule "infoserv/main";
 ```c
 database {
     type = "opensex";
-    name = "/usr/local/atheme/data/atheme.db";
+    name = "/usr/local/atheme/data/services.db";
 }
 ```
 
@@ -254,34 +254,34 @@ Atheme stores all data in a SQLite database:
 
 ```bash
 # Database location
-ls -la data/atheme/atheme.db
+ls -la data/atheme/data/services.db
 
 # Backup database
-cp data/atheme/atheme.db backup/
+cp data/atheme/data/services.db backup/
 
 # Database size
-du -h data/atheme/atheme.db
+du -h data/atheme/data/services.db
 ```
 
 ### Data Persistence
 
 ```bash
 # Persistent volumes
-data/atheme/          # Database and configuration
-logs/atheme/         # Service logs
+data/atheme/data/    # Database (services.db)
+data/atheme/logs/   # Service logs
 ```
 
 ### Database Maintenance
 
 ```bash
 # Check database integrity
-sqlite3 data/atheme/atheme.db "PRAGMA integrity_check;"
+sqlite3 data/atheme/data/services.db "PRAGMA integrity_check;"
 
 # Optimize database
-sqlite3 data/atheme/atheme.db "VACUUM;"
+sqlite3 data/atheme/data/services.db "VACUUM;"
 
 # View registered nicknames
-sqlite3 data/atheme/atheme.db "SELECT * FROM nick_table LIMIT 10;"
+sqlite3 data/atheme/data/services.db "SELECT * FROM nick_table LIMIT 10;"
 ```
 
 ## Security Features
@@ -345,7 +345,7 @@ log {
 
 ```bash
 # View recent logs
-tail -f logs/atheme/atheme.log
+tail -f data/atheme/logs/atheme/atheme.log
 
 # Search for specific events
 grep "REGISTER" logs/atheme/atheme.log
@@ -433,19 +433,19 @@ docker exec atheme atheme-services -c /usr/local/atheme/etc/atheme.conf
 grep "BADPASSWORD" logs/atheme/atheme.log
 
 # Verify user registration
-sqlite3 data/atheme/atheme.db "SELECT * FROM nick_table WHERE nick='nickname';"
+sqlite3 data/atheme/data/services.db "SELECT * FROM nick_table WHERE nick='nickname';"
 ```
 
 #### Database Issues
 ```bash
 # Check database file
-ls -la data/atheme/atheme.db
+ls -la data/atheme/data/services.db
 
 # Repair database
-sqlite3 data/atheme/atheme.db ".recover" > recovery.sql
+sqlite3 data/atheme/data/services.db ".recover" > recovery.sql
 
 # Restore from backup
-cp backup/atheme.db data/atheme/atheme.db
+cp backup/services.db data/atheme/data/services.db
 ```
 
 #### Memory Issues
@@ -526,7 +526,7 @@ httpd {
 ```bash
 # Database backup script
 #!/bin/bash
-sqlite3 data/atheme/atheme.db ".backup backup/atheme-$(date +%Y%m%d).db"
+sqlite3 data/atheme/data/services.db ".backup backup/atheme-$(date +%Y%m%d).db"
 
 # Configuration backup
 cp apps/atheme/config/atheme.conf backup/
@@ -538,7 +538,7 @@ cp apps/atheme/config/atheme.conf backup/
 docker stop atheme
 
 # Restore database
-cp backup/atheme-latest.db data/atheme/atheme.db
+cp backup/atheme-latest.db data/atheme/data/services.db
 
 # Restore configuration
 cp backup/atheme.conf apps/atheme/config/

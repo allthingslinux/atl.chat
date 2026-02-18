@@ -115,6 +115,8 @@ apps/unrealircd/config/tls/
 └── curl-ca-bundle.crt  # CA bundle for TLS peer validation (server certs live in data/certs)
 ```
 
+See [Data Directory Structure](../../infra/data-structure.md) for the full canonical layout.
+
 ## Automation and Monitoring
 
 ### Automatic Renewal

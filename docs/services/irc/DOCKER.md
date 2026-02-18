@@ -25,8 +25,8 @@ atl-irc-server:
   container_name: atl-irc-server
   volumes:
     - ./apps/unrealircd/config:/home/unrealircd/unrealircd/config
-    - ./logs/atl-irc-server:/home/unrealircd/unrealircd/logs
-    - ./data/atl-irc-server:/home/unrealircd/unrealircd/data
+    - ./data/irc/logs:/home/unrealircd/unrealircd/logs
+    - ./data/irc/data:/home/unrealircd/unrealircd/data
   ports:
     - '6697:6697'    # IRC over TLS
     - '6900:6900'    # Server links
@@ -50,8 +50,8 @@ atheme:
       condition: service_healthy
   volumes:
     - ./apps/atheme/config:/usr/local/atheme/etc:ro
-    - ./data/atheme:/usr/local/atheme/data
-    - ./logs/atheme:/usr/local/atheme/logs
+    - ./data/atheme/data:/usr/local/atheme/data
+    - ./data/atheme/logs:/usr/local/atheme/logs
   network_mode: service:atl-irc-server  # Shares network with IRCd
   restart: unless-stopped
 ```
@@ -88,9 +88,9 @@ volumes:
 ### Bind Mounts
 ```yaml
 volumes:
-  - ./apps/irc/services/unrealircd/config:/home/unrealircd/unrealircd/config
-  - ./logs/atl-irc-server:/home/unrealircd/unrealircd/logs
-  - ./data/atl-irc-server:/home/unrealircd/unrealircd/data
+  - ./apps/unrealircd/config:/home/unrealircd/unrealircd/config
+  - ./data/irc/logs:/home/unrealircd/unrealircd/logs
+  - ./data/irc/data:/home/unrealircd/unrealircd/data
 ```
 
 ## Networking

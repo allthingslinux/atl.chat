@@ -358,8 +358,7 @@ show_next_steps() {
     echo "  3. Or run: docker compose up -d"
     echo ""
     log_info "Data will be stored in:"
-    echo "  - $PROJECT_ROOT/data/ (persistent data)"
-    echo "  - $PROJECT_ROOT/logs/ (log files)"
+    echo "  - $PROJECT_ROOT/data/ (persistent data: irc/, atheme/, xmpp/, certs/)"
 }
 
 # Main function

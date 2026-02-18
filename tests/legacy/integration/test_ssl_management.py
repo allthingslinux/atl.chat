@@ -20,11 +20,11 @@ class TestSSLHealthCheck:
         env_file.write_text("""
 SSL_EMAIL=test@example.com
 SSL_DOMAIN=test.example.com
-SSL_CERT_PATH=./data/letsencrypt/live/test.example.com
+SSL_CERT_PATH=./data/certs/live/test.example.com
 """)
 
         # Create certificate directory structure
-        cert_dir = ssl_dir / "data/letsencrypt/live/test.example.com"
+        cert_dir = ssl_dir / "data/certs/live/test.example.com"
         cert_dir.mkdir(parents=True)
 
         # Create mock certificate files
@@ -50,7 +50,7 @@ SSL_CERT_PATH=./data/letsencrypt/live/test.example.com
     @pytest.mark.ssl
     def test_ssl_certificate_files_exist(self, temp_ssl_env):
         """Test that SSL certificate files exist and are readable."""
-        cert_dir = temp_ssl_env / "data/letsencrypt/live/test.example.com"
+        cert_dir = temp_ssl_env / "data/certs/live/test.example.com"
 
         required_files = ["fullchain.pem", "privkey.pem", "chain.pem"]
 
@@ -64,7 +64,7 @@ SSL_CERT_PATH=./data/letsencrypt/live/test.example.com
     @pytest.mark.ssl
     def test_ssl_certificate_content_validation(self, temp_ssl_env):
         """Test SSL certificate content validation."""
-        cert_dir = temp_ssl_env / "data/letsencrypt/live/test.example.com"
+        cert_dir = temp_ssl_env / "data/certs/live/test.example.com"
 
         # Check certificate file content
         cert_file = cert_dir / "fullchain.pem"
@@ -86,7 +86,7 @@ SSL_CERT_PATH=./data/letsencrypt/live/test.example.com
     @pytest.mark.ssl
     def test_ssl_certificate_permissions(self, temp_ssl_env):
         """Test SSL certificate file permissions."""
-        cert_dir = temp_ssl_env / "data/letsencrypt/live/test.example.com"
+        cert_dir = temp_ssl_env / "data/certs/live/test.example.com"
 
         # Certificate files should be readable by all (for web server)
         cert_file = cert_dir / "fullchain.pem"
@@ -112,7 +112,7 @@ SSL_CERT_PATH=./data/letsencrypt/live/test.example.com
     def test_ssl_certificate_expiry_check(self, temp_ssl_env):
         """Test SSL certificate expiry validation."""
         # This is a mock test - in real scenario would use openssl or cert validation
-        cert_file = temp_ssl_env / "data/letsencrypt/live/test.example.com/fullchain.pem"
+        cert_file = temp_ssl_env / "data/certs/live/test.example.com/fullchain.pem"
 
         # Basic file existence check (mock for expiry)
         assert cert_file.exists()
@@ -146,7 +146,7 @@ services:
       - "6667:6667"
       - "6697:6697"
     volumes:
-      - ./data/unrealircd:/data
+      - ./data/irc/data:/data
       - ./ssl:/ssl:ro
     environment:
       - SSL_CERT_FILE=/ssl/server.crt
@@ -266,7 +266,7 @@ class TestSSLCertificateRenewal:
         renewal_dir.mkdir()
 
         # Create certificate directory structure
-        cert_dir = renewal_dir / "data/letsencrypt/live/example.com"
+        cert_dir = renewal_dir / "data/certs/live/example.com"
         cert_dir.mkdir(parents=True)
 
         # Create initial certificates
@@ -279,7 +279,7 @@ class TestSSLCertificateRenewal:
     @pytest.mark.ssl
     def test_certificate_backup_before_renewal(self, temp_renewal_env):
         """Test that certificates are backed up before renewal."""
-        cert_dir = temp_renewal_env / "data/letsencrypt/live/example.com"
+        cert_dir = temp_renewal_env / "data/certs/live/example.com"
         cert_file = cert_dir / "fullchain.pem"
 
         # Simulate backup creation
@@ -295,7 +295,7 @@ class TestSSLCertificateRenewal:
     @pytest.mark.ssl
     def test_certificate_renewal_success_detection(self, temp_renewal_env):
         """Test detection of successful certificate renewal."""
-        cert_dir = temp_renewal_env / "data/letsencrypt/live/example.com"
+        cert_dir = temp_renewal_env / "data/certs/live/example.com"
         cert_file = cert_dir / "fullchain.pem"
 
         original_content = cert_file.read_text()
