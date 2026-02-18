@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Health check script for UnrealIRCd (host-side)
-# Checks if UnrealIRCd is responding on the IRC port
+# Health check script for UnrealIRCd
+# This script checks if UnrealIRCd is responding on the IRC port
 
 set -e
 
@@ -15,13 +15,13 @@ check_port() {
     if command -v nc > /dev/null 2>&1; then
         nc -z localhost "$port" 2> /dev/null
         return $?
-    elif command -v netcat > /dev/null 2>&1; then
+  elif   command -v netcat > /dev/null 2>&1; then
         netcat -z localhost "$port" 2> /dev/null
         return $?
-    else
+  else
         echo "ERROR: Neither 'nc' nor 'netcat' available for health check"
         return 1
-    fi
+  fi
 }
 
 # Main health check
