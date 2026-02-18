@@ -39,8 +39,8 @@ services:
 
     environment:
       - IRC_DOMAIN=${IRC_DOMAIN}
-      - IRC_SSL_CERT_PATH=${IRC_SSL_CERT_PATH:-/home/unrealircd/unrealircd/config/tls/server.cert.pem}
-      - IRC_SSL_KEY_PATH=${IRC_SSL_KEY_PATH:-/home/unrealircd/unrealircd/config/tls/server.key.pem}
+      - IRC_SSL_CERT_PATH=${IRC_SSL_CERT_PATH:-/home/unrealircd/unrealircd/certs/live/${IRC_DOMAIN:-irc.localhost}/fullchain.pem}
+      - IRC_SSL_KEY_PATH=${IRC_SSL_KEY_PATH:-/home/unrealircd/unrealircd/certs/live/${IRC_DOMAIN:-irc.localhost}/privkey.pem}
       - ATL_GATEWAY_IP=${ATL_GATEWAY_IP}
       - TZ=UTC
       - PUID=${PUID:-1000}
@@ -57,7 +57,7 @@ services:
       - atl-chat
 
     healthcheck:
-      test: [ 'CMD', 'nc', '-z', 'localhost', '6697' ]
+      test: ['CMD', 'sh', '-c', 'echo ''{"jsonrpc":"2.0","method":"rpc.info","params":{},"id":1}'' | nc -U /home/unrealircd/unrealircd/data/rpc.socket 2>/dev/null | grep -q "\"result\""']
       interval: 30s
       timeout: 10s
       retries: 3
