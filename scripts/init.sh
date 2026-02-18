@@ -62,7 +62,7 @@ create_directories() {
         "$PROJECT_ROOT/data/certs"
     )
 
-    # SSL directories
+    # SSL/TLS: config/tls holds CA bundle only; server certs live in data/certs (mounted as certs/)
     local ssl_dirs=(
         "$PROJECT_ROOT/apps/unrealircd/config/tls"
     )
@@ -203,6 +203,10 @@ setup_ca_bundle() {
         return 1
   fi
 
+    # Remove obsolete cert files from config/tls (server certs now live in data/certs)
+    rm -f "$ca_runtime_dir/server.cert.pem" "$ca_runtime_dir/server.key.pem" 2>/dev/null || true
+    rm -rf "$ca_runtime_dir/live" 2>/dev/null || true
+
     log_success "CA certificate bundle setup completed"
 }
 
@@ -233,20 +237,10 @@ generate_cert() {
 generate_dev_certs() {
     log_info "Setting up self-signed certificates for dev mode..."
 
-    # IRC Certificates
-    local irc_tls_dir="$PROJECT_ROOT/apps/unrealircd/config/tls"
-    generate_cert "${IRC_DOMAIN:-irc.localhost}" "$irc_tls_dir"
-
-    # Legacy compatibility for IRC
-    if [ ! -f "$irc_tls_dir/server.cert.pem" ]; then
-        cp "$irc_tls_dir/live/${IRC_DOMAIN:-irc.localhost}/fullchain.pem" "$irc_tls_dir/server.cert.pem"
-        cp "$irc_tls_dir/live/${IRC_DOMAIN:-irc.localhost}/privkey.pem" "$irc_tls_dir/server.key.pem"
-        log_info "Created legacy IRC certificate copies"
-    fi
-
-    # XMPP Certificates
-    local xmpp_cert_dir="$PROJECT_ROOT/data/certs"
-    generate_cert "${PROSODY_DOMAIN:-xmpp.localhost}" "$xmpp_cert_dir"
+    # IRC and XMPP both use data/certs (Let's Encrypt layout: live/<domain>/fullchain.pem, privkey.pem)
+    local shared_cert_dir="$PROJECT_ROOT/data/certs"
+    generate_cert "${IRC_DOMAIN:-irc.localhost}" "$shared_cert_dir"
+    generate_cert "${PROSODY_DOMAIN:-xmpp.localhost}" "$shared_cert_dir"
 
     log_success "Dev certificate setup completed"
 }
@@ -258,13 +252,18 @@ prepare_config_files() {
     # Load environment variables from .env if it exists
     if [ -f "$PROJECT_ROOT/.env" ]; then
         log_info "Loading environment variables from .env"
-        # Use set -a to automatically export all variables
         set -a
         # shellcheck disable=SC1091
         source "$PROJECT_ROOT/.env"
         set +a
         log_info "Environment variables loaded"
-  else
+    fi
+
+    # IRC cert paths: use shared data/certs (Let's Encrypt layout), matching Prosody
+    export IRC_SSL_CERT_PATH="${IRC_SSL_CERT_PATH:-/home/unrealircd/unrealircd/certs/live/${IRC_DOMAIN:-irc.localhost}/fullchain.pem}"
+    export IRC_SSL_KEY_PATH="${IRC_SSL_KEY_PATH:-/home/unrealircd/unrealircd/certs/live/${IRC_DOMAIN:-irc.localhost}/privkey.pem}"
+
+    if [ ! -f "$PROJECT_ROOT/.env" ]; then
         log_warning ".env file not found. Configuration will use defaults."
         return 1
   fi
