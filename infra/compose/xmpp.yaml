@@ -12,7 +12,7 @@ include:
 services:
   atl-xmpp-server:
     build:
-      context: ../../apps/xmpp/services/prosody
+      context: ../../apps/prosody
       dockerfile: Containerfile
     image: allthingslinux/prosody:latest
     container_name: atl-xmpp-server
@@ -52,15 +52,15 @@ services:
       - "${PROSODY_PROXY65_PORT:-5000}:5000"
 
     volumes:
-      - ../../apps/xmpp/services/prosody/config:/etc/prosody/config:ro
-      - ../../apps/xmpp/services/prosody/scripts:/opt/prosody/scripts:ro
-      - ../../apps/xmpp/web/assets:/usr/share/prosody/www:ro
+      - ../../apps/prosody/config:/etc/prosody/config:ro
+      - ../../apps/prosody/scripts:/opt/prosody/scripts:ro
+      - ../../apps/prosody/www:/usr/share/prosody/www:ro
       - ../../data/xmpp/data:/var/lib/prosody/data
       - ../../data/xmpp/uploads:/var/lib/prosody/uploads
       - ../../data/certs:/etc/prosody/certs
 
     healthcheck:
-      test: [ "CMD", "/usr/local/bin/health-check.sh" ]
+      test: [ "CMD", "curl", "-sf", "http://localhost:5280/status" ]
       interval: 30s
       timeout: 10s
       retries: 3

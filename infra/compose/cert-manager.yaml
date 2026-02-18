@@ -2,7 +2,7 @@
 # Cert Manager - Lego for Let's Encrypt
 # =============================================================================
 # Paths relative to this file's directory (infra/compose/)
-# Scripts remain in infra/docker/cert-manager/scripts/
+# Scripts in scripts/cert-manager/
 # =============================================================================
 
 name: atl-cert-manager
@@ -26,7 +26,7 @@ services:
 
     volumes:
       - ../../data/certs:/data
-      - ../../infra/docker/cert-manager/scripts:/scripts:ro
+      - ../../scripts/cert-manager:/scripts:ro
 
     networks:
       - atl-chat

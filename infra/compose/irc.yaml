@@ -15,7 +15,7 @@ services:
   # ============================================================================
   atl-irc-server:
     build:
-      context: ../../apps/irc/services/unrealircd
+      context: ../../apps/unrealircd
       dockerfile: Containerfile
       args:
         UNREALIRCD_VERSION: ${UNREALIRCD_VERSION:-6.2.0.1}
@@ -28,7 +28,7 @@ services:
     restart: unless-stopped
 
     volumes:
-      - ../../apps/irc/services/unrealircd/config:/home/unrealircd/unrealircd/config
+      - ../../apps/unrealircd/config:/home/unrealircd/unrealircd/config
       - ../../data/irc/data:/home/unrealircd/unrealircd/data
       - ../../data/irc/logs:/home/unrealircd/unrealircd/logs
       - ../../data/certs:/home/unrealircd/unrealircd/certs:ro
@@ -51,6 +51,7 @@ services:
       - '${ATL_CHAT_IP:-127.0.0.1}:${IRC_SERVER_PORT:-6900}:6900'
       - '${ATL_CHAT_IP:-127.0.0.1}:${IRC_RPC_PORT:-8600}:8600'
       - '${ATL_CHAT_IP:-127.0.0.1}:${IRC_WEBSOCKET_PORT:-8000}:8000'
+      - '${ATL_CHAT_IP:-127.0.0.1}:${ATHEME_HTTPD_PORT:-8081}:8081'
 
     networks:
       - atl-chat
@@ -67,7 +68,7 @@ services:
   # ============================================================================
   atl-irc-services:
     build:
-      context: ../../apps/irc/services/atheme
+      context: ../../apps/atheme
       dockerfile: Containerfile
       args:
         UID: ${PUID:-1000}
@@ -83,7 +84,7 @@ services:
     network_mode: service:atl-irc-server
 
     volumes:
-      - ../../apps/irc/services/atheme/config:/usr/local/atheme/etc
+      - ../../apps/atheme/config:/usr/local/atheme/etc
       - ../../data/atheme/data:/usr/local/atheme/data
       - ../../data/atheme/logs:/usr/local/atheme/logs
 
@@ -104,8 +105,8 @@ services:
   # ============================================================================
   atl-irc-webpanel:
     build:
-      context: ../../apps/irc
-      dockerfile: services/webpanel/Containerfile
+      context: ../../apps/webpanel
+      dockerfile: Containerfile
 
     container_name: atl-irc-webpanel
     hostname: atl-irc-webpanel
@@ -131,5 +132,5 @@ services:
     networks:
       - atl-chat
 
-  # TODO: Gamja (IRC web client) - see apps/irc/services/gamja/
+  # TODO: Gamja (IRC web client) - see apps/gamja/
   # Containerfile exists but needs final stage + config. Wire when ready.
