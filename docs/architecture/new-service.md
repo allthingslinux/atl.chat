@@ -42,4 +42,4 @@ include:
 
 ## 4. Init
 
-Update `apps/irc/scripts/init.sh` (or create `apps/my-service/scripts/init.sh`) for data dirs and config.
+Update `scripts/init.sh` (or create `apps/my-service/scripts/init.sh`) for data dirs and config.

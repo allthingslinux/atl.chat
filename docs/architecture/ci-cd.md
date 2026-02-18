@@ -13,7 +13,7 @@ See `.github/workflows/`:
 ## Triggers
 
 - `main`, `develop` – Push and PR
-- Path filters: changes in `apps/irc/**`, `apps/xmpp/**`, etc. run only relevant jobs
+- Path filters: changes in `apps/unrealircd/**`, `apps/prosody/**`, `tests/**`, etc. run only relevant jobs
 
 ## Local Checks
 

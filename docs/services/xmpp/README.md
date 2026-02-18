@@ -20,7 +20,7 @@ This application provides the core XMPP services for the `atl.chat` ecosystem, u
 cd atl.chat
 
 # 2. Configure variables (see .env.shared.example)
-# Service-specific overrides go in apps/xmpp/.env.development
+# Service-specific overrides go in apps/prosody/.env.development
 
 # 3. Start the XMPP stack
 just profile=xmpp up
@@ -88,21 +88,11 @@ make db-restore           # Restore database
 ## Project Structure
 
 ```
-xmpp.atl.chat/
-├── app/
-│   └── config/
-│       └── prosody/             # Prosody configuration
-├── prosody-modules/             # Community modules
-├── web/                         # Web client assets
-│   ├── assets/                  # Static files
-│   └── conversejs/              # ConverseJS web client
+apps/prosody/
+├── config/                      # Prosody configuration (prosody.cfg.lua)
+├── modules.list                 # Community modules (baked into image at build)
+├── www/                         # Static files for Prosody http (Converse.js via mod_conversejs at /conversejs)
 ├── scripts/                     # Management scripts
-├── config/                      # Service configurations
-├── database/                    # Database initialization
-├── .runtime/                    # Runtime data
-│   ├── certs/                   # SSL certificates
-│   ├── logs/                    # Service logs
-│   └── db/                      # Database files
 └── tests/                       # Test suite
 ```
 
