@@ -1,0 +1,8 @@
+pre-commit:
+  commands:
+    ruff:
+      run: uv run ruff check src tests
+    ruff-format:
+      run: uv run ruff format --check src tests
+    pytest:
+      run: uv run pytest tests -v
