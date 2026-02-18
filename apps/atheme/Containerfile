@@ -3,7 +3,7 @@
 # ============================================================================
 FROM alpine:3.23@sha256:51183f2cfa6320055da30872f211093f9ff1d3cf06f39a0bdb212314c5dc7375 AS builder
 
-# Build arguments
+# Build arguments - use master for 7.3 dev (no v7.3 tag yet); use v7.2.12 for stable
 ARG ATHEME_VERSION="master"
 
 # Install build dependencies
@@ -22,12 +22,8 @@ RUN apk add --no-cache \
 # Download and build Atheme
 WORKDIR /usr/src
 
-# Clone Atheme source with submodules
-RUN git clone https://github.com/atheme/atheme -b "${ATHEME_VERSION}" --depth=1 atheme-src --recursive
-
-# Update libmowgli submodule
-WORKDIR /usr/src/atheme-src/libmowgli-2
-RUN git pull origin master
+# Clone Atheme source with submodules (tag includes correct submodule refs)
+RUN git clone https://github.com/atheme/atheme -b "${ATHEME_VERSION}" --depth=1 atheme-src --recurse-submodules
 
 # Configure, build, and install Atheme
 WORKDIR /usr/src/atheme-src
@@ -67,10 +63,10 @@ RUN addgroup -g ${GID} -S atheme && \
 COPY --from=builder /usr/local/atheme /usr/local/atheme
 
 # Create directory structure with proper permissions
+# etc=config (mounted), data=DB (mounted), logs=log files (mounted), var=PID file
 RUN mkdir -p /usr/local/atheme/etc \
     /usr/local/atheme/data \
     /usr/local/atheme/logs \
-    /usr/local/atheme/logs/atheme \
     /usr/local/atheme/var && \
     chown -R atheme:atheme /usr/local/atheme
 
