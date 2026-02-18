@@ -222,11 +222,12 @@ generate_cert() {
     # Generate self-signed cert if it doesn't exist
     if [ ! -f "$live_dir/fullchain.pem" ] || [ ! -f "$live_dir/privkey.pem" ]; then
         log_info "Generating self-signed certificate for $domain..."
+        # SANs: main, wildcard, Prosody components (muc/upload/proxy), localhost
         openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
             -keyout "$live_dir/privkey.pem" \
             -out "$live_dir/fullchain.pem" \
             -subj "/CN=$domain" \
-            -addext "subjectAltName = DNS:$domain, DNS:*.$domain, DNS:localhost, IP:127.0.0.1" 2>/dev/null
+            -addext "subjectAltName=DNS:$domain,DNS:*.$domain,DNS:muc.$domain,DNS:upload.$domain,DNS:proxy.$domain,DNS:localhost,IP:127.0.0.1" 2>/dev/null
 
         log_success "Generated self-signed certificate for $domain"
     else
