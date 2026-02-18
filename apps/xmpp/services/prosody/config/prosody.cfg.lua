@@ -354,7 +354,9 @@ proxy65_interfaces = { "*" }
 local __http_host = Lua.os.getenv("PROSODY_HTTP_HOST") or
     Lua.os.getenv("PROSODY_DOMAIN") or "localhost"
 local __http_scheme = Lua.os.getenv("PROSODY_HTTP_SCHEME") or "http"
-http_default_host = __http_host
+local __domain = Lua.os.getenv("PROSODY_DOMAIN") or "xmpp.localhost"
+-- Route requests for unknown hosts (e.g. localhost) to main VirtualHost so / and /status work
+http_default_host = __domain
 http_external_url = __http_scheme .. "://" .. __http_host .. "/"
 
 -- Port/interface defaults per Prosody 0.12 docs:

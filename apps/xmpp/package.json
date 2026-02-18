@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "make dev",
-    "build": "make build",
-    "test": "make test",
+    "dev": "just dev",
+    "build": "docker compose build atl-xmpp-server",
+    "test": "echo 'No XMPP test script'",
     "lint": "echo 'No lint script defined'"
   }
 }

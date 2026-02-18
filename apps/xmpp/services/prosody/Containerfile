@@ -87,6 +87,12 @@ COPY modules.list ./
 
 RUN hg clone https://hg.prosody.im/prosody-modules/ prosody-modules && \
     mkdir -p prosody-modules-enabled && \
+    # Strip unneeded modules to reduce image size (keep only modules.list)
+    KEEP_MODULES=$(grep -v '^#' modules.list | grep -v '^$' | tr '\n' ' ') && \
+    for dir in prosody-modules/*/; do \
+        m=$(basename "$dir"); \
+        echo "$KEEP_MODULES" | grep -qw "$m" || rm -rf "prosody-modules/$m"; \
+    done && \
     while IFS= read -r module || [[ -n "$module" ]]; do \
     # Skip empty lines and comments \
     [[ -z "$module" || "$module" =~ ^# ]] && continue; \
@@ -103,6 +109,12 @@ RUN hg clone https://hg.prosody.im/prosody-modules/ prosody-modules && \
     echo "❌ $module not found in repository"; \
     fi \
     done < modules.list
+
+# Create empty LuaRocks manifest so Prosody's modulemanager stops expecting
+# a LuaRocks-installed tree. We use symlinks from prosody-modules, not LuaRocks.
+# Format must match LuaRocks manifest (commands, dependencies, modules, repository).
+RUN mkdir -p prosody-modules-enabled/lib/luarocks/rocks && \
+    printf '%s\n' 'commands = {}' 'dependencies = {}' 'modules = {}' 'repository = {}' > prosody-modules-enabled/lib/luarocks/rocks/manifest
 
 # --- 3. Runtime stage: Minimal image ---
 FROM debian:bookworm-slim

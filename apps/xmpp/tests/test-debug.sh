@@ -2,8 +2,14 @@
 
 # Comprehensive Docker Setup Test Script
 # Tests the entire XMPP server setup including build, deployment, and functionality
+# Run from repo root or apps/xmpp; uses compose.yaml from apps/xmpp
 
 set -x
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+XMPP_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+REPO_ROOT="$(cd "$XMPP_ROOT/../.." && pwd)"
+COMPOSE_FILE="$REPO_ROOT/compose.yaml"
 
 # Colors for output
 RED='\033[0;31m'
@@ -37,7 +43,7 @@ log_warning() {
 
 cleanup() {
     log_info "Cleaning up test environment..."
-    docker compose -f docker-compose.dev.yml down -v --remove-orphans 2>/dev/null || true
+    (cd "$REPO_ROOT" && docker compose -f "$COMPOSE_FILE" down -v --remove-orphans) 2>/dev/null || true
     docker system prune -f 2>/dev/null || true
 }
 
@@ -59,8 +65,8 @@ test_prerequisites() {
     fi
     log_success "docker compose is available"
 
-    # Check if required files exist
-    local required_files=("Dockerfile" "docker-compose.dev.yml" "scripts/setup/entrypoint.sh")
+    # Check if required files exist (paths relative to XMPP_ROOT)
+    local required_files=("$COMPOSE_FILE" "$XMPP_ROOT/services/prosody/Containerfile" "$XMPP_ROOT/services/prosody/scripts/setup/entrypoint.sh")
     for file in "${required_files[@]}"; do
         if [[ ! -f "$file" ]]; then
             log_failure "Required file not found: $file"
@@ -77,8 +83,8 @@ test_docker_build() {
     # Clean up any existing images
     docker rmi allthingslinux/prosody:dev 2>/dev/null || true
 
-    # Build the image
-    if docker build -t allthingslinux/prosody:dev .; then
+    # Build the image from services/prosody
+    if (cd "$XMPP_ROOT/services/prosody" && docker build -t allthingslinux/prosody:dev .); then
         log_success "Docker build completed successfully"
     else
         log_failure "Docker build failed"
@@ -99,22 +105,22 @@ test_compose_up() {
     log_info "Test 3: Testing docker-compose deployment..."
 
     # Start services
-    if docker compose -f docker-compose.dev.yml up -d; then
+    if (cd "$REPO_ROOT" && docker compose -f "$COMPOSE_FILE" up -d); then
         log_success "docker-compose up completed"
     else
         log_failure "docker-compose up failed"
         return 1
     fi
 
-    # Wait for services to be healthy
+    # Wait for services to be healthy (atl-xmpp-server only in current compose)
     log_info "Waiting for services to start..."
     local max_attempts=30
     local attempt=1
 
     while [[ $attempt -le $max_attempts ]]; do
-        local healthy_count=$(docker compose -f docker-compose.dev.yml ps --format json | jq -r '.State' | grep -c "running" 2>/dev/null || echo "0")
+        local healthy_count=$(cd "$REPO_ROOT" && docker compose -f "$COMPOSE_FILE" ps --format json | jq -r '.State' | grep -c "running" 2>/dev/null || echo "0")
 
-        if [[ $healthy_count -ge 3 ]]; then # postgres, prosody, nginx should be running
+        if [[ $healthy_count -ge 1 ]]; then
             log_success "All services started successfully"
             return 0
         fi
@@ -125,7 +131,7 @@ test_compose_up() {
     done
 
     log_failure "Services did not start within timeout"
-    docker compose -f docker-compose.dev.yml logs
+    (cd "$REPO_ROOT" && docker compose -f "$COMPOSE_FILE" logs)
     return 1
 }
 
@@ -137,7 +143,7 @@ test_prosody_connectivity() {
     sleep 5
 
     # Test XMPP port
-    if docker compose -f docker-compose.dev.yml exec xmpp-prosody-dev nc -z localhost 5222; then
+    if (cd "$REPO_ROOT" && docker compose -f "$COMPOSE_FILE" exec atl-xmpp-server nc -z localhost 5222); then
         log_success "XMPP port 5222 is accessible"
     else
         log_failure "XMPP port 5222 is not accessible"
@@ -145,7 +151,7 @@ test_prosody_connectivity() {
     fi
 
     # Test HTTP port
-    if docker compose -f docker-compose.dev.yml exec xmpp-prosody-dev nc -z localhost 5280; then
+    if (cd "$REPO_ROOT" && docker compose -f "$COMPOSE_FILE" exec atl-xmpp-server nc -z localhost 5280); then
         log_success "HTTP port 5280 is accessible"
     else
         log_failure "HTTP port 5280 is not accessible"
@@ -153,28 +159,19 @@ test_prosody_connectivity() {
     fi
 }
 
-# Test 5: Test web endpoints
+# Test 5: Test web endpoints (Prosody HTTP on 5280)
 test_web_endpoints() {
     log_info "Test 5: Testing web endpoints..."
 
-    # Wait for nginx to be ready
     sleep 3
 
-    # Test nginx dev endpoint
-    if curl -s -f http://localhost:8080/dev-test >/dev/null 2>&1; then
-        log_success "Nginx dev-test endpoint is working"
-    else
-        log_failure "Nginx dev-test endpoint failed"
-        return 1
-    fi
-
-    # Test status endpoint (if available)
-    if curl -s -f http://localhost:8080/status >/dev/null 2>&1; then
+    # Test Prosody HTTP status endpoint (port 5280)
+    if curl -s -f http://localhost:5280/status >/dev/null 2>&1; then
         log_success "Prosody status endpoint is working"
-    elif curl -s -I http://localhost:8080/status 2>/dev/null | head -1 | grep -q "404"; then
+    elif curl -s -I http://localhost:5280/status 2>/dev/null | head -1 | grep -q "404"; then
         log_warning "Status endpoint returns 404 (module may not be enabled)"
     else
-        log_failure "Status endpoint is not accessible"
+        log_failure "Prosody status endpoint is not accessible on port 5280"
         return 1
     fi
 }
@@ -185,7 +182,7 @@ test_module_loading() {
 
     # Check if prosody-modules-enabled directory exists and has content
     local enabled_dir="/usr/local/lib/prosody/prosody-modules-enabled"
-    local module_count=$(docker compose -f docker-compose.dev.yml exec xmpp-prosody-dev ls "$enabled_dir" 2>/dev/null | wc -l)
+    local module_count=$(cd "$REPO_ROOT" && docker compose -f "$COMPOSE_FILE" exec atl-xmpp-server ls "$enabled_dir" 2>/dev/null | wc -l)
 
     if [[ $module_count -gt 0 ]]; then
         log_success "Found $module_count enabled modules"
@@ -194,13 +191,13 @@ test_module_loading() {
     fi
 
     # Check Prosody logs for module loading errors
-    local error_count=$(docker compose -f docker-compose.dev.yml logs xmpp-prosody-dev 2>/dev/null | grep -c "Unable to load module" || echo "0")
+    local error_count=$(cd "$REPO_ROOT" && docker compose -f "$COMPOSE_FILE" logs atl-xmpp-server 2>/dev/null | grep -c "Unable to load module" || echo "0")
 
     if [[ $error_count -eq 0 ]]; then
         log_success "No module loading errors found"
     else
         log_failure "Found $error_count module loading errors"
-        docker compose -f docker-compose.dev.yml logs xmpp-prosody-dev | grep "Unable to load module"
+        (cd "$REPO_ROOT" && docker compose -f "$COMPOSE_FILE" logs atl-xmpp-server) | grep "Unable to load module"
         return 1
     fi
 }
@@ -210,16 +207,16 @@ test_configuration() {
     log_info "Test 7: Testing configuration..."
 
     # Check if Prosody config is valid
-    if docker compose -f docker-compose.dev.yml exec xmpp-prosody-dev prosodyctl check config; then
+    if (cd "$REPO_ROOT" && docker compose -f "$COMPOSE_FILE" exec atl-xmpp-server prosodyctl check config); then
         log_success "Prosody configuration is valid"
     else
         log_failure "Prosody configuration has errors"
-        docker compose -f docker-compose.dev.yml exec xmpp-prosody-dev prosodyctl check config
+        (cd "$REPO_ROOT" && docker compose -f "$COMPOSE_FILE" exec atl-xmpp-server prosodyctl check config)
         return 1
     fi
 
     # Check if required environment variables are set
-    local lua_path=$(docker compose -f docker-compose.dev.yml exec xmpp-prosody-dev env | grep LUA_PATH | cut -d'=' -f2)
+    local lua_path=$(cd "$REPO_ROOT" && docker compose -f "$COMPOSE_FILE" exec atl-xmpp-server env | grep LUA_PATH | cut -d'=' -f2)
     if [[ -n "$lua_path" ]] && [[ "$lua_path" == *"/usr/local/lib/prosody/prosody-modules-enabled"* ]]; then
         log_success "LUA_PATH is correctly configured"
     else
