@@ -60,6 +60,10 @@ prepare_config() {
   # Ensure Atheme JSON-RPC port has a default (for existing .env without it)
   export ATHEME_HTTPD_PORT="${ATHEME_HTTPD_PORT:-8081}"
 
+  # IRC cert paths: use shared data/certs (Let's Encrypt layout), matching Prosody
+  export IRC_SSL_CERT_PATH="${IRC_SSL_CERT_PATH:-/home/unrealircd/unrealircd/certs/live/${IRC_DOMAIN:-irc.localhost}/fullchain.pem}"
+  export IRC_SSL_KEY_PATH="${IRC_SSL_KEY_PATH:-/home/unrealircd/unrealircd/certs/live/${IRC_DOMAIN:-irc.localhost}/privkey.pem}"
+
   # Prepare UnrealIRCd configuration
   local unreal_template="$PROJECT_ROOT/apps/unrealircd/config/unrealircd.conf.template"
   if [ -f "$unreal_template" ]; then
