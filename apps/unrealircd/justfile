@@ -68,6 +68,12 @@ test-quick:
         echo "No services are currently running."; \
     fi
 
+[group('Maintenance')]
+reload:
+    @echo "Sending HUP to UnrealIRCd (reload config without full restart)..."
+    docker compose -f ../../compose.yaml kill -s HUP atl-irc-server
+    @echo "Config reload triggered."
+
 [group('Modules')]
 modules-list:
     @echo "Available Modules"
