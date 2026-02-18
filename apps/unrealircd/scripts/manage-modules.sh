@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # UnrealIRCd Contrib Modules Management Script
 # Provides an easy interface to install, manage, and configure 3rd party modules
 # Based on the official UnrealIRCd module manager documentation
@@ -27,10 +27,11 @@ print_warning() { echo -e "${YELLOW}[WARNING]${NC} $1"; }
 print_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 print_header() { echo -e "${PURPLE}=== $1 ===${NC}"; }
 
-# Check if we're running as the correct user
+# Check if we're running as the correct user (unrealircd, typically UID from PUID)
 check_user() {
-    if [ "$(id -u)" != "1000" ]; then
-        print_error "This script must run as the unrealircd user (UID 1000)"
+    local expected_uid="${PUID:-1000}"
+    if [ "$(id -u)" != "$expected_uid" ]; then
+        print_error "This script must run as the unrealircd user (UID ${expected_uid})"
         print_error "Current user: $(id -un) (UID $(id -u))"
         exit 1
     fi

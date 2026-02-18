@@ -24,10 +24,11 @@ print_warning() { echo -e "${YELLOW}[WARNING]${NC} $1"; }
 print_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 print_header() { echo -e "${PURPLE}=== $1 ===${NC}"; }
 
-# Check if we're running as the correct user
+# Check if we're running as the correct user (unrealircd, typically UID from PUID)
 check_user() {
-  if [ "$(id -u)" != "1000" ]; then
-    print_error "This script must run as the ircd user (UID 1000)"
+  local expected_uid="${PUID:-1000}"
+  if [ "$(id -u)" != "$expected_uid" ]; then
+    print_error "This script must run as the unrealircd user (UID ${expected_uid})"
     exit 1
   fi
 }
