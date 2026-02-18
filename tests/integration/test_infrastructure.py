@@ -167,12 +167,6 @@ class TestDockerServices:
 class TestScripts:
     """Test utility scripts and automation."""
 
-    def test_health_check_script_exists(self, project_root):
-        """Test that health check script exists."""
-        health_script = project_root / "scripts/health-check.sh"
-        assert health_script.exists(), "Health check script should exist"
-        assert health_script.stat().st_mode & 0o111, "Script should be executable"
-
     def test_init_script_exists(self, project_root):
         """Test that init script exists."""
         init_script = project_root / "scripts/init.sh"
@@ -192,13 +186,13 @@ class TestScripts:
         assert prepare_script.stat().st_mode & 0o111, "Script should be executable"
 
     @pytest.mark.integration
-    def test_health_check_script_runs(self, project_root):
-        """Test that health check script can run (may fail without services)."""
-        health_script = project_root / "scripts/health-check.sh"
+    def test_prepare_config_script_runs(self, project_root):
+        """Test that prepare-config script can run."""
+        prepare_script = project_root / "scripts/prepare-config.sh"
 
         try:
             result = subprocess.run(
-                [str(health_script), "--help"],
+                [str(prepare_script)],
                 check=False,
                 cwd=project_root,
                 capture_output=True,
@@ -206,13 +200,13 @@ class TestScripts:
                 timeout=10,
             )
 
-            # Script should run without immediate error (may show help/error)
-            assert result.returncode in [0, 1, 2], "Script should be executable"
+            # Script should run (may fail without .env)
+            assert result.returncode in [0, 1], "Script should be executable"
 
         except subprocess.TimeoutExpired:
-            pytest.fail("Health check script timed out")
+            pytest.fail("Prepare-config script timed out")
         except FileNotFoundError:
-            pytest.skip("Script not executable in test environment")
+            pytest.skip("Prepare-config script not found in test environment")
 
     @pytest.mark.integration
     def test_makefile_targets(self, project_root):
