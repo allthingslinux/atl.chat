@@ -146,9 +146,10 @@ WORKDIR /home/unrealircd/unrealircd
 # Expose IRC ports (TLS only)
 EXPOSE 6697 6900 6901 8600 8000
 
-# Health check - verify IRC server is responding on TLS port
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD su-exec unrealircd nc -z localhost 6697 || exit 1
+# Health check - verify UnrealIRCd is responding via JSON-RPC (stronger than TCP only)
+# Uses rpc.info over Unix socket; socket created by rpc.modules.default.conf
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD ["sh", "-c", "echo '{\"jsonrpc\":\"2.0\",\"method\":\"rpc.info\",\"params\":{},\"id\":1}' | nc -U /home/unrealircd/unrealircd/data/rpc.socket 2>/dev/null | grep -q '\"result\"' || exit 1"]
 
 # Switch to unrealircd user for security
 USER unrealircd
