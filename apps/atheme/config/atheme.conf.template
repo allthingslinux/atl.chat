@@ -286,9 +286,9 @@ loadmodule "statserv/channel";			/* CHANNEL command */
 loadmodule "statserv/netsplit";			/* NETSPLIT command */
 loadmodule "statserv/server";			/* SERVER command */
 loadmodule "groupserv/invite";			/* INVITE command */
-#loadmodule "misc/httpd";				/* HTTP Server */
-#loadmodule "misc/login_throttling";	/* Password-based login throttling */
-#loadmodule "transport/xmlrpc";			/* XMLRPC handler for the httpd */
+loadmodule "misc/httpd";				/* HTTP Server */
+loadmodule "misc/login_throttling";	/* Password-based login throttling */
+loadmodule "transport/jsonrpc";			/* JSON-RPC handler for the httpd */
 #loadmodule "exttarget/oper";			/* $oper exttarget match type */
 #loadmodule "exttarget/registered"; 	/* $registered exttarget match type */
 #loadmodule "exttarget/channel";		/* $channel exttarget match type */
@@ -651,7 +651,7 @@ httpd {
 	host = "0.0.0.0";
 	#host = "::";
 	www_root = "/var/www";
-	port = 8080;
+	port = ${ATHEME_HTTPD_PORT};
 };
 
 throttle {
