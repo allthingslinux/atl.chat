@@ -1,0 +1,192 @@
+
+# --- 1. Builder stage: Build Prosody and LuaRocks ---
+FROM debian:bookworm-slim AS builder
+
+ARG LUAROCKS_VERSION=3.11.1
+ARG PROSODY_VERSION=13.0.2
+
+# Set shell options for better error handling
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+# hadolint ignore=DL3008
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    build-essential \
+    gcc \
+    git \
+    libc6-dev \
+    libidn2-dev \
+    liblua5.4-dev \
+    libsqlite3-dev \
+    libssl-dev \
+    libicu-dev \
+    libmariadb-dev-compat \
+    libexpat1-dev \
+    libunbound-dev \
+    libevent-dev \
+    libreadline-dev \
+    make \
+    unzip \
+    lua5.4 \
+    lua-bitop \
+    lua-dbi-mysql \
+    lua-dbi-postgresql \
+    lua-expat \
+    lua-filesystem \
+    lua-socket \
+    lua-sec \
+    lua-unbound \
+    ca-certificates \
+    curl \
+    dumb-init \
+    gosu \
+    wget \
+    jq \
+    mercurial \
+    rsync && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Build Prosody
+WORKDIR /usr/src
+RUN set -x && \
+    curl -fsSL -o prosody.tar.gz "https://prosody.im/downloads/source/prosody-${PROSODY_VERSION}.tar.gz" && \
+    mkdir -p prosody && \
+    tar -xzf prosody.tar.gz -C prosody --strip-components=1 && \
+    rm prosody.tar.gz
+
+WORKDIR /usr/src/prosody
+RUN ./configure \
+    --prefix=/usr/local \
+    --sysconfdir=/etc/prosody \
+    --datadir=/var/lib/prosody \
+    --with-lua=/usr \
+    --runwith=lua5.4 \
+    --no-example-certs && \
+    make -j"$(nproc)" && \
+    make install
+
+WORKDIR /usr/src
+RUN rm -rf prosody*
+
+# Build LuaRocks
+WORKDIR /usr/src/luarocks
+RUN curl -fsSL -o luarocks-${LUAROCKS_VERSION}.tar.gz https://luarocks.org/releases/luarocks-${LUAROCKS_VERSION}.tar.gz && \
+    tar zxf luarocks-${LUAROCKS_VERSION}.tar.gz && \
+    rm luarocks-${LUAROCKS_VERSION}.tar.gz
+
+WORKDIR /usr/src/luarocks/luarocks-${LUAROCKS_VERSION}
+RUN ./configure --with-lua=/usr && \
+    make bootstrap
+
+WORKDIR /usr/src/luarocks
+RUN rm -rf luarocks*
+
+# --- 2. Module stage: Fetch and prepare community modules ---
+WORKDIR /usr/local/lib/prosody
+COPY modules.list ./
+
+RUN hg clone https://hg.prosody.im/prosody-modules/ prosody-modules && \
+    mkdir -p prosody-modules-enabled && \
+    # Strip unneeded modules to reduce image size (keep only modules.list)
+    KEEP_MODULES=$(grep -v '^#' modules.list | grep -v '^$' | tr '\n' ' ') && \
+    for dir in prosody-modules/*/; do \
+        m=$(basename "$dir"); \
+        echo "$KEEP_MODULES" | grep -qw "$m" || rm -rf "prosody-modules/$m"; \
+    done && \
+    while IFS= read -r module || [[ -n "$module" ]]; do \
+    # Skip empty lines and comments \
+    [[ -z "$module" || "$module" =~ ^# ]] && continue; \
+    if [[ -d "prosody-modules/$module" ]]; then \
+    ln -s "../prosody-modules/$module" "prosody-modules-enabled/$module"; \
+    echo "✅ $module -> enabled"; \
+    # Fix module structure for community modules that have subdirectories \
+    module_name="${module##*mod_}"; \
+    if [[ -d "prosody-modules/$module/$module_name" && -f "prosody-modules/$module/$module_name/mod_$module_name.lua" ]]; then \
+    ln -sf "$module/$module_name/mod_$module_name.lua" "prosody-modules-enabled/$module.lua"; \
+    echo "✅ Fixed structure for $module_name"; \
+    fi \
+    else \
+    echo "❌ $module not found in repository"; \
+    fi \
+    done < modules.list
+
+# Create empty LuaRocks manifest so Prosody's modulemanager stops expecting
+# a LuaRocks-installed tree. We use symlinks from prosody-modules, not LuaRocks.
+# Format must match LuaRocks manifest (commands, dependencies, modules, repository).
+RUN mkdir -p prosody-modules-enabled/lib/luarocks/rocks && \
+    printf '%s\n' 'commands = {}' 'dependencies = {}' 'modules = {}' 'repository = {}' > prosody-modules-enabled/lib/luarocks/rocks/manifest
+
+# --- 3. Runtime stage: Minimal image ---
+FROM debian:bookworm-slim
+
+# Set shell options for better error handling
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+# hadolint ignore=DL3008
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    lua5.4 \
+    lua-bitop \
+    lua-dbi-mysql \
+    lua-dbi-postgresql \
+    lua-dbi-sqlite3 \
+    lua-expat \
+    lua-filesystem \
+    lua-socket \
+    lua-sec \
+    lua-unbound \
+    lua-readline \
+    lua-event \
+    lua-ldap \
+    lua-luaossl \
+    liblua5.4-dev \
+    libicu72 \
+    libidn2-0 \
+    ca-certificates \
+    curl \
+    dumb-init \
+    gosu \
+    openssl \
+    rsync \
+    wget \
+    tar \
+    unzip && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# Copy Prosody and LuaRocks from builder
+COPY --from=builder /usr/local /usr/local
+COPY --from=builder /usr/bin/luarocks* /usr/bin/
+
+# --- User, permissions, and directories ---
+RUN groupadd -r prosody && \
+    useradd -r -g prosody prosody && \
+    mkdir -p /var/lib/prosody /var/lib/prosody/custom_plugins /var/log/prosody /var/run/prosody /certs /etc/prosody/certs && \
+    chown -R prosody:prosody /var/lib/prosody /var/log/prosody /var/run/prosody /certs /etc/prosody/certs
+
+# Copy entrypoint
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+# Copy prepared community modules from builder
+COPY --from=builder /usr/local/lib/prosody/prosody-modules /usr/local/lib/prosody/prosody-modules
+COPY --from=builder /usr/local/lib/prosody/prosody-modules-enabled /usr/local/lib/prosody/prosody-modules-enabled
+
+# --- Expose all relevant ports ---
+EXPOSE 5222 5223 5269 5270 5280 5281 5347 5000
+
+# --- Healthcheck, volumes, and final setup ---
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 CMD curl -sf http://localhost:5280/status || exit 1
+
+# Create volumes for persistent data
+VOLUME ["/var/lib/prosody", "/var/log/prosody", "/certs"]
+
+# Set Lua paths for modules and C libraries
+ENV LUA_PATH="/usr/local/lib/prosody/?.lua;/usr/local/lib/prosody/?/init.lua;/usr/local/lib/prosody/prosody-modules-enabled/?.lua;/usr/local/lib/prosody/prosody-modules-enabled/?/init.lua;/var/lib/prosody/custom_plugins/?.lua;/var/lib/prosody/custom_plugins/?/init.lua;;" \
+    LUA_CPATH="/usr/local/lib/prosody/?.so;;"
+
+WORKDIR /var/lib/prosody
+
+# --- Entrypoint as PID 1 for signal handling ---
+ENTRYPOINT ["/usr/bin/dumb-init", "--"]
+CMD ["/usr/local/bin/docker-entrypoint.sh"]

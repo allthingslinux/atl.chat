@@ -1,0 +1,68 @@
+# EditorConfig for atl.chat Monorepo
+# https://editorconfig.org
+
+root = true
+
+# === Global Defaults ===
+[*]
+charset = utf-8
+end_of_line = lf
+indent_style = space
+indent_size = 2
+insert_final_newline = true
+trim_trailing_whitespace = true
+max_line_length = 120
+
+# === Languages ===
+
+# Shell Scripts
+# Standardizing on 2 spaces (Google Style)
+[*.sh]
+indent_style = space
+indent_size = 2
+shell_variant = bash
+binary_next_line = true
+switch_case_indent = true
+space_redirects = true
+
+# Lua (Prosody / XMPP)
+# Prosody standard is tabs
+[*.lua]
+indent_style = tab
+indent_size = 4
+
+# Python
+[*.py]
+indent_style = space
+indent_size = 4
+max_line_length = 88
+
+# JavaScript / TypeScript / Web
+[*.{js,jsx,ts,tsx,cjs,mjs}]
+indent_style = space
+indent_size = 2
+max_line_length = 100
+
+# JSON / YAML / Configs
+[*.{json,yaml,yml,toml,conf,ini}]
+indent_style = space
+indent_size = 2
+
+# Markdown
+[*.md]
+indent_style = space
+indent_size = 2
+trim_trailing_whitespace = false # Markdown lists need trailing spaces sometimes
+
+# Docker
+[{Dockerfile,Containerfile}*]
+indent_style = space
+indent_size = 4
+
+# Makefiles (Must use tabs)
+[Makefile]
+indent_style = tab
+
+# Go
+[*.go]
+indent_style = tab

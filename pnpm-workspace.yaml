@@ -1,6 +1,5 @@
 packages:
   - "apps/*"
-  - "packages/*"
 
 catalog:
   next: "14.2.16"

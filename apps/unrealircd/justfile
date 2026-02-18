@@ -1,0 +1,206 @@
+# IRC Stack Justfile (UnrealIRCd, Atheme, WebPanel)
+# Loaded via root: mod irc './apps/unrealircd'
+# Use root 'just' for lifecycle: init, dev, down, logs
+
+[group('Development')]
+shell:
+    @echo "Development Shell"
+    docker compose -f ../../compose.yaml -p atl-chat exec atl-irc-server bash
+
+[group('Testing')]
+test:
+    @echo "Running Comprehensive Tests"
+    @uv run pytest ../../tests/
+    @echo "Test suite completed!"
+
+[group('Testing')]
+test-env:
+    @echo "Environment Validation Tests"
+    @uv run pytest ../../tests/unit/test_environment_validation.py ../../tests/unit/test_docker_client.py -v
+
+[group('Testing')]
+test-irc:
+    @echo "IRC Functionality Tests"
+    @uv run pytest ../../tests/integration/test_irc_functionality.py ../../tests/integration/test_protocol.py -v
+
+[group('Testing')]
+test-unit:
+    @echo "Unit Tests"
+    @uv run pytest ../../tests/unit/ -v
+
+[group('Testing')]
+test-integration:
+    @echo "Integration Tests"
+    @uv run pytest ../../tests/integration/ -v
+
+[group('Testing')]
+test-e2e:
+    @echo "End-to-End Tests"
+    @uv run pytest ../../tests/e2e/ -v
+
+[group('Testing')]
+test-protocol:
+    @echo "Protocol Tests"
+    @uv run pytest ../../tests/protocol/ -v
+
+[group('Testing')]
+test-performance:
+    @echo "Performance Tests"
+    @uv run pytest -m performance -v
+
+[group('Testing')]
+test-services:
+    @echo "Service Tests"
+    @uv run pytest -m atheme -v
+
+[group('Testing')]
+test-docker:
+    @echo "Docker-related Tests"
+    @uv run pytest -m docker -v
+
+[group('Testing')]
+test-quick:
+    @echo "Quick Environment Check"
+    docker compose config --quiet
+    @if docker compose ps | grep -q "Up"; then \
+        echo "Services are running!"; \
+    else \
+        echo "No services are currently running."; \
+    fi
+
+[group('Maintenance')]
+reload:
+    @echo "Sending HUP to UnrealIRCd (reload config without full restart)..."
+    docker compose -f ../../compose.yaml kill -s HUP atl-irc-server
+    @echo "Config reload triggered."
+
+[group('Modules')]
+modules-list:
+    @echo "Available Modules"
+    docker compose exec atl-irc-server manage-modules.sh list
+
+[group('Modules')]
+modules-installed:
+    @echo "Installed Modules"
+    docker compose exec atl-irc-server manage-modules.sh installed
+
+[group('SSL')]
+ssl-setup:
+    @echo "Starting cert-manager (Lego)..."
+    docker compose -f ../../compose.yaml --env-file ../../.env up -d cert-manager
+    @echo "Cert-manager started. Certs will appear in data/certs/certificates/"
+
+[group('SSL')]
+ssl-status:
+    @echo "SSL Certificate Status"
+    @if [[ -d "../../data/certs/certificates" ]] && ls ../../data/certs/certificates/*.crt 1>/dev/null 2>&1; then \
+        echo "Cert-manager certs found:"; \
+        ls -la ../../data/certs/certificates/*.crt 2>/dev/null || true; \
+        docker compose -f ../../compose.yaml ps cert-manager 2>/dev/null | grep -q "Up" && echo "Cert-manager is running" || echo "Cert-manager not running"; \
+    elif [[ -f "../../data/certs/live/irc.localhost/fullchain.pem" ]] || [[ -f "../../data/certs/live/irc.atl.chat/fullchain.pem" ]]; then \
+        echo "Dev certs found (init.sh, data/certs/live/)"; \
+        for f in ../../data/certs/live/*/fullchain.pem; do [ -f "$$f" ] && openssl x509 -in "$$f" -noout -dates 2>/dev/null; done || true; \
+    else \
+        echo "No SSL certificates found. Run 'just irc ssl-setup' for Let's Encrypt or 'just init' for dev certs."; \
+    fi
+
+[group('SSL')]
+ssl-renew:
+    @echo "Restarting cert-manager to trigger renewal check..."
+    docker compose -f ../../compose.yaml restart cert-manager
+    @echo "Cert-manager restarted."
+
+[group('SSL')]
+ssl-logs:
+    @echo "Cert-manager Logs"
+    docker compose -f ../../compose.yaml logs -f --tail=50 cert-manager
+
+[group('SSL')]
+ssl-stop:
+    @echo "Stopping cert-manager"
+    docker compose -f ../../compose.yaml stop cert-manager
+    @echo "Cert-manager stopped."
+
+[group('SSL')]
+ssl-clean:
+    @echo "WARNING: This will DELETE your SSL certificates!"
+    @echo "This action cannot be undone."
+    @read -p "Are you sure you want to continue? (type 'yes' to confirm): " confirm && \
+    if [[ "$confirm" == "yes" ]]; then \
+        echo "Removing SSL certificates..."; \
+        docker compose -f ../../compose.yaml stop cert-manager 2>/dev/null || true; \
+        rm -rf ../../data/certs/certificates ../../data/certs/accounts ../../data/certs/live; \
+        echo "SSL certificates removed."; \
+    else \
+        echo "SSL cleanup cancelled."; \
+    fi
+
+[group('Utilities')]
+gencloak:
+    @echo "Generating cloak keys - add these to .env (replace IRC_CLOAK_KEY_1, _2, _3)"
+    @echo ""
+    docker compose -f ../../compose.yaml -p atl-chat run --rm atl-irc-server gencloak
+    @echo ""
+    @echo "Extract the 3 quoted strings and set IRC_CLOAK_KEY_1/2/3 in .env, then run: ./scripts/prepare-config.sh"
+
+[group('Utilities')]
+generate-password:
+    @echo "Generating IRC Operator Password"
+    @./scripts/generate-oper-password.sh
+
+[group('Maintenance')]
+lint:
+    @echo "Linting Scripts"
+    @if command -v shellcheck >/dev/null 2>&1; then \
+        echo "Running shellcheck..."; \
+        shellcheck ../../scripts/*.sh; \
+        echo "Shellcheck completed!"; \
+    else \
+        echo "shellcheck not found. Install it for script validation."; \
+    fi
+    @if command -v hadolint >/dev/null 2>&1; then \
+        echo "Running hadolint..."; \
+        hadolint Containerfile ../../apps/atheme/Containerfile ../../apps/webpanel/Containerfile ../../apps/gamja/Containerfile; \
+        echo "Hadolint completed!"; \
+    else \
+        echo "hadolint not found. Install it for Containerfile validation."; \
+    fi
+
+[group('Maintenance')]
+clean:
+    @echo "Cleaning Up"
+    docker compose down
+    docker image prune -f
+    @echo "Cleanup completed!"
+
+[group('Maintenance')]
+reset:
+    @echo "WARNING: This will DELETE all data!"
+    @echo "This includes: containers, images, volumes, and data directories"
+    @read -p "Are you sure you want to continue? (type 'yes' to confirm): " confirm && \
+    if [[ "$confirm" == "yes" ]]; then \
+        echo "Stopping services..."; \
+        docker compose down -v; \
+        echo "Removing images..."; \
+        docker image prune -f; \
+        echo "Removing data directories..."; \
+        rm -rf ../../data/ ../../logs/; \
+        echo "Complete reset done."; \
+    else \
+        echo "Reset cancelled."; \
+    fi
+
+[group('Utilities')]
+info:
+    @echo "System Information"
+    @echo "Docker version:"
+    docker --version
+    @echo ""
+    @echo "Docker Compose version:"
+    docker compose --version
+    @echo ""
+    @echo "Available disk space:"
+    df -h . | tail -1
+    @echo ""
+    @echo "Memory usage:"
+    free -h

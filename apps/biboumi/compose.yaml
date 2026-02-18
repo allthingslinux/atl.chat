@@ -1,0 +1,25 @@
+name: "atl-chat-bridge-biboumi"
+
+services:
+  xmpp-biboumi:
+    image: louiz/biboumi:latest
+    container_name: xmpp-biboumi
+    hostname: xmpp-biboumi
+    restart: unless-stopped
+    profiles:
+      - bridge
+
+    # Depends on XMPP being healthy in the ecosystem
+    # In a full monorepo compose, this would be: 
+    # depends_on:
+    #   xmpp-prosody:
+    #     condition: service_healthy
+
+    environment:
+      - BIBOUMI_PASSWORD=${BIBOUMI_PASSWORD:-biboumi_secret}
+      - BIBOUMI_XMPP_SERVER_IP=${ATL_XMPP_HOST:-xmpp-prosody}
+      - BIBOUMI_XMPP_SERVER_PORT=5347
+      - BIBOUMI_HOSTNAME=irc.${ATL_BASE_DOMAIN:-atl.chat}
+
+    networks:
+      - atl-network

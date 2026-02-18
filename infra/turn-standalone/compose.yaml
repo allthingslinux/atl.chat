@@ -1,0 +1,46 @@
+# =============================================================================
+# ATL Network - Standalone TURN/STUN Server
+# =============================================================================
+# Deploy this on the Edge Server (atl.network) to provide global relay services.
+#
+# firewall-cmd --zone=public --add-port=3478/tcp --permanent
+# firewall-cmd --zone=public --add-port=3478/udp --permanent
+# firewall-cmd --zone=public --add-port=5349/tcp --permanent
+# firewall-cmd --zone=public --add-port=5349/udp --permanent
+# firewall-cmd --zone=public --add-port=49152-49202/udp --permanent
+# =============================================================================
+
+name: atl-turn
+
+services:
+  coturn:
+    image: coturn/coturn:latest
+    container_name: atl-turn
+    restart: unless-stopped
+
+    # Use host networking for best performance/IP detection on the Edge
+    # OR expose ports explicitly if using bridge
+    network_mode: host
+
+    environment:
+      # Realm = Shared Authentication Realm
+      - TURN_REALM=${TURN_REALM:-atl.network}
+
+      # Secrets (Must match Prosody config)
+      - TURN_SECRET=${TURN_SECRET:-replace_me_with_strong_secret}
+
+      # Configuration
+      - TURN_MIN_PORT=49152
+      - TURN_MAX_PORT=49202
+      - TURN_LOG_FILE=stdout
+
+      # Security
+      - TURN_NO_LOOPBACK_PEERS=false
+      - TURN_NO_MULTICAST_PEERS=true
+      # Automatic public IP detection (Amazon/Google/etc) - or set manually
+      # - EXTERNAL_IP=1.2.3.4
+
+    volumes:
+      - ./data/coturn:/var/lib/coturn
+      # Mount shared certs if doing TLS (recommended)
+      # - ./certs:/var/lib/coturn/certs:ro

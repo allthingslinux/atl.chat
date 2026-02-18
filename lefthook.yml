@@ -1,0 +1,20 @@
+# Lefthook - Git Hook Manager for Polyglot Monorepo
+# Configured for parallel execution and path filtering
+
+pre-commit:
+  parallel: true
+  commands:
+    lint-irc:
+      root: .
+      glob: "scripts/**/*.sh"
+      run: shellcheck {files}
+    lint-xmpp:
+      glob: "*.lua"
+      run: luacheck {files}
+    lint-web:
+      root: apps/web/
+      glob: "*.{js,ts,jsx,tsx}"
+      run: pnpm run fix {files} && pnpm run check {files}
+    yaml-lint:
+      glob: "*.{yml,yaml}"
+      run: yamllint {files}

@@ -1,0 +1,11 @@
+# =============================================================================
+# Shared Docker Network
+# =============================================================================
+# Single network for all ATL Chat services.
+# Included by root compose.yaml and infra/compose/*.yaml
+# =============================================================================
+
+networks:
+  atl-chat:
+    name: atl-chat
+    driver: bridge

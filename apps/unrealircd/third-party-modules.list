@@ -1,0 +1,33 @@
+# Third-party modules for UnrealIRCd
+# Installed during Docker image build. To add/remove modules, edit this file and rebuild.
+#
+# Format:
+#   - One module name per line (e.g. third/module-name)
+#   - Lines starting with # are comments
+#   - Empty lines ignored
+#
+# Find available modules:
+#   https://modules.unrealircd.org/
+#   docker compose exec atl-irc-server unrealircd module list
+#
+# Add module: add line, rebuild image
+# Remove module: delete or comment out line, rebuild image
+#
+# Manual install (after container is running):
+#   docker compose exec atl-irc-server sh
+#   cd /home/unrealircd/unrealircd && ./unrealircd module install third/module-name
+#   ./unrealircd rehash
+#
+# Module info: docker compose exec atl-irc-server unrealircd module info third/module-name
+# Upgrade modules: docker compose exec atl-irc-server unrealircd module upgrade
+#
+# Security: Third-party modules are community-maintained. Review source before installing.
+
+# WebIRC/WebSocket information in WHOIS
+third/showwebirc
+
+# Add more modules as needed:
+# third/commandsno
+# third/clones
+# third/repeatprot
+# third/block_masshighlight

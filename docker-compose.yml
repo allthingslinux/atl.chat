@@ -1,5 +1,0 @@
-name: atl_chat
-
-include:
-  - path: apps/xmpp/docker-compose.yml
-  - path: apps/irc/compose.yaml

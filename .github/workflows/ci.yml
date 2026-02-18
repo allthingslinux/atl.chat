@@ -1,0 +1,109 @@
+name: Global CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      irc: ${{ steps.filter.outputs.irc }}
+      xmpp: ${{ steps.filter.outputs.xmpp }}
+      web: ${{ steps.filter.outputs.web }}
+      infra: ${{ steps.filter.outputs.infra }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            irc:
+              - 'apps/unrealircd/**'
+              - 'apps/atheme/**'
+              - 'apps/webpanel/**'
+              - 'apps/gamja/**'
+              - 'tests/**'
+              - 'scripts/**'
+            xmpp:
+              - 'apps/prosody/**'
+            web:
+              - 'apps/web/**'
+            infra:
+              - 'compose.yaml'
+              - '.github/workflows/**'
+              - 'docs/**'
+
+  lint-irc:
+    needs: changes
+    if: needs.changes.outputs.irc == 'true'
+    uses: ./.github/workflows/lint.yml
+    with:
+      working-directory: .
+      language: shell
+
+  lint-xmpp:
+    needs: changes
+    if: needs.changes.outputs.xmpp == 'true'
+    uses: ./.github/workflows/lint.yml
+    with:
+      working-directory: apps/prosody
+      language: lua
+
+  security-global:
+    needs: changes
+    if: needs.changes.outputs.irc == 'true' || needs.changes.outputs.xmpp == 'true'
+    uses: ./.github/workflows/security.yml
+    with:
+      working-directory: .
+      scan-image: false
+
+  docker-irc:
+    needs: changes
+    if: needs.changes.outputs.irc == 'true'
+    uses: ./.github/workflows/docker.yml
+    with:
+      working-directory: apps/unrealircd
+      image-name: atl-irc
+
+  docker-xmpp:
+    needs: changes
+    if: needs.changes.outputs.xmpp == 'true'
+    uses: ./.github/workflows/docker.yml
+    with:
+      working-directory: apps/prosody
+      image-name: atl-xmpp
+
+  lint-web:
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter atl.chat run check
+
+  build-web:
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter atl.chat run build

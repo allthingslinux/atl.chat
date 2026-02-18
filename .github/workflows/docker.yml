@@ -1,0 +1,29 @@
+name: Reusable Docker Build
+
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        required: true
+        type: string
+      image-name:
+        required: true
+        type: string
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Image
+        run: |
+          cd ${{ inputs.working-directory }}
+          docker build -t ${{ inputs.image-name }}:test .
+
+      - name: Smoke Test
+        run: |
+          docker run --rm ${{ inputs.image-name }}:test echo "Smoke test passed"
