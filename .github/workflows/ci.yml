@@ -21,9 +21,14 @@ jobs:
         with:
           filters: |
             irc:
-              - 'apps/irc/**'
+              - 'apps/unrealircd/**'
+              - 'apps/atheme/**'
+              - 'apps/webpanel/**'
+              - 'apps/gamja/**'
+              - 'tests/**'
+              - 'scripts/**'
             xmpp:
-              - 'apps/xmpp/**'
+              - 'apps/prosody/**'
             web:
               - 'apps/web/**'
             infra:
@@ -36,7 +41,7 @@ jobs:
     if: needs.changes.outputs.irc == 'true'
     uses: ./.github/workflows/lint.yml
     with:
-      working-directory: apps/irc
+      working-directory: .
       language: shell
 
   lint-xmpp:
@@ -44,7 +49,7 @@ jobs:
     if: needs.changes.outputs.xmpp == 'true'
     uses: ./.github/workflows/lint.yml
     with:
-      working-directory: apps/xmpp
+      working-directory: apps/prosody
       language: lua
 
   security-global:
@@ -60,7 +65,7 @@ jobs:
     if: needs.changes.outputs.irc == 'true'
     uses: ./.github/workflows/docker.yml
     with:
-      working-directory: apps/irc
+      working-directory: apps/unrealircd
       image-name: atl-irc
 
   docker-xmpp:
@@ -68,7 +73,7 @@ jobs:
     if: needs.changes.outputs.xmpp == 'true'
     uses: ./.github/workflows/docker.yml
     with:
-      working-directory: apps/xmpp
+      working-directory: apps/prosody
       image-name: atl-xmpp
 
   lint-web:
