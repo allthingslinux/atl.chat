@@ -12,7 +12,7 @@ data/
 │   └── webpanel-data/ # Webpanel persistent data
 ├── atheme/
 │   ├── data/          # Atheme SQLite: services.db
-│   └── logs/          # Atheme logs (atheme/atheme.log)
+│   └── logs/          # Atheme logs (atheme.log)
 ├── xmpp/
 │   ├── data/          # Prosody: prosody.sqlite
 │   └── uploads/       # Prosody file uploads
@@ -31,7 +31,7 @@ data/
 | `data/unrealircd/` | `data/irc/data/` |
 | `data/letsencrypt/`| `data/certs/`   |
 | `data/atheme/atheme.db` | `data/atheme/data/services.db` |
-| `logs/atheme/`     | `data/atheme/logs/` |
+| `logs/atheme/`     | `data/atheme/logs/` (log file: `atheme.log`) |
 | `logs/atl-irc-server/` | `data/irc/logs/` |
 | `data/docs/`       | Not used; remove if present |
 
