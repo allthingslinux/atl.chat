@@ -16,7 +16,7 @@
 # Manual install (after container is running):
 #   docker compose exec atl-irc-server sh
 #   cd /home/unrealircd/unrealircd && ./unrealircd module install third/module-name
-#   ./bin/unrealircdctl rehash
+#   ./unrealircd rehash
 #
 # Module info: docker compose exec atl-irc-server unrealircd module info third/module-name
 # Upgrade modules: docker compose exec atl-irc-server unrealircd module upgrade
