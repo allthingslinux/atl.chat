@@ -9,6 +9,10 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Repo root: apps/unrealircd/scripts -> apps/unrealircd -> apps -> repo root
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -36,20 +40,27 @@ log_error() {
 generate_password() {
   local container_name="$1"
 
-  if ! docker compose ps "$container_name" | grep -q "Up"; then
+  if ! (cd "$PROJECT_ROOT" && docker compose ps "$container_name") | grep -q "Up"; then
     log_error "Container '$container_name' is not running"
-    log_info "Start the container first with: docker compose up -d"
+    log_info "Start the container first with: docker compose up -d (from repo root)"
     exit 1
   fi
 
-  log_info "Generating secure password hash..."
+  log_info "Generating Argon2 password hash (recommended by UnrealIRCd)..."
   log_info "You will be prompted to enter your desired password"
   log_info "(The password will not be displayed as you type)"
   echo
 
-  # Generate the hash using the container's unrealircd mkpasswd command
-  local hash
-  if hash=$(docker compose exec -T "$container_name" /home/unrealircd/unrealircd/unrealircd mkpasswd) && [ -n "$hash" ]; then
+  # Generate the hash using the container's unrealircd mkpasswd argon2 command
+  # -it: interactive TTY so user can type password securely (no echo)
+  # argon2: recommended auth type per UnrealIRCd Authentication types docs
+  local raw_output hash
+  raw_output=$(cd "$PROJECT_ROOT" && docker compose exec -it "$container_name" /home/unrealircd/unrealircd/unrealircd mkpasswd argon2)
+  # Extract Argon2 hash (mkpasswd may print "Encrypted password is: $argon2id$...")
+  # shellcheck disable=SC2016
+  hash=$(echo "$raw_output" | grep -oE '\$argon2[^[:space:]]*' | head -1)
+  hash=${hash:-$raw_output}
+  if [ -n "$hash" ] && [[ "$hash" == *"argon2"* ]]; then
     log_success "Password hash generated successfully!"
     echo
     echo "================================================================="
@@ -93,9 +104,11 @@ show_usage() {
   echo "After generating the hash:"
   echo "  1. Copy the hash from the output"
   echo "  2. Add it to your .env file:"
+  # shellcheck disable=SC2016
   echo '     IRC_OPER_PASSWORD="$hash"'
-  echo "  3. Restart the IRC container:"
-  echo "     docker compose restart atl-irc-server"
+  echo "  3. Regenerate config from template (run from repo root):"
+  echo "     bash scripts/prepare-config.sh"
+  echo "  4. Rehash IRCd (as IRCOp): /REHASH  or restart (from repo root): docker compose restart atl-irc-server"
 }
 
 # Main function
@@ -112,10 +125,9 @@ main() {
   log_info "==============================="
   echo
 
-  # Check for compose (root compose.yaml or legacy local compose)
-  if [[ ! -f "compose.yaml" ]] && [[ ! -f "docker-compose.yml" ]] && [[ ! -f "../../compose.yaml" ]]; then
-    log_error "No compose.yaml found (expected at repo root)"
-    log_info "Run from repo root"
+  # Require root compose.yaml
+  if [[ ! -f "$PROJECT_ROOT/compose.yaml" ]]; then
+    log_error "compose.yaml not found at $PROJECT_ROOT"
     exit 1
   fi
 
