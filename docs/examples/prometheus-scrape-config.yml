@@ -79,7 +79,7 @@ scrape_configs:
 # - prosody_module_*                       # Various module-specific metrics
 #
 # HTTP Metrics:
-# - prosody_http_requests_total            # HTTP requests (BOSH/WebSocket)
+# - prosody_http_requests_total           # HTTP requests (BOSH/WebSocket)
 # - prosody_http_request_duration_seconds  # HTTP request duration
 #
 # System Metrics:
