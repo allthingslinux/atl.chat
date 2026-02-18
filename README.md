@@ -1,214 +1,222 @@
 # atl.chat
 
-Unified chat infrastructure for All Things Linux, supporting IRC, XMPP, and web protocols.
+Unified chat infrastructure for All Things Linux: IRC, XMPP, web, and protocol bridges.
 
 ## Architecture
 
-This monorepo contains three core services and bridge infrastructure:
+Monorepo layout:
 
 ```
 apps/
-├── irc/        UnrealIRCd + Atheme services
-├── xmpp/       Prosody XMPP server
-├── web/        Next.js web application
-└── bridge/     Protocol bridges (IRC ↔ XMPP)
+├── unrealircd/     # UnrealIRCd 6.x server
+├── atheme/         # IRC services (NickServ, ChanServ, OperServ, MemoServ)
+├── webpanel/       # UnrealIRCd web admin
+├── prosody/        # XMPP server
+├── web/            # Next.js web application
+├── biboumi/        # XMPP↔IRC gateway (planned)
+├── matterbridge/   # Multi-protocol relay (planned)
+└── gamja/          # IRC web client (planned)
 ```
+
+Compose fragments in `infra/compose/`:
+
+- `irc.yaml` — UnrealIRCd, Atheme, WebPanel
+- `xmpp.yaml` — Prosody
+- `cert-manager.yaml` — Lego (Let's Encrypt)
+- `bridge.yaml` — Bridges (stub, not yet deployed)
+- `networks.yaml` — Shared `atl-chat` network
 
 ## Quick Start
 
 ### Prerequisites
 
 - Docker & Docker Compose
-- Node.js 20+ (for web app)
-- pnpm 9+ (for web app)
-- just (optional, for task running)
+- [just](https://github.com/casey/just) — task runner
+- Node.js 20+ & pnpm 9+ — for web app (optional)
+- [uv](https://github.com/astral-sh/uv) or Python 3.11+ — for tests (optional)
 
 ### Setup
 
 ```bash
-# Clone and install
 git clone https://github.com/allthingslinux/atl.chat.git
 cd atl.chat
+
 cp .env.example .env
+# Edit .env with your domains, passwords, and TLS paths
 
-# Edit .env with your configuration
-nano .env
-
-# Start all services
-docker compose up -d
-
-# Or use just
-just up
+just init      # Creates data/ dirs, generates config, dev certs
+just dev       # Starts stack with dev profile (Dozzle, localhost domains)
 ```
 
-### Development
+`just init` runs `scripts/init.sh` and `scripts/prepare-config.sh` to:
+
+- Create `data/irc/`, `data/atheme/`, `data/xmpp/`, `data/certs/`
+- Substitute `.env` into UnrealIRCd and Atheme config templates
+- Generate dev certs for `irc.localhost` (if missing)
+
+### First Run
 
 ```bash
-# XMPP (with dev tools: Adminer, Dozzle, Converse.js)
-cd apps/prosody
-docker compose --profile dev up -d
+# Development (localhost domains, Dozzle for logs)
+just dev
 
-# IRC
-cd apps/unrealircd
-docker compose up -d
-
-# Web app
-cd apps/web
-pnpm install
-pnpm dev
+# Production (uses domains from .env)
+just prod
 ```
 
 ## Services
 
-### IRC (`apps/unrealircd`, `apps/atheme`, `apps/webpanel`)
+### IRC Stack
 
-UnrealIRCd 6.x with Atheme services.
+| Service  | Container        | Ports |
+|----------|------------------|-------|
+| UnrealIRCd | `atl-irc-server` | 6697 (TLS), 6900 (server), 8600 (RPC), 8000 (WebSocket) |
+| Atheme   | `atl-irc-services` | 6901 (uplink), 8081 (HTTPd) |
+| WebPanel | `atl-irc-webpanel`  | 8080 |
 
-**Ports**: 6697 (TLS), 6900 (server linking), 8000 (WebSocket)
-**Services**: NickServ, ChanServ, OperServ, MemoServ, BotServ
-**Management**: Web panel on port 8080
-
-```bash
-# Common tasks
-just irc logs          # View logs
-just irc shell         # Access container
-just irc reload        # Reload config
-```
-
-See [`docs/services/irc/`](docs/services/irc/) for detailed documentation.
-
-### XMPP (`apps/prosody`)
-
-Prosody XMPP server with PostgreSQL backend.
-
-**Ports**: 5222 (C2S), 5269 (S2S), 5280 (HTTP/BOSH), 5281 (HTTPS)
-**Database**: PostgreSQL 17
-**TURN**: Coturn for audio/video calls
+**Tasks:**
 
 ```bash
-# Common tasks
-just xmpp up           # Start with dev tools
-just xmpp up-prod      # Production mode
-just xmpp logs         # View logs
-just xmpp shell        # Access Prosody shell
+just irc shell      # Bash into IRC server
+just irc reload     # Reload UnrealIRCd config
+just irc logs       # View IRC logs
 ```
 
-**Development tools** (with `--profile dev`):
-- Adminer (database UI) on port 8081
-- Dozzle (log viewer) on port 8082
-- Converse.js (web client) on port 8083
+See [docs/services/irc/](docs/services/irc/) for full docs.
 
-See [`docs/services/xmpp/`](docs/services/xmpp/) for detailed documentation.
+### XMPP (Prosody)
 
-### Web (`apps/web`)
+| Port | Purpose |
+|------|---------|
+| 5222 | C2S (client) |
+| 5269 | S2S |
+| 5280 | HTTP/BOSH |
+| 5281 | HTTPS |
 
-Next.js 15 application with Turborepo.
-
-**Port**: 3000 (development)
-**Stack**: React, TypeScript, Tailwind CSS
+**Tasks:**
 
 ```bash
-cd apps/web
-pnpm dev
+just xmpp shell     # Bash into Prosody
+just xmpp reload    # Reload Prosody
+just xmpp adduser   # Add XMPP user
 ```
 
-See [`docs/services/web/`](docs/services/web/) for detailed documentation.
+See [docs/services/xmpp/](docs/services/xmpp/).
 
-### Bridges (`apps/bridge`)
+### Web
 
-Protocol bridges for cross-platform communication.
+Next.js 15 app (port 3000):
 
-- **Biboumi**: IRC gateway for XMPP clients
-- **Matterbridge**: Multi-protocol relay
+```bash
+just web dev
+# or: cd apps/web && pnpm dev
+```
+
+### Bridges
+
+Biboumi (XMPP↔IRC) and Matterbridge are planned. Stub in `infra/compose/bridge.yaml`.
+
+- [apps/biboumi/](apps/biboumi/) — Biboumi
+- [apps/matterbridge/](apps/matterbridge/) — Matterbridge
 
 ## Task Running
 
-This project uses [just](https://github.com/casey/just) for task orchestration:
-
 ```bash
-# Root-level commands
-just up              # Start all services
-just down            # Stop all services
-just logs            # View all logs
+just --list        # All tasks
 
-# Service-specific commands
-just irc <task>      # IRC tasks
-just xmpp <task>     # XMPP tasks
-just web <task>      # Web tasks
+# Orchestration
+just init          # One-time setup
+just dev           # Start dev stack
+just prod          # Start prod stack
+just down          # Stop stack
+just logs          # Follow all logs
+just status        # Container status
 
-# List all available tasks
-just --list
+# Build & test
+just build         # Build images
+just test          # Run pytest
+just lint          # lefthook pre-commit
 ```
 
-## Environment Variables
+## Data Layout
 
-All configuration is managed through a single `.env` file at the repository root.
+All persistent data lives under `data/`:
+
+```
+data/
+├── irc/
+│   ├── data/          # UnrealIRCd runtime
+│   ├── logs/          # UnrealIRCd logs
+│   └── webpanel-data/ # Web panel state
+├── atheme/
+│   ├── data/          # services.db
+│   └── logs/          # atheme.log
+├── xmpp/
+│   ├── data/          # Prosody SQLite
+│   └── uploads/       # File uploads
+└── certs/             # TLS certs (Let's Encrypt layout)
+    └── live/<domain>/  # fullchain.pem, privkey.pem
+```
+
+See [docs/infra/data-structure.md](docs/infra/data-structure.md).
+
+## Environment
+
+Single `.env` at repo root. Copy from `.env.example` and customize:
 
 ```bash
 cp .env.example .env
 ```
 
-Key variables:
-- **Database**: `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`
-- **TURN**: `TURN_SECRET`, `TURN_REALM`, `TURN_DOMAIN`
-- **SSL**: `LETSENCRYPT_EMAIL`, `PROSODY_DOMAIN`
-- **IRC**: `IRC_DOMAIN`, `IRC_NETWORK_NAME`, `IRC_OPER_PASSWORD`
+Key groups:
 
-See [`.env.example`](.env.example) for complete documentation.
+- **IRC**: `IRC_DOMAIN`, `IRC_NETWORK_NAME`, `IRC_OPER_PASSWORD`, cloak keys
+- **TLS**: `IRC_SSL_CERT_PATH`, `IRC_SSL_KEY_PATH` (paths inside container)
+- **Atheme**: `ATHEME_SEND_PASSWORD`, `ATHEME_RECEIVE_PASSWORD`, `IRC_SERVICES_PASSWORD`
+- **XMPP**: `PROSODY_DOMAIN`, `PROSODY_SSL_*`
 
-## Docker Compose Profiles
-
-Services use profiles for environment-specific configurations:
+Config is generated via `scripts/prepare-config.sh` (run by `just init`). After editing `.env`, rerun:
 
 ```bash
-# Production (default)
-docker compose up -d
+./scripts/prepare-config.sh
+```
 
-# Development (includes debug tools)
+## Profiles
+
+| Profile   | Use case                          |
+|-----------|-----------------------------------|
+| default   | Production-style (domains from .env) |
+| dev       | Dozzle, localhost domains, extra tools |
+| staging   | Staging environment               |
+| prod      | Production                        |
+
+```bash
 docker compose --profile dev up -d
-
-# Certificate issuance
-docker compose --profile cert-issue up atl-xmpp-certbot
+just dev    # Uses .env.dev + dev profile
 ```
-
-## Networking
-
-All services communicate via the `atl-chat` Docker network:
-
-```bash
-# Create network (if not exists)
-docker network create atl-chat
-
-# Services automatically join on startup
-```
-
-For inter-host communication, Tailscale is used (configured separately).
 
 ## Documentation
 
-- **Infrastructure**: [`docs/infra/`](docs/infra/)
-  - [Containerization](docs/infra/containerization.md)
-  - [Networking](docs/infra/networking.md)
-  - [SSL/TLS](docs/infra/ssl.md)
-
-- **Services**: [`docs/services/`](docs/services/)
-  - [IRC Documentation](docs/services/irc/)
-  - [XMPP Documentation](docs/services/xmpp/)
-  - [Web Documentation](docs/services/web/)
+| Area          | Path |
+|---------------|------|
+| Hub           | [docs/README.md](docs/README.md) |
+| Onboarding    | [docs/onboarding/README.md](docs/onboarding/README.md) |
+| Architecture  | [docs/architecture/README.md](docs/architecture/README.md) |
+| Data layout   | [docs/infra/data-structure.md](docs/infra/data-structure.md) |
+| IRC           | [docs/services/irc/](docs/services/irc/) |
+| XMPP          | [docs/services/xmpp/](docs/services/xmpp/) |
+| Web           | [docs/services/web/](docs/services/web/) |
+| Bridges       | [docs/bridges/README.md](docs/bridges/README.md) |
 
 ## Contributing
 
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feat/my-feature`
-3. Make your changes
-4. Run tests: `just test`
-5. Commit using conventional commits: `git commit -m "feat: add feature"`
-6. Push and open a pull request
+1. Fork and branch: `git checkout -b feat/my-feature`
+2. Run `just init` and `just dev`
+3. Make changes
+4. Run `just test` and `just lint`
+5. Commit: `git commit -m "feat: add feature"` (conventional commits)
+6. Open a pull request
 
 ## License
 
-Copyright 2025 All Things Linux and Contributors
-
-Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) for details.
-
-Some components use different licenses; refer to their respective documentation.
+See [LICENSE](LICENSE).
