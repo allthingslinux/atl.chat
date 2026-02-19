@@ -1,20 +1,19 @@
 """Test event types and factories."""
 
-import pytest
 
 from bridge.events import (
+    ConfigReload,
+    Join,
     MessageIn,
     MessageOut,
-    Join,
     Part,
     Quit,
-    ConfigReload,
+    config_reload,
+    join,
     message_in,
     message_out,
-    join,
     part,
     quit,
-    config_reload,
 )
 
 

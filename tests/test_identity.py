@@ -1,7 +1,8 @@
 """Test identity resolver functionality."""
 
-import pytest
 from unittest.mock import AsyncMock
+
+import pytest
 
 from bridge.identity import IdentityResolver, PortalClient
 

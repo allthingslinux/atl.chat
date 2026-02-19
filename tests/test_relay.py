@@ -1,6 +1,5 @@
 """Test relay routing logic."""
 
-import pytest
 
 from bridge.events import MessageIn, MessageOut, message_in
 from bridge.gateway.bus import Bus

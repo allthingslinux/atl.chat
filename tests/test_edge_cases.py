@@ -8,7 +8,7 @@ from bridge.events import message_in
 from bridge.gateway.bus import Bus
 from bridge.gateway.relay import Relay
 from bridge.gateway.router import ChannelRouter
-from tests.mocks import MockDiscordAdapter, MockIRCAdapter, MockXMPPAdapter
+from tests.mocks import MockDiscordAdapter, MockIRCAdapter
 
 
 class TestEdgeCases:

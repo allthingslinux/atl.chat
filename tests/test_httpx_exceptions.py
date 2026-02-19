@@ -1,10 +1,11 @@
 """Test handling of httpx exceptions."""
 
-import pytest
 from unittest.mock import AsyncMock, Mock
-import httpx
 
-from bridge.identity import PortalClient, IdentityResolver
+import httpx
+import pytest
+
+from bridge.identity import IdentityResolver, PortalClient
 
 
 class TestHttpxExceptions:

@@ -1,7 +1,8 @@
 """Test IRC adapter with pydle."""
 
+from unittest.mock import AsyncMock, Mock
+
 import pytest
-from unittest.mock import AsyncMock, Mock, patch
 
 from bridge.adapters.irc import IRCAdapter, IRCClient
 from bridge.adapters.irc_msgid import MessageIDTracker
@@ -16,7 +17,7 @@ class TestIRCClient:
         bus = Mock()
         router = Mock()
         tracker = MessageIDTracker()
-        
+
         client = IRCClient(
             bus=bus,
             router=router,
@@ -25,7 +26,7 @@ class TestIRCClient:
             channels=["#test"],
             msgid_tracker=tracker,
         )
-        
+
         # Nickname is set during connection, not init
         assert client._server == "irc.libera.chat"
         assert client._channels == ["#test"]
@@ -36,7 +37,7 @@ class TestIRCClient:
         router = Mock()
         router.get_mapping_for_irc = Mock(return_value=Mock(discord_channel_id="123"))
         tracker = MessageIDTracker()
-        
+
         client = IRCClient(
             bus=bus,
             router=router,
@@ -45,12 +46,12 @@ class TestIRCClient:
             channels=["#test"],
             msgid_tracker=tracker,
         )
-        
+
         # Simulate IRCv3 tags
         client._message_tags = {"msgid": "abc123", "+draft/reply": "xyz789"}
-        
+
         await client.on_message("#test", "user", "Hello")
-        
+
         # Verify message was published
         assert bus.publish.called
 
@@ -60,15 +61,15 @@ class TestMessageIDTracker:
 
     def test_store_and_retrieve(self):
         tracker = MessageIDTracker()
-        
+
         tracker.store("irc-msgid-123", "discord-456")
-        
+
         assert tracker.get_discord_id("irc-msgid-123") == "discord-456"
         assert tracker.get_irc_msgid("discord-456") == "irc-msgid-123"
 
     def test_missing_mapping(self):
         tracker = MessageIDTracker()
-        
+
         assert tracker.get_discord_id("nonexistent") is None
         assert tracker.get_irc_msgid("nonexistent") is None
 
@@ -78,16 +79,16 @@ class TestIRCPuppet:
 
     def test_puppet_initialization(self):
         puppet = IRCPuppet("user-nick", "discord-123")
-        
+
         # Nickname is set during connection, not init
         assert puppet.discord_id == "discord-123"
 
     def test_puppet_touch_updates_activity(self):
         puppet = IRCPuppet("user-nick", "discord-123")
         initial = puppet.last_activity
-        
+
         puppet.touch()
-        
+
         assert puppet.last_activity >= initial
 
 
@@ -99,7 +100,7 @@ class TestIRCPuppetManager:
         bus = Mock()
         router = Mock()
         identity = Mock()
-        
+
         manager = IRCPuppetManager(
             bus=bus,
             router=router,
@@ -108,7 +109,7 @@ class TestIRCPuppetManager:
             port=6697,
             tls=True,
         )
-        
+
         assert manager._server == "irc.libera.chat"
         assert manager._port == 6697
         assert manager._tls is True
@@ -119,7 +120,7 @@ class TestIRCPuppetManager:
         router = Mock()
         identity = AsyncMock()
         identity.discord_to_irc = AsyncMock(return_value=None)
-        
+
         manager = IRCPuppetManager(
             bus=bus,
             router=router,
@@ -128,9 +129,9 @@ class TestIRCPuppetManager:
             port=6697,
             tls=True,
         )
-        
+
         puppet = await manager.get_or_create_puppet("discord-123")
-        
+
         assert puppet is None
 
 
@@ -141,23 +142,23 @@ class TestIRCAdapter:
     async def test_adapter_initialization(self):
         from bridge.gateway.bus import Bus
         from bridge.gateway.router import ChannelRouter
-        
+
         bus = Bus()
         router = ChannelRouter()
         adapter = IRCAdapter(bus, router, identity_resolver=None)
-        
+
         assert adapter.name == "irc"
         assert adapter._msgid_tracker is not None
 
     def test_adapter_accepts_irc_messages(self):
+        from bridge.events import MessageOut
         from bridge.gateway.bus import Bus
         from bridge.gateway.router import ChannelRouter
-        from bridge.events import MessageOut
-        
+
         bus = Bus()
         router = ChannelRouter()
         adapter = IRCAdapter(bus, router, identity_resolver=None)
-        
+
         msg = MessageOut(
             target_origin="irc",
             channel_id="123",
@@ -166,18 +167,18 @@ class TestIRCAdapter:
             content="Test",
             message_id="msg1",
         )
-        
+
         assert adapter.accept_event("discord", msg) is True
 
     def test_adapter_rejects_non_irc_messages(self):
+        from bridge.events import MessageOut
         from bridge.gateway.bus import Bus
         from bridge.gateway.router import ChannelRouter
-        from bridge.events import MessageOut
-        
+
         bus = Bus()
         router = ChannelRouter()
         adapter = IRCAdapter(bus, router, identity_resolver=None)
-        
+
         msg = MessageOut(
             target_origin="xmpp",
             channel_id="123",
@@ -186,5 +187,5 @@ class TestIRCAdapter:
             content="Test",
             message_id="msg1",
         )
-        
+
         assert adapter.accept_event("discord", msg) is False

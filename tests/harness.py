@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from bridge.events import MessageIn, MessageOut, Join, Part, message_in, join, part
+from bridge.events import message_in
 from bridge.gateway import Bus, ChannelRouter
 from bridge.gateway.relay import Relay
 from bridge.gateway.router import ChannelMapping
@@ -17,7 +17,7 @@ class BridgeTestHarness:
     def __init__(self, mappings: list[ChannelMapping]) -> None:
         self.bus = Bus()
         self.router = ChannelRouter()
-        
+
         # Load mappings into router
         config = {"mappings": [self._mapping_to_dict(m) for m in mappings]}
         self.router.load_from_config(config)

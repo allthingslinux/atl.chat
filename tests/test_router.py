@@ -1,8 +1,7 @@
 """Test channel router and mappings."""
 
-import pytest
 
-from bridge.gateway.router import ChannelRouter, ChannelMapping, IrcTarget, XmppTarget
+from bridge.gateway.router import ChannelRouter
 
 
 class TestChannelRouter:

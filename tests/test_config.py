@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from bridge.config import Config, load_config, load_config_with_env, _deep_update
+from bridge.config import Config, _deep_update, load_config
 
 
 class TestDeepUpdate:
@@ -39,7 +39,7 @@ class TestDeepUpdate:
         override = {"b": 2}
 
         # Act
-        result = _deep_update(base, override)
+        _deep_update(base, override)
 
         # Assert
         assert base == {"a": 1}  # Original unchanged
@@ -99,7 +99,7 @@ class TestLoadConfig:
 
         try:
             # Act & Assert
-            with pytest.raises(Exception):
+            with pytest.raises((ValueError, KeyError, TypeError)):
                 load_config(path)
         finally:
             Path(path).unlink()

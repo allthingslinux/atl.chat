@@ -2,12 +2,8 @@
 
 from __future__ import annotations
 
-import asyncio
-from collections import defaultdict
-from typing import Any
-
 from bridge.adapters.base import AdapterBase
-from bridge.events import MessageIn, MessageOut, Join, Part
+from bridge.events import MessageOut
 
 
 class MockAdapter(AdapterBase):
@@ -25,9 +21,7 @@ class MockAdapter(AdapterBase):
 
     def accept_event(self, source: str, evt: object) -> bool:
         """Accept MessageOut targeting this adapter."""
-        if isinstance(evt, MessageOut) and evt.target_origin == self._name:
-            return True
-        return False
+        return bool(isinstance(evt, MessageOut) and evt.target_origin == self._name)
 
     def push_event(self, source: str, evt: object) -> None:
         """Capture event."""

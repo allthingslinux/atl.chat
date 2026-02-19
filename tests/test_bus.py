@@ -1,8 +1,7 @@
 """Test event bus and dispatcher."""
 
-import pytest
 
-from bridge.events import Dispatcher, MessageIn, message_in
+from bridge.events import Dispatcher, message_in
 from bridge.gateway.bus import Bus
 
 

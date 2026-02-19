@@ -1,9 +1,9 @@
 """Property-based tests using hypothesis."""
 
-import pytest
-from hypothesis import given, strategies as st
+from hypothesis import given
+from hypothesis import strategies as st
 
-from bridge.events import message_in, MessageIn
+from bridge.events import message_in
 
 
 class TestPropertyBased:
@@ -33,8 +33,8 @@ class TestPropertyBased:
     @given(st.lists(st.text(min_size=1), min_size=1, max_size=100))
     def test_bus_dispatch_order(self, messages):
         """Property: Events are dispatched in order."""
-        from bridge.gateway.bus import Bus
         from bridge.events import message_in
+        from bridge.gateway.bus import Bus
 
         # Arrange
         bus = Bus()
@@ -61,8 +61,8 @@ class TestPropertyBased:
     @given(st.integers(min_value=0, max_value=1000))
     def test_concurrent_message_handling(self, num_messages):
         """Property: All messages are processed regardless of count."""
-        from bridge.gateway.bus import Bus
         from bridge.events import message_in
+        from bridge.gateway.bus import Bus
 
         # Arrange
         bus = Bus()

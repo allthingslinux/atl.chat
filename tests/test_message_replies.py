@@ -3,8 +3,8 @@
 import pytest
 
 from bridge.events import message_in
-from tests.harness import BridgeTestHarness
 from bridge.gateway.router import ChannelMapping, IrcTarget, XmppTarget
+from tests.harness import BridgeTestHarness
 
 
 @pytest.fixture

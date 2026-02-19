@@ -1,14 +1,15 @@
 """Test error handling and exception scenarios."""
 
-import pytest
-from unittest.mock import AsyncMock, Mock
-import httpx
+from unittest.mock import AsyncMock
 
-from bridge.identity import PortalClient, IdentityResolver
+import httpx
+import pytest
+
 from bridge.events import message_in
 from bridge.gateway.bus import Bus
-from bridge.gateway.router import ChannelRouter
 from bridge.gateway.relay import Relay
+from bridge.gateway.router import ChannelRouter
+from bridge.identity import IdentityResolver, PortalClient
 from tests.mocks import MockIRCAdapter
 
 
@@ -71,15 +72,16 @@ class TestConfigErrors:
 
     def test_invalid_yaml_raises_error(self):
         # Arrange
-        from bridge.config import load_config
         import tempfile
+
+        from bridge.config import load_config
 
         # Act & Assert
         with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             f.write("invalid: yaml: syntax:")
             path = f.name
 
-        with pytest.raises(Exception):
+        with pytest.raises((ValueError, KeyError, TypeError)):
             load_config(path)
 
     def test_missing_config_file_returns_empty(self):
@@ -117,24 +119,24 @@ class TestEventBusErrors:
     def test_bus_continues_after_target_exception(self):
         # Arrange
         bus = Bus()
-        
+
         class FailingTarget:
             def accept_event(self, source, evt):
                 return True
-            
+
             def push_event(self, source, evt):
                 raise RuntimeError("Target failed")
-        
+
         class WorkingTarget:
             def __init__(self):
                 self.received = []
-            
+
             def accept_event(self, source, evt):
                 return True
-            
+
             def push_event(self, source, evt):
                 self.received.append(evt)
-        
+
         failing = FailingTarget()
         working = WorkingTarget()
         bus.register(failing)
@@ -150,14 +152,14 @@ class TestEventBusErrors:
     def test_unregister_nonexistent_target_safe(self):
         # Arrange
         bus = Bus()
-        
+
         class DummyTarget:
             def accept_event(self, source, evt):
                 return True
-            
+
             def push_event(self, source, evt):
                 pass
-        
+
         target = DummyTarget()
 
         # Act & Assert - should not raise
@@ -261,7 +263,7 @@ class TestAdapterErrors:
     def test_adapter_handles_none_values(self):
         # Arrange
         from bridge.events import MessageOut
-        
+
         # Act & Assert - should not raise
         msg = MessageOut(
             target_origin="irc",
