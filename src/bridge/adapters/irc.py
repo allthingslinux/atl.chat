@@ -3,16 +3,17 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import os
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 import pydle
 from loguru import logger
 
+from bridge.adapters.irc_msgid import MessageIDTracker
+from bridge.adapters.irc_puppet import IRCPuppetManager
 from bridge.events import MessageOut, message_in
 from bridge.gateway import Bus, ChannelRouter
-from bridge.adapters.irc_puppet import IRCPuppetManager
-from bridge.adapters.irc_msgid import MessageIDTracker
 
 if TYPE_CHECKING:
     from bridge.identity import IdentityResolver
@@ -21,7 +22,7 @@ if TYPE_CHECKING:
 class IRCClient(pydle.Client):
     """Pydle IRC client with IRCv3 capabilities."""
 
-    CAPABILITIES = {
+    CAPABILITIES: ClassVar[set[str]] = {
         "message-tags",
         "msgid",
         "account-notify",
@@ -29,6 +30,10 @@ class IRCClient(pydle.Client):
         "server-time",
         "draft/reply",
         "batch",
+        "echo-message",
+        "labeled-response",
+        "chghost",
+        "setname",
     }
 
     def __init__(
@@ -119,6 +124,23 @@ class IRCClient(pydle.Client):
         )
         self._bus.publish("irc", evt)
 
+    async def on_raw_chghost(self, message):
+        """Handle CHGHOST: user changed username/hostname."""
+        # :nick!old_user@old_host CHGHOST new_user new_host
+        if len(message.params) >= 2:
+            nick = message.source
+            new_user = message.params[0]
+            new_host = message.params[1]
+            logger.debug("IRC CHGHOST: {} -> {}@{}", nick, new_user, new_host)
+
+    async def on_raw_setname(self, message):
+        """Handle SETNAME: user changed realname."""
+        # :nick!user@host SETNAME :new realname
+        if message.params:
+            nick = message.source
+            new_realname = message.params[0]
+            logger.debug("IRC SETNAME: {} -> {}", nick, new_realname)
+
     async def _consume_outbound(self):
         """Consume outbound message queue."""
         while True:
@@ -156,10 +178,8 @@ class IRCClient(pydle.Client):
         """Disconnect and cleanup."""
         if self._consumer_task:
             self._consumer_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._consumer_task
-            except asyncio.CancelledError:
-                pass
         await super().disconnect(expected)
 
 
@@ -178,6 +198,7 @@ class IRCAdapter:
         self._client: IRCClient | None = None
         self._task: asyncio.Task | None = None
         self._puppet_manager: IRCPuppetManager | None = None
+        self._puppet_tasks: set[asyncio.Task] = set()
         self._msgid_tracker = MessageIDTracker(ttl_seconds=3600)
 
     @property
@@ -193,13 +214,15 @@ class IRCAdapter:
         if isinstance(evt, MessageOut):
             # Use puppet if identity available, otherwise main connection
             if self._identity and self._puppet_manager:
-                asyncio.create_task(self._send_via_puppet(evt))
+                task = asyncio.create_task(self._send_via_puppet(evt))
+                self._puppet_tasks.add(task)
+                task.add_done_callback(self._puppet_tasks.discard)
             elif self._client:
                 self._client.queue_message(evt)
 
     async def _send_via_puppet(self, evt: MessageOut):
         """Send message via puppet connection."""
-        if not self._puppet_manager:
+        if not self._puppet_manager or not self._identity:
             return
 
         mapping = self._router.get_mapping_for_discord(evt.channel_id)
@@ -283,10 +306,8 @@ class IRCAdapter:
             await self._client.disconnect()
         if self._task:
             self._task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._task
-            except asyncio.CancelledError:
-                pass
         self._client = None
         self._task = None
         self._puppet_manager = None
