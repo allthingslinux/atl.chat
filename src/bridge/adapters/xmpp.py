@@ -1,87 +1,24 @@
-"""XMPP adapter: MUC client, join rooms, emit MessageIn; queue for outbound (AUDIT §2)."""
+"""XMPP adapter: Component with multi-presence (puppets), emit MessageIn; queue for outbound (AUDIT §2)."""
 
 from __future__ import annotations
 
 import asyncio
 import contextlib
+import os
 from typing import TYPE_CHECKING
 
 from loguru import logger
-from slixmpp import ClientXMPP
-from slixmpp.exceptions import XMPPError
 
-from bridge.events import MessageOut, message_in
+from bridge.adapters.xmpp_component import XMPPComponent
+from bridge.events import MessageOut
 from bridge.gateway import Bus, ChannelRouter
 
 if TYPE_CHECKING:
     from bridge.identity import IdentityResolver
 
 
-class XMPPBot(ClientXMPP):
-    """XMPP MUC client: joins rooms, emits MessageIn on groupchat."""
-
-    def __init__(
-        self,
-        jid: str,
-        password: str,
-        bus: Bus,
-        router: ChannelRouter,
-        outbound: asyncio.Queue[MessageOut],
-    ) -> None:
-        super().__init__(jid, password)
-        self._bus = bus
-        self._router = router
-        self._outbound = outbound
-        self.register_plugin("xep_0030")
-        self.register_plugin("xep_0045")
-        self.register_plugin("xep_0199")
-        self.add_event_handler("session_start", self._on_session_start)
-        self.add_event_handler("groupchat_message", self._on_groupchat_message)
-
-    async def _on_session_start(self, _: object) -> None:
-        """After connect, join MUCs from mappings."""
-        await self.get_roster()
-        self.send_presence()
-        nick = _get_xmpp_nick()
-        for mapping in self._router.all_mappings():
-            if mapping.xmpp:
-                muc_jid = mapping.xmpp.muc_jid
-                try:
-                    await self.plugin["xep_0045"].join_muc(muc_jid, nick)
-                    logger.info("Joined XMPP MUC: {} as {}", muc_jid, nick)
-                except XMPPError as exc:
-                    logger.warning("Failed to join MUC {}: {}", muc_jid, exc)
-
-    def _on_groupchat_message(self, msg: object) -> None:
-        """Handle MUC message; emit MessageIn."""
-        body = (msg.get("body", "") or "") if hasattr(msg, "get") else ""
-        nick = (msg.get("mucnick", "") or "") if hasattr(msg, "get") else ""
-        from_jid = str(msg.get("from", "") or "") if hasattr(msg, "get") else ""
-        if "/" in from_jid:
-            room_jid = from_jid.split("/")[0]
-            if not nick:
-                nick = from_jid.split("/")[1]
-        else:
-            room_jid = from_jid
-
-        mapping = self._router.get_mapping_for_xmpp(room_jid)
-        if not mapping:
-            return
-
-        _, evt = message_in(
-            origin="xmpp",
-            channel_id=mapping.discord_channel_id,
-            author_id=nick,
-            author_display=nick,
-            content=body,
-            message_id=f"xmpp:{room_jid}:{nick}:{id(msg)}",
-            is_action=False,
-        )
-        self._bus.publish("xmpp", evt)
-
-
 class XMPPAdapter:
-    """XMPP adapter: MUC client + outbound queue."""
+    """XMPP adapter: Component with multi-presence + outbound queue."""
 
     def __init__(
         self,
@@ -93,9 +30,9 @@ class XMPPAdapter:
         self._router = router
         self._identity = identity_resolver
         self._outbound: asyncio.Queue[MessageOut] = asyncio.Queue()
-        self._bot: XMPPBot | None = None
+        self._component: XMPPComponent | None = None
         self._consumer_task: asyncio.Task | None = None
-        self._bot_task: asyncio.Task | None = None
+        self._component_task: asyncio.Task | None = None
 
     @property
     def name(self) -> str:
@@ -111,19 +48,50 @@ class XMPPAdapter:
             self._outbound.put_nowait(evt)
 
     async def _outbound_consumer(self) -> None:
-        """Drain outbound queue and send to MUC."""
+        """Drain outbound queue and send to MUC via component."""
         while True:
             try:
                 evt = await self._outbound.get()
                 mapping = self._router.get_mapping_for_discord(evt.channel_id)
-                if mapping and mapping.xmpp:
+                if mapping and mapping.xmpp and self._component and self._identity:
                     muc_jid = mapping.xmpp.muc_jid
-                    if self._bot:
-                        self._bot.send_message(
-                            mto=muc_jid,
-                            mbody=evt.content[:4000],
-                            mtype="groupchat",
+
+                    # Get Discord user's XMPP nick from identity
+                    nick = await self._identity.discord_to_xmpp(evt.author_id)
+                    if not nick:
+                        # Fallback to Discord display name
+                        nick = evt.author_id[:20]  # Truncate for safety
+
+                    # Set avatar if provided
+                    if evt.avatar_url:
+                        await self._component.set_avatar_for_user(
+                            evt.author_id, nick, evt.avatar_url
                         )
+
+                    # Check if this is an edit
+                    is_edit = evt.raw.get("is_edit", False)
+                    if is_edit:
+                        # Look up original XMPP message ID
+                        original_xmpp_id = self._component._msgid_tracker.get_xmpp_id(evt.message_id)
+                        if original_xmpp_id:
+                            await self._component.send_correction_as_user(
+                                evt.author_id, muc_jid, evt.content, nick, original_xmpp_id
+                            )
+                        else:
+                            logger.warning("Cannot send XMPP correction: original message ID not found for {}", evt.message_id)
+                    else:
+                        # Look up reply target XMPP message ID if replying
+                        reply_to_xmpp_id = None
+                        if evt.reply_to_id:
+                            reply_to_xmpp_id = self._component._msgid_tracker.get_xmpp_id(evt.reply_to_id)
+                        
+                        # Send new message and track ID
+                        xmpp_msg_id = await self._component.send_message_as_user(
+                            evt.author_id, muc_jid, evt.content, nick, reply_to_id=reply_to_xmpp_id
+                        )
+                        if xmpp_msg_id:
+                            self._component._msgid_tracker.store(xmpp_msg_id, evt.message_id, muc_jid)
+
                 await asyncio.sleep(0.25)
             except asyncio.CancelledError:
                 break
@@ -131,11 +99,20 @@ class XMPPAdapter:
                 logger.exception("XMPP send failed: {}", exc)
 
     async def start(self) -> None:
-        """Start XMPP client."""
-        jid = _get_xmpp_jid()
-        password = _get_xmpp_password()
-        if not jid or not password:
-            logger.warning("XMPP_JID or XMPP_PASSWORD not set; XMPP adapter disabled")
+        """Start XMPP component."""
+        component_jid = _get_component_jid()
+        secret = _get_component_secret()
+        server = _get_component_server()
+        port = _get_component_port()
+
+        if not component_jid or not secret or not server:
+            logger.warning(
+                "XMPP component config incomplete; XMPP adapter disabled"
+            )
+            return
+
+        if not self._identity:
+            logger.warning("No identity resolver; XMPP adapter disabled")
             return
 
         mappings = self._router.all_mappings()
@@ -144,42 +121,48 @@ class XMPPAdapter:
             logger.warning("No XMPP mappings; XMPP adapter disabled")
             return
 
-        self._bot = XMPPBot(jid, password, self._bus, self._router, self._outbound)
+        self._component = XMPPComponent(
+            component_jid,
+            secret,
+            server,
+            port,
+            self._bus,
+            self._router,
+            self._identity,
+        )
         self._bus.register(self)
         self._consumer_task = asyncio.create_task(self._outbound_consumer())
-        self._bot_task = asyncio.create_task(self._bot.connect_and_process())
-        logger.info("XMPP client started: {}", jid)
+        self._component_task = asyncio.create_task(self._component.connect())  # type: ignore[attr-defined]
+        logger.info("XMPP component started: {}", component_jid)
 
     async def stop(self) -> None:
-        """Stop XMPP client."""
+        """Stop XMPP component."""
         self._bus.unregister(self)
         if self._consumer_task:
             self._consumer_task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await self._consumer_task
-        if self._bot:
-            self._bot.disconnect()
-        if self._bot_task:
-            self._bot_task.cancel()
+        if self._component:
+            self._component.disconnect()
+        if self._component_task:
+            self._component_task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
-                await self._bot_task
-        self._bot = None
-        self._bot_task = None
+                await self._component_task
+        self._component = None
+        self._component_task = None
 
 
-def _get_xmpp_jid() -> str | None:
-    import os
-
-    return os.environ.get("XMPP_JID")
+def _get_component_jid() -> str | None:
+    return os.environ.get("XMPP_COMPONENT_JID")
 
 
-def _get_xmpp_password() -> str | None:
-    import os
-
-    return os.environ.get("XMPP_PASSWORD")
+def _get_component_secret() -> str | None:
+    return os.environ.get("XMPP_COMPONENT_SECRET")
 
 
-def _get_xmpp_nick() -> str:
-    import os
+def _get_component_server() -> str | None:
+    return os.environ.get("XMPP_COMPONENT_SERVER")
 
-    return os.environ.get("XMPP_NICK", "atl-bridge")
+
+def _get_component_port() -> int:
+    return int(os.environ.get("XMPP_COMPONENT_PORT", "5347"))
