@@ -57,5 +57,7 @@ class Relay:
                 content=evt.content,
                 message_id=evt.message_id,
                 reply_to_id=evt.reply_to_id,
+                avatar_url=evt.avatar_url,
+                raw={"is_edit": evt.is_edit, "replace_id": evt.raw.get("replace_id")},
             )
             self._bus.publish("relay", out_evt)
