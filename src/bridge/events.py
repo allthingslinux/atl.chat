@@ -20,6 +20,7 @@ class MessageIn:
     reply_to_id: str | None = None
     is_edit: bool = False
     is_action: bool = False
+    avatar_url: str | None = None  # For avatar sync
     raw: dict[str, Any] = field(default_factory=dict)
 
 
@@ -34,6 +35,7 @@ class MessageOut:
     content: str
     message_id: str
     reply_to_id: str | None = None
+    avatar_url: str | None = None  # For avatar sync
     raw: dict[str, Any] = field(default_factory=dict)
 
 
@@ -99,7 +101,7 @@ def event(type_name: str):
             evt = f(*args, **kwargs)
             return (type_name, evt)
 
-        wrapper.TYPE = type_name
+        wrapper.TYPE = type_name  # type: ignore[attr-defined]
         return wrapper
 
     return decorator
@@ -117,6 +119,7 @@ def message_in(
     reply_to_id: str | None = None,
     is_edit: bool = False,
     is_action: bool = False,
+    avatar_url: str | None = None,
     raw: dict[str, Any] | None = None,
 ) -> MessageIn:
     return MessageIn(
@@ -129,6 +132,7 @@ def message_in(
         reply_to_id=reply_to_id,
         is_edit=is_edit,
         is_action=is_action,
+        avatar_url=avatar_url,
         raw=raw or {},
     )
 
@@ -143,6 +147,7 @@ def message_out(
     message_id: str,
     *,
     reply_to_id: str | None = None,
+    avatar_url: str | None = None,
     raw: dict[str, Any] | None = None,
 ) -> MessageOut:
     return MessageOut(
@@ -153,6 +158,7 @@ def message_out(
         content=content,
         message_id=message_id,
         reply_to_id=reply_to_id,
+        avatar_url=avatar_url,
         raw=raw or {},
     )
 
