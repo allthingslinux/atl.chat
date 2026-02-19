@@ -8,6 +8,38 @@ Custom Discord–IRC–XMPP bridge with multi-presence. Portal is the identity s
 - **Multi-presence** — Webhooks per IRC nick / XMPP JID for Discord; IRC puppets for Discord users (when linked in Portal)
 - **Channel mappings** — Config maps Discord channel ↔ IRC server/channel ↔ XMPP MUC
 - **Identity** — Portal API (or read-only DB) for Discord ID ↔ IRC nick ↔ XMPP JID
+- **IRCv3 support** — Message IDs, reply threading, extended capabilities
+
+## IRCv3 Capabilities
+
+The bridge supports modern IRCv3 features:
+
+- **message-tags** — Parse and send IRCv3 message tags
+- **msgid** — Track message IDs for edit/delete correlation
+- **draft/reply** — Thread replies between Discord and IRC
+- **account-notify** — Track account authentication status
+- **extended-join** — Enhanced join information
+- **server-time** — Accurate message timestamps
+- **batch** — Handle grouped messages (netsplits, chat history)
+
+### Message ID Tracking
+
+IRC message IDs are tracked with a 1-hour TTL cache for:
+- Correlating edits/deletes between platforms
+- Maintaining reply threading context
+- Debugging message flow
+
+### Reply Threading
+
+When a Discord user replies to a message:
+1. Bridge looks up the IRC msgid from the original message
+2. Sends the reply with `+draft/reply` tag pointing to the original
+3. IRC clients supporting the capability show proper threading
+
+When an IRC user replies:
+1. Bridge extracts `+draft/reply` tag from incoming message
+2. Resolves IRC msgid to Discord message ID
+3. Creates Discord reply to the original message
 
 ## Requirements
 
@@ -29,6 +61,14 @@ See `config.example.yaml`. Key sections:
 - **mappings** — List of Discord channel ID ↔ IRC ↔ XMPP MUC
 - **announce_joins_and_quits** — Relay join/part/quit (default: true)
 - **irc_puppet_idle_timeout_hours** — Idle timeout for IRC puppets (default: 24)
+
+### IRC Puppet Manager
+
+The bridge creates separate IRC connections for each Discord user (when linked in Portal):
+- Puppets use the user's IRC nick from Portal
+- Idle puppets disconnect after 24 hours (configurable via `IRC_PUPPET_IDLE_TIMEOUT_HOURS` env var)
+- Automatic cleanup runs hourly
+- Falls back to main connection for unlinked users
 
 ## Environment variables (secrets)
 
