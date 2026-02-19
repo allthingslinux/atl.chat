@@ -47,8 +47,9 @@ class TestIRCClient:
             msgid_tracker=tracker,
         )
 
-        # Simulate IRCv3 tags
+        # Simulate IRCv3 tags and ready state
         client._message_tags = {"msgid": "abc123", "+draft/reply": "xyz789"}
+        client._ready = True
 
         await client.on_message("#test", "user", "Hello")
 
