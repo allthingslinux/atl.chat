@@ -23,7 +23,18 @@ class Relay:
         if not isinstance(evt, MessageIn):
             return
 
-        mapping = self._router.get_mapping_for_discord(evt.channel_id)
+        # Look up mapping based on origin
+        mapping = None
+        if evt.origin == "discord":
+            mapping = self._router.get_mapping_for_discord(evt.channel_id)
+        elif evt.origin == "irc":
+            # Parse IRC channel_id format: "server/channel"
+            parts = evt.channel_id.split("/", 1)
+            if len(parts) == 2:
+                mapping = self._router.get_mapping_for_irc(parts[0], parts[1])
+        elif evt.origin == "xmpp":
+            mapping = self._router.get_mapping_for_xmpp(evt.channel_id)
+
         if not mapping:
             return
 
