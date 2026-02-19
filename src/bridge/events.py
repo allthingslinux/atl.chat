@@ -80,6 +80,28 @@ class ConfigReload:
     pass
 
 
+@dataclass
+class MessageDelete:
+    """Message was deleted — relay to other protocols for REDACT/retraction."""
+
+    origin: str
+    channel_id: str
+    message_id: str
+    author_id: str = ""  # For XMPP retraction (send as user)
+    raw: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class MessageDeleteOut:
+    """Outbound delete — to be sent to target protocol (REDACT, retraction)."""
+
+    target_origin: str
+    channel_id: str
+    message_id: str
+    author_id: str = ""  # For XMPP retraction (send as user)
+    raw: dict[str, Any] = field(default_factory=dict)
+
+
 class EventTarget(Protocol):
     """Adapter interface: accept_event + push_event (AUDIT §1)."""
 
@@ -194,6 +216,127 @@ def quit(origin: str, user_id: str, display: str, *, reason: str | None = None) 
 @event("config_reload")
 def config_reload() -> ConfigReload:
     return ConfigReload()
+
+
+@event("message_delete")
+def message_delete(
+    origin: str, channel_id: str, message_id: str, *, author_id: str = ""
+) -> MessageDelete:
+    return MessageDelete(
+        origin=origin,
+        channel_id=channel_id,
+        message_id=message_id,
+        author_id=author_id,
+    )
+
+
+@dataclass
+class ReactionIn:
+    """Reaction was added — relay to other protocols."""
+
+    origin: str
+    channel_id: str
+    message_id: str
+    emoji: str
+    author_id: str
+    author_display: str
+    raw: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class ReactionOut:
+    """Outbound reaction — to be sent to target protocol."""
+
+    target_origin: str
+    channel_id: str
+    message_id: str
+    emoji: str
+    author_id: str
+    author_display: str
+    raw: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class TypingIn:
+    """User started typing — relay to other protocols."""
+
+    origin: str
+    channel_id: str
+    user_id: str
+    raw: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class TypingOut:
+    """Outbound typing indicator."""
+
+    target_origin: str
+    channel_id: str
+    raw: dict[str, Any] = field(default_factory=dict)
+
+
+@event("message_delete_out")
+def message_delete_out(
+    target_origin: str,
+    channel_id: str,
+    message_id: str,
+    *,
+    author_id: str = "",
+) -> MessageDeleteOut:
+    return MessageDeleteOut(
+        target_origin=target_origin,
+        channel_id=channel_id,
+        message_id=message_id,
+        author_id=author_id,
+    )
+
+
+@event("reaction_in")
+def reaction_in(
+    origin: str,
+    channel_id: str,
+    message_id: str,
+    emoji: str,
+    author_id: str,
+    author_display: str,
+) -> ReactionIn:
+    return ReactionIn(
+        origin=origin,
+        channel_id=channel_id,
+        message_id=message_id,
+        emoji=emoji,
+        author_id=author_id,
+        author_display=author_display,
+    )
+
+
+@event("reaction_out")
+def reaction_out(
+    target_origin: str,
+    channel_id: str,
+    message_id: str,
+    emoji: str,
+    author_id: str,
+    author_display: str,
+) -> ReactionOut:
+    return ReactionOut(
+        target_origin=target_origin,
+        channel_id=channel_id,
+        message_id=message_id,
+        emoji=emoji,
+        author_id=author_id,
+        author_display=author_display,
+    )
+
+
+@event("typing_in")
+def typing_in(origin: str, channel_id: str, user_id: str) -> TypingIn:
+    return TypingIn(origin=origin, channel_id=channel_id, user_id=user_id)
+
+
+@event("typing_out")
+def typing_out(target_origin: str, channel_id: str) -> TypingOut:
+    return TypingOut(target_origin=target_origin, channel_id=channel_id)
 
 
 class Dispatcher:
