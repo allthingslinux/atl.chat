@@ -96,28 +96,74 @@ irc_puppet_idle_timeout_hours: 24
 ## Architecture
 
 ```
-┌─────────────┐
-│   Discord   │
-└──────┬──────┘
-       │
-       ├─────────┐
-       │         │
-┌──────▼──────┐  │
-│  Event Bus  │◄─┤
-└──────┬──────┘  │
-       │         │
-       ├─────────┤
-       │         │
-┌──────▼──────┐  │
-│     IRC     │  │
-│  (puppets)  │  │
-└─────────────┘  │
-       │         │
-┌──────▼──────┐  │
-│    XMPP     │◄─┘
-│ (component) │
-└─────────────┘
+                    ┌─────────────────────────────────────┐
+                    │         Discord Bot                 │
+                    │   Webhooks + Message Events         │
+                    └──────────────┬──────────────────────┘
+                                   │
+                                   │ MessageIn/MessageOut
+                                   │ Join/Part/Quit
+                                   ▼
+                    ┌─────────────────────────────────────┐
+                    │         Event Bus                   │
+                    │   Async dispatch + Error isolation  │
+                    └──────────────┬──────────────────────┘
+                                   │
+                    ┌──────────────┼──────────────┐
+                    │              │              │
+                    ▼              ▼              ▼
+         ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
+         │   Channel    │  │   Identity   │  │  Message ID  │
+         │   Router     │  │   Resolver   │  │   Trackers   │
+         │              │  │              │  │              │
+         │  Discord ↔   │  │ Portal API + │  │ IRC + XMPP   │
+         │  IRC ↔ XMPP  │  │  5min cache  │  │   1hr TTL    │
+         └──────────────┘  └──────────────┘  └──────────────┘
+                    │              │              │
+                    └──────────────┼──────────────┘
+                                   │
+                    ┌──────────────┴──────────────┐
+                    │                             │
+                    ▼                             ▼
+         ┌─────────────────────┐      ┌─────────────────────┐
+         │   IRC Adapter       │      │   XMPP Component    │
+         │                     │      │                     │
+         │ • Main connection   │      │ • ComponentXMPP     │
+         │ • Puppet manager    │      │ • Multi-presence    │
+         │ • IRCv3 caps        │      │ • 8 XEPs            │
+         │ • 24h idle timeout  │      │ • Stream mgmt       │
+         └─────────────────────┘      └─────────────────────┘
+                    │                             │
+                    ▼                             ▼
+         ┌─────────────────────┐      ┌─────────────────────┐
+         │  IRC Server         │      │  XMPP Server        │
+         │  (unrealircd)       │      │  (prosody)          │
+         └─────────────────────┘      └─────────────────────┘
 ```
+
+### Data Flow
+
+**Discord → IRC/XMPP:**
+1. Discord user sends message
+2. Discord adapter creates `MessageIn` event
+3. Event bus dispatches to all adapters
+4. Identity resolver checks Portal for IRC/XMPP links
+5. Channel router finds target IRC channel + XMPP MUC
+6. IRC adapter sends via puppet (if linked) or main connection
+7. XMPP component sends from user's JID (e.g., `user@bridge.atl.chat`)
+
+**IRC → Discord/XMPP:**
+1. IRC puppet receives message with `msgid` tag
+2. IRC adapter creates `MessageIn` event, stores msgid mapping
+3. Event bus dispatches to Discord + XMPP adapters
+4. Discord adapter sends via webhook (shows IRC nick)
+5. XMPP component relays to MUC from bridge JID
+
+**Edit/Delete Flow:**
+1. Discord edit event received
+2. Adapter looks up IRC msgid + XMPP id from trackers
+3. Sends IRC `TAGMSG` with edit, XMPP correction (XEP-0308)
+4. Reverse flow works similarly using stored message IDs
 
 ### Key Components
 
