@@ -1,121 +1,213 @@
-"""Tests for event types and dispatcher."""
+"""Test event types and factories."""
 
-from __future__ import annotations
+import pytest
 
 from bridge.events import (
-    ConfigReload,
-    Dispatcher,
-    Join,
     MessageIn,
     MessageOut,
+    Join,
     Part,
     Quit,
+    ConfigReload,
+    message_in,
+    message_out,
+    join,
+    part,
+    quit,
+    config_reload,
 )
 
 
-class TargetCollector:
-    """Event target that collects accepted events."""
+class TestMessageInEvent:
+    """Test MessageIn event creation."""
 
-    def __init__(self, accept_types: set[type]) -> None:
-        self.events: list[tuple[str, object]] = []
-        self._accept_types = accept_types
+    def test_message_in_factory(self):
+        # Arrange
+        origin = "discord"
+        channel_id = "123"
+        author_id = "user1"
+        author_display = "TestUser"
+        content = "Hello"
+        message_id = "msg1"
 
-    def accept_event(self, source: str, evt: object) -> bool:
-        return type(evt) in self._accept_types
+        # Act
+        event_type, evt = message_in(
+            origin=origin,
+            channel_id=channel_id,
+            author_id=author_id,
+            author_display=author_display,
+            content=content,
+            message_id=message_id,
+        )
 
-    def push_event(self, source: str, evt: object) -> None:
-        self.events.append((source, evt))
+        # Assert
+        assert event_type == "message_in"
+        assert isinstance(evt, MessageIn)
+        assert evt.origin == origin
+        assert evt.channel_id == channel_id
+        assert evt.author_id == author_id
+        assert evt.author_display == author_display
+        assert evt.content == content
+        assert evt.message_id == message_id
+        assert evt.reply_to_id is None
+        assert evt.is_edit is False
+        assert evt.is_action is False
 
-
-def test_dispatcher_forwards_to_accepting_targets() -> None:
-    """Targets that accept an event receive it."""
-    dispatcher = Dispatcher()
-    collector = TargetCollector({MessageIn})
-
-    dispatcher.register(collector)
-    dispatcher.dispatch(
-        "test",
-        MessageIn(
-            origin="discord",
-            channel_id="c1",
+    def test_message_in_with_reply(self):
+        # Arrange & Act
+        _, evt = message_in(
+            origin="irc",
+            channel_id="ch1",
             author_id="u1",
-            author_display="Alice",
-            content="hi",
-            message_id="m1",
-        ),
-    )
-    dispatcher.dispatch(
-        "test",
-        ConfigReload(),
-    )
+            author_display="User",
+            content="Reply",
+            message_id="msg2",
+            reply_to_id="msg1",
+        )
 
-    assert len(collector.events) == 1
-    source, evt = collector.events[0]
-    assert source == "test"
-    assert isinstance(evt, MessageIn)
-    assert evt.content == "hi"
+        # Assert
+        assert evt.reply_to_id == "msg1"
 
-
-def test_dispatcher_ignores_non_accepting_targets() -> None:
-    """Targets that don't accept an event don't receive it."""
-    dispatcher = Dispatcher()
-    collector = TargetCollector({MessageOut})  # Only wants MessageOut
-
-    dispatcher.register(collector)
-    dispatcher.dispatch(
-        "test",
-        MessageIn(
-            origin="discord",
-            channel_id="c1",
+    def test_message_in_edit(self):
+        # Arrange & Act
+        _, evt = message_in(
+            origin="xmpp",
+            channel_id="ch1",
             author_id="u1",
-            author_display="Alice",
-            content="hi",
-            message_id="m1",
-        ),
-    )
+            author_display="User",
+            content="Edited",
+            message_id="msg1",
+            is_edit=True,
+        )
 
-    assert len(collector.events) == 0
+        # Assert
+        assert evt.is_edit is True
 
+    def test_message_in_action(self):
+        # Arrange & Act
+        _, evt = message_in(
+            origin="irc",
+            channel_id="ch1",
+            author_id="u1",
+            author_display="User",
+            content="does something",
+            message_id="msg1",
+            is_action=True,
+        )
 
-def test_event_factories() -> None:
-    """Event factory functions return (type_name, evt) with correct evt types."""
-    from bridge.events import config_reload, join, message_in, part, quit
-
-    type_name, evt = message_in(
-        origin="irc",
-        channel_id="c1",
-        author_id="u1",
-        author_display="Bob",
-        content="hello",
-        message_id="m1",
-    )
-    assert type_name == "message_in"
-    assert isinstance(evt, MessageIn)
-    assert evt.origin == "irc"
-
-    _, evt2 = join("irc", "c1", "u1", "Bob")
-    assert isinstance(evt2, Join)
-
-    _, evt3 = part("irc", "c1", "u1", "Bob", reason="bye")
-    assert isinstance(evt3, Part)
-    assert evt3.reason == "bye"
-
-    _, evt4 = quit("irc", "u1", "Bob")
-    assert isinstance(evt4, Quit)
-
-    _, evt5 = config_reload()
-    assert isinstance(evt5, ConfigReload)
+        # Assert
+        assert evt.is_action is True
 
 
-def test_dispatcher_unregister() -> None:
-    """Unregistered targets stop receiving events."""
-    dispatcher = Dispatcher()
-    collector = TargetCollector({MessageIn})
+class TestMessageOutEvent:
+    """Test MessageOut event creation."""
 
-    dispatcher.register(collector)
-    dispatcher.dispatch("test", MessageIn("d", "c", "u", "A", "hi", "m1"))
-    assert len(collector.events) == 1
+    def test_message_out_factory(self):
+        # Arrange & Act
+        event_type, evt = message_out(
+            target_origin="discord",
+            channel_id="123",
+            author_id="user1",
+            author_display="TestUser",
+            content="Hello",
+            message_id="msg1",
+        )
 
-    dispatcher.unregister(collector)
-    dispatcher.dispatch("test", MessageIn("d", "c", "u", "A", "hi2", "m2"))
-    assert len(collector.events) == 1
+        # Assert
+        assert event_type == "message_out"
+        assert isinstance(evt, MessageOut)
+        assert evt.target_origin == "discord"
+        assert evt.content == "Hello"
+
+
+class TestJoinEvent:
+    """Test Join event creation."""
+
+    def test_join_factory(self):
+        # Arrange & Act
+        event_type, evt = join(
+            origin="irc",
+            channel_id="ch1",
+            user_id="user1",
+            display="TestUser",
+        )
+
+        # Assert
+        assert event_type == "join"
+        assert isinstance(evt, Join)
+        assert evt.origin == "irc"
+        assert evt.channel_id == "ch1"
+        assert evt.user_id == "user1"
+        assert evt.display == "TestUser"
+
+
+class TestPartEvent:
+    """Test Part event creation."""
+
+    def test_part_factory(self):
+        # Arrange & Act
+        event_type, evt = part(
+            origin="irc",
+            channel_id="ch1",
+            user_id="user1",
+            display="TestUser",
+        )
+
+        # Assert
+        assert event_type == "part"
+        assert isinstance(evt, Part)
+        assert evt.reason is None
+
+    def test_part_with_reason(self):
+        # Arrange & Act
+        _, evt = part(
+            origin="irc",
+            channel_id="ch1",
+            user_id="user1",
+            display="TestUser",
+            reason="Leaving",
+        )
+
+        # Assert
+        assert evt.reason == "Leaving"
+
+
+class TestQuitEvent:
+    """Test Quit event creation."""
+
+    def test_quit_factory(self):
+        # Arrange & Act
+        event_type, evt = quit(
+            origin="irc",
+            user_id="user1",
+            display="TestUser",
+        )
+
+        # Assert
+        assert event_type == "quit"
+        assert isinstance(evt, Quit)
+        assert evt.reason is None
+
+    def test_quit_with_reason(self):
+        # Arrange & Act
+        _, evt = quit(
+            origin="irc",
+            user_id="user1",
+            display="TestUser",
+            reason="Connection lost",
+        )
+
+        # Assert
+        assert evt.reason == "Connection lost"
+
+
+class TestConfigReloadEvent:
+    """Test ConfigReload event creation."""
+
+    def test_config_reload_factory(self):
+        # Arrange & Act
+        event_type, evt = config_reload()
+
+        # Assert
+        assert event_type == "config_reload"
+        assert isinstance(evt, ConfigReload)
