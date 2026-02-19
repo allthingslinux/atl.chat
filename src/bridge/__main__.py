@@ -7,6 +7,7 @@ import asyncio
 import signal
 import sys
 from pathlib import Path
+from typing import Protocol
 
 from loguru import logger
 
@@ -18,6 +19,13 @@ from bridge.config import Config, cfg, load_config_with_env
 from bridge.events import config_reload, dispatcher
 from bridge.gateway import Bus, ChannelRouter, Relay
 from bridge.identity import IdentityResolver, PortalClient
+
+
+class Adapter(Protocol):
+    """Protocol for adapters with start/stop methods."""
+
+    async def start(self) -> None: ...
+    async def stop(self) -> None: ...
 
 
 def setup_logging(verbose: bool = False) -> None:
@@ -135,7 +143,7 @@ async def _run(
     identity_resolver: IdentityResolver | None,
 ) -> None:
     """Async run loop. Start adapters and wait."""
-    adapters: list[object] = []
+    adapters: list[Adapter] = []
     discord_adapter = DiscordAdapter(bus, router, identity_resolver)
     irc_adapter = IRCAdapter(bus, router, identity_resolver)
     xmpp_adapter = XMPPAdapter(bus, router, identity_resolver)
@@ -150,8 +158,7 @@ async def _run(
     except asyncio.CancelledError:
         logger.info("Bridge shutting down")
         for adapter in adapters:
-            if hasattr(adapter, "stop"):
-                await adapter.stop()
+            await adapter.stop()
 
 
 if __name__ == "__main__":
