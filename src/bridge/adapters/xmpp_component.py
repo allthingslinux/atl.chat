@@ -50,30 +50,34 @@ class XMPPComponent(ComponentXMPP):
         self.register_plugin("xep_0203")  # Delayed Delivery
         self.register_plugin("xep_0308")  # Last Message Correction
         self.register_plugin("xep_0054")  # vCard-temp
-        self.register_plugin("xep_0153")  # vCard-Based Avatars
         self.register_plugin("xep_0047")  # In-Band Bytestreams
         self.register_plugin("xep_0363")  # HTTP File Upload
         self.register_plugin("xep_0372")  # References
         self.register_plugin("xep_0382")  # Spoiler Messages
         self.register_plugin("xep_0422")  # Message Fastening
+        self.register_plugin("xep_0424")  # Message Retraction
         self.register_plugin("xep_0444")  # Message Reactions
+        self.register_plugin("xep_0461")  # Message Replies
         self.register_plugin("xep_0106")  # JID Escaping
-        
+
         # Enable stream resumption for network resilience
         self.plugin["xep_0198"].allow_resume = True
-        
+
         # Enable keepalive pings to detect dead connections
         self.plugin["xep_0199"].enable_keepalive(interval=180, timeout=30)
 
         # Add component identity for service discovery
-        self["xep_0030"].add_identity(
-            category="gateway",
-            itype="discord",
-            name="Discord-IRC-XMPP Bridge",
-        )
+        disco = self.plugin.get("xep_0030")
+        if disco:
+            disco.add_identity(
+                category="gateway",
+                itype="discord",
+                name="Discord-IRC-XMPP Bridge",
+            )
 
         self.add_event_handler("groupchat_message", self._on_groupchat_message)
         self.add_event_handler("reactions", self._on_reactions)
+        self.add_event_handler("message_retract", self._on_retraction)
         self.add_event_handler("ibb_stream_start", self._on_ibb_stream_start)
         self.add_event_handler("ibb_stream_end", self._on_ibb_stream_end)
 
@@ -111,16 +115,25 @@ class XMPPComponent(ComponentXMPP):
             is_edit = True
             logger.debug("Received XMPP correction for message {}", replace_id)
 
-        # Check for reply reference (XEP-0372)
+        # Check for reply reference (XEP-0461 or XEP-0372)
         reply_to_id = None
-        if msg.get_plugin("reference", check=True):
+
+        # Try XEP-0461 first (newer)
+        if msg.get_plugin("reply", check=True):
+            reply_plugin = msg["reply"]
+            if reply_plugin.get("id"):
+                reply_to_id = reply_plugin["id"]
+                logger.debug("Received XMPP reply (XEP-0461) to message {}", reply_to_id)
+
+        # Fall back to XEP-0372 if no XEP-0461 reply
+        if not reply_to_id and msg.get_plugin("reference", check=True):
             ref = msg["reference"]
             if ref.get("type") == "reply" and ref.get("uri"):
                 # Extract message ID from URI (format: xmpp:room@server?id=msgid)
                 uri = ref["uri"]
                 if "?id=" in uri:
                     reply_to_id = uri.split("?id=")[1]
-                    logger.debug("Received XMPP reply to message {}", reply_to_id)
+                    logger.debug("Received XMPP reply (XEP-0372) to message {}", reply_to_id)
 
         # Get or generate message ID
         xmpp_msg_id = msg.get("id", f"xmpp:{room_jid}:{nick}:{id(msg)}")
@@ -163,12 +176,36 @@ class XMPPComponent(ComponentXMPP):
 
         target_msg_id = reactions.get("id")
         emojis = reactions.get_values()
-        
+
         logger.debug("Received XMPP reactions from {}: {} on {}", nick, emojis, target_msg_id)
-        
+
         # Emit reaction event (would need new event type)
         # For now, just log it
         # TODO: Add ReactionIn event type and handle in Discord adapter
+
+    def _on_retraction(self, msg: Any) -> None:
+        """Handle XMPP message retraction; emit to bus."""
+        from_jid = str(msg["from"]) if msg["from"] else ""
+        if "/" in from_jid:
+            room_jid = from_jid.split("/")[0]
+            nick = from_jid.split("/")[1]
+        else:
+            return
+
+        mapping = self._router.get_mapping_for_xmpp(room_jid)
+        if not mapping:
+            return
+
+        retract = msg.get_plugin("retract", check=True)
+        if not retract:
+            return
+
+        target_msg_id = retract.get("id")
+        logger.debug("Received XMPP retraction from {}: message {}", nick, target_msg_id)
+
+        # Emit deletion event (would need new event type)
+        # For now, just log it
+        # TODO: Add MessageDelete event type and handle in Discord adapter
 
     def _on_ibb_stream_start(self, stream: Any) -> None:
         """Handle incoming IBB stream; log for now."""
@@ -219,7 +256,7 @@ class XMPPComponent(ComponentXMPP):
             # Upload to Discord
             from bridge.adapters.disc import DiscordAdapter
 
-            for adapter in self._bus._adapters:
+            for adapter in self._bus._adapters:  # type: ignore[attr-defined]
                 if isinstance(adapter, DiscordAdapter):
                     filename = f"xmpp_file_{stream.sid[:8]}.bin"
                     await adapter.upload_file(
@@ -254,11 +291,20 @@ class XMPPComponent(ComponentXMPP):
     ) -> None:
         """Send file via IBB stream from a specific Discord user's JID."""
         # Escape nick for JID compliance
-        escaped_nick = self["xep_0106"].escape(nick)
+        jid_escape = self.plugin.get("xep_0106")
+        if not jid_escape:
+            logger.error("XEP-0106 plugin not available")
+            return
+        escaped_nick = jid_escape.escape(nick)  # type: ignore[misc]
         user_jid = f"{escaped_nick}@{self._component_jid}"
 
+        ibb = self.plugin.get("xep_0047")
+        if not ibb:
+            logger.error("XEP-0047 plugin not available")
+            return
+
         try:
-            stream = await self["xep_0047"].open_stream(
+            stream = await ibb.open_stream(  # type: ignore[misc]
                 JID(peer_jid),
                 ifrom=JID(user_jid),
             )
@@ -277,18 +323,21 @@ class XMPPComponent(ComponentXMPP):
         self, discord_id: str, muc_jid: str, data: bytes, filename: str, nick: str
     ) -> None:
         """Upload file via HTTP (XEP-0363) and send URL to MUC as user."""
-        escaped_nick = self["xep_0106"].escape(nick)
-        user_jid = f"{escaped_nick}@{self._component_jid}"
+        http_upload = self.plugin.get("xep_0363")
+        if not http_upload:
+            logger.error("XEP-0363 plugin not available")
+            return
 
         try:
             import io
-            url = await self["xep_0363"].upload_file(
-                filename=filename,
+            from pathlib import Path
+            url = await http_upload.upload_file(  # type: ignore[misc]
+                filename=Path(filename),
                 size=len(data),
                 input_file=io.BytesIO(data),
             )
             logger.info("Uploaded {} bytes to {}", len(data), url)
-            
+
             # Send URL as message from user
             await self.send_message_as_user(discord_id, muc_jid, url, nick)
         except Exception as exc:
@@ -310,7 +359,11 @@ class XMPPComponent(ComponentXMPP):
     ) -> str:
         """Send message to MUC from a specific Discord user's JID. Returns XMPP message ID."""
         # Escape nick for JID compliance
-        escaped_nick = self["xep_0106"].escape(nick)
+        jid_escape = self.plugin.get("xep_0106")
+        if not jid_escape:
+            logger.error("XEP-0106 plugin not available")
+            return ""
+        escaped_nick = jid_escape.escape(nick)  # type: ignore[misc]
         user_jid = f"{escaped_nick}@{self._component_jid}"
 
         try:
@@ -318,7 +371,7 @@ class XMPPComponent(ComponentXMPP):
             has_spoiler = "||" in content
             if has_spoiler:
                 content = content.replace("||", "")
-            
+
             msg = self.make_message(
                 mto=JID(muc_jid),
                 mfrom=JID(user_jid),
@@ -328,19 +381,31 @@ class XMPPComponent(ComponentXMPP):
             # Use provided ID or generate one
             if xmpp_msg_id:
                 msg["id"] = xmpp_msg_id
-            
+
             # Add spoiler tag if Discord message had spoilers
             if has_spoiler:
                 msg.enable("spoiler")
-            
+
             # Add reply reference if replying to another message
             if reply_to_id:
-                ref = msg.add_plugin("reference")
-                ref["type"] = "reply"
-                ref["uri"] = f"xmpp:{muc_jid}?id={reply_to_id}"
-            
+                # Use XEP-0461 (newer, simpler)
+                try:
+                    reply = msg.enable("reply")
+                    reply["to"] = JID(muc_jid)
+                    reply["id"] = reply_to_id
+                except Exception:
+                    pass  # Reply plugin may not be available
+
+                # Also add XEP-0372 reference for compatibility
+                try:
+                    ref = msg.enable("reference")
+                    ref["type"] = "reply"
+                    ref["uri"] = f"xmpp:{muc_jid}?id={reply_to_id}"
+                except Exception:
+                    pass  # Reference plugin may not be available
+
             msg.send()
-            
+
             msg_id = msg["id"]
             logger.debug("Sent XMPP message {} from {} to {}", msg_id, user_jid, muc_jid)
             return msg_id
@@ -352,11 +417,20 @@ class XMPPComponent(ComponentXMPP):
         self, discord_id: str, muc_jid: str, target_msg_id: str, emoji: str, nick: str
     ) -> None:
         """Send reaction to a message from a specific Discord user's JID."""
-        escaped_nick = self["xep_0106"].escape(nick)
+        jid_escape = self.plugin.get("xep_0106")
+        if not jid_escape:
+            logger.error("XEP-0106 plugin not available")
+            return
+        escaped_nick = jid_escape.escape(nick)  # type: ignore[misc]
         user_jid = f"{escaped_nick}@{self._component_jid}"
 
+        reactions_plugin = self.plugin.get("xep_0444")
+        if not reactions_plugin:
+            logger.error("XEP-0444 plugin not available")
+            return
+
         try:
-            await self["xep_0444"].send_reactions(
+            await reactions_plugin.send_reactions(  # type: ignore[misc,call-arg]
                 muc_jid,
                 target_msg_id,
                 {emoji},
@@ -366,12 +440,43 @@ class XMPPComponent(ComponentXMPP):
         except Exception as exc:
             logger.exception("Failed to send reaction: {}", exc)
 
+    async def send_retraction_as_user(
+        self, discord_id: str, muc_jid: str, target_msg_id: str, nick: str
+    ) -> None:
+        """Send message retraction from a specific Discord user's JID."""
+        jid_escape = self.plugin.get("xep_0106")
+        if not jid_escape:
+            logger.error("XEP-0106 plugin not available")
+            return
+        escaped_nick = jid_escape.escape(nick)  # type: ignore[misc]
+        user_jid = f"{escaped_nick}@{self._component_jid}"
+
+        retraction_plugin = self.plugin.get("xep_0424")
+        if not retraction_plugin:
+            logger.error("XEP-0424 plugin not available")
+            return
+
+        try:
+            await retraction_plugin.send_retraction(  # type: ignore[misc]
+                JID(muc_jid),
+                target_msg_id,
+                mtype="groupchat",
+                mfrom=JID(user_jid),
+            )
+            logger.debug("Sent retraction from {} for message {}", user_jid, target_msg_id)
+        except Exception as exc:
+            logger.exception("Failed to send retraction: {}", exc)
+
     async def send_correction_as_user(
         self, discord_id: str, muc_jid: str, content: str, nick: str, original_xmpp_id: str
     ) -> None:
         """Send message correction (XEP-0308) to MUC."""
         # Escape nick for JID compliance
-        escaped_nick = self["xep_0106"].escape(nick)
+        jid_escape = self.plugin.get("xep_0106")
+        if not jid_escape:
+            logger.error("XEP-0106 plugin not available")
+            return
+        escaped_nick = jid_escape.escape(nick)  # type: ignore[misc]
         user_jid = f"{escaped_nick}@{self._component_jid}"
 
         try:
@@ -390,12 +495,21 @@ class XMPPComponent(ComponentXMPP):
     async def join_muc_as_user(self, muc_jid: str, nick: str) -> None:
         """Join MUC as a specific user JID."""
         # Escape nick for JID compliance
-        escaped_nick = self["xep_0106"].escape(nick)
+        jid_escape = self.plugin.get("xep_0106")
+        if not jid_escape:
+            logger.error("XEP-0106 plugin not available")
+            return
+        escaped_nick = jid_escape.escape(nick)  # type: ignore[misc]
         user_jid = f"{escaped_nick}@{self._component_jid}"
 
+        muc_plugin = self.plugin.get("xep_0045")
+        if not muc_plugin:
+            logger.error("XEP-0045 plugin not available")
+            return
+
         try:
-            await self.plugin["xep_0045"].join_muc_wait(
-                JID(muc_jid), nick, pfrom=JID(user_jid), timeout=30
+            await muc_plugin.join_muc_wait(  # type: ignore[misc,call-arg]
+                JID(muc_jid), nick, mfrom=JID(user_jid), timeout=30
             )
             logger.info("Joined MUC {} as {}", muc_jid, user_jid)
         except XMPPError as exc:
@@ -404,11 +518,10 @@ class XMPPComponent(ComponentXMPP):
     async def _fetch_avatar_bytes(self, avatar_url: str) -> bytes | None:
         """Download avatar image from URL."""
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(avatar_url, timeout=aiohttp.ClientTimeout(total=10)) as resp:
-                    if resp.status == 200:
-                        return await resp.read()
-                    logger.warning("Failed to fetch avatar from {}: status {}", avatar_url, resp.status)
+            async with aiohttp.ClientSession() as session, session.get(avatar_url, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+                if resp.status == 200:
+                    return await resp.read()
+                logger.warning("Failed to fetch avatar from {}: status {}", avatar_url, resp.status)
         except Exception as exc:
             logger.exception("Error fetching avatar from {}: {}", avatar_url, exc)
         return None
@@ -421,7 +534,11 @@ class XMPPComponent(ComponentXMPP):
             return
 
         # Escape nick for JID compliance
-        escaped_nick = self["xep_0106"].escape(nick)
+        jid_escape = self.plugin.get("xep_0106")
+        if not jid_escape:
+            logger.error("XEP-0106 plugin not available")
+            return
+        escaped_nick = jid_escape.escape(nick)  # type: ignore[misc]
         user_jid = f"{escaped_nick}@{self._component_jid}"
 
         # Download avatar
@@ -434,13 +551,22 @@ class XMPPComponent(ComponentXMPP):
         if self._avatar_cache.get(discord_id) == avatar_hash:
             return  # Avatar unchanged
 
-        # Set vCard avatar
+        # Set vCard photo directly via XEP-0054
+        vcard_plugin = self.plugin.get("xep_0054")
+        if not vcard_plugin:
+            logger.error("XEP-0054 plugin not available")
+            return
+
         try:
-            await self["xep_0153"].set_avatar(
+            vcard = vcard_plugin.make_vcard()  # type: ignore[misc]
+            vcard["PHOTO"]["TYPE"] = "image/png"
+            vcard["PHOTO"]["BINVAL"] = avatar_bytes
+
+            await vcard_plugin.publish_vcard(  # type: ignore[misc]
                 jid=JID(user_jid),
-                avatar=avatar_bytes,
-                mtype="image/png",
+                vcard=vcard,
             )
+
             self._avatar_cache[discord_id] = avatar_hash
             logger.debug("Set avatar for {} (hash: {})", user_jid, avatar_hash[:8])
         except Exception as exc:
