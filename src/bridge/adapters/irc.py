@@ -1,152 +1,184 @@
-"""IRC adapter: main connection, join channels, emit MessageIn; queue for outbound."""
+"""IRC adapter: pydle-based with IRCv3 support."""
 
 from __future__ import annotations
 
-import contextlib
-import queue
-import ssl
-import threading
+import asyncio
+import os
 from typing import TYPE_CHECKING
 
-import irc.client
-import irc.connection
+import pydle
 from loguru import logger
 
 from bridge.events import MessageOut, message_in
 from bridge.gateway import Bus, ChannelRouter
+from bridge.adapters.irc_puppet import IRCPuppetManager
+from bridge.adapters.irc_msgid import MessageIDTracker
 
 if TYPE_CHECKING:
     from bridge.identity import IdentityResolver
 
 
-class IRCBot(irc.client.SimpleIRCClient):
-    """IRC client: connects, joins bridged channels, emits MessageIn."""
+class IRCClient(pydle.Client):
+    """Pydle IRC client with IRCv3 capabilities."""
+
+    CAPABILITIES = {
+        "message-tags",
+        "msgid",
+        "account-notify",
+        "extended-join",
+        "server-time",
+        "draft/reply",
+        "batch",
+    }
 
     def __init__(
         self,
         bus: Bus,
         router: ChannelRouter,
         server: str,
-        port: int,
         nick: str,
-        use_ssl: bool,
         channels: list[str],
-        outbound_queue: queue.Queue[MessageOut],
-    ) -> None:
-        super().__init__()
+        msgid_tracker: MessageIDTracker,
+        **kwargs,
+    ):
+        super().__init__(nick, **kwargs)
         self._bus = bus
         self._router = router
         self._server = server
-        self._port = port
-        self._nick = nick
-        self._use_ssl = use_ssl
         self._channels = channels
-        self._outbound = outbound_queue
+        self._outbound: asyncio.Queue[MessageOut] = asyncio.Queue()
+        self._consumer_task: asyncio.Task | None = None
+        self._msgid_tracker = msgid_tracker
 
-    def on_welcome(self, connection: irc.client.ServerConnection, event: irc.client.Event) -> None:
-        """After connect, join channels and schedule outbound consumer."""
-        for ch in self._channels:
-            connection.join(ch)
-        # Schedule periodic drain of outbound queue (runs in reactor thread)
-        self.reactor.scheduler.execute_every(period=0.5, func=self._drain_outbound)
+    async def on_connect(self):
+        """After connect, join channels and start consumer."""
+        await super().on_connect()
+        logger.info("IRC connected to {}", self._server)
+        for channel in self._channels:
+            await self.join(channel)
+        self._consumer_task = asyncio.create_task(self._consume_outbound())
 
-    def _drain_outbound(self) -> None:
-        """Drain outbound queue and send to IRC (runs in reactor thread)."""
-        sent = 0
-        while sent < 5:  # Batch limit
-            try:
-                evt = self._outbound.get_nowait()
-            except queue.Empty:
-                break
-            try:
-                mapping = self._router.get_mapping_for_discord(evt.channel_id)
-                if mapping and mapping.irc:
-                    target = mapping.irc.channel
-                    content = evt.content[:400]  # IRC length limit
-                    self.connection.privmsg(target, content)
-                    sent += 1
-            except Exception as exc:
-                logger.exception("IRC send failed: {}", exc)
-
-    def on_pubmsg(self, connection: irc.client.ServerConnection, event: irc.client.Event) -> None:
+    async def on_message(self, target, source, message):
         """Handle channel message."""
-        nick = event.source.nick
-        channel = event.target
-        text = event.arguments[0] if event.arguments else ""
+        await super().on_message(target, source, message)
+        if not target.startswith("#"):
+            return
 
-        mapping = self._router.get_mapping_for_irc(self._server, channel)
+        mapping = self._router.get_mapping_for_irc(self._server, target)
         if not mapping:
             return
 
-        discord_channel_id = mapping.discord_channel_id
-        _, evt = message_in(
-            origin="irc",
-            channel_id=discord_channel_id,
-            author_id=nick,
-            author_display=nick,
-            content=text,
-            message_id=f"irc:{self._server}:{channel}:{nick}:{id(event)}",
-            is_action=False,
-        )
-        self._bus.publish("irc", evt)
+        # Extract msgid and reply from IRCv3 tags
+        msgid = None
+        reply_to = None
+        tags = {}
+        if hasattr(self, "_message_tags") and self._message_tags:
+            tags = self._message_tags
+            msgid = tags.get("msgid")
+            reply_to = tags.get("+draft/reply")
 
-    def on_action(self, connection: irc.client.ServerConnection, event: irc.client.Event) -> None:
-        """Handle /me action."""
-        nick = event.source.nick
-        channel = event.target
-        text = event.arguments[0] if event.arguments else ""
-        content = f"* {nick} {text}"
+        message_id = msgid or f"irc:{self._server}:{target}:{source}:{id(message)}"
 
-        mapping = self._router.get_mapping_for_irc(self._server, channel)
-        if not mapping:
-            return
+        # Resolve reply_to to Discord message ID if available
+        discord_reply_to = None
+        if reply_to:
+            discord_reply_to = self._msgid_tracker.get_discord_id(reply_to)
 
         _, evt = message_in(
             origin="irc",
             channel_id=mapping.discord_channel_id,
-            author_id=nick,
-            author_display=nick,
+            author_id=source,
+            author_display=source,
+            content=message,
+            message_id=message_id,
+            reply_to_id=discord_reply_to,
+            is_action=False,
+            raw={"tags": tags, "irc_msgid": msgid, "irc_reply_to": reply_to},
+        )
+        self._bus.publish("irc", evt)
+
+    async def on_ctcp_action(self, by, target, message):
+        """Handle /me action."""
+        await super().on_ctcp_action(by, target, message)
+        if not target.startswith("#"):
+            return
+
+        mapping = self._router.get_mapping_for_irc(self._server, target)
+        if not mapping:
+            return
+
+        content = f"* {by} {message}"
+        _, evt = message_in(
+            origin="irc",
+            channel_id=mapping.discord_channel_id,
+            author_id=by,
+            author_display=by,
             content=content,
-            message_id=f"irc:{self._server}:{channel}:{nick}:{id(event)}",
+            message_id=f"irc:{self._server}:{target}:{by}:{id(message)}",
             is_action=True,
         )
         self._bus.publish("irc", evt)
 
-    def run(self) -> None:
-        """Connect and run reactor."""
-        if self._use_ssl:
-            ctx = ssl.create_default_context()
-            factory = irc.connection.Factory(
-                wrapper=lambda sock: ctx.wrap_socket(sock, server_hostname=self._server)
-            )
-        else:
-            factory = irc.connection.Factory()
+    async def _consume_outbound(self):
+        """Consume outbound message queue."""
+        while True:
+            try:
+                evt = await self._outbound.get()
+                await self._send_message(evt)
+            except asyncio.CancelledError:
+                break
+            except Exception as exc:
+                logger.exception("IRC send failed: {}", exc)
 
-        self.connection.connect(
-            self._server,
-            self._port,
-            self._nick,
-            ircname=self._nick,
-            connect_factory=factory,
-        )
-        self.reactor.process_forever()
+    async def _send_message(self, evt: MessageOut):
+        """Send message to IRC."""
+        mapping = self._router.get_mapping_for_discord(evt.channel_id)
+        if not mapping or not mapping.irc:
+            return
+
+        target = mapping.irc.channel
+        content = evt.content[:400]  # IRC length limit
+
+        # Add reply tag if replying to a message
+        if evt.reply_to_id:
+            irc_msgid = self._msgid_tracker.get_irc_msgid(evt.reply_to_id)
+            if irc_msgid:
+                # Send with +draft/reply tag
+                await self.rawmsg("TAGMSG", target, tags={"+draft/reply": irc_msgid})
+
+        await self.message(target, content)
+
+    def queue_message(self, evt: MessageOut):
+        """Queue outbound message."""
+        self._outbound.put_nowait(evt)
+
+    async def disconnect(self, expected=True):
+        """Disconnect and cleanup."""
+        if self._consumer_task:
+            self._consumer_task.cancel()
+            try:
+                await self._consumer_task
+            except asyncio.CancelledError:
+                pass
+        await super().disconnect(expected)
 
 
 class IRCAdapter:
-    """IRC adapter: main connection + queue for outbound."""
+    """IRC adapter: pydle-based with IRCv3 support."""
 
     def __init__(
         self,
         bus: Bus,
         router: ChannelRouter,
         identity_resolver: IdentityResolver | None,
-    ) -> None:
+    ):
         self._bus = bus
         self._router = router
         self._identity = identity_resolver
-        self._outbound: queue.Queue[MessageOut] = queue.Queue()
-        self._thread: threading.Thread | None = None
-        self._bot: IRCBot | None = None
+        self._client: IRCClient | None = None
+        self._task: asyncio.Task | None = None
+        self._puppet_manager: IRCPuppetManager | None = None
+        self._msgid_tracker = MessageIDTracker(ttl_seconds=3600)
 
     @property
     def name(self) -> str:
@@ -159,43 +191,84 @@ class IRCAdapter:
     def push_event(self, source: str, evt: object) -> None:
         """Queue MessageOut for IRC send."""
         if isinstance(evt, MessageOut):
-            self._outbound.put(evt)
+            # Use puppet if identity available, otherwise main connection
+            if self._identity and self._puppet_manager:
+                asyncio.create_task(self._send_via_puppet(evt))
+            elif self._client:
+                self._client.queue_message(evt)
+
+    async def _send_via_puppet(self, evt: MessageOut):
+        """Send message via puppet connection."""
+        if not self._puppet_manager:
+            return
+
+        mapping = self._router.get_mapping_for_discord(evt.channel_id)
+        if not mapping or not mapping.irc:
+            return
+
+        # Check if user has IRC identity
+        has_irc = await self._identity.has_irc(evt.author_id)
+        if has_irc:
+            await self._puppet_manager.send_message(
+                evt.author_id,
+                mapping.irc.channel,
+                evt.content,
+            )
+        elif self._client:
+            # Fallback to main connection
+            self._client.queue_message(evt)
 
     async def start(self) -> None:
-        """Start IRC main connection in background thread."""
+        """Start IRC connection."""
         mappings = self._router.all_mappings()
         irc_mappings = [m for m in mappings if m.irc]
         if not irc_mappings:
             logger.warning("No IRC mappings; IRC adapter disabled")
             return
 
-        # Use first IRC mapping for main connection
         m = irc_mappings[0]
         if not m.irc:
             return
 
-        nick = _get_irc_nick()
-        channels = [m.irc.channel] + [
-            x.irc.channel for x in irc_mappings[1:] if x.irc and x.irc.channel
-        ]
-        channels = list(dict.fromkeys(channels))  # Dedupe
+        nick = os.environ.get("IRC_NICK", "atl-bridge")
+        channels = list({x.irc.channel for x in irc_mappings if x.irc and x.irc.channel})
 
-        self._bot = IRCBot(
+        self._client = IRCClient(
             bus=self._bus,
             router=self._router,
             server=m.irc.server,
-            port=m.irc.port,
             nick=nick,
-            use_ssl=m.irc.tls,
             channels=channels,
-            outbound_queue=self._outbound,
+            msgid_tracker=self._msgid_tracker,
         )
 
         self._bus.register(self)
-        self._thread = threading.Thread(target=self._bot.run, daemon=True)
-        self._thread.start()
+
+        self._task = asyncio.create_task(
+            self._client.connect(
+                hostname=m.irc.server,
+                port=m.irc.port,
+                tls=m.irc.tls,
+            )
+        )
+
+        # Start puppet manager if identity resolver available
+        if self._identity:
+            idle_timeout = int(os.environ.get("IRC_PUPPET_IDLE_TIMEOUT_HOURS", "24"))
+            self._puppet_manager = IRCPuppetManager(
+                bus=self._bus,
+                router=self._router,
+                identity=self._identity,
+                server=m.irc.server,
+                port=m.irc.port,
+                tls=m.irc.tls,
+                idle_timeout_hours=idle_timeout,
+            )
+            await self._puppet_manager.start()
+            logger.info("IRC puppet manager started (idle timeout: {}h)", idle_timeout)
+
         logger.info(
-            "IRC main connection started: {}:{}, channels {}",
+            "IRC connection started: {}:{}, channels {}",
             m.irc.server,
             m.irc.port,
             channels,
@@ -204,15 +277,16 @@ class IRCAdapter:
     async def stop(self) -> None:
         """Stop IRC connection."""
         self._bus.unregister(self)
-        if self._bot and self._bot.connection:
-            with contextlib.suppress(Exception):
-                self._bot.connection.quit("Bridge shutting down")
-        self._thread = None
-        self._bot = None
-
-
-def _get_irc_nick() -> str:
-    """Get IRC nick from env."""
-    import os
-
-    return os.environ.get("IRC_NICK", "atl-bridge")
+        if self._puppet_manager:
+            await self._puppet_manager.stop()
+        if self._client:
+            await self._client.disconnect()
+        if self._task:
+            self._task.cancel()
+            try:
+                await self._task
+            except asyncio.CancelledError:
+                pass
+        self._client = None
+        self._task = None
+        self._puppet_manager = None
