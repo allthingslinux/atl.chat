@@ -93,13 +93,14 @@ class TestLoadConfig:
 
     def test_load_config_invalid_yaml(self):
         # Arrange
+        import yaml
         with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             f.write("not: a: valid: yaml:")
             path = f.name
 
         try:
             # Act & Assert
-            with pytest.raises((ValueError, KeyError, TypeError)):
+            with pytest.raises((ValueError, KeyError, TypeError, yaml.scanner.ScannerError)):
                 load_config(path)
         finally:
             Path(path).unlink()

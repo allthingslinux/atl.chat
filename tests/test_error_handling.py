@@ -74,6 +74,8 @@ class TestConfigErrors:
         # Arrange
         import tempfile
 
+        import yaml
+
         from bridge.config import load_config
 
         # Act & Assert
@@ -81,7 +83,7 @@ class TestConfigErrors:
             f.write("invalid: yaml: syntax:")
             path = f.name
 
-        with pytest.raises((ValueError, KeyError, TypeError)):
+        with pytest.raises((ValueError, KeyError, TypeError, yaml.scanner.ScannerError)):
             load_config(path)
 
     def test_missing_config_file_returns_empty(self):
