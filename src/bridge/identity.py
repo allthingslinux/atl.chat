@@ -13,11 +13,20 @@ from tenacity import (
     wait_exponential,
 )
 
-# Default retry: 5 attempts, exponential backoff 2–30s, retry on connection/5xx
+# Default retry: 5 attempts, exponential backoff 2–30s, retry on transient errors
 DEFAULT_RETRY = retry(
     stop=stop_after_attempt(5),
     wait=wait_exponential(multiplier=1, min=2, max=30),
-    retry=retry_if_exception_type((httpx.ConnectError, httpx.HTTPStatusError)),
+    retry=retry_if_exception_type((
+        httpx.ConnectError,
+        httpx.ConnectTimeout,
+        httpx.ReadTimeout,
+        httpx.WriteTimeout,
+        httpx.PoolTimeout,
+        httpx.ReadError,
+        httpx.WriteError,
+        httpx.HTTPStatusError,  # Will retry 5xx errors
+    )),
     reraise=True,
 )
 
