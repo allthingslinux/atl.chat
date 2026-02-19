@@ -84,7 +84,7 @@ class XMPPAdapter:
                         reply_to_xmpp_id = None
                         if evt.reply_to_id:
                             reply_to_xmpp_id = self._component._msgid_tracker.get_xmpp_id(evt.reply_to_id)
-                        
+
                         # Send new message and track ID
                         xmpp_msg_id = await self._component.send_message_as_user(
                             evt.author_id, muc_jid, evt.content, nick, reply_to_id=reply_to_xmpp_id
