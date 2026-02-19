@@ -9,6 +9,14 @@ Custom Discord–IRC–XMPP bridge with multi-presence. Portal is the identity s
 - **Channel mappings** — Config maps Discord channel ↔ IRC server/channel ↔ XMPP MUC
 - **Identity** — Portal API (or read-only DB) for Discord ID ↔ IRC nick ↔ XMPP JID
 - **IRCv3 support** — Message IDs, reply threading, extended capabilities
+- **XEP-0198** — Stream Management for reliable XMPP message delivery and resumption
+- **XEP-0203** — Delayed Delivery to filter MUC history and prevent duplicate messages
+- **XEP-0308** — Last Message Correction for Discord ↔ XMPP message editing
+- **XEP-0363** — HTTP File Upload for efficient file transfers
+- **XEP-0372** — References for reply threading and mentions
+- **XEP-0382** — Spoiler Messages for content warnings
+- **XEP-0422** — Message Fastening for attaching metadata to messages
+- **XEP-0444** — Message Reactions for emoji reactions
 
 ## IRCv3 Capabilities
 
@@ -21,6 +29,17 @@ The bridge supports modern IRCv3 features:
 - **extended-join** — Enhanced join information
 - **server-time** — Accurate message timestamps
 - **batch** — Handle grouped messages (netsplits, chat history)
+- **echo-message** — Confirm message delivery and track puppet sends
+- **labeled-response** — Correlate commands with responses across connections
+- **chghost** — Track username/hostname changes without fake QUIT/JOIN
+- **setname** — Track realname (GECOS) changes
+
+### JID Escaping (XEP-0106)
+
+The bridge uses XEP-0106 to escape special characters in usernames when creating XMPP JIDs:
+- Discord/IRC usernames with `@`, `#`, `:`, `/`, etc. are properly escaped
+- Example: `User#1234` → `user\231234@bridge.atl.chat`
+- Prevents invalid JIDs and ensures compatibility with all username formats
 
 ### Message ID Tracking
 
@@ -70,6 +89,23 @@ The bridge creates separate IRC connections for each Discord user (when linked i
 - Automatic cleanup runs hourly
 - Falls back to main connection for unlinked users
 
+### XMPP Component (Multi-Presence)
+
+The bridge uses XMPP ComponentXMPP for multi-presence (puppets):
+- Each Discord user appears as a unique JID (e.g., `username@bridge.atl.chat`)
+- Single component connection handles all user identities
+- Requires Prosody component configuration (see `XMPP_COMPONENT_CONFIG.md`)
+
+### XEP-0363: HTTP File Upload
+
+The bridge uses HTTP File Upload with IBB fallback for file transfers:
+- **Discord → XMPP**: Downloads Discord attachments, tries HTTP upload first, falls back to IBB if unavailable
+- **XMPP → Discord**: Receives IBB streams and uploads to Discord channels
+- **IRC integration**: Discord attachments sent as URLs to IRC; XMPP files trigger notification in IRC
+- Max file size: 10MB
+- HTTP upload preferred for efficiency; IBB used as fallback
+- Requires XMPP server with HTTP upload service (or falls back to IBB)
+
 ## Environment variables (secrets)
 
 | Variable | Description |
@@ -78,9 +114,10 @@ The bridge creates separate IRC connections for each Discord user (when linked i
 | `PORTAL_BASE_URL` | Portal API base URL (e.g. `https://portal.example.com`) |
 | `PORTAL_TOKEN` | Portal API token (service auth) |
 | `IRC_NICK` | IRC main connection nick (default: `atl-bridge`) |
-| `XMPP_JID` | XMPP JID for MUC client |
-| `XMPP_PASSWORD` | XMPP password |
-| `XMPP_NICK` | MUC nickname (default: `atl-bridge`) |
+| `XMPP_COMPONENT_JID` | XMPP component JID (e.g., `bridge.atl.chat`) |
+| `XMPP_COMPONENT_SECRET` | Shared secret for component authentication |
+| `XMPP_COMPONENT_SERVER` | Prosody server hostname (default: `localhost`) |
+| `XMPP_COMPONENT_PORT` | Component port (default: `5347`) |
 
 ## Run
 
