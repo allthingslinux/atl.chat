@@ -126,12 +126,12 @@ class DiscordAdapter:
         """Background consumer: pop from queue, send via webhook with delay (AUDIT §3)."""
         while True:
             try:
-                evt = await self._outbound.get()
-                
+                evt = await self._outbound.get()  # type: ignore[attr-defined]
+
                 # Check if this is an edit
                 is_edit = evt.raw.get("is_edit", False)
                 replace_id = evt.raw.get("replace_id")
-                
+
                 if is_edit and replace_id and self._bot:
                     # Handle XMPP correction -> Discord edit
                     # Look up Discord message ID from XMPP message ID
@@ -139,7 +139,7 @@ class DiscordAdapter:
                     # For now, log that we received an edit
                     logger.debug("Received edit from XMPP (replace_id: {}), but Discord edit not yet implemented", replace_id)
                     # TODO: Implement Discord message editing via bot API
-                
+
                 # Send as new message (or edit if implemented above)
                 await self._webhook_send(
                     evt.channel_id,
@@ -175,7 +175,7 @@ class DiscordAdapter:
                 from bridge.adapters.xmpp import XMPPAdapter
 
                 xmpp_adapter = None
-                for adapter in self._bus._adapters:
+                for adapter in self._bus._adapters:  # type: ignore[attr-defined]
                     if isinstance(adapter, XMPPAdapter):
                         xmpp_adapter = adapter
                         break
@@ -186,18 +186,17 @@ class DiscordAdapter:
                             continue
 
                         try:
-                            async with aiohttp.ClientSession() as session:
-                                async with session.get(attachment.url) as resp:
-                                    if resp.status == 200:
-                                        data = await resp.read()
-                                        await xmpp_adapter._component.send_file_with_fallback(
-                                            discord_id,
-                                            mapping.xmpp.muc_jid,
-                                            data,
-                                            attachment.filename,
-                                            nick,
-                                        )
-                                        logger.info(
+                            async with aiohttp.ClientSession() as session, session.get(attachment.url) as resp:
+                                if resp.status == 200:
+                                    data = await resp.read()
+                                    await xmpp_adapter._component.send_file_with_fallback(
+                                        discord_id,
+                                        mapping.xmpp.muc_jid,
+                                        data,
+                                        attachment.filename,
+                                        nick,
+                                    )
+                                    logger.info(
                                             "Sent Discord attachment {} to XMPP",
                                             attachment.filename,
                                         )
@@ -248,7 +247,7 @@ class DiscordAdapter:
             return
 
         content = message.content or ""
-        
+
         # Handle attachments
         if message.attachments:
             await self._handle_attachments(message)
@@ -325,7 +324,7 @@ class DiscordAdapter:
         from bridge.adapters.xmpp import XMPPAdapter
 
         xmpp_adapter = None
-        for adapter in self._bus._adapters:
+        for adapter in self._bus._adapters:  # type: ignore[attr-defined]
             if isinstance(adapter, XMPPAdapter):
                 xmpp_adapter = adapter
                 break
@@ -353,6 +352,41 @@ class DiscordAdapter:
         # XEP-0444: Send empty reactions set to remove all reactions
         # For now, just log it
         logger.debug("Discord reaction removed: {} on {}", payload.emoji, payload.message_id)
+
+    async def _on_message_delete(self, message: Message) -> None:
+        """Handle Discord message delete; send retraction to XMPP."""
+        if not self._identity:
+            return
+
+        channel_id = str(message.channel.id)
+        mapping = self._router.get_mapping_for_discord(channel_id)
+        if not mapping or not mapping.xmpp:
+            return
+
+        discord_id = str(message.author.id)
+        nick = await self._identity.discord_to_xmpp(discord_id)
+        if not nick:
+            return
+
+        from bridge.adapters.xmpp import XMPPAdapter
+
+        xmpp_adapter = None
+        for adapter in self._bus._adapters:  # type: ignore[attr-defined]
+            if isinstance(adapter, XMPPAdapter):
+                xmpp_adapter = adapter
+                break
+
+        if xmpp_adapter and xmpp_adapter._component:
+            # Look up XMPP message ID from Discord message ID
+            target_xmpp_id = xmpp_adapter._component._msgid_tracker.get_xmpp_id(str(message.id))
+            if target_xmpp_id:
+                await xmpp_adapter._component.send_retraction_as_user(
+                    discord_id,
+                    mapping.xmpp.muc_jid,
+                    target_xmpp_id,
+                    nick,
+                )
+                logger.debug("Sent Discord message deletion to XMPP")
 
     async def _cmd_bridge_status(self, ctx: commands.Context) -> None:
         """Optional !bridge status: show linked IRC/XMPP (AUDIT §7)."""
@@ -418,6 +452,11 @@ class DiscordAdapter:
         async def on_raw_reaction_remove(payload) -> None:
             """Handle reaction removes."""
             await self._on_reaction_remove(payload)
+
+        @bot.event
+        async def on_message_delete(message: Message) -> None:
+            """Handle message deletes."""
+            await self._on_message_delete(message)
 
         @bot.command(name="bridge")
         async def cmd_bridge(ctx: commands.Context, *args: str) -> None:
