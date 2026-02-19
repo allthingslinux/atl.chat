@@ -16,7 +16,9 @@ Custom Discord–IRC–XMPP bridge with multi-presence. Portal is the identity s
 - **XEP-0372** — References for reply threading and mentions
 - **XEP-0382** — Spoiler Messages for content warnings
 - **XEP-0422** — Message Fastening for attaching metadata to messages
+- **XEP-0424** — Message Retraction for message deletion
 - **XEP-0444** — Message Reactions for emoji reactions
+- **XEP-0461** — Message Replies for reply threading
 
 ## IRCv3 Capabilities
 
