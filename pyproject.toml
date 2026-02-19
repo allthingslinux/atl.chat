@@ -13,7 +13,6 @@ authors = [{ name = "All Things Linux", email = "admin@allthingslinux.org" }]
 
 dependencies = [
     "discord.py",
-    "irc",
     "slixmpp",
     "httpx",
     "pyyaml",
@@ -21,6 +20,7 @@ dependencies = [
     "cachetools",
     "loguru",
     "tenacity",
+    "pydle>=1.1.0",
 ]
 
 [project.urls]
@@ -31,7 +31,11 @@ homepage = "https://atl.chat"
 bridge = "bridge.__main__:main"
 
 [dependency-groups]
-dev = ["ruff", "basedpyright"]
+dev = [
+    "ruff",
+    "basedpyright",
+    "hypothesis>=6.151.9",
+]
 test = [
     "pytest",
     "pytest-asyncio",
