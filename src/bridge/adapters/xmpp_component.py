@@ -176,12 +176,27 @@ class XMPPComponent(ComponentXMPP):
 
         target_msg_id = reactions.get("id")
         emojis = reactions.get_values()
+        if not target_msg_id or not emojis:
+            return
 
-        logger.debug("Received XMPP reactions from {}: {} on {}", nick, emojis, target_msg_id)
+        discord_id = self._msgid_tracker.get_discord_id(target_msg_id)
+        if not discord_id:
+            logger.debug("No Discord msgid for XMPP reaction on {}; skip", target_msg_id)
+            return
 
-        # Emit reaction event (would need new event type)
-        # For now, just log it
-        # TODO: Add ReactionIn event type and handle in Discord adapter
+        from bridge.events import reaction_in
+
+        for emoji in emojis:
+            if emoji and isinstance(emoji, str):
+                _, evt = reaction_in(
+                    origin="xmpp",
+                    channel_id=room_jid,
+                    message_id=discord_id,
+                    emoji=emoji,
+                    author_id=nick,
+                    author_display=nick,
+                )
+                self._bus.publish("xmpp", evt)
 
     def _on_retraction(self, msg: Any) -> None:
         """Handle XMPP message retraction; emit to bus."""
@@ -203,9 +218,19 @@ class XMPPComponent(ComponentXMPP):
         target_msg_id = retract.get("id")
         logger.debug("Received XMPP retraction from {}: message {}", nick, target_msg_id)
 
-        # Emit deletion event (would need new event type)
-        # For now, just log it
-        # TODO: Add MessageDelete event type and handle in Discord adapter
+        discord_id = self._msgid_tracker.get_discord_id(target_msg_id)
+        if not discord_id:
+            logger.debug("No Discord msgid for XMPP retraction {}; skip", target_msg_id)
+            return
+
+        from bridge.events import message_delete
+
+        _, evt = message_delete(
+            origin="xmpp",
+            channel_id=room_jid,
+            message_id=discord_id,
+        )
+        self._bus.publish("xmpp", evt)
 
     def _on_ibb_stream_start(self, stream: Any) -> None:
         """Handle incoming IBB stream; log for now."""
@@ -509,7 +534,7 @@ class XMPPComponent(ComponentXMPP):
 
         try:
             await muc_plugin.join_muc_wait(  # type: ignore[misc,call-arg]
-                JID(muc_jid), nick, mfrom=JID(user_jid), timeout=30
+                JID(muc_jid), nick, mfrom=JID(user_jid), timeout=30, maxchars=0
             )
             logger.info("Joined MUC {} as {}", muc_jid, user_jid)
         except XMPPError as exc:
