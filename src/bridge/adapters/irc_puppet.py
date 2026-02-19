@@ -10,6 +10,8 @@ from typing import TYPE_CHECKING
 import pydle
 from loguru import logger
 
+from bridge.formatting.irc_message_split import split_irc_message
+
 if TYPE_CHECKING:
     from bridge.gateway import Bus, ChannelRouter
     from bridge.identity import IdentityResolver
@@ -94,7 +96,8 @@ class IRCPuppetManager:
             return
 
         try:
-            await puppet.message(channel, content[:400])
+            for chunk in split_irc_message(content, max_bytes=450):
+                await puppet.message(channel, chunk)
             puppet.touch()
         except Exception as exc:
             logger.exception("Puppet send failed for {}: {}", discord_id, exc)
