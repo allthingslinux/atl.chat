@@ -19,6 +19,11 @@ class Bus:
         """Unregister an adapter."""
         self._dispatcher.unregister(target)
 
+    @property
+    def _adapters(self) -> list[EventTarget]:
+        """Registered adapters (for adapter discovery)."""
+        return self._dispatcher._targets
+
     def publish(self, source: str, evt: object) -> None:
         """Publish event to all targets that accept it."""
         self._dispatcher.dispatch(source, evt)
