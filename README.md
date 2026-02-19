@@ -2,7 +2,7 @@
 
 **Production-ready Discord–IRC–XMPP bridge with multi-presence and modern protocol support.**
 
-[![Tests](https://img.shields.io/badge/tests-215%20passing-brightgreen)]() [![Python](https://img.shields.io/badge/python-3.10+-blue)]() [![License](https://img.shields.io/badge/license-MIT-blue)]()
+[![Tests](https://img.shields.io/badge/tests-320%20passing-brightgreen)]() [![Python](https://img.shields.io/badge/python-3.10+-blue)]() [![License](https://img.shields.io/badge/license-MIT-blue)]()
 
 ## Why ATL Bridge?
 
@@ -15,7 +15,7 @@
 
 ```bash
 # Install
-uv sync --all-extras
+uv sync
 
 # Configure
 cp config.example.yaml config.yaml
@@ -34,16 +34,18 @@ bridge --config config.yaml
 ## Features
 
 ### Core Bridging
-- **Event-driven architecture**: Central event bus with typed events
+- **Event-driven architecture**: Central event bus with typed events (MessageIn/Out, Join, Part, Delete, Reaction, Typing)
 - **Channel mappings**: Config-based Discord ↔ IRC ↔ XMPP routing
-- **Identity resolution**: Portal API integration with TTL caching
-- **Message relay**: Bidirectional with edit/delete support
+- **Identity resolution**: Portal API integration with configurable TTL caching
+- **Message relay**: Bidirectional with edit/delete support; content filtering (regex)
 
 ### IRC Support
 - **IRCv3 capabilities**: message-tags, msgid, draft/reply, echo-message, labeled-response
 - **Reply threading**: Discord replies ↔ IRC `+draft/reply` tags
+- **Typing indicators**: Discord typing → IRC `TAGMSG` with `+typing=active`
 - **Puppet management**: Per-user connections with idle timeout (24h default)
 - **Message ID tracking**: 1-hour TTL cache for edit/delete correlation
+- **Flood control**: Token bucket rate limiting and configurable throttle
 
 ### XMPP Support
 - **Component protocol**: Single connection, multiple JIDs (XEP-0114)
@@ -58,10 +60,16 @@ bridge --config config.yaml
 - **JID escaping**: XEP-0106 for special characters in usernames
 - **History filtering**: XEP-0203 delayed delivery detection
 
+### Discord Support
+- **Webhooks**: Per-identity webhooks for native nick/avatar display
+- **Message edits**: XMPP corrections and IRC edits → Discord `edit_message`
+- **Typing indicators**: IRC typing → Discord `channel.typing()`
+- **!bridge status**: Show linked IRC/XMPP accounts (requires Portal identity)
+
 ### Reliability
 - **Retry logic**: Exponential backoff for transient errors (5 attempts, 2-30s)
 - **Error recovery**: Graceful handling of network failures
-- **Comprehensive tests**: 215 tests covering core and edge cases
+- **Comprehensive tests**: 320+ tests covering core, adapters, formatting, and edge cases
 
 ## Configuration
 
@@ -69,9 +77,11 @@ bridge --config config.yaml
 
 ```yaml
 mappings:
-  - discord_channel_id: "123456789"
+  - discord_channel_id: "123456789012345678"
     irc:
       server: "irc.libera.chat"
+      port: 6697
+      tls: true
       channel: "#atl"
     xmpp:
       muc_jid: "atl@conference.example.com"
@@ -79,6 +89,8 @@ mappings:
 announce_joins_and_quits: true
 irc_puppet_idle_timeout_hours: 24
 ```
+
+See `config.example.yaml` for all options (throttling, SASL, content filtering, etc.).
 
 ### Environment Variables
 
@@ -117,7 +129,7 @@ irc_puppet_idle_timeout_hours: 24
          │   Router     │  │   Resolver   │  │   Trackers   │
          │              │  │              │  │              │
          │  Discord ↔   │  │ Portal API + │  │ IRC + XMPP   │
-         │  IRC ↔ XMPP  │  │  5min cache  │  │   1hr TTL    │
+         │  IRC ↔ XMPP  │  │  TTL cache   │  │   1hr TTL    │
          └──────────────┘  └──────────────┘  └──────────────┘
                     │              │              │
                     └──────────────┼──────────────┘
@@ -160,16 +172,21 @@ irc_puppet_idle_timeout_hours: 24
 5. XMPP component relays to MUC from bridge JID
 
 **Edit/Delete Flow:**
-1. Discord edit event received
-2. Adapter looks up IRC msgid + XMPP id from trackers
-3. Sends IRC `TAGMSG` with edit, XMPP correction (XEP-0308)
-4. Reverse flow works similarly using stored message IDs
+1. Discord edit event received → Relay emits MessageOut with `is_edit`
+2. IRC/XMPP adapters look up stored msgid; Discord adapter resolves via trackers
+3. IRC: `TAGMSG` with edit; XMPP: correction (XEP-0308); Discord: `webhook.edit_message`
+4. IRC REDACT / XMPP retraction → Discord `message.delete`
+
+**Reactions & Typing:**
+- Discord reactions → Relay → IRC/XMPP; IRC/XMPP reactions → Relay → Discord
+- Typing indicators bridged both directions (Discord ↔ IRC; throttled)
 
 ### Key Components
 
-- **Event Bus**: Central dispatcher for typed events (MessageIn, MessageOut, Join, Part, Quit)
+- **Event Bus**: Central dispatcher for typed events (MessageIn, MessageOut, Join, Part, Quit, MessageDelete, ReactionIn/Out, TypingIn/Out)
+- **Relay**: Transforms MessageIn → MessageOut for target protocols; applies content filtering and formatting
 - **Channel Router**: Maps Discord channels ↔ IRC channels ↔ XMPP MUCs
-- **Identity Resolver**: Portal API client with caching (5min TTL)
+- **Identity Resolver**: Portal API client with configurable TTL caching
 - **Adapters**: Protocol-specific handlers (Discord, IRC, XMPP)
 
 ## Development
@@ -178,7 +195,7 @@ irc_puppet_idle_timeout_hours: 24
 
 ```bash
 # Install with dev dependencies
-uv sync --all-extras
+uv sync
 
 # Run tests
 uv run pytest tests -v
@@ -198,13 +215,21 @@ src/bridge/
 ├── identity.py          # Portal client + cache
 ├── gateway/
 │   ├── bus.py          # Event dispatcher
+│   ├── relay.py        # MessageIn → MessageOut routing
 │   └── router.py       # Channel mapping
+├── formatting/
+│   ├── discord_to_irc.py   # Discord markdown → IRC
+│   ├── irc_to_discord.py   # IRC control codes → Discord
+│   └── irc_message_split.py  # Long message splitting
 └── adapters/
+    ├── base.py         # Adapter interface
     ├── disc.py         # Discord adapter
     ├── irc.py          # IRC client
     ├── irc_puppet.py   # IRC puppet manager
+    ├── irc_throttle.py # IRC flood control
     ├── irc_msgid.py    # IRC message ID tracker
-    ├── xmpp_component.py  # XMPP component
+    ├── xmpp.py         # XMPP adapter
+    ├── xmpp_component.py   # XMPP component
     └── xmpp_msgid.py   # XMPP message ID tracker
 ```
 
@@ -218,13 +243,15 @@ uv run pytest tests -v
 uv run pytest tests/test_xmpp_features.py -v
 
 # With coverage
-uv run pytest tests --cov=src/bridge --cov-report=html
+uv run pytest tests --cov --cov-report=html
 ```
 
-**Test Coverage**: 215 tests covering:
-- Core bridging logic
-- IRC reply threading
-- XMPP XEPs (8 extensions)
+**Test Coverage**: 320+ tests covering:
+- Core bridging logic and relay
+- Discord adapter (webhooks, edits, reactions, typing)
+- IRC reply threading, puppets, message ID tracking
+- XMPP XEPs (8 extensions), message ID tracking
+- Formatting (Discord↔IRC, message splitting)
 - File transfers
 - Error handling
 - Concurrency and ordering
@@ -247,7 +274,7 @@ docker run -v $(pwd)/config.yaml:/app/config.yaml \
 
 ## XMPP Server Setup
 
-The bridge requires Prosody with component configuration. See [`XMPP_COMPONENT_CONFIG.md`](XMPP_COMPONENT_CONFIG.md) for setup instructions.
+The bridge requires Prosody (or compatible XMPP server) with component configuration. Configure a component for the `XMPP_COMPONENT_JID` and set the component secret to match `XMPP_COMPONENT_SECRET`.
 
 ## Limitations
 
@@ -296,4 +323,4 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ---
 
-**Status**: Production-ready • **Maintained**: Yes • **Tests**: 215 passing
+**Status**: Production-ready • **Maintained**: Yes • **Tests**: 320+ passing
