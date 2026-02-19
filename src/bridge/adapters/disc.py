@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import io
 import os
 import re
 from typing import TYPE_CHECKING
 
-from discord import Intents, Message
+import aiohttp
+from discord import File, Intents, Message, TextChannel
 from discord.ext import commands
 from discord.webhook import Webhook
 from loguru import logger
@@ -82,8 +84,8 @@ class DiscordAdapter:
             return
 
         channel = bot.get_channel(int(channel_id))
-        if not channel:
-            logger.warning("Discord channel {} not found", channel_id)
+        if not channel or not isinstance(channel, TextChannel):
+            logger.warning("Discord channel {} not found or not a text channel", channel_id)
             return
 
         cache_key = (channel_id, author_display)
@@ -124,7 +126,21 @@ class DiscordAdapter:
         """Background consumer: pop from queue, send via webhook with delay (AUDIT §3)."""
         while True:
             try:
-                evt = await self._queue.get()
+                evt = await self._outbound.get()
+                
+                # Check if this is an edit
+                is_edit = evt.raw.get("is_edit", False)
+                replace_id = evt.raw.get("replace_id")
+                
+                if is_edit and replace_id and self._bot:
+                    # Handle XMPP correction -> Discord edit
+                    # Look up Discord message ID from XMPP message ID
+                    # This requires the XMPP component's tracker, which we don't have direct access to
+                    # For now, log that we received an edit
+                    logger.debug("Received edit from XMPP (replace_id: {}), but Discord edit not yet implemented", replace_id)
+                    # TODO: Implement Discord message editing via bot API
+                
+                # Send as new message (or edit if implemented above)
                 await self._webhook_send(
                     evt.channel_id,
                     evt.author_display,
@@ -140,6 +156,88 @@ class DiscordAdapter:
     def _is_bridged_channel(self, channel_id: str) -> bool:
         return self._router.get_mapping_for_discord(str(channel_id)) is not None
 
+    async def _handle_attachments(self, message: Message) -> None:
+        """Download Discord attachments and send via XMPP HTTP upload."""
+        if not self._identity:
+            return
+
+        channel_id = str(message.channel.id)
+        mapping = self._router.get_mapping_for_discord(channel_id)
+        if not mapping:
+            return
+
+        discord_id = str(message.author.id)
+
+        # Send to XMPP via HTTP upload if configured
+        if mapping.xmpp:
+            nick = await self._identity.discord_to_xmpp(discord_id)
+            if nick:
+                from bridge.adapters.xmpp import XMPPAdapter
+
+                xmpp_adapter = None
+                for adapter in self._bus._adapters:
+                    if isinstance(adapter, XMPPAdapter):
+                        xmpp_adapter = adapter
+                        break
+
+                if xmpp_adapter and xmpp_adapter._component:
+                    for attachment in message.attachments:
+                        if attachment.size > 10 * 1024 * 1024:
+                            continue
+
+                        try:
+                            async with aiohttp.ClientSession() as session:
+                                async with session.get(attachment.url) as resp:
+                                    if resp.status == 200:
+                                        data = await resp.read()
+                                        await xmpp_adapter._component.send_file_with_fallback(
+                                            discord_id,
+                                            mapping.xmpp.muc_jid,
+                                            data,
+                                            attachment.filename,
+                                            nick,
+                                        )
+                                        logger.info(
+                                            "Sent Discord attachment {} to XMPP",
+                                            attachment.filename,
+                                        )
+                        except Exception as exc:
+                            logger.exception("Failed to bridge attachment to XMPP: {}", exc)
+
+        # Send to IRC as URL notification
+        if mapping.irc:
+            for attachment in message.attachments:
+                file_info = f"📎 {attachment.filename} ({attachment.size} bytes): {attachment.url}"
+                _, evt = message_in(
+                    origin="discord",
+                    channel_id=channel_id,
+                    author_id=discord_id,
+                    author_display=message.author.display_name or message.author.name,
+                    content=file_info,
+                    message_id=f"{message.id}_attachment_{attachment.id}",
+                    is_action=False,
+                    avatar_url=None,
+                    raw={},
+                )
+                self._bus.publish("discord", evt)
+
+    async def upload_file(self, channel_id: str, data: bytes, filename: str) -> None:
+        """Upload file to Discord channel."""
+        if not self._bot:
+            return
+
+        channel = self._bot.get_channel(int(channel_id))
+        if not channel or not isinstance(channel, TextChannel):
+            logger.warning("Discord channel {} not found", channel_id)
+            return
+
+        try:
+            file_obj = File(io.BytesIO(data), filename=filename)
+            await channel.send(file=file_obj)
+            logger.info("Uploaded {} ({} bytes) to Discord", filename, len(data))
+        except Exception as exc:
+            logger.exception("Failed to upload file to Discord: {}", exc)
+
     async def _on_message(self, message: Message) -> None:
         """Handle incoming Discord message; emit MessageIn to bus."""
         if message.author.bot:
@@ -150,8 +248,18 @@ class DiscordAdapter:
             return
 
         content = message.content or ""
+        
+        # Handle attachments
+        if message.attachments:
+            await self._handle_attachments(message)
+            if not content.strip():
+                return
+
         if not content.strip():
             return
+
+        # Get avatar URL
+        avatar_url = str(message.author.display_avatar.url) if message.author.display_avatar else None
 
         _, evt = message_in(
             origin="discord",
@@ -163,9 +271,88 @@ class DiscordAdapter:
             reply_to_id=str(message.reference.message_id) if message.reference else None,
             is_edit=False,
             is_action=False,
+            avatar_url=avatar_url,
             raw={},
         )
         self._bus.publish("discord", evt)
+
+    async def _on_message_edit(self, before: Message, after: Message) -> None:
+        """Handle Discord message edits; emit MessageIn with is_edit=True."""
+        if after.author.bot:
+            return
+
+        channel_id = str(after.channel.id)
+        if not self._is_bridged_channel(channel_id):
+            return
+
+        content = after.content or ""
+        if not content.strip():
+            return
+
+        # Get avatar URL
+        avatar_url = str(after.author.display_avatar.url) if after.author.display_avatar else None
+
+        _, evt = message_in(
+            origin="discord",
+            channel_id=channel_id,
+            author_id=str(after.author.id),
+            author_display=after.author.display_name or after.author.name,
+            content=content,
+            message_id=str(after.id),
+            reply_to_id=str(after.reference.message_id) if after.reference else None,
+            is_edit=True,
+            is_action=False,
+            avatar_url=avatar_url,
+            raw={},
+        )
+        self._bus.publish("discord", evt)
+
+    async def _on_reaction_add(self, payload) -> None:
+        """Handle Discord reaction add; send to XMPP."""
+        if not self._identity:
+            return
+
+        channel_id = str(payload.channel_id)
+        mapping = self._router.get_mapping_for_discord(channel_id)
+        if not mapping or not mapping.xmpp:
+            return
+
+        discord_id = str(payload.user_id)
+        nick = await self._identity.discord_to_xmpp(discord_id)
+        if not nick:
+            return
+
+        from bridge.adapters.xmpp import XMPPAdapter
+
+        xmpp_adapter = None
+        for adapter in self._bus._adapters:
+            if isinstance(adapter, XMPPAdapter):
+                xmpp_adapter = adapter
+                break
+
+        if xmpp_adapter and xmpp_adapter._component:
+            # Look up XMPP message ID from Discord message ID
+            target_xmpp_id = xmpp_adapter._component._msgid_tracker.get_xmpp_id(str(payload.message_id))
+            if target_xmpp_id:
+                # Only send Unicode emoji, skip custom Discord emojis
+                if payload.emoji.is_unicode_emoji():
+                    emoji = str(payload.emoji)
+                    await xmpp_adapter._component.send_reaction_as_user(
+                        discord_id,
+                        mapping.xmpp.muc_jid,
+                        target_xmpp_id,
+                        emoji,
+                        nick,
+                    )
+                    logger.debug("Sent Discord reaction {} to XMPP", emoji)
+                else:
+                    logger.debug("Skipping custom Discord emoji: {}", payload.emoji.name)
+
+    async def _on_reaction_remove(self, payload) -> None:
+        """Handle Discord reaction remove; send empty reactions to XMPP."""
+        # XEP-0444: Send empty reactions set to remove all reactions
+        # For now, just log it
+        logger.debug("Discord reaction removed: {} on {}", payload.emoji, payload.message_id)
 
     async def _cmd_bridge_status(self, ctx: commands.Context) -> None:
         """Optional !bridge status: show linked IRC/XMPP (AUDIT §7)."""
@@ -216,6 +403,21 @@ class DiscordAdapter:
                 await bot.process_commands(message)
                 return
             await self._on_message(message)
+
+        @bot.event
+        async def on_message_edit(before: Message, after: Message) -> None:
+            """Handle message edits."""
+            await self._on_message_edit(before, after)
+
+        @bot.event
+        async def on_raw_reaction_add(payload) -> None:
+            """Handle reaction adds."""
+            await self._on_reaction_add(payload)
+
+        @bot.event
+        async def on_raw_reaction_remove(payload) -> None:
+            """Handle reaction removes."""
+            await self._on_reaction_remove(payload)
 
         @bot.command(name="bridge")
         async def cmd_bridge(ctx: commands.Context, *args: str) -> None:
