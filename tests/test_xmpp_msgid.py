@@ -2,9 +2,24 @@
 
 from __future__ import annotations
 
-import pytest
+from unittest.mock import patch
 
-from bridge.adapters.xmpp_msgid import XMPPMessageIDTracker
+from bridge.adapters.xmpp_msgid import XMPPMessageIDTracker, XMPPMessageMapping
+
+
+class TestXMPPMessageMapping:
+    """Test XMPPMessageMapping NamedTuple."""
+
+    def test_xmpp_message_mapping_fields(self) -> None:
+        """XMPPMessageMapping has xmpp_id, discord_id, room_jid, timestamp."""
+        m = XMPPMessageMapping(
+            xmpp_id="xmpp-1", discord_id="discord-1",
+            room_jid="room@conf.example.com", timestamp=1234.5,
+        )
+        assert m.xmpp_id == "xmpp-1"
+        assert m.discord_id == "discord-1"
+        assert m.room_jid == "room@conf.example.com"
+        assert m.timestamp == 1234.5
 
 
 class TestXMPPMessageIDTracking:
@@ -67,3 +82,56 @@ class TestXMPPMessageIDTracking:
         # Assert - Should retrieve the most recent one
         result = tracker.get_discord_id(xmpp_id)
         assert result in [discord_id1, discord_id2]
+
+    def test_get_xmpp_id_retrieves_from_discord_id(self) -> None:
+        """get_xmpp_id returns XMPP stanza ID from Discord message ID."""
+        tracker = XMPPMessageIDTracker()
+        tracker.store("xmpp-123", "discord-456", "room@conf.example.com")
+        assert tracker.get_xmpp_id("discord-456") == "xmpp-123"
+
+    def test_get_xmpp_id_nonexistent_returns_none(self) -> None:
+        """get_xmpp_id returns None for unknown Discord ID."""
+        tracker = XMPPMessageIDTracker()
+        assert tracker.get_xmpp_id("nonexistent") is None
+
+    def test_get_room_jid_retrieves_from_discord_id(self) -> None:
+        """get_room_jid returns room JID from Discord message ID."""
+        tracker = XMPPMessageIDTracker()
+        tracker.store("xmpp-1", "discord-1", "muc@conference.example.com")
+        assert tracker.get_room_jid("discord-1") == "muc@conference.example.com"
+
+    def test_get_room_jid_nonexistent_returns_none(self) -> None:
+        """get_room_jid returns None for unknown Discord ID."""
+        tracker = XMPPMessageIDTracker()
+        assert tracker.get_room_jid("nonexistent") is None
+
+    def test_custom_ttl_seconds(self) -> None:
+        """Tracker accepts custom TTL."""
+        tracker = XMPPMessageIDTracker(ttl_seconds=120)
+        assert tracker._ttl == 120
+
+    def test_expired_entries_removed_on_get_discord_id(self) -> None:
+        """Expired entries are removed when get_discord_id triggers _cleanup."""
+        with patch("bridge.adapters.xmpp_msgid.time") as mock_time:
+            mock_time.time.side_effect = [1000.0, 1002.0]
+            tracker = XMPPMessageIDTracker(ttl_seconds=1)
+            tracker.store("xmpp-old", "discord-old", "room@conf.example.com")
+            assert tracker.get_discord_id("xmpp-old") is None
+
+    def test_expired_entries_removed_on_get_xmpp_id(self) -> None:
+        """Expired entries are removed when get_xmpp_id triggers _cleanup."""
+        with patch("bridge.adapters.xmpp_msgid.time") as mock_time:
+            mock_time.time.side_effect = [1000.0, 1002.0]
+            tracker = XMPPMessageIDTracker(ttl_seconds=1)
+            tracker.store("xmpp-old", "discord-old", "room@conf.example.com")
+            assert tracker.get_xmpp_id("discord-old") is None
+
+    def test_fresh_entries_not_expired(self) -> None:
+        """Entries within TTL are not removed."""
+        with patch("bridge.adapters.xmpp_msgid.time") as mock_time:
+            mock_time.time.side_effect = [1000.0, 1000.5, 1000.5, 1000.5]
+            tracker = XMPPMessageIDTracker(ttl_seconds=3600)
+            tracker.store("xmpp-fresh", "discord-fresh", "room@conf.example.com")
+            assert tracker.get_discord_id("xmpp-fresh") == "discord-fresh"
+            assert tracker.get_xmpp_id("discord-fresh") == "xmpp-fresh"
+            assert tracker.get_room_jid("discord-fresh") == "room@conf.example.com"
