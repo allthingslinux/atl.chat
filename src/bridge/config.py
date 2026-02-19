@@ -110,6 +110,49 @@ class Config:
         """Optional postfix for IRC puppet nicks (e.g. '|d')."""
         return str(self._data.get("irc_puppet_postfix", ""))
 
+    @property
+    def irc_throttle_limit(self) -> int:
+        """IRC messages per second (token bucket limit)."""
+        return int(self._data.get("irc_throttle_limit", 10))
+
+    @property
+    def irc_message_queue(self) -> int:
+        """Max IRC outbound message queue size."""
+        return int(self._data.get("irc_message_queue", 30))
+
+    @property
+    def irc_rejoin_delay(self) -> float:
+        """Seconds to wait before rejoin after KICK/disconnect."""
+        return float(self._data.get("irc_rejoin_delay", 5))
+
+    @property
+    def irc_auto_rejoin(self) -> bool:
+        """Whether to auto-rejoin channels after KICK/disconnect."""
+        return bool(self._data.get("irc_auto_rejoin", True))
+
+    @property
+    def irc_use_sasl(self) -> bool:
+        """Use SASL PLAIN for IRC authentication."""
+        return bool(self._data.get("irc_use_sasl", False))
+
+    @property
+    def irc_sasl_user(self) -> str:
+        """SASL username for IRC."""
+        return str(self._data.get("irc_sasl_user", ""))
+
+    @property
+    def irc_sasl_password(self) -> str:
+        """SASL password for IRC."""
+        return str(self._data.get("irc_sasl_password", ""))
+
+    @property
+    def content_filter_regex(self) -> list[str]:
+        """Regex patterns; messages matching any are not bridged."""
+        val = self._data.get("content_filter_regex")
+        if isinstance(val, list):
+            return [str(p) for p in val]
+        return []
+
 
 # Global config instance (set by __main__)
 cfg: Config = Config({})
