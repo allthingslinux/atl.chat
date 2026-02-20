@@ -39,9 +39,7 @@ class MockAdapter:
             return True
         if isinstance(evt, ReactionOut) and evt.target_origin == self._name:
             return True
-        if isinstance(evt, TypingOut) and evt.target_origin == self._name:
-            return True
-        return False
+        return isinstance(evt, TypingOut) and evt.target_origin == self._name
 
     def push_event(self, source: str, evt: object) -> None:
         self.received_events.append((source, evt))
