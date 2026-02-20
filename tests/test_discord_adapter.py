@@ -75,7 +75,7 @@ def test_is_bridged_channel(bus: Bus, router: ChannelRouter) -> None:
     adapter = DiscordAdapter(bus, router, identity_resolver=None)
     assert adapter._is_bridged_channel("123") is True
     assert adapter._is_bridged_channel("999") is False
-    assert adapter._is_bridged_channel(123) is True
+    assert adapter._is_bridged_channel("123") is True  # int-like string
 
 
 def test_resolve_discord_message_id_from_xmpp(bus: Bus, router: ChannelRouter) -> None:
@@ -121,7 +121,7 @@ async def test_on_message_skips_bot(bus: Bus, router: ChannelRouter) -> None:
     adapter = DiscordAdapter(bus, router, identity_resolver=None)
     adapter._bot = MagicMock()
     published = []
-    bus.publish = lambda s, e: published.append((s, e))
+    bus.publish = lambda s, e: published.append((s, e))  # type: ignore[method-assign]
 
     msg = MagicMock()
     msg.author.bot = True
@@ -140,7 +140,7 @@ async def test_on_message_skips_unbridged_channel(bus: Bus, router: ChannelRoute
     adapter = DiscordAdapter(bus, router, identity_resolver=None)
     adapter._bot = MagicMock()
     published = []
-    bus.publish = lambda s, e: published.append((s, e))
+    bus.publish = lambda s, e: published.append((s, e))  # type: ignore[method-assign]
 
     msg = MagicMock()
     msg.author.bot = False
@@ -165,7 +165,7 @@ async def test_on_message_includes_reply_to_id(bus: Bus, router: ChannelRouter) 
     adapter = DiscordAdapter(bus, router, identity_resolver=None)
     adapter._bot = MagicMock()
     published = []
-    bus.publish = lambda s, e: published.append((s, e))
+    bus.publish = lambda s, e: published.append((s, e))  # type: ignore[method-assign]
 
     msg = MagicMock()
     msg.author.bot = False
@@ -191,7 +191,7 @@ async def test_on_message_edit_publishes_with_is_edit(bus: Bus, router: ChannelR
 
     adapter = DiscordAdapter(bus, router, identity_resolver=None)
     published = []
-    bus.publish = lambda s, e: published.append((s, e))
+    bus.publish = lambda s, e: published.append((s, e))  # type: ignore[method-assign]
 
     after = MagicMock()
     after.author.bot = False
@@ -215,7 +215,7 @@ async def test_on_message_edit_skips_bot(bus: Bus, router: ChannelRouter) -> Non
 
     adapter = DiscordAdapter(bus, router, identity_resolver=None)
     published = []
-    bus.publish = lambda s, e: published.append((s, e))
+    bus.publish = lambda s, e: published.append((s, e))  # type: ignore[method-assign]
     after = MagicMock()
     after.author.bot = True
     after.channel.id = 123
@@ -230,7 +230,7 @@ async def test_on_message_delete_publishes(bus: Bus, router: ChannelRouter) -> N
 
     adapter = DiscordAdapter(bus, router, identity_resolver=None)
     published = []
-    bus.publish = lambda s, e: published.append((s, e))
+    bus.publish = lambda s, e: published.append((s, e))  # type: ignore[method-assign]
 
     msg = MagicMock()
     msg.channel.id = 123
@@ -251,7 +251,7 @@ async def test_on_message_delete_skips_unbridged(bus: Bus, router: ChannelRouter
 
     adapter = DiscordAdapter(bus, router, identity_resolver=None)
     published = []
-    bus.publish = lambda s, e: published.append((s, e))
+    bus.publish = lambda s, e: published.append((s, e))  # type: ignore[method-assign]
     msg = MagicMock()
     msg.channel.id = 999
     msg.id = 1
@@ -333,7 +333,7 @@ async def test_webhook_messages_are_skipped_to_prevent_echo(bus: Bus, router: Ch
     def capture(source: str, evt: object) -> None:
         published.append((source, evt))
 
-    bus.publish = capture
+    bus.publish = capture  # type: ignore[method-assign]
 
     msg = MagicMock()
     msg.author.bot = False
@@ -365,7 +365,7 @@ async def test_regular_messages_are_published(bus: Bus, router: ChannelRouter) -
     def capture(source: str, evt: object) -> None:
         published.append((source, evt))
 
-    bus.publish = capture
+    bus.publish = capture  # type: ignore[method-assign]
 
     msg = MagicMock()
     msg.author.bot = False
@@ -535,7 +535,7 @@ async def test_on_reaction_add_publishes_unicode_emoji(bus: Bus, router: Channel
 
     adapter = DiscordAdapter(bus, router, identity_resolver=None)
     published = []
-    bus.publish = lambda s, e: published.append((s, e))
+    bus.publish = lambda s, e: published.append((s, e))  # type: ignore[method-assign]
 
     payload = MagicMock()
     payload.emoji.is_unicode_emoji.return_value = True
@@ -564,7 +564,7 @@ async def test_on_reaction_add_skips_custom_emoji(bus: Bus, router: ChannelRoute
 
     adapter = DiscordAdapter(bus, router, identity_resolver=None)
     published = []
-    bus.publish = lambda s, e: published.append((s, e))
+    bus.publish = lambda s, e: published.append((s, e))  # type: ignore[method-assign]
 
     payload = MagicMock()
     payload.emoji.is_unicode_emoji.return_value = False
@@ -581,7 +581,7 @@ async def test_on_typing_publishes_when_bridged(bus: Bus, router: ChannelRouter)
 
     adapter = DiscordAdapter(bus, router, identity_resolver=None)
     published = []
-    bus.publish = lambda s, e: published.append((s, e))
+    bus.publish = lambda s, e: published.append((s, e))  # type: ignore[method-assign]
 
     channel = MagicMock()
     channel.id = 123
@@ -604,7 +604,7 @@ async def test_on_typing_skips_bot(bus: Bus, router: ChannelRouter) -> None:
 
     adapter = DiscordAdapter(bus, router, identity_resolver=None)
     published = []
-    bus.publish = lambda s, e: published.append((s, e))
+    bus.publish = lambda s, e: published.append((s, e))  # type: ignore[method-assign]
 
     channel = MagicMock()
     channel.id = 123
