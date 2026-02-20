@@ -69,31 +69,25 @@ class TestAvatarSync:
 
 
 class TestAvatarHashing:
-    """Test avatar hash generation for caching."""
+    """Test avatar URL is preserved through the message pipeline."""
 
-    def test_avatar_hash_consistency(self):
-        # Arrange
-        import hashlib
+    def test_avatar_url_preserved_in_message_out(self):
+        from bridge.events import MessageOut
+        msg = MessageOut(
+            target_origin="discord",
+            channel_id="123",
+            author_id="u1",
+            author_display="User",
+            content="hi",
+            message_id="m1",
+            avatar_url="https://cdn.discord.com/avatars/123/abc.png",
+        )
+        assert msg.avatar_url == "https://cdn.discord.com/avatars/123/abc.png"
 
-        avatar_url = "https://cdn.discord.com/avatars/123/abc.png"
-
-        # Act
-        hash1 = hashlib.md5(avatar_url.encode()).hexdigest()
-        hash2 = hashlib.md5(avatar_url.encode()).hexdigest()
-
-        # Assert
-        assert hash1 == hash2
-
-    def test_different_urls_different_hashes(self):
-        # Arrange
-        import hashlib
-
-        url1 = "https://cdn.discord.com/avatars/123/abc.png"
-        url2 = "https://cdn.discord.com/avatars/123/def.png"
-
-        # Act
-        hash1 = hashlib.md5(url1.encode()).hexdigest()
-        hash2 = hashlib.md5(url2.encode()).hexdigest()
-
-        # Assert
-        assert hash1 != hash2
+    def test_different_users_have_different_avatar_urls(self):
+        from bridge.events import MessageIn
+        msg1 = MessageIn("discord", "123", "u1", "A", "hi", "m1",
+                         avatar_url="https://cdn.discord.com/avatars/1/a.png")
+        msg2 = MessageIn("discord", "123", "u2", "B", "hi", "m2",
+                         avatar_url="https://cdn.discord.com/avatars/2/b.png")
+        assert msg1.avatar_url != msg2.avatar_url
