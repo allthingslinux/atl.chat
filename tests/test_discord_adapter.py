@@ -195,17 +195,23 @@ async def test_on_message_edit_publishes_with_is_edit(bus: Bus, router: ChannelR
     published = []
     bus.publish = lambda s, e: published.append((s, e))  # type: ignore[method-assign]
 
-    after = MagicMock()
-    after.author.bot = False
-    after.channel.id = 123
-    after.content = "edited"
-    after.author.id = 111
-    after.author.display_name = "Alice"
-    after.author.name = "Alice"
-    after.author.display_avatar.url = None
-    after.id = 777
-    after.reference = None
-    await adapter._on_message_edit(MagicMock(), after)
+    message = MagicMock()
+    message.author.bot = False
+    message.webhook_id = None
+    message.channel.id = 123
+    message.content = "edited"
+    message.author.id = 111
+    message.author.display_name = "Alice"
+    message.author.name = "Alice"
+    message.author.display_avatar.url = None
+    message.id = 777
+    message.reference = None
+
+    payload = MagicMock()
+    payload.channel_id = 123
+    payload.message = message
+
+    await adapter._on_raw_message_edit(payload)
     assert len(published) == 1
     assert published[0][1].is_edit is True
     assert published[0][1].content == "edited"
@@ -218,11 +224,17 @@ async def test_on_message_edit_skips_bot(bus: Bus, router: ChannelRouter) -> Non
     adapter = DiscordAdapter(bus, router, identity_resolver=None)
     published = []
     bus.publish = lambda s, e: published.append((s, e))  # type: ignore[method-assign]
-    after = MagicMock()
-    after.author.bot = True
-    after.channel.id = 123
-    after.content = "x"
-    await adapter._on_message_edit(MagicMock(), after)
+
+    message = MagicMock()
+    message.author.bot = True
+    message.channel.id = 123
+    message.content = "x"
+
+    payload = MagicMock()
+    payload.channel_id = 123
+    payload.message = message
+
+    await adapter._on_raw_message_edit(payload)
     assert len(published) == 0
 
 
@@ -234,12 +246,13 @@ async def test_on_message_delete_publishes(bus: Bus, router: ChannelRouter) -> N
     published = []
     bus.publish = lambda s, e: published.append((s, e))  # type: ignore[method-assign]
 
-    msg = MagicMock()
-    msg.channel.id = 123
-    msg.id = 999
-    msg.author = MagicMock()
-    msg.author.id = 111
-    await adapter._on_message_delete(msg)
+    payload = MagicMock()
+    payload.channel_id = 123
+    payload.message_id = 999
+    payload.cached_message = MagicMock()
+    payload.cached_message.author.id = 111
+
+    await adapter._on_raw_message_delete(payload)
     assert len(published) == 1
     assert published[0][0] == "discord"
     assert published[0][1].message_id == "999"
@@ -254,11 +267,13 @@ async def test_on_message_delete_skips_unbridged(bus: Bus, router: ChannelRouter
     adapter = DiscordAdapter(bus, router, identity_resolver=None)
     published = []
     bus.publish = lambda s, e: published.append((s, e))  # type: ignore[method-assign]
-    msg = MagicMock()
-    msg.channel.id = 999
-    msg.id = 1
-    msg.author = MagicMock()
-    await adapter._on_message_delete(msg)
+
+    payload = MagicMock()
+    payload.channel_id = 999
+    payload.message_id = 1
+    payload.cached_message = None
+
+    await adapter._on_raw_message_delete(payload)
     assert len(published) == 0
 
 
