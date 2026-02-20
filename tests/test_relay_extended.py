@@ -4,16 +4,11 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-import pytest
-
 from bridge.events import (
-    MessageDelete,
     MessageDeleteOut,
     MessageIn,
     MessageOut,
-    ReactionIn,
     ReactionOut,
-    TypingIn,
     TypingOut,
     message_delete,
     message_in,
@@ -23,7 +18,6 @@ from bridge.events import (
 from bridge.gateway.bus import Bus
 from bridge.gateway.relay import Relay, _content_matches_filter, _transform_content
 from bridge.gateway.router import ChannelRouter
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -143,7 +137,7 @@ class TestContentMatchesFilter:
 
 class TestIRCToXMPP:
     def test_irc_message_routes_to_xmpp(self):
-        bus, discord, irc, xmpp = _setup()
+        bus, _discord, _irc, xmpp = _setup()
         _, evt = message_in("irc", "irc.libera.chat/#test", "u1", "User", "hello", "m1")
         bus.publish("irc", evt)
         assert len(xmpp.events) == 1
@@ -151,13 +145,13 @@ class TestIRCToXMPP:
         assert xmpp.events[0].author_id == "u1"
 
     def test_irc_message_does_not_echo_to_irc(self):
-        bus, discord, irc, xmpp = _setup()
+        bus, _discord, irc, _xmpp = _setup()
         _, evt = message_in("irc", "irc.libera.chat/#test", "u1", "User", "hello", "m1")
         bus.publish("irc", evt)
         assert len(irc.events) == 0
 
     def test_irc_delete_routes_to_discord_and_xmpp(self):
-        bus, discord, irc, xmpp = _setup()
+        bus, discord, _irc, xmpp = _setup()
         _, evt = message_delete("irc", "irc.libera.chat/#test", "m1", author_id="u1")
         bus.publish("irc", evt)
         assert len(discord.events) == 1
@@ -166,7 +160,7 @@ class TestIRCToXMPP:
         assert xmpp.events[0].message_id == "m1"
 
     def test_irc_reaction_routes_to_discord_and_xmpp(self):
-        bus, discord, irc, xmpp = _setup()
+        bus, discord, _irc, xmpp = _setup()
         _, evt = reaction_in("irc", "irc.libera.chat/#test", "m1", "👍", "u1", "User")
         bus.publish("irc", evt)
         assert len(discord.events) == 1
@@ -174,7 +168,7 @@ class TestIRCToXMPP:
         assert discord.events[0].emoji == "👍"
 
     def test_irc_typing_routes_to_discord_and_xmpp(self):
-        bus, discord, irc, xmpp = _setup()
+        bus, discord, _irc, xmpp = _setup()
         _, evt = typing_in("irc", "irc.libera.chat/#test", "u1")
         bus.publish("irc", evt)
         assert len(discord.events) == 1
@@ -187,27 +181,27 @@ class TestIRCToXMPP:
 
 class TestXMPPToIRC:
     def test_xmpp_message_routes_to_irc(self):
-        bus, discord, irc, xmpp = _setup()
+        bus, _discord, irc, _xmpp = _setup()
         _, evt = message_in("xmpp", "room@conf.example.com", "u1", "User", "hello", "m1")
         bus.publish("xmpp", evt)
         assert len(irc.events) == 1
         assert irc.events[0].content == "hello"
 
     def test_xmpp_message_does_not_echo_to_xmpp(self):
-        bus, discord, irc, xmpp = _setup()
+        bus, _discord, _irc, xmpp = _setup()
         _, evt = message_in("xmpp", "room@conf.example.com", "u1", "User", "hello", "m1")
         bus.publish("xmpp", evt)
         assert len(xmpp.events) == 0
 
     def test_xmpp_delete_routes_to_discord_and_irc(self):
-        bus, discord, irc, xmpp = _setup()
+        bus, discord, irc, _xmpp = _setup()
         _, evt = message_delete("xmpp", "room@conf.example.com", "m1", author_id="u1")
         bus.publish("xmpp", evt)
         assert len(discord.events) == 1
         assert len(irc.events) == 1
 
     def test_xmpp_reaction_routes_to_discord_and_irc(self):
-        bus, discord, irc, xmpp = _setup()
+        bus, discord, irc, _xmpp = _setup()
         _, evt = reaction_in("xmpp", "room@conf.example.com", "m1", "❤️", "u1", "User")
         bus.publish("xmpp", evt)
         assert len(discord.events) == 1
@@ -215,7 +209,7 @@ class TestXMPPToIRC:
         assert irc.events[0].emoji == "❤️"
 
     def test_xmpp_typing_routes_to_discord_and_irc(self):
-        bus, discord, irc, xmpp = _setup()
+        bus, discord, irc, _xmpp = _setup()
         _, evt = typing_in("xmpp", "room@conf.example.com", "u1")
         bus.publish("xmpp", evt)
         assert len(discord.events) == 1
@@ -228,28 +222,28 @@ class TestXMPPToIRC:
 
 class TestNoMappingRouting:
     def test_delete_no_mapping_produces_no_output(self):
-        bus, discord, irc, xmpp = _setup()
+        bus, _discord, irc, xmpp = _setup()
         _, evt = message_delete("discord", "999", "m1")
         bus.publish("discord", evt)
         assert len(irc.events) == 0
         assert len(xmpp.events) == 0
 
     def test_reaction_no_mapping_produces_no_output(self):
-        bus, discord, irc, xmpp = _setup()
+        bus, _discord, irc, xmpp = _setup()
         _, evt = reaction_in("discord", "999", "m1", "👍", "u1", "User")
         bus.publish("discord", evt)
         assert len(irc.events) == 0
         assert len(xmpp.events) == 0
 
     def test_typing_no_mapping_produces_no_output(self):
-        bus, discord, irc, xmpp = _setup()
+        bus, _discord, irc, xmpp = _setup()
         _, evt = typing_in("discord", "999", "u1")
         bus.publish("discord", evt)
         assert len(irc.events) == 0
         assert len(xmpp.events) == 0
 
     def test_irc_delete_malformed_channel_id_produces_no_output(self):
-        bus, discord, irc, xmpp = _setup()
+        bus, discord, _irc, _xmpp = _setup()
         _, evt = message_delete("irc", "malformed", "m1")
         bus.publish("irc", evt)
         assert len(discord.events) == 0
@@ -261,20 +255,20 @@ class TestNoMappingRouting:
 
 class TestOutboundFields:
     def test_message_out_raw_contains_origin(self):
-        bus, discord, irc, xmpp = _setup()
+        bus, _discord, irc, xmpp = _setup()
         _, evt = message_in("discord", "123", "u1", "User", "hi", "m1")
         bus.publish("discord", evt)
         assert irc.events[0].raw.get("origin") == "discord"
         assert xmpp.events[0].raw.get("origin") == "discord"
 
     def test_message_out_raw_is_edit_false_for_normal_message(self):
-        bus, discord, irc, xmpp = _setup()
+        bus, _discord, irc, _xmpp = _setup()
         _, evt = message_in("discord", "123", "u1", "User", "hi", "m1")
         bus.publish("discord", evt)
         assert irc.events[0].raw.get("is_edit") is False
 
     def test_message_out_raw_is_edit_true_for_edit(self):
-        bus, discord, irc, xmpp = _setup()
+        bus, _discord, irc, _xmpp = _setup()
         evt = MessageIn("discord", "123", "u1", "User", "edited", "m1", is_edit=True,
                         raw={"replace_id": "orig-1"})
         bus.publish("discord", evt)
@@ -282,7 +276,7 @@ class TestOutboundFields:
         assert irc.events[0].raw.get("replace_id") == "orig-1"
 
     def test_avatar_url_preserved_in_message_out(self):
-        bus, discord, irc, xmpp = _setup()
+        bus, _discord, irc, xmpp = _setup()
         evt = MessageIn("discord", "123", "u1", "User", "hi", "m1",
                         avatar_url="https://cdn.example.com/avatar.png")
         bus.publish("discord", evt)
@@ -290,21 +284,21 @@ class TestOutboundFields:
         assert xmpp.events[0].avatar_url == "https://cdn.example.com/avatar.png"
 
     def test_delete_out_author_id_preserved(self):
-        bus, discord, irc, xmpp = _setup()
+        bus, _discord, irc, xmpp = _setup()
         _, evt = message_delete("discord", "123", "m1", author_id="user-abc")
         bus.publish("discord", evt)
         assert irc.events[0].author_id == "user-abc"
         assert xmpp.events[0].author_id == "user-abc"
 
     def test_reaction_out_uses_discord_channel_id(self):
-        bus, discord, irc, xmpp = _setup()
+        bus, _discord, irc, xmpp = _setup()
         _, evt = reaction_in("discord", "123", "m1", "👍", "u1", "User")
         bus.publish("discord", evt)
         assert irc.events[0].channel_id == "123"
         assert xmpp.events[0].channel_id == "123"
 
     def test_typing_out_uses_discord_channel_id(self):
-        bus, discord, irc, xmpp = _setup()
+        bus, _discord, irc, xmpp = _setup()
         _, evt = typing_in("discord", "123", "u1")
         bus.publish("discord", evt)
         assert irc.events[0].channel_id == "123"
