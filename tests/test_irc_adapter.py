@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from typing import cast
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -10,8 +11,7 @@ import pytest
 from bridge.adapters.irc import IRCAdapter
 from bridge.events import MessageDeleteOut, MessageOut, ReactionOut, TypingOut
 from bridge.gateway import Bus, ChannelRouter
-from bridge.gateway.router import ChannelMapping, IrcTarget, XmppTarget
-
+from bridge.gateway.router import ChannelMapping, IrcTarget
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -141,7 +141,7 @@ class TestPushEvent:
         evt = MessageOut(target_origin="irc", channel_id="111", author_id="u",
                          author_display="U", content="hi", message_id="m1")
         adapter.push_event("discord", evt)
-        adapter._client.queue_message.assert_called_once_with(evt)
+        cast(MagicMock, adapter._client).queue_message.assert_called_once_with(evt)
 
     def test_message_out_uses_puppet_when_puppet_manager_present(self):
         adapter, _, _ = _make_adapter()
@@ -152,7 +152,7 @@ class TestPushEvent:
         with patch("asyncio.create_task") as mock_task:
             adapter.push_event("discord", evt)
             mock_task.assert_called_once()
-        adapter._client.queue_message.assert_not_called()
+        cast(MagicMock, adapter._client).queue_message.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
@@ -317,6 +317,7 @@ class TestSendViaPuppet:
     async def test_sends_via_puppet_when_has_irc(self):
         adapter, _, router = _make_adapter()
         adapter._puppet_manager = AsyncMock()
+        assert adapter._identity is not None
         adapter._identity.has_irc = AsyncMock(return_value=True)
         router.get_mapping_for_discord.return_value = _irc_mapping()
         evt = MessageOut(target_origin="irc", channel_id="111", author_id="u",
@@ -329,12 +330,13 @@ class TestSendViaPuppet:
         adapter, _, router = _make_adapter()
         adapter._puppet_manager = AsyncMock()
         adapter._client = _mock_client()
+        assert adapter._identity is not None
         adapter._identity.has_irc = AsyncMock(return_value=False)
         router.get_mapping_for_discord.return_value = _irc_mapping()
         evt = MessageOut(target_origin="irc", channel_id="111", author_id="u",
                          author_display="U", content="hi", message_id="m1")
         await adapter._send_via_puppet(evt)
-        adapter._client.queue_message.assert_called_once_with(evt)
+        cast(MagicMock, adapter._client).queue_message.assert_called_once_with(evt)
 
 
 # ---------------------------------------------------------------------------
@@ -362,11 +364,11 @@ class TestStart:
         async def _fake_backoff(client, hostname, port, tls):
             await asyncio.sleep(9999)
 
-        with patch("bridge.adapters.irc.IRCClient") as MockClient, \
+        with patch("bridge.adapters.irc.IRCClient") as mock_irc_client, \
              patch("bridge.adapters.irc._connect_with_backoff", side_effect=_fake_backoff), \
              patch("bridge.adapters.irc.IRCPuppetManager", return_value=mock_puppet_mgr), \
              patch.dict("os.environ", {"IRC_NICK": "testbot", "IRC_PUPPET_IDLE_TIMEOUT_HOURS": "12"}):
-            MockClient.return_value = MagicMock()
+            mock_irc_client.return_value = MagicMock()
             await adapter.start()
 
         bus.register.assert_called_once_with(adapter)
