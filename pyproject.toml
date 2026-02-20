@@ -143,4 +143,4 @@ exclude_lines = [
 [tool.basedpyright]
 pythonVersion = "3.10"
 typeCheckingMode = "basic"
-exclude = [".venv", "__pypackages__", ".pytest_cache"]
+exclude = [".venv", "__pypackages__", ".pytest_cache", "references"]
