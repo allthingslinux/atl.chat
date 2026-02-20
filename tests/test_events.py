@@ -4,16 +4,28 @@
 from bridge.events import (
     ConfigReload,
     Join,
+    MessageDelete,
+    MessageDeleteOut,
     MessageIn,
     MessageOut,
     Part,
     Quit,
+    ReactionIn,
+    ReactionOut,
+    TypingIn,
+    TypingOut,
     config_reload,
     join,
+    message_delete,
+    message_delete_out,
     message_in,
     message_out,
     part,
     quit,
+    reaction_in,
+    reaction_out,
+    typing_in,
+    typing_out,
 )
 
 
