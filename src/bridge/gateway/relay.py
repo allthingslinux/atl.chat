@@ -147,6 +147,7 @@ class Relay:
                 emoji=evt.emoji,
                 author_id=evt.author_id,
                 author_display=evt.author_display,
+                raw=evt.raw,
             )
             self._bus.publish("relay", out_evt)
 
