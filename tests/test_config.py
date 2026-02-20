@@ -231,6 +231,22 @@ class TestConfig:
     def test_config_content_filter_regex_non_list(self):
         assert Config({"content_filter_regex": "not-a-list"}).content_filter_regex == []
 
+    def test_config_irc_puppet_ping_interval_default(self):
+        assert Config({}).irc_puppet_ping_interval == 120
+
+    def test_config_irc_puppet_ping_interval_custom(self):
+        assert Config({"irc_puppet_ping_interval": 60}).irc_puppet_ping_interval == 60
+
+    def test_config_irc_puppet_prejoin_commands_default(self):
+        assert Config({}).irc_puppet_prejoin_commands == []
+
+    def test_config_irc_puppet_prejoin_commands_list(self):
+        cmds = ["MODE {nick} +D", "PRIVMSG NickServ IDENTIFY pass"]
+        assert Config({"irc_puppet_prejoin_commands": cmds}).irc_puppet_prejoin_commands == cmds
+
+    def test_config_irc_puppet_prejoin_commands_non_list(self):
+        assert Config({"irc_puppet_prejoin_commands": "not-a-list"}).irc_puppet_prejoin_commands == []
+
     @pytest.mark.parametrize("prop,expected", [
         ("announce_extras", False),
         ("identity_cache_ttl_seconds", 3600),
