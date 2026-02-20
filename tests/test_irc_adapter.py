@@ -27,6 +27,14 @@ def _make_adapter(identity_nick: str | None = "irc_nick") -> tuple[IRCAdapter, M
     return adapter, bus, router
 
 
+def _close_coro(coro: object) -> MagicMock:
+    """Close a coroutine passed to a mocked create_task to suppress RuntimeWarning."""
+    import inspect
+    if inspect.iscoroutine(coro):
+        coro.close()
+    return MagicMock()
+
+
 def _irc_mapping(discord_id: str = "111", channel: str = "#test") -> ChannelMapping:
     return ChannelMapping(
         discord_channel_id=discord_id,
@@ -106,14 +114,14 @@ class TestPushEvent:
         adapter, _, _ = _make_adapter()
         adapter._client = _mock_client()
         evt = MessageDeleteOut(target_origin="irc", channel_id="111", message_id="m1")
-        with patch("asyncio.create_task") as mock_task:
+        with patch("asyncio.create_task", side_effect=_close_coro) as mock_task:
             adapter.push_event("discord", evt)
             mock_task.assert_called_once()
 
     def test_message_delete_out_skips_when_no_client(self):
         adapter, _, _ = _make_adapter()
         evt = MessageDeleteOut(target_origin="irc", channel_id="111", message_id="m1")
-        with patch("asyncio.create_task") as mock_task:
+        with patch("asyncio.create_task", side_effect=_close_coro) as mock_task:
             adapter.push_event("discord", evt)
             mock_task.assert_not_called()
 
@@ -122,7 +130,7 @@ class TestPushEvent:
         adapter._client = _mock_client()
         evt = ReactionOut(target_origin="irc", channel_id="111", message_id="m1",
                           emoji="👍", author_id="u", author_display="U")
-        with patch("asyncio.create_task") as mock_task:
+        with patch("asyncio.create_task", side_effect=_close_coro) as mock_task:
             adapter.push_event("discord", evt)
             mock_task.assert_called_once()
 
@@ -130,7 +138,7 @@ class TestPushEvent:
         adapter, _, _ = _make_adapter()
         adapter._client = _mock_client()
         evt = TypingOut(target_origin="irc", channel_id="111")
-        with patch("asyncio.create_task") as mock_task:
+        with patch("asyncio.create_task", side_effect=_close_coro) as mock_task:
             adapter.push_event("discord", evt)
             mock_task.assert_called_once()
 
@@ -149,7 +157,7 @@ class TestPushEvent:
         adapter._puppet_manager = MagicMock()
         evt = MessageOut(target_origin="irc", channel_id="111", author_id="u",
                          author_display="U", content="hi", message_id="m1")
-        with patch("asyncio.create_task") as mock_task:
+        with patch("asyncio.create_task", side_effect=_close_coro) as mock_task:
             adapter.push_event("discord", evt)
             mock_task.assert_called_once()
         cast(MagicMock, adapter._client).queue_message.assert_not_called()
@@ -483,6 +491,6 @@ class TestIRCAdapterEdgeCases:
         adapter, _, _ = _make_adapter()
         adapter._client = None  # explicitly None
         evt = MessageDeleteOut(target_origin="irc", channel_id="111", message_id="m1")
-        with patch("asyncio.create_task") as mock_task:
+        with patch("asyncio.create_task", side_effect=_close_coro) as mock_task:
             adapter.push_event("discord", evt)
             mock_task.assert_not_called()
