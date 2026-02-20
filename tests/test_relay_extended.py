@@ -352,3 +352,151 @@ class TestIRCOnlyMapping:
 
         assert len(irc.events) == 1
         assert len(xmpp.events) == 0
+
+
+# ---------------------------------------------------------------------------
+# Content filter skips MessageIn (line 70)
+# ---------------------------------------------------------------------------
+
+class TestContentFilter:
+    def test_filtered_message_not_relayed(self):
+        bus, _discord, irc, xmpp = _setup()
+        with patch("bridge.gateway.relay.cfg") as mock_cfg:
+            mock_cfg.content_filter_regex = [r"^!"]
+            _, evt = message_in("discord", "123", "u1", "User", "!command", "m1")
+            bus.publish("discord", evt)
+        assert len(irc.events) == 0
+        assert len(xmpp.events) == 0
+
+    def test_non_filtered_message_is_relayed(self):
+        bus, _discord, irc, _xmpp = _setup()
+        with patch("bridge.gateway.relay.cfg") as mock_cfg:
+            mock_cfg.content_filter_regex = [r"^!"]
+            _, evt = message_in("discord", "123", "u1", "User", "hello", "m1")
+            bus.publish("discord", evt)
+        assert len(irc.events) == 1
+
+
+# ---------------------------------------------------------------------------
+# IRC channel_id without slash (line 95)
+# ---------------------------------------------------------------------------
+
+class TestIRCChannelIdNoSlash:
+    def test_irc_message_no_slash_not_relayed(self):
+        bus, discord, _irc, xmpp = _setup()
+        _, evt = message_in("irc", "noslash", "u1", "User", "hello", "m1")
+        bus.publish("irc", evt)
+        assert len(discord.events) == 0
+        assert len(xmpp.events) == 0
+
+    def test_irc_reaction_no_slash_not_relayed(self):
+        bus, discord, _irc, xmpp = _setup()
+        _, evt = reaction_in("irc", "noslash", "m1", "👍", "u1", "User")
+        bus.publish("irc", evt)
+        assert len(discord.events) == 0
+        assert len(xmpp.events) == 0
+
+    def test_irc_typing_no_slash_not_relayed(self):
+        bus, discord, _irc, xmpp = _setup()
+        _, evt = typing_in("irc", "noslash", "u1")
+        bus.publish("irc", evt)
+        assert len(discord.events) == 0
+        assert len(xmpp.events) == 0
+
+    def test_irc_delete_no_slash_not_relayed(self):
+        bus, discord, _irc, xmpp = _setup()
+        _, evt = message_delete("irc", "noslash", "m1")
+        bus.publish("irc", evt)
+        assert len(discord.events) == 0
+        assert len(xmpp.events) == 0
+
+
+# ---------------------------------------------------------------------------
+# Skip-target conditions: mapping exists but target leg is absent
+# (lines 138/140/142 for reaction, 171/173/175 for typing, 199/201/203 for delete)
+# ---------------------------------------------------------------------------
+
+def _discord_only_setup():
+    """Mapping with discord only — no IRC, no XMPP."""
+    bus = Bus()
+    router = ChannelRouter()
+    router.load_from_config({"mappings": [{"discord_channel_id": "123"}]})
+    relay = Relay(bus, router)
+    bus.register(relay)
+    discord = Capture("discord")
+    irc = Capture("irc")
+    xmpp = Capture("xmpp")
+    bus.register(discord)
+    bus.register(irc)
+    bus.register(xmpp)
+    return bus, discord, irc, xmpp
+
+
+def _irc_only_setup():
+    """Mapping with IRC only — no XMPP."""
+    bus = Bus()
+    router = ChannelRouter()
+    router.load_from_config({"mappings": [{"discord_channel_id": "123", "irc": {"server": "s", "channel": "#c", "port": 6667, "tls": False}}]})
+    relay = Relay(bus, router)
+    bus.register(relay)
+    discord = Capture("discord")
+    irc = Capture("irc")
+    xmpp = Capture("xmpp")
+    bus.register(discord)
+    bus.register(irc)
+    bus.register(xmpp)
+    return bus, discord, irc, xmpp
+
+
+class TestSkipTargetConditions:
+    def test_reaction_skips_irc_when_no_irc_mapping(self):
+        bus, _discord, irc, _xmpp = _discord_only_setup()
+        _, evt = reaction_in("discord", "123", "m1", "👍", "u1", "User")
+        bus.publish("discord", evt)
+        assert len(irc.events) == 0
+
+    def test_reaction_skips_xmpp_when_no_xmpp_mapping(self):
+        bus, _discord, irc, xmpp = _irc_only_setup()
+        _, evt = reaction_in("discord", "123", "m1", "👍", "u1", "User")
+        bus.publish("discord", evt)
+        assert len(xmpp.events) == 0
+        assert len(irc.events) == 1
+
+    def test_typing_skips_irc_when_no_irc_mapping(self):
+        bus, _discord, irc, _xmpp = _discord_only_setup()
+        _, evt = typing_in("discord", "123", "u1")
+        bus.publish("discord", evt)
+        assert len(irc.events) == 0
+
+    def test_typing_skips_xmpp_when_no_xmpp_mapping(self):
+        bus, _discord, irc, xmpp = _irc_only_setup()
+        _, evt = typing_in("discord", "123", "u1")
+        bus.publish("discord", evt)
+        assert len(xmpp.events) == 0
+        assert len(irc.events) == 1
+
+    def test_delete_skips_irc_when_no_irc_mapping(self):
+        bus, _discord, irc, _xmpp = _discord_only_setup()
+        _, evt = message_delete("discord", "123", "m1")
+        bus.publish("discord", evt)
+        assert len(irc.events) == 0
+
+    def test_delete_skips_xmpp_when_no_xmpp_mapping(self):
+        bus, _discord, irc, xmpp = _irc_only_setup()
+        _, evt = message_delete("discord", "123", "m1")
+        bus.publish("discord", evt)
+        assert len(xmpp.events) == 0
+        assert len(irc.events) == 1
+
+    def test_message_skips_irc_when_no_irc_mapping(self):
+        bus, _discord, irc, _xmpp = _discord_only_setup()
+        _, evt = message_in("discord", "123", "u1", "User", "hi", "m1")
+        bus.publish("discord", evt)
+        assert len(irc.events) == 0
+
+    def test_message_skips_xmpp_when_no_xmpp_mapping(self):
+        bus, _discord, irc, xmpp = _irc_only_setup()
+        _, evt = message_in("discord", "123", "u1", "User", "hi", "m1")
+        bus.publish("discord", evt)
+        assert len(xmpp.events) == 0
+        assert len(irc.events) == 1
