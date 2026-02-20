@@ -568,6 +568,8 @@ class IRCAdapter:
                 port=m.irc.port,
                 tls=m.irc.tls,
                 idle_timeout_hours=idle_timeout,
+                ping_interval=cfg.irc_puppet_ping_interval,
+                prejoin_commands=cfg.irc_puppet_prejoin_commands,
             )
             await self._puppet_manager.start()
             logger.info("IRC puppet manager started (idle timeout: {}h)", idle_timeout)
