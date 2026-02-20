@@ -30,7 +30,9 @@ def test_bus_publish_reaches_targets() -> None:
         MessageIn("discord", "c1", "u1", "Alice", "hi", "m1"),
     )
     assert len(target.events) == 1
-    assert target.events[0][1].content == "hi"
+    evt = target.events[0][1]
+    assert isinstance(evt, MessageIn)
+    assert evt.content == "hi"
 
 
 def test_router_load_from_config() -> None:
