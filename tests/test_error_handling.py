@@ -83,7 +83,7 @@ class TestConfigErrors:
             f.write("invalid: yaml: syntax:")
             path = f.name
 
-        with pytest.raises((ValueError, KeyError, TypeError, yaml.scanner.ScannerError)):
+        with pytest.raises((ValueError, KeyError, TypeError, yaml.YAMLError)):
             load_config(path)
 
     def test_missing_config_file_returns_empty(self):
