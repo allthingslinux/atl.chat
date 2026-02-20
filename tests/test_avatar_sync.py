@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 
 class TestAvatarSync:
     """Test avatar URL handling and caching."""
@@ -65,6 +63,7 @@ class TestAvatarSync:
                 avatar_url=url,
             )
             assert msg.avatar_url == url
+            assert msg.avatar_url is not None
             assert msg.avatar_url.startswith("https://cdn.discord.com")
 
 
