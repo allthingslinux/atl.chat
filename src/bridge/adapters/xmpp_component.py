@@ -459,7 +459,7 @@ class XMPPComponent(ComponentXMPP):
                 muc_jid,
                 target_msg_id,
                 {emoji},
-                ifrom=user_jid,
+                ifrom=user_jid,  # pyright: ignore[reportCallIssue]
             )
             logger.debug("Sent reaction {} from {} to message {}", emoji, user_jid, target_msg_id)
         except Exception as exc:
@@ -534,7 +534,7 @@ class XMPPComponent(ComponentXMPP):
 
         try:
             await muc_plugin.join_muc_wait(  # type: ignore[misc,call-arg]
-                JID(muc_jid), nick, mfrom=JID(user_jid), timeout=30, maxchars=0
+                JID(muc_jid), nick, mfrom=JID(user_jid), timeout=30, maxchars=0  # pyright: ignore[reportCallIssue]
             )
             logger.info("Joined MUC {} as {}", muc_jid, user_jid)
         except XMPPError as exc:
