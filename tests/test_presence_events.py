@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from bridge.events import Join, Part, Quit
 
 
@@ -168,7 +166,7 @@ class TestPresenceEventComparison:
         # Assert
         assert join.user_id == part.user_id
         assert join.channel_id == part.channel_id
-        assert type(join) != type(part)
+        assert not isinstance(join, type(part))
 
     def test_part_and_quit_different_scope(self):
         # Arrange
