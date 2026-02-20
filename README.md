@@ -13,8 +13,7 @@ apps/
 ├── webpanel/       # UnrealIRCd web admin
 ├── prosody/        # XMPP server
 ├── web/            # Next.js web application
-├── biboumi/        # XMPP↔IRC gateway (planned)
-├── matterbridge/   # Multi-protocol relay (planned)
+├── bridge/         # Discord–IRC–XMPP multi-presence bridge
 └── gamja/          # IRC web client (planned)
 ```
 
@@ -114,10 +113,9 @@ just web dev
 
 ### Bridges
 
-Biboumi (XMPP↔IRC) and Matterbridge are planned. Stub in `infra/compose/bridge.yaml`.
+ATL Bridge (Discord↔IRC↔XMPP) is configured in `infra/compose/bridge.yaml`.
 
-- [apps/biboumi/](apps/biboumi/) — Biboumi
-- [apps/matterbridge/](apps/matterbridge/) — Matterbridge
+- [apps/bridge/](apps/bridge/) — ATL Bridge
 
 ## Task Running
 
