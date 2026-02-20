@@ -98,13 +98,15 @@ class TestRelay:
         bus.register(discord_adapter)
 
         # Act
-        _, evt = message_in("irc", "irc.libera.chat/#test", "u1", "User", "Hello", "msg1")
+        _, evt = message_in("irc", "irc.libera.chat/#test", "u1", "User", "Hello from IRC", "msg1")
         bus.publish("irc", evt)
 
         # Assert
         assert len(discord_adapter.received_events) == 1
         _, out_evt = discord_adapter.received_events[0]
         assert out_evt.target_origin == "discord"
+        assert out_evt.content == "Hello from IRC"
+        assert out_evt.author_id == "u1"
 
     def test_relay_xmpp_to_discord(self):
         # Arrange
@@ -125,11 +127,15 @@ class TestRelay:
         bus.register(discord_adapter)
 
         # Act
-        _, evt = message_in("xmpp", "test@conference.example.com", "u1", "User", "Hello", "msg1")
+        _, evt = message_in("xmpp", "test@conference.example.com", "u1", "User", "Hello from XMPP", "msg1")
         bus.publish("xmpp", evt)
 
         # Assert
         assert len(discord_adapter.received_events) == 1
+        _, out_evt = discord_adapter.received_events[0]
+        assert out_evt.target_origin == "discord"
+        assert out_evt.content == "Hello from XMPP"
+        assert out_evt.author_id == "u1"
 
     def test_relay_does_not_echo_to_origin(self):
         # Arrange
