@@ -52,5 +52,5 @@ while true; do
     echo "Sleeping for 24 hours..."
     sleep 86400
     echo "Checking for renewal..."
-    lego --email "$EMAIL" --dns cloudflare --domains "$WILDCARD_DOMAIN" --domains "$ROOT_DOMAIN" --path "$DATA_DIR" --accept-tos renew
+    lego --email "$EMAIL" --dns cloudflare --domains "$WILDCARD_DOMAIN" --domains "$ROOT_DOMAIN" --path "$DATA_DIR" --accept-tos renew --renew-hook "curl -sf --unix-socket /var/run/docker.sock -X POST 'http://localhost/containers/atl-xmpp-server/kill?signal=HUP' && echo 'Prosody reloaded after cert renewal'"
 done
