@@ -40,8 +40,8 @@ def _ensure_valid_username(name: str) -> str:
     return name
 
 
-# Disable @everyone/@here pings (AUDIT §3). Built into discord.py via AllowedMentions.
-_ALLOWED_MENTIONS = AllowedMentions(everyone=False)
+# Disable mass pings for bridged content; user mentions are allowed (IRC/XMPP don't produce snowflake syntax).
+_ALLOWED_MENTIONS = AllowedMentions(everyone=False, roles=False)
 
 
 class DiscordAdapter:
@@ -442,30 +442,34 @@ class DiscordAdapter:
         )
         self._bus.publish("discord", evt)
 
-    async def _on_message_edit(self, before: Message, after: Message) -> None:
-        """Handle Discord message edits; emit MessageIn with is_edit=True."""
-        if after.author.bot:
+    async def _on_raw_message_edit(self, payload) -> None:
+        """Handle Discord message edits via raw event (fires for cached and uncached messages)."""
+        message = payload.message
+        if message.author.bot:
+            return
+        if getattr(message, "webhook_id", None):
             return
 
-        channel_id = str(after.channel.id)
+        channel_id = str(payload.channel_id)
         if not self._is_bridged_channel(channel_id):
             return
 
-        content = after.content or ""
+        content = message.content or ""
         if not content.strip():
             return
 
-        # Get avatar URL
-        avatar_url = str(after.author.display_avatar.url) if after.author.display_avatar else None
+        avatar_url = (
+            str(message.author.display_avatar.url) if message.author.display_avatar else None
+        )
 
         _, evt = message_in(
             origin="discord",
             channel_id=channel_id,
-            author_id=str(after.author.id),
-            author_display=after.author.display_name or after.author.name,
+            author_id=str(message.author.id),
+            author_display=message.author.display_name or message.author.name,
             content=content,
-            message_id=str(after.id),
-            reply_to_id=str(after.reference.message_id) if after.reference else None,
+            message_id=str(message.id),
+            reply_to_id=str(message.reference.message_id) if message.reference else None,
             is_edit=True,
             is_action=False,
             avatar_url=avatar_url,
@@ -511,10 +515,30 @@ class DiscordAdapter:
         return None
 
     async def _on_reaction_remove(self, payload) -> None:
-        """Handle Discord reaction remove; send empty reactions to XMPP."""
-        # XEP-0444: Send empty reactions set to remove all reactions
-        # For now, just log it
-        logger.debug("Discord reaction removed: {} on {}", payload.emoji, payload.message_id)
+        """Handle Discord reaction remove; emit ReactionIn with is_remove=True for relay."""
+        if not payload.emoji.is_unicode_emoji():
+            return
+
+        channel_id = str(payload.channel_id)
+        mapping = self._router.get_mapping_for_discord(channel_id)
+        if not mapping:
+            return
+
+        user = await self._fetch_user(payload.user_id)
+        author_display = user.display_name if user else str(payload.user_id)
+
+        from bridge.events import reaction_in
+
+        _, evt = reaction_in(
+            origin="discord",
+            channel_id=channel_id,
+            message_id=str(payload.message_id),
+            emoji=str(payload.emoji),
+            author_id=str(payload.user_id),
+            author_display=author_display,
+            raw={"is_remove": True},
+        )
+        self._bus.publish("discord", evt)
 
     async def _on_typing(self, channel, user) -> None:
         """Handle Discord typing; publish for Relay to route to IRC (throttled 3s)."""
@@ -536,21 +560,40 @@ class DiscordAdapter:
         _, evt = typing_in(origin="discord", channel_id=channel_id, user_id=str(user.id))
         self._bus.publish("discord", evt)
 
-    async def _on_message_delete(self, message: Message) -> None:
-        """Handle Discord message delete; publish for Relay to route to IRC/XMPP."""
-        channel_id = str(message.channel.id)
-        mapping = self._router.get_mapping_for_discord(channel_id)
-        if not mapping:
+    async def _on_raw_message_delete(self, payload) -> None:
+        """Handle Discord message deletes via raw event (fires for cached and uncached messages)."""
+        channel_id = str(payload.channel_id)
+        if not self._is_bridged_channel(channel_id):
             return
 
-        author_id = str(message.author.id) if message.author else ""
+        author_id = ""
+        if payload.cached_message:
+            author_id = str(payload.cached_message.author.id)
+
         _, evt = message_delete(
             origin="discord",
             channel_id=channel_id,
-            message_id=str(message.id),
+            message_id=str(payload.message_id),
             author_id=author_id,
         )
         self._bus.publish("discord", evt)
+
+    async def _on_raw_bulk_message_delete(self, payload) -> None:
+        """Handle Discord bulk message deletes (e.g. moderator purge)."""
+        channel_id = str(payload.channel_id)
+        if not self._is_bridged_channel(channel_id):
+            return
+
+        cached = {m.id: m for m in payload.cached_messages}
+        for message_id in payload.message_ids:
+            author_id = str(cached[message_id].author.id) if message_id in cached else ""
+            _, evt = message_delete(
+                origin="discord",
+                channel_id=channel_id,
+                message_id=str(message_id),
+                author_id=author_id,
+            )
+            self._bus.publish("discord", evt)
 
     async def _cmd_bridge_status(self, ctx: commands.Context) -> None:
         """Optional !bridge status: show linked IRC/XMPP (AUDIT §7)."""
@@ -604,9 +647,9 @@ class DiscordAdapter:
             await self._on_message(message)
 
         @bot.event
-        async def on_message_edit(before: Message, after: Message) -> None:
-            """Handle message edits."""
-            await self._on_message_edit(before, after)
+        async def on_raw_message_edit(payload) -> None:
+            """Handle message edits (raw: fires for cached and uncached messages)."""
+            await self._on_raw_message_edit(payload)
 
         @bot.event
         async def on_raw_reaction_add(payload) -> None:
@@ -619,9 +662,14 @@ class DiscordAdapter:
             await self._on_reaction_remove(payload)
 
         @bot.event
-        async def on_message_delete(message: Message) -> None:
-            """Handle message deletes."""
-            await self._on_message_delete(message)
+        async def on_raw_message_delete(payload) -> None:
+            """Handle message deletes (raw: fires for cached and uncached messages)."""
+            await self._on_raw_message_delete(payload)
+
+        @bot.event
+        async def on_raw_bulk_message_delete(payload) -> None:
+            """Handle bulk message deletes (e.g. moderator purge)."""
+            await self._on_raw_bulk_message_delete(payload)
 
         @bot.event
         async def on_typing(channel, user, when) -> None:
