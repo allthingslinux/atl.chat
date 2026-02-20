@@ -1,6 +1,6 @@
 """Test identity resolver functionality."""
 
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -145,3 +145,104 @@ class TestPortalClientHeaders:
         headers = PortalClient("https://portal.example.com", token="secret")._headers()
         assert headers["Authorization"] == "Bearer secret"
         assert headers["Accept"] == "application/json"
+
+
+# ---------------------------------------------------------------------------
+# PortalClient direct HTTP behaviour
+# ---------------------------------------------------------------------------
+
+class TestPortalClient:
+    """Test PortalClient 404 / error / non-dict responses."""
+
+    def _mock_response(self, status_code: int, json_data=None):
+        resp = MagicMock()
+        resp.status_code = status_code
+        resp.json.return_value = json_data
+        if status_code >= 400:
+            resp.raise_for_status.side_effect = Exception(f"HTTP {status_code}")
+        else:
+            resp.raise_for_status.return_value = None
+        return resp
+
+    @pytest.mark.asyncio
+    async def test_get_by_discord_404_returns_none(self):
+        client = PortalClient(base_url="http://portal", token="t")
+        resp = self._mock_response(404)
+        with patch("httpx.AsyncClient") as mock_cls:
+            mock_cls.return_value.__aenter__.return_value.get = AsyncMock(return_value=resp)
+            result = await client.get_identity_by_discord("u1")
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_get_by_discord_non_dict_returns_none(self):
+        client = PortalClient(base_url="http://portal", token="t")
+        resp = self._mock_response(200, json_data=["list", "not", "dict"])
+        with patch("httpx.AsyncClient") as mock_cls:
+            mock_cls.return_value.__aenter__.return_value.get = AsyncMock(return_value=resp)
+            result = await client.get_identity_by_discord("u1")
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_get_by_discord_dict_returns_data(self):
+        client = PortalClient(base_url="http://portal", token="t")
+        resp = self._mock_response(200, json_data={"discord_id": "u1", "irc_nick": "user"})
+        with patch("httpx.AsyncClient") as mock_cls:
+            mock_cls.return_value.__aenter__.return_value.get = AsyncMock(return_value=resp)
+            result = await client.get_identity_by_discord("u1")
+        assert result == {"discord_id": "u1", "irc_nick": "user"}
+
+    @pytest.mark.asyncio
+    async def test_get_by_irc_nick_404_returns_none(self):
+        client = PortalClient(base_url="http://portal", token="t")
+        resp = self._mock_response(404)
+        with patch("httpx.AsyncClient") as mock_cls:
+            mock_cls.return_value.__aenter__.return_value.get = AsyncMock(return_value=resp)
+            result = await client.get_identity_by_irc_nick("nick")
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_get_by_irc_nick_non_dict_returns_none(self):
+        client = PortalClient(base_url="http://portal", token="t")
+        resp = self._mock_response(200, json_data=42)
+        with patch("httpx.AsyncClient") as mock_cls:
+            mock_cls.return_value.__aenter__.return_value.get = AsyncMock(return_value=resp)
+            result = await client.get_identity_by_irc_nick("nick")
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_get_by_irc_nick_with_server_passes_param(self):
+        client = PortalClient(base_url="http://portal", token="t")
+        resp = self._mock_response(200, json_data={"irc_nick": "nick"})
+        with patch("httpx.AsyncClient") as mock_cls:
+            get_mock = AsyncMock(return_value=resp)
+            mock_cls.return_value.__aenter__.return_value.get = get_mock
+            await client.get_identity_by_irc_nick("nick", server="irc.libera.chat")
+        _, kwargs = get_mock.call_args
+        assert kwargs["params"]["ircServer"] == "irc.libera.chat"
+
+    @pytest.mark.asyncio
+    async def test_get_by_xmpp_jid_404_returns_none(self):
+        client = PortalClient(base_url="http://portal", token="t")
+        resp = self._mock_response(404)
+        with patch("httpx.AsyncClient") as mock_cls:
+            mock_cls.return_value.__aenter__.return_value.get = AsyncMock(return_value=resp)
+            result = await client.get_identity_by_xmpp_jid("user@xmpp.example.com")
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_get_by_xmpp_jid_non_dict_returns_none(self):
+        client = PortalClient(base_url="http://portal", token="t")
+        resp = self._mock_response(200, json_data=None)
+        with patch("httpx.AsyncClient") as mock_cls:
+            mock_cls.return_value.__aenter__.return_value.get = AsyncMock(return_value=resp)
+            result = await client.get_identity_by_xmpp_jid("user@xmpp.example.com")
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_get_by_xmpp_jid_dict_returns_data(self):
+        client = PortalClient(base_url="http://portal", token="t")
+        resp = self._mock_response(200, json_data={"xmpp_jid": "user@xmpp.example.com"})
+        with patch("httpx.AsyncClient") as mock_cls:
+            mock_cls.return_value.__aenter__.return_value.get = AsyncMock(return_value=resp)
+            result = await client.get_identity_by_xmpp_jid("user@xmpp.example.com")
+        assert result == {"xmpp_jid": "user@xmpp.example.com"}
