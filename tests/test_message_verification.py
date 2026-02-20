@@ -132,8 +132,11 @@ class TestMessageEditing:
         )
         harness.bus.publish("discord", evt)
 
-        # Assert
+        # Assert - is_edit flag is preserved in the outbound event
         assert len(harness.irc.sent_messages) == 1
+        out = harness.irc.sent_messages[0]
+        assert out.raw.get("is_edit") is True
+        assert out.content == "Edited content"
         await harness.stop()
 
     @pytest.mark.asyncio
