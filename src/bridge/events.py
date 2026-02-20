@@ -299,6 +299,8 @@ def reaction_in(
     emoji: str,
     author_id: str,
     author_display: str,
+    *,
+    raw: dict[str, Any] | None = None,
 ) -> ReactionIn:
     return ReactionIn(
         origin=origin,
@@ -307,6 +309,7 @@ def reaction_in(
         emoji=emoji,
         author_id=author_id,
         author_display=author_display,
+        raw=raw or {},
     )
 
 
@@ -318,6 +321,8 @@ def reaction_out(
     emoji: str,
     author_id: str,
     author_display: str,
+    *,
+    raw: dict[str, Any] | None = None,
 ) -> ReactionOut:
     return ReactionOut(
         target_origin=target_origin,
@@ -326,6 +331,7 @@ def reaction_out(
         emoji=emoji,
         author_id=author_id,
         author_display=author_display,
+        raw=raw or {},
     )
 
 
