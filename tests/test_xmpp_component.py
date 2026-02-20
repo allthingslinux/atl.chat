@@ -6,12 +6,11 @@ from unittest.mock import MagicMock
 
 import pytest
 
-pytestmark = pytest.mark.filterwarnings("ignore::pytest.PytestUnraisableExceptionWarning")
-
 from bridge.adapters.xmpp_component import XMPPComponent
 from bridge.adapters.xmpp_msgid import XMPPMessageIDTracker
 from bridge.events import MessageDelete, MessageIn, ReactionIn
 
+pytestmark = pytest.mark.filterwarnings("ignore::pytest.PytestUnraisableExceptionWarning")
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -140,10 +139,6 @@ class TestOnGroupchatMessage:
 
         replace_plugin = MockPlugin({"id": "orig-id"})
         msg = MockMsg("room@conf.example.com/nick", plugins={"replace": replace_plugin})
-        # Patch __getitem__ for msg["replace"]["id"]
-        msg._replace_id = "orig-id"
-
-        # We need msg["replace"]["id"] to work — override __getitem__
         class MsgWithReplace(MockMsg):
             def __getitem__(self, key):
                 if key == "replace":
