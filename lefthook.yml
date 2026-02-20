@@ -1,3 +1,17 @@
+commit-msg:
+  commands:
+    commitlint:
+      run: |
+        msg=$(cat {1})
+        pattern='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?: .+'
+        if ! echo "$msg" | grep -qE "$pattern"; then
+          echo "❌ Commit message does not follow Conventional Commits format."
+          echo "   Expected: <type>(<scope>): <subject>"
+          echo "   Types: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert"
+          echo "   Got: $msg"
+          exit 1
+        fi
+
 pre-commit:
   commands:
     ruff:
