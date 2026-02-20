@@ -12,22 +12,18 @@ from bridge.formatting.irc_to_discord import irc_to_discord
 class TestDiscordToIrc:
     """Test Discord markdown stripping for IRC."""
 
-    def test_strips_bold(self):
-        assert discord_to_irc("**bold**") == "bold"
-        assert discord_to_irc("__bold__") == "bold"
-
-    def test_strips_italic(self):
-        assert discord_to_irc("*italic*") == "italic"
-        assert discord_to_irc("_italic_") == "italic"
-
-    def test_strips_code(self):
-        assert discord_to_irc("`code`") == "code"
-
-    def test_strips_strikethrough(self):
-        assert discord_to_irc("~~strike~~") == "strike"
-
-    def test_strips_spoiler(self):
-        assert discord_to_irc("||spoiler||") == "spoiler"
+    @pytest.mark.parametrize("input,expected", [
+        ("**bold**", "bold"),
+        ("__bold__", "bold"),
+        ("*italic*", "italic"),
+        ("_italic_", "italic"),
+        ("`code`", "code"),
+        ("~~strike~~", "strike"),
+        ("||spoiler||", "spoiler"),
+        ("``double``", "double"),
+    ])
+    def test_strips_markdown(self, input, expected):
+        assert discord_to_irc(input) == expected
 
     def test_preserves_urls(self):
         text = "Check https://example.com/path and http://test.org"
@@ -45,9 +41,6 @@ class TestDiscordToIrc:
         assert discord_to_irc("```\ncode block\n```") == ""
         assert discord_to_irc("before ```x\ny``` after") == "before  after"
         assert discord_to_irc("```py\nprint(1)\n```") == ""
-
-    def test_strips_double_backticks(self):
-        assert discord_to_irc("``double``") == "double"
 
     def test_combined_formatting(self):
         assert discord_to_irc("**bold** and *italic* and `code`") == "bold and italic and code"
