@@ -140,7 +140,7 @@ class TestGetOrCreatePuppet:
         manager = _make_manager(irc_nick="mynick")
         mock_puppet = _mock_puppet()
 
-        with patch("bridge.adapters.irc_puppet.IRCPuppet", return_value=mock_puppet) as MockPuppet:
+        with patch("bridge.adapters.irc_puppet.IRCPuppet", return_value=mock_puppet):
             result = await manager.get_or_create_puppet("d1")
 
         assert result is mock_puppet
@@ -155,10 +155,10 @@ class TestGetOrCreatePuppet:
         manager = _make_manager(irc_nick="mynick", ping_interval=60, prejoin_commands=cmds)
         mock_puppet = _mock_puppet()
 
-        with patch("bridge.adapters.irc_puppet.IRCPuppet", return_value=mock_puppet) as MockPuppet:
+        with patch("bridge.adapters.irc_puppet.IRCPuppet", return_value=mock_puppet) as mock_cls:
             await manager.get_or_create_puppet("d1")
 
-        MockPuppet.assert_called_once_with("mynick", "d1", ping_interval=60, prejoin_commands=cmds)
+        mock_cls.assert_called_once_with("mynick", "d1", ping_interval=60, prejoin_commands=cmds)
 
     @pytest.mark.asyncio
     async def test_removes_puppet_on_connect_failure(self):
