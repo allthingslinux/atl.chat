@@ -691,3 +691,43 @@ class TestEdgeCases:
 
         # store should NOT be called when xmpp_msg_id is None
         comp._msgid_tracker.store.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# _outbound_consumer: mapping exists but xmpp leg absent (line 63 guard)
+# ---------------------------------------------------------------------------
+
+class TestConsumerGuardConditions:
+    @pytest.mark.asyncio
+    async def test_consumer_skips_when_mapping_has_no_xmpp_target(self):
+        """mapping exists but mapping.xmpp is None → guard on line 63 fails."""
+        from bridge.gateway.router import IrcTarget
+        adapter, _, router = _make_adapter(identity_nick="nick")
+        comp = _mock_component()
+        adapter._component = comp
+        # Mapping with IRC only, no XMPP
+        irc_only = ChannelMapping(
+            discord_channel_id="111",
+            irc=IrcTarget(server="s", port=6667, tls=False, channel="#c"),
+            xmpp=None,
+        )
+        router.get_mapping_for_discord.return_value = irc_only
+
+        evt = MessageOut(target_origin="xmpp", channel_id="111", author_id="u1",
+                         author_display="U", content="hi", message_id="m1")
+        await _run_consumer_once(adapter, evt)
+        comp.send_message_as_user.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_consumer_skips_when_no_identity(self):
+        """_identity is None → guard on line 63 fails."""
+        adapter = XMPPAdapter(MagicMock(spec=Bus), MagicMock(spec=ChannelRouter), None)
+        comp = _mock_component()
+        adapter._component = comp
+        router = adapter._router
+        router.get_mapping_for_discord.return_value = _xmpp_mapping()  # type: ignore[attr-defined]
+
+        evt = MessageOut(target_origin="xmpp", channel_id="111", author_id="u1",
+                         author_display="U", content="hi", message_id="m1")
+        await _run_consumer_once(adapter, evt)
+        comp.send_message_as_user.assert_not_called()
