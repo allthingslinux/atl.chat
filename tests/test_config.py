@@ -100,7 +100,7 @@ class TestLoadConfig:
 
         try:
             # Act & Assert
-            with pytest.raises((ValueError, KeyError, TypeError, yaml.scanner.ScannerError)):
+            with pytest.raises((ValueError, KeyError, TypeError, yaml.YAMLError)):
                 load_config(path)
         finally:
             Path(path).unlink()
