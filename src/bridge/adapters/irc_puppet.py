@@ -20,19 +20,40 @@ if TYPE_CHECKING:
 class IRCPuppet(pydle.Client):
     """Single IRC puppet connection for a Discord user."""
 
-    def __init__(self, nick: str, discord_id: str, **kwargs):
+    def __init__(self, nick: str, discord_id: str, ping_interval: int = 120, prejoin_commands: list[str] | None = None, **kwargs):
         super().__init__(nick, **kwargs)
         self.discord_id = discord_id
         self.last_activity = time.time()
+        self._ping_interval = ping_interval
+        self._prejoin_commands: list[str] = prejoin_commands or []
+        self._pinger_task: asyncio.Task | None = None
+        self._initial_nick = nick
 
     def touch(self):
         """Update last activity timestamp."""
         self.last_activity = time.time()
 
     async def on_connect(self):
-        """Handle connection."""
+        """Handle connection: send pre-join commands and start pinger."""
         await super().on_connect()
         logger.debug("IRC puppet {} connected", self.nickname)
+
+        for cmd in self._prejoin_commands:
+            raw = cmd.replace("{nick}", self._initial_nick)
+            await self.rawmsg(*raw.split(" ", 1) if " " in raw else [raw])
+
+        if self._pinger_task:
+            self._pinger_task.cancel()
+        self._pinger_task = asyncio.create_task(self._pinger())
+
+    async def _pinger(self) -> None:
+        """Send PING every ping_interval seconds to keep connection alive."""
+        while True:
+            await asyncio.sleep(self._ping_interval)
+            try:
+                self.rawmsg("PING", "keep-alive")
+            except Exception:
+                break
 
 
 class IRCPuppetManager:
@@ -47,6 +68,8 @@ class IRCPuppetManager:
         port: int,
         tls: bool,
         idle_timeout_hours: int = 24,
+        ping_interval: int = 120,
+        prejoin_commands: list[str] | None = None,
     ):
         self._bus = bus
         self._router = router
@@ -55,6 +78,8 @@ class IRCPuppetManager:
         self._port = port
         self._tls = tls
         self._idle_timeout = idle_timeout_hours * 3600
+        self._ping_interval = ping_interval
+        self._prejoin_commands: list[str] = prejoin_commands or []
         self._puppets: dict[str, IRCPuppet] = {}
         self._cleanup_task: asyncio.Task | None = None
 
@@ -72,7 +97,7 @@ class IRCPuppetManager:
             return None
 
         # Create and connect puppet
-        puppet = IRCPuppet(nick, discord_id)
+        puppet = IRCPuppet(nick, discord_id, ping_interval=self._ping_interval, prejoin_commands=self._prejoin_commands)
         self._puppets[discord_id] = puppet
 
         try:
