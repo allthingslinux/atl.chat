@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from typing import cast
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -11,7 +12,6 @@ from bridge.adapters.xmpp import XMPPAdapter
 from bridge.events import MessageDeleteOut, MessageOut, ReactionOut
 from bridge.gateway import Bus, ChannelRouter
 from bridge.gateway.router import ChannelMapping, XmppTarget
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -152,7 +152,7 @@ class TestHandleDeleteOut:
         # _component is None by default
         await adapter._handle_delete_out(evt)
         # identity should never be consulted when component is absent
-        adapter._identity.discord_to_xmpp.assert_not_called()
+        cast(MagicMock, adapter._identity).discord_to_xmpp.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_no_mapping_returns_early(self):
@@ -222,7 +222,7 @@ class TestHandleReactionOut:
         evt = ReactionOut(target_origin="xmpp", channel_id="111", message_id="m1",
                           emoji="👍", author_id="u1", author_display="User")
         await adapter._handle_reaction_out(evt)
-        adapter._identity.discord_to_xmpp.assert_not_called()
+        cast(MagicMock, adapter._identity).discord_to_xmpp.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_no_mapping_returns_early(self):
@@ -289,7 +289,7 @@ class TestHandleReactionOut:
 # _outbound_consumer
 # ---------------------------------------------------------------------------
 
-async def _run_consumer_once(adapter: XMPPAdapter, evt: object) -> None:
+async def _run_consumer_once(adapter: XMPPAdapter, evt: MessageOut | MessageDeleteOut | ReactionOut) -> None:
     """Put one event in the queue, run consumer until queue is drained, then cancel."""
     adapter._outbound.put_nowait(evt)
     task = asyncio.create_task(adapter._outbound_consumer())
@@ -299,10 +299,9 @@ async def _run_consumer_once(adapter: XMPPAdapter, evt: object) -> None:
         if adapter._outbound.empty():
             break
     task.cancel()
-    try:
+    import contextlib
+    with contextlib.suppress(asyncio.CancelledError):
         await task
-    except asyncio.CancelledError:
-        pass
 
 
 class TestOutboundConsumer:
@@ -503,7 +502,7 @@ class TestStart:
 
     @pytest.mark.asyncio
     async def test_start_success_registers_and_creates_tasks(self):
-        adapter, bus, router = _make_adapter(mappings=[_xmpp_mapping()])
+        adapter, bus, _router = _make_adapter(mappings=[_xmpp_mapping()])
         env = {
             "XMPP_COMPONENT_JID": "bridge.example.com",
             "XMPP_COMPONENT_SECRET": "s3cr3t",
@@ -614,10 +613,9 @@ class TestEdgeCases:
             if adapter._outbound.empty():
                 break
         task.cancel()
-        try:
+        import contextlib
+        with contextlib.suppress(asyncio.CancelledError):
             await task
-        except asyncio.CancelledError:
-            pass
 
         # Second message was still attempted despite first failing
         assert comp.send_message_as_user.await_count == 2
@@ -636,7 +634,7 @@ class TestEdgeCases:
 
     @pytest.mark.asyncio
     async def test_start_twice_replaces_component(self):
-        adapter, bus, router = _make_adapter(mappings=[_xmpp_mapping()])
+        adapter, _bus, _router = _make_adapter(mappings=[_xmpp_mapping()])
         env = {
             "XMPP_COMPONENT_JID": "bridge.example.com",
             "XMPP_COMPONENT_SECRET": "s3cr3t",
@@ -675,7 +673,7 @@ class TestEdgeCases:
                          author_display="U", content="hi", message_id="m1")
         await _run_consumer_once(adapter, evt)
         # identity should never be consulted when component is absent
-        adapter._identity.discord_to_xmpp.assert_not_called()
+        cast(MagicMock, adapter._identity).discord_to_xmpp.assert_not_called()
 
     # --- Outbound consumer: xmpp_msg_id is None (send returns None) ---
 
