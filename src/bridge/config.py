@@ -146,6 +146,19 @@ class Config:
         return str(self._data.get("irc_sasl_password", ""))
 
     @property
+    def irc_puppet_ping_interval(self) -> int:
+        """Seconds between keep-alive PINGs sent by idle puppets."""
+        return int(self._data.get("irc_puppet_ping_interval", 120))
+
+    @property
+    def irc_puppet_prejoin_commands(self) -> list[str]:
+        """Raw IRC commands to send after puppet connects (e.g. 'MODE {nick} +D')."""
+        val = self._data.get("irc_puppet_prejoin_commands")
+        if isinstance(val, list):
+            return [str(c) for c in val]
+        return []
+
+    @property
     def content_filter_regex(self) -> list[str]:
         """Regex patterns; messages matching any are not bridged."""
         val = self._data.get("content_filter_regex")
