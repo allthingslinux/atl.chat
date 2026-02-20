@@ -15,7 +15,7 @@ from bridge.adapters.irc_puppet import IRCPuppet, IRCPuppetManager
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _make_manager(irc_nick: str | None = "puppet_nick") -> IRCPuppetManager:
+def _make_manager(irc_nick: str | None = "puppet_nick", ping_interval: int = 120, prejoin_commands: list[str] | None = None) -> IRCPuppetManager:
     identity = AsyncMock()
     identity.discord_to_irc = AsyncMock(return_value=irc_nick)
     return IRCPuppetManager(
@@ -26,6 +26,8 @@ def _make_manager(irc_nick: str | None = "puppet_nick") -> IRCPuppetManager:
         port=6697,
         tls=True,
         idle_timeout_hours=1,
+        ping_interval=ping_interval,
+        prejoin_commands=prejoin_commands,
     )
 
 
@@ -58,6 +60,60 @@ class TestIRCPuppet:
         puppet.touch()
         assert puppet.last_activity > before
 
+    def test_default_ping_interval(self):
+        puppet = IRCPuppet("nick", "d1")
+        assert puppet._ping_interval == 120
+
+    def test_custom_ping_interval(self):
+        puppet = IRCPuppet("nick", "d1", ping_interval=60)
+        assert puppet._ping_interval == 60
+
+    def test_default_prejoin_commands_empty(self):
+        puppet = IRCPuppet("nick", "d1")
+        assert puppet._prejoin_commands == []
+
+    def test_custom_prejoin_commands(self):
+        cmds = ["MODE {nick} +D"]
+        puppet = IRCPuppet("nick", "d1", prejoin_commands=cmds)
+        assert puppet._prejoin_commands == cmds
+
+    @pytest.mark.asyncio
+    async def test_on_connect_sends_prejoin_commands_with_nick_substitution(self):
+        puppet = IRCPuppet("mynick", "d1", prejoin_commands=["MODE {nick} +D", "PRIVMSG NickServ IDENTIFY pass"])
+        puppet.rawmsg = AsyncMock()
+        with patch.object(type(puppet).__bases__[0], "on_connect", new=AsyncMock()):
+            await puppet.on_connect()
+        assert puppet.rawmsg.await_count == 2
+        calls = [c.args for c in puppet.rawmsg.await_args_list]
+        assert calls[0] == ("MODE", "mynick +D")
+        assert calls[1] == ("PRIVMSG", "NickServ IDENTIFY pass")
+
+    @pytest.mark.asyncio
+    async def test_on_connect_no_prejoin_commands_sends_nothing(self):
+        puppet = IRCPuppet("mynick", "d1")
+        puppet.rawmsg = AsyncMock()
+        with patch.object(type(puppet).__bases__[0], "on_connect", new=AsyncMock()):
+            await puppet.on_connect()
+        puppet.rawmsg.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_on_connect_starts_pinger_task(self):
+        puppet = IRCPuppet("mynick", "d1", ping_interval=120)
+        puppet.rawmsg = AsyncMock()
+        with patch.object(type(puppet).__bases__[0], "on_connect", new=AsyncMock()):
+            await puppet.on_connect()
+        assert puppet._pinger_task is not None
+        puppet._pinger_task.cancel()
+
+    @pytest.mark.asyncio
+    async def test_pinger_sends_ping_after_interval(self):
+        puppet = IRCPuppet("mynick", "d1", ping_interval=1)
+        puppet.rawmsg = MagicMock()
+        pinger = asyncio.create_task(puppet._pinger())
+        await asyncio.sleep(1.1)
+        pinger.cancel()
+        puppet.rawmsg.assert_called_with("PING", "keep-alive")
+
 
 # ---------------------------------------------------------------------------
 # get_or_create_puppet
@@ -84,7 +140,7 @@ class TestGetOrCreatePuppet:
         manager = _make_manager(irc_nick="mynick")
         mock_puppet = _mock_puppet()
 
-        with patch("bridge.adapters.irc_puppet.IRCPuppet", return_value=mock_puppet):
+        with patch("bridge.adapters.irc_puppet.IRCPuppet", return_value=mock_puppet) as MockPuppet:
             result = await manager.get_or_create_puppet("d1")
 
         assert result is mock_puppet
@@ -92,6 +148,17 @@ class TestGetOrCreatePuppet:
             hostname="irc.libera.chat", port=6697, tls=True
         )
         assert "d1" in manager._puppets
+
+    @pytest.mark.asyncio
+    async def test_puppet_created_with_ping_interval_and_prejoin_commands(self):
+        cmds = ["MODE {nick} +D"]
+        manager = _make_manager(irc_nick="mynick", ping_interval=60, prejoin_commands=cmds)
+        mock_puppet = _mock_puppet()
+
+        with patch("bridge.adapters.irc_puppet.IRCPuppet", return_value=mock_puppet) as MockPuppet:
+            await manager.get_or_create_puppet("d1")
+
+        MockPuppet.assert_called_once_with("mynick", "d1", ping_interval=60, prejoin_commands=cmds)
 
     @pytest.mark.asyncio
     async def test_removes_puppet_on_connect_failure(self):
