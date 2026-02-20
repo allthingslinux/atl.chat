@@ -121,6 +121,18 @@ class TestIrcToDiscord:
         text = "https://example.com/foo_bar"
         assert "\\" not in irc_to_discord(text)
 
+    def test_reset_while_underline_closes_underline(self):
+        # RESET (\x0F) while underline is active should close it (line 100)
+        result = irc_to_discord("\x1funder\x0fafter")
+        assert result == "__under__after"
+
+    def test_url_at_end_of_string_no_trailing_text(self):
+        # URL at end: last_end == len(content), trailing branch not taken (line 36)
+        text = "see https://example.com"
+        result = irc_to_discord(text)
+        assert "https://example.com" in result
+        assert result.endswith("https://example.com")
+
 
 class TestSplitIrcMessage:
     """Test IRC message splitting."""
@@ -174,6 +186,17 @@ class TestSplitIrcMessage:
         assert "".join(chunks) == content
         for c in chunks:
             assert len(c.encode("utf-8")) <= 50
+
+    def test_multibyte_char_at_chunk_boundary_not_split(self):
+        # 3-byte UTF-8 char (\u4e2d) placed so it straddles the max_bytes boundary
+        # The splitter must back up to avoid splitting mid-char
+        prefix = "a" * 49  # 49 bytes
+        content = prefix + "\u4e2d" + "b"  # 49 + 3 + 1 = 53 bytes
+        chunks = split_irc_message(content, max_bytes=50)
+        for c in chunks:
+            c.encode("utf-8")  # must not raise — no split mid-char
+            assert len(c.encode("utf-8")) <= 50
+        assert "".join(chunks) == content
 
     def test_splits_at_newline(self):
         content = "a" * 60 + "\n" + "b" * 60
