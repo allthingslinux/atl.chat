@@ -138,7 +138,6 @@ class TestOnGroupchatMessage:
         comp = make_component(router=router, bus=bus)
 
         replace_plugin = MockPlugin({"id": "orig-id"})
-        msg = MockMsg("room@conf.example.com/nick", plugins={"replace": replace_plugin})
         class MsgWithReplace(MockMsg):
             def __getitem__(self, key):
                 if key == "replace":
