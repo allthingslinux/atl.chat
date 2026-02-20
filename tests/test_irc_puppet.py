@@ -8,9 +8,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from bridge.adapters.irc_puppet import IRCPuppet, IRCPuppetManager
 from bridge.adapters.irc_msgid import MessageIDTracker
-
+from bridge.adapters.irc_puppet import IRCPuppet, IRCPuppetManager
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -353,10 +352,9 @@ class TestPuppetEdgeCases:
         stop_task = asyncio.create_task(manager.stop())
         send_task.cancel()
         await asyncio.gather(stop_task, return_exceptions=True)
-        try:
+        import contextlib
+        with contextlib.suppress(asyncio.CancelledError):
             await send_task
-        except asyncio.CancelledError:
-            pass
 
         mock_puppet.disconnect.assert_awaited_once()
 
