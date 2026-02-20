@@ -119,6 +119,7 @@ norecursedirs = [
     "dist",
     ".pytest_cache",
     ".ruff_cache",
+    ".hypothesis",
 ]
 markers = [
     "unit: Unit tests with isolated components",
