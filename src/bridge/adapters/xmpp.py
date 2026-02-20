@@ -29,7 +29,7 @@ class XMPPAdapter:
         self._bus = bus
         self._router = router
         self._identity = identity_resolver
-        self._outbound: asyncio.Queue[MessageOut | MessageDeleteOut] = asyncio.Queue()
+        self._outbound: asyncio.Queue[MessageOut | MessageDeleteOut | ReactionOut] = asyncio.Queue()
         self._send_lock = asyncio.Lock()
         self._component: XMPPComponent | None = None
         self._consumer_task: asyncio.Task | None = None
