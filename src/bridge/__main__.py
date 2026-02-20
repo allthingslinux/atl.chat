@@ -119,8 +119,12 @@ def main() -> None:
         len(router.all_mappings()),
     )
 
-    # Run async main
-    asyncio.run(_run(bus, router, identity_resolver))
+    # Run async main (uvloop if available for better I/O throughput)
+    try:
+        import uvloop
+        uvloop.run(_run(bus, router, identity_resolver))
+    except ImportError:
+        asyncio.run(_run(bus, router, identity_resolver))
 
 
 def _get_portal_url() -> str | None:
