@@ -773,6 +773,11 @@ name = "upload." .. domain
 http_external_url = Lua.os.getenv("PROSODY_UPLOAD_EXTERNAL_URL") or
                         ("https://upload." .. domain .. "/")
 
+-- ATL Bridge external component (XEP-0114)
+-- Discord-IRC-XMPP multi-presence bridge
+Component("bridge." .. domain)
+    component_secret = Lua.os.getenv("XMPP_COMPONENT_SECRET") or "changeme"
+
 -- SOCKS5 Proxy component
 Component("proxy." .. domain) "proxy65"
 ssl = {
