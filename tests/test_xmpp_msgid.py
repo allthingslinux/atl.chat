@@ -135,3 +135,29 @@ class TestXMPPMessageIDTracking:
             assert tracker.get_discord_id("xmpp-fresh") == "discord-fresh"
             assert tracker.get_xmpp_id("discord-fresh") == "xmpp-fresh"
             assert tracker.get_room_jid("discord-fresh") == "room@conf.example.com"
+
+    def test_store_overwrites_existing_mapping(self) -> None:
+        """Storing the same xmpp_id again replaces the old mapping in both dicts."""
+        tracker = XMPPMessageIDTracker()
+        tracker.store("xmpp-1", "discord-old", "room@conf.example.com")
+        tracker.store("xmpp-1", "discord-new", "room@conf.example.com")
+        assert tracker.get_discord_id("xmpp-1") == "discord-new"
+        assert tracker.get_xmpp_id("discord-new") == "xmpp-1"
+
+    def test_expired_room_jid_returns_none(self) -> None:
+        """get_room_jid returns None for expired entries."""
+        with patch("bridge.adapters.xmpp_msgid.time") as mock_time:
+            mock_time.time.side_effect = [1000.0, 1002.0]
+            tracker = XMPPMessageIDTracker(ttl_seconds=1)
+            tracker.store("xmpp-1", "discord-1", "room@conf.example.com")
+            assert tracker.get_room_jid("discord-1") is None
+
+    def test_cleanup_removes_from_both_dicts(self) -> None:
+        """_cleanup removes expired entries from both _xmpp_to_discord and _discord_to_xmpp."""
+        with patch("bridge.adapters.xmpp_msgid.time") as mock_time:
+            mock_time.time.side_effect = [1000.0, 1002.0]
+            tracker = XMPPMessageIDTracker(ttl_seconds=1)
+            tracker.store("xmpp-1", "discord-1", "room@conf.example.com")
+            tracker._cleanup()
+            assert "xmpp-1" not in tracker._xmpp_to_discord
+            assert "discord-1" not in tracker._discord_to_xmpp
