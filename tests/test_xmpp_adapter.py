@@ -17,6 +17,7 @@ from bridge.gateway.router import ChannelMapping, XmppTarget
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_adapter(
     mappings: list[ChannelMapping] | None = None,
     identity_nick: str | None = "xmpp_user",
@@ -59,6 +60,7 @@ def _mock_component(xmpp_id_for: str | None = "xmpp-msg-1") -> MagicMock:
 # name
 # ---------------------------------------------------------------------------
 
+
 def test_name():
     adapter, _, _ = _make_adapter()
     assert adapter.name == "xmpp"
@@ -68,17 +70,30 @@ def test_name():
 # accept_event
 # ---------------------------------------------------------------------------
 
+
 class TestAcceptEvent:
     def test_accepts_message_out_xmpp(self):
         adapter, _, _ = _make_adapter()
-        evt = MessageOut(target_origin="xmpp", channel_id="111", author_id="u1",
-                         author_display="U", content="hi", message_id="m1")
+        evt = MessageOut(
+            target_origin="xmpp",
+            channel_id="111",
+            author_id="u1",
+            author_display="U",
+            content="hi",
+            message_id="m1",
+        )
         assert adapter.accept_event("discord", evt) is True
 
     def test_rejects_message_out_other_origin(self):
         adapter, _, _ = _make_adapter()
-        evt = MessageOut(target_origin="irc", channel_id="111", author_id="u1",
-                         author_display="U", content="hi", message_id="m1")
+        evt = MessageOut(
+            target_origin="irc",
+            channel_id="111",
+            author_id="u1",
+            author_display="U",
+            content="hi",
+            message_id="m1",
+        )
         assert adapter.accept_event("discord", evt) is False
 
     def test_accepts_message_delete_out_xmpp(self):
@@ -93,14 +108,26 @@ class TestAcceptEvent:
 
     def test_accepts_reaction_out_xmpp(self):
         adapter, _, _ = _make_adapter()
-        evt = ReactionOut(target_origin="xmpp", channel_id="111", message_id="m1",
-                          emoji="👍", author_id="u1", author_display="U")
+        evt = ReactionOut(
+            target_origin="xmpp",
+            channel_id="111",
+            message_id="m1",
+            emoji="👍",
+            author_id="u1",
+            author_display="U",
+        )
         assert adapter.accept_event("discord", evt) is True
 
     def test_rejects_reaction_out_other_origin(self):
         adapter, _, _ = _make_adapter()
-        evt = ReactionOut(target_origin="irc", channel_id="111", message_id="m1",
-                          emoji="👍", author_id="u1", author_display="U")
+        evt = ReactionOut(
+            target_origin="irc",
+            channel_id="111",
+            message_id="m1",
+            emoji="👍",
+            author_id="u1",
+            author_display="U",
+        )
         assert adapter.accept_event("discord", evt) is False
 
     def test_rejects_unknown_event(self):
@@ -112,11 +139,18 @@ class TestAcceptEvent:
 # push_event
 # ---------------------------------------------------------------------------
 
+
 class TestPushEvent:
     def test_queues_message_out(self):
         adapter, _, _ = _make_adapter()
-        evt = MessageOut(target_origin="xmpp", channel_id="111", author_id="u1",
-                         author_display="U", content="hi", message_id="m1")
+        evt = MessageOut(
+            target_origin="xmpp",
+            channel_id="111",
+            author_id="u1",
+            author_display="U",
+            content="hi",
+            message_id="m1",
+        )
         adapter.push_event("discord", evt)
         assert adapter._outbound.qsize() == 1
 
@@ -128,8 +162,14 @@ class TestPushEvent:
 
     def test_queues_reaction_out(self):
         adapter, _, _ = _make_adapter()
-        evt = ReactionOut(target_origin="xmpp", channel_id="111", message_id="m1",
-                          emoji="👍", author_id="u1", author_display="U")
+        evt = ReactionOut(
+            target_origin="xmpp",
+            channel_id="111",
+            message_id="m1",
+            emoji="👍",
+            author_id="u1",
+            author_display="U",
+        )
         adapter.push_event("discord", evt)
         assert adapter._outbound.qsize() == 1
 
@@ -143,12 +183,15 @@ class TestPushEvent:
 # _handle_delete_out
 # ---------------------------------------------------------------------------
 
+
 class TestHandleDeleteOut:
     @pytest.mark.asyncio
     async def test_no_component_returns_early(self):
         adapter, _, router = _make_adapter()
         router.get_mapping_for_discord.return_value = _xmpp_mapping()
-        evt = MessageDeleteOut(target_origin="xmpp", channel_id="111", message_id="m1", author_id="u1")
+        evt = MessageDeleteOut(
+            target_origin="xmpp", channel_id="111", message_id="m1", author_id="u1"
+        )
         # _component is None by default
         await adapter._handle_delete_out(evt)
         # identity should never be consulted when component is absent
@@ -159,7 +202,9 @@ class TestHandleDeleteOut:
         adapter, _, router = _make_adapter()
         adapter._component = _mock_component()
         router.get_mapping_for_discord.return_value = None
-        evt = MessageDeleteOut(target_origin="xmpp", channel_id="111", message_id="m1", author_id="u1")
+        evt = MessageDeleteOut(
+            target_origin="xmpp", channel_id="111", message_id="m1", author_id="u1"
+        )
         await adapter._handle_delete_out(evt)
         adapter._component.send_retraction_as_user.assert_not_called()
 
@@ -169,7 +214,9 @@ class TestHandleDeleteOut:
         comp = _mock_component(xmpp_id_for=None)
         adapter._component = comp
         router.get_mapping_for_discord.return_value = _xmpp_mapping()
-        evt = MessageDeleteOut(target_origin="xmpp", channel_id="111", message_id="m1", author_id="u1")
+        evt = MessageDeleteOut(
+            target_origin="xmpp", channel_id="111", message_id="m1", author_id="u1"
+        )
         await adapter._handle_delete_out(evt)
         comp.send_retraction_as_user.assert_not_called()
 
@@ -179,7 +226,9 @@ class TestHandleDeleteOut:
         comp = _mock_component()
         adapter._component = comp
         router.get_mapping_for_discord.return_value = _xmpp_mapping()
-        evt = MessageDeleteOut(target_origin="xmpp", channel_id="111", message_id="m1", author_id="u1")
+        evt = MessageDeleteOut(
+            target_origin="xmpp", channel_id="111", message_id="m1", author_id="u1"
+        )
         await adapter._handle_delete_out(evt)
         comp.send_retraction_as_user.assert_awaited_once_with(
             "u1", "room@conf.example.com", "xmpp-msg-1", "xmpp_nick"
@@ -191,7 +240,9 @@ class TestHandleDeleteOut:
         comp = _mock_component()
         adapter._component = comp
         router.get_mapping_for_discord.return_value = _xmpp_mapping()
-        evt = MessageDeleteOut(target_origin="xmpp", channel_id="111", message_id="m1", author_id="u1")
+        evt = MessageDeleteOut(
+            target_origin="xmpp", channel_id="111", message_id="m1", author_id="u1"
+        )
         await adapter._handle_delete_out(evt)
         comp.send_retraction_as_user.assert_awaited_once_with(
             "u1", "room@conf.example.com", "xmpp-msg-1", "u1"
@@ -203,7 +254,9 @@ class TestHandleDeleteOut:
         comp = _mock_component()
         adapter._component = comp
         router.get_mapping_for_discord.return_value = _xmpp_mapping()
-        evt = MessageDeleteOut(target_origin="xmpp", channel_id="111", message_id="m1", author_id="")
+        evt = MessageDeleteOut(
+            target_origin="xmpp", channel_id="111", message_id="m1", author_id=""
+        )
         await adapter._handle_delete_out(evt)
         comp.send_retraction_as_user.assert_awaited_once_with(
             "unknown", "room@conf.example.com", "xmpp-msg-1", "bridge"
@@ -214,13 +267,20 @@ class TestHandleDeleteOut:
 # _handle_reaction_out
 # ---------------------------------------------------------------------------
 
+
 class TestHandleReactionOut:
     @pytest.mark.asyncio
     async def test_no_component_returns_early(self):
         adapter, _, router = _make_adapter()
         router.get_mapping_for_discord.return_value = _xmpp_mapping()
-        evt = ReactionOut(target_origin="xmpp", channel_id="111", message_id="m1",
-                          emoji="👍", author_id="u1", author_display="User")
+        evt = ReactionOut(
+            target_origin="xmpp",
+            channel_id="111",
+            message_id="m1",
+            emoji="👍",
+            author_id="u1",
+            author_display="User",
+        )
         await adapter._handle_reaction_out(evt)
         cast(MagicMock, adapter._identity).discord_to_xmpp.assert_not_called()
 
@@ -229,8 +289,14 @@ class TestHandleReactionOut:
         adapter, _, router = _make_adapter()
         adapter._component = _mock_component()
         router.get_mapping_for_discord.return_value = None
-        evt = ReactionOut(target_origin="xmpp", channel_id="111", message_id="m1",
-                          emoji="👍", author_id="u1", author_display="User")
+        evt = ReactionOut(
+            target_origin="xmpp",
+            channel_id="111",
+            message_id="m1",
+            emoji="👍",
+            author_id="u1",
+            author_display="User",
+        )
         await adapter._handle_reaction_out(evt)
         adapter._component.send_reaction_as_user.assert_not_called()
 
@@ -240,8 +306,14 @@ class TestHandleReactionOut:
         comp = _mock_component(xmpp_id_for=None)
         adapter._component = comp
         router.get_mapping_for_discord.return_value = _xmpp_mapping()
-        evt = ReactionOut(target_origin="xmpp", channel_id="111", message_id="m1",
-                          emoji="👍", author_id="u1", author_display="User")
+        evt = ReactionOut(
+            target_origin="xmpp",
+            channel_id="111",
+            message_id="m1",
+            emoji="👍",
+            author_id="u1",
+            author_display="User",
+        )
         await adapter._handle_reaction_out(evt)
         comp.send_reaction_as_user.assert_not_called()
 
@@ -251,8 +323,14 @@ class TestHandleReactionOut:
         comp = _mock_component()
         adapter._component = comp
         router.get_mapping_for_discord.return_value = _xmpp_mapping()
-        evt = ReactionOut(target_origin="xmpp", channel_id="111", message_id="m1",
-                          emoji="👍", author_id="u1", author_display="User")
+        evt = ReactionOut(
+            target_origin="xmpp",
+            channel_id="111",
+            message_id="m1",
+            emoji="👍",
+            author_id="u1",
+            author_display="User",
+        )
         await adapter._handle_reaction_out(evt)
         comp.send_reaction_as_user.assert_awaited_once_with(
             "u1", "room@conf.example.com", "xmpp-msg-1", "👍", "xmpp_nick"
@@ -264,8 +342,14 @@ class TestHandleReactionOut:
         comp = _mock_component()
         adapter._component = comp
         router.get_mapping_for_discord.return_value = _xmpp_mapping()
-        evt = ReactionOut(target_origin="xmpp", channel_id="111", message_id="m1",
-                          emoji="👍", author_id="u1", author_display="DisplayUser")
+        evt = ReactionOut(
+            target_origin="xmpp",
+            channel_id="111",
+            message_id="m1",
+            emoji="👍",
+            author_id="u1",
+            author_display="DisplayUser",
+        )
         await adapter._handle_reaction_out(evt)
         comp.send_reaction_as_user.assert_awaited_once_with(
             "u1", "room@conf.example.com", "xmpp-msg-1", "👍", "DisplayUser"
@@ -277,8 +361,14 @@ class TestHandleReactionOut:
         comp = _mock_component()
         adapter._component = comp
         router.get_mapping_for_discord.return_value = _xmpp_mapping()
-        evt = ReactionOut(target_origin="xmpp", channel_id="111", message_id="m1",
-                          emoji="👍", author_id="", author_display="")
+        evt = ReactionOut(
+            target_origin="xmpp",
+            channel_id="111",
+            message_id="m1",
+            emoji="👍",
+            author_id="",
+            author_display="",
+        )
         await adapter._handle_reaction_out(evt)
         comp.send_reaction_as_user.assert_awaited_once_with(
             "unknown", "room@conf.example.com", "xmpp-msg-1", "👍", "bridge"
@@ -289,7 +379,10 @@ class TestHandleReactionOut:
 # _outbound_consumer
 # ---------------------------------------------------------------------------
 
-async def _run_consumer_once(adapter: XMPPAdapter, evt: MessageOut | MessageDeleteOut | ReactionOut) -> None:
+
+async def _run_consumer_once(
+    adapter: XMPPAdapter, evt: MessageOut | MessageDeleteOut | ReactionOut
+) -> None:
     """Put one event in the queue, run consumer until queue is drained, then cancel."""
     adapter._outbound.put_nowait(evt)
     task = asyncio.create_task(adapter._outbound_consumer())
@@ -300,6 +393,7 @@ async def _run_consumer_once(adapter: XMPPAdapter, evt: MessageOut | MessageDele
             break
     task.cancel()
     import contextlib
+
     with contextlib.suppress(asyncio.CancelledError):
         await task
 
@@ -312,14 +406,22 @@ class TestOutboundConsumer:
         adapter._component = comp
         router.get_mapping_for_discord.return_value = _xmpp_mapping()
 
-        evt = MessageOut(target_origin="xmpp", channel_id="111", author_id="u1",
-                         author_display="U", content="hello", message_id="m1")
+        evt = MessageOut(
+            target_origin="xmpp",
+            channel_id="111",
+            author_id="u1",
+            author_display="U",
+            content="hello",
+            message_id="m1",
+        )
         await _run_consumer_once(adapter, evt)
 
         comp.send_message_as_user.assert_awaited_once_with(
             "u1", "room@conf.example.com", "hello", "xmpp_nick", reply_to_id=None
         )
-        comp._msgid_tracker.store.assert_called_once_with("xmpp-new-id", "m1", "room@conf.example.com")
+        comp._msgid_tracker.store.assert_called_once_with(
+            "xmpp-new-id", "m1", "room@conf.example.com"
+        )
 
     @pytest.mark.asyncio
     async def test_message_with_avatar_sets_avatar(self):
@@ -328,9 +430,15 @@ class TestOutboundConsumer:
         adapter._component = comp
         router.get_mapping_for_discord.return_value = _xmpp_mapping()
 
-        evt = MessageOut(target_origin="xmpp", channel_id="111", author_id="u1",
-                         author_display="U", content="hi", message_id="m1",
-                         avatar_url="https://cdn.example.com/avatar.png")
+        evt = MessageOut(
+            target_origin="xmpp",
+            channel_id="111",
+            author_id="u1",
+            author_display="U",
+            content="hi",
+            message_id="m1",
+            avatar_url="https://cdn.example.com/avatar.png",
+        )
         await _run_consumer_once(adapter, evt)
 
         comp.set_avatar_for_user.assert_awaited_once_with(
@@ -344,8 +452,14 @@ class TestOutboundConsumer:
         adapter._component = comp
         router.get_mapping_for_discord.return_value = _xmpp_mapping()
 
-        evt = MessageOut(target_origin="xmpp", channel_id="111", author_id="u1",
-                         author_display="U", content="hi", message_id="m1")
+        evt = MessageOut(
+            target_origin="xmpp",
+            channel_id="111",
+            author_id="u1",
+            author_display="U",
+            content="hi",
+            message_id="m1",
+        )
         await _run_consumer_once(adapter, evt)
 
         comp.send_message_as_user.assert_awaited_once_with(
@@ -359,9 +473,15 @@ class TestOutboundConsumer:
         adapter._component = comp
         router.get_mapping_for_discord.return_value = _xmpp_mapping()
 
-        evt = MessageOut(target_origin="xmpp", channel_id="111", author_id="u1",
-                         author_display="U", content="edited", message_id="m1",
-                         raw={"is_edit": True})
+        evt = MessageOut(
+            target_origin="xmpp",
+            channel_id="111",
+            author_id="u1",
+            author_display="U",
+            content="edited",
+            message_id="m1",
+            raw={"is_edit": True},
+        )
         await _run_consumer_once(adapter, evt)
 
         comp.send_correction_as_user.assert_awaited_once_with(
@@ -376,9 +496,15 @@ class TestOutboundConsumer:
         adapter._component = comp
         router.get_mapping_for_discord.return_value = _xmpp_mapping()
 
-        evt = MessageOut(target_origin="xmpp", channel_id="111", author_id="u1",
-                         author_display="U", content="edited", message_id="m1",
-                         raw={"is_edit": True})
+        evt = MessageOut(
+            target_origin="xmpp",
+            channel_id="111",
+            author_id="u1",
+            author_display="U",
+            content="edited",
+            message_id="m1",
+            raw={"is_edit": True},
+        )
         await _run_consumer_once(adapter, evt)
 
         comp.send_correction_as_user.assert_not_called()
@@ -391,14 +517,19 @@ class TestOutboundConsumer:
         adapter._component = comp
         router.get_mapping_for_discord.return_value = _xmpp_mapping()
 
-        evt = MessageOut(target_origin="xmpp", channel_id="111", author_id="u1",
-                         author_display="U", content="reply", message_id="m2",
-                         reply_to_id="m1")
+        evt = MessageOut(
+            target_origin="xmpp",
+            channel_id="111",
+            author_id="u1",
+            author_display="U",
+            content="reply",
+            message_id="m2",
+            reply_to_id="m1",
+        )
         await _run_consumer_once(adapter, evt)
 
         comp.send_message_as_user.assert_awaited_once_with(
-            "u1", "room@conf.example.com", "reply", "xmpp_nick",
-            reply_to_id="xmpp-reply-target"
+            "u1", "room@conf.example.com", "reply", "xmpp_nick", reply_to_id="xmpp-reply-target"
         )
 
     @pytest.mark.asyncio
@@ -408,8 +539,14 @@ class TestOutboundConsumer:
         adapter._component = comp
         router.get_mapping_for_discord.return_value = None
 
-        evt = MessageOut(target_origin="xmpp", channel_id="999", author_id="u1",
-                         author_display="U", content="hi", message_id="m1")
+        evt = MessageOut(
+            target_origin="xmpp",
+            channel_id="999",
+            author_id="u1",
+            author_display="U",
+            content="hi",
+            message_id="m1",
+        )
         await _run_consumer_once(adapter, evt)
 
         comp.send_message_as_user.assert_not_called()
@@ -421,7 +558,9 @@ class TestOutboundConsumer:
         adapter._component = comp
         router.get_mapping_for_discord.return_value = _xmpp_mapping()
 
-        evt = MessageDeleteOut(target_origin="xmpp", channel_id="111", message_id="m1", author_id="u1")
+        evt = MessageDeleteOut(
+            target_origin="xmpp", channel_id="111", message_id="m1", author_id="u1"
+        )
         await _run_consumer_once(adapter, evt)
 
         comp.send_retraction_as_user.assert_awaited_once()
@@ -433,8 +572,14 @@ class TestOutboundConsumer:
         adapter._component = comp
         router.get_mapping_for_discord.return_value = _xmpp_mapping()
 
-        evt = ReactionOut(target_origin="xmpp", channel_id="111", message_id="m1",
-                          emoji="❤️", author_id="u1", author_display="U")
+        evt = ReactionOut(
+            target_origin="xmpp",
+            channel_id="111",
+            message_id="m1",
+            emoji="❤️",
+            author_id="u1",
+            author_display="U",
+        )
         await _run_consumer_once(adapter, evt)
 
         comp.send_reaction_as_user.assert_awaited_once()
@@ -443,6 +588,7 @@ class TestOutboundConsumer:
 # ---------------------------------------------------------------------------
 # start
 # ---------------------------------------------------------------------------
+
 
 class TestStart:
     @pytest.mark.asyncio
@@ -511,8 +657,10 @@ class TestStart:
         mock_comp = MagicMock()
         mock_comp.connect = AsyncMock()
 
-        with patch.dict("os.environ", env, clear=True), \
-             patch("bridge.adapters.xmpp.XMPPComponent", return_value=mock_comp):
+        with (
+            patch.dict("os.environ", env, clear=True),
+            patch("bridge.adapters.xmpp.XMPPComponent", return_value=mock_comp),
+        ):
             await adapter.start()
 
         bus.register.assert_called_once_with(adapter)
@@ -532,6 +680,7 @@ class TestStart:
 # ---------------------------------------------------------------------------
 # stop
 # ---------------------------------------------------------------------------
+
 
 class TestStop:
     @pytest.mark.asyncio
@@ -562,6 +711,7 @@ class TestStop:
 # Edge cases / race conditions
 # ---------------------------------------------------------------------------
 
+
 class TestEdgeCases:
     # --- XMPPAdapter: no identity resolver ---
 
@@ -573,7 +723,9 @@ class TestEdgeCases:
         comp = _mock_component()
         adapter._component = comp
         router.get_mapping_for_discord.return_value = _xmpp_mapping()
-        evt = MessageDeleteOut(target_origin="xmpp", channel_id="111", message_id="m1", author_id="u1")
+        evt = MessageDeleteOut(
+            target_origin="xmpp", channel_id="111", message_id="m1", author_id="u1"
+        )
         await adapter._handle_delete_out(evt)
         comp.send_retraction_as_user.assert_not_called()
 
@@ -585,8 +737,14 @@ class TestEdgeCases:
         comp = _mock_component()
         adapter._component = comp
         router.get_mapping_for_discord.return_value = _xmpp_mapping()
-        evt = ReactionOut(target_origin="xmpp", channel_id="111", message_id="m1",
-                          emoji="👍", author_id="u1", author_display="U")
+        evt = ReactionOut(
+            target_origin="xmpp",
+            channel_id="111",
+            message_id="m1",
+            emoji="👍",
+            author_id="u1",
+            author_display="U",
+        )
         await adapter._handle_reaction_out(evt)
         comp.send_reaction_as_user.assert_not_called()
 
@@ -600,10 +758,22 @@ class TestEdgeCases:
         adapter._component = comp
         router.get_mapping_for_discord.return_value = _xmpp_mapping()
 
-        evt1 = MessageOut(target_origin="xmpp", channel_id="111", author_id="u1",
-                          author_display="U", content="first", message_id="m1")
-        evt2 = MessageOut(target_origin="xmpp", channel_id="111", author_id="u1",
-                          author_display="U", content="second", message_id="m2")
+        evt1 = MessageOut(
+            target_origin="xmpp",
+            channel_id="111",
+            author_id="u1",
+            author_display="U",
+            content="first",
+            message_id="m1",
+        )
+        evt2 = MessageOut(
+            target_origin="xmpp",
+            channel_id="111",
+            author_id="u1",
+            author_display="U",
+            content="second",
+            message_id="m2",
+        )
         adapter._outbound.put_nowait(evt1)
         adapter._outbound.put_nowait(evt2)
 
@@ -614,6 +784,7 @@ class TestEdgeCases:
                 break
         task.cancel()
         import contextlib
+
         with contextlib.suppress(asyncio.CancelledError):
             await task
 
@@ -625,8 +796,14 @@ class TestEdgeCases:
     def test_push_event_after_stop_does_not_raise(self):
         adapter, _, _ = _make_adapter()
         # No consumer running, but push should not raise
-        evt = MessageOut(target_origin="xmpp", channel_id="111", author_id="u1",
-                         author_display="U", content="hi", message_id="m1")
+        evt = MessageOut(
+            target_origin="xmpp",
+            channel_id="111",
+            author_id="u1",
+            author_display="U",
+            content="hi",
+            message_id="m1",
+        )
         adapter.push_event("discord", evt)
         assert adapter._outbound.qsize() == 1
 
@@ -645,8 +822,10 @@ class TestEdgeCases:
         comp2.connect = AsyncMock()
         components = [comp1, comp2]
 
-        with patch.dict("os.environ", env, clear=True), \
-             patch("bridge.adapters.xmpp.XMPPComponent", side_effect=components):
+        with (
+            patch.dict("os.environ", env, clear=True),
+            patch("bridge.adapters.xmpp.XMPPComponent", side_effect=components),
+        ):
             await adapter.start()
             first_task = adapter._consumer_task
             await adapter.start()
@@ -669,8 +848,14 @@ class TestEdgeCases:
         # _component stays None
         router.get_mapping_for_discord.return_value = _xmpp_mapping()
 
-        evt = MessageOut(target_origin="xmpp", channel_id="111", author_id="u1",
-                         author_display="U", content="hi", message_id="m1")
+        evt = MessageOut(
+            target_origin="xmpp",
+            channel_id="111",
+            author_id="u1",
+            author_display="U",
+            content="hi",
+            message_id="m1",
+        )
         await _run_consumer_once(adapter, evt)
         # identity should never be consulted when component is absent
         cast(MagicMock, adapter._identity).discord_to_xmpp.assert_not_called()
@@ -685,8 +870,14 @@ class TestEdgeCases:
         adapter._component = comp
         router.get_mapping_for_discord.return_value = _xmpp_mapping()
 
-        evt = MessageOut(target_origin="xmpp", channel_id="111", author_id="u1",
-                         author_display="U", content="hi", message_id="m1")
+        evt = MessageOut(
+            target_origin="xmpp",
+            channel_id="111",
+            author_id="u1",
+            author_display="U",
+            content="hi",
+            message_id="m1",
+        )
         await _run_consumer_once(adapter, evt)
 
         # store should NOT be called when xmpp_msg_id is None
@@ -697,11 +888,13 @@ class TestEdgeCases:
 # _outbound_consumer: mapping exists but xmpp leg absent (line 63 guard)
 # ---------------------------------------------------------------------------
 
+
 class TestConsumerGuardConditions:
     @pytest.mark.asyncio
     async def test_consumer_skips_when_mapping_has_no_xmpp_target(self):
         """mapping exists but mapping.xmpp is None → guard on line 63 fails."""
         from bridge.gateway.router import IrcTarget
+
         adapter, _, router = _make_adapter(identity_nick="nick")
         comp = _mock_component()
         adapter._component = comp
@@ -713,8 +906,14 @@ class TestConsumerGuardConditions:
         )
         router.get_mapping_for_discord.return_value = irc_only
 
-        evt = MessageOut(target_origin="xmpp", channel_id="111", author_id="u1",
-                         author_display="U", content="hi", message_id="m1")
+        evt = MessageOut(
+            target_origin="xmpp",
+            channel_id="111",
+            author_id="u1",
+            author_display="U",
+            content="hi",
+            message_id="m1",
+        )
         await _run_consumer_once(adapter, evt)
         comp.send_message_as_user.assert_not_called()
 
@@ -727,7 +926,13 @@ class TestConsumerGuardConditions:
         router = adapter._router
         router.get_mapping_for_discord.return_value = _xmpp_mapping()  # type: ignore[attr-defined]
 
-        evt = MessageOut(target_origin="xmpp", channel_id="111", author_id="u1",
-                         author_display="U", content="hi", message_id="m1")
+        evt = MessageOut(
+            target_origin="xmpp",
+            channel_id="111",
+            author_id="u1",
+            author_display="U",
+            content="hi",
+            message_id="m1",
+        )
         await _run_consumer_once(adapter, evt)
         comp.send_message_as_user.assert_not_called()

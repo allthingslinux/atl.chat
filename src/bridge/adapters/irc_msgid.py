@@ -51,9 +51,7 @@ class MessageIDTracker:
 
         # Clean IRC -> Discord
         expired_irc = [
-            msgid
-            for msgid, mapping in self._irc_to_discord.items()
-            if mapping.timestamp < cutoff
+            msgid for msgid, mapping in self._irc_to_discord.items() if mapping.timestamp < cutoff
         ]
         for msgid in expired_irc:
             del self._irc_to_discord[msgid]

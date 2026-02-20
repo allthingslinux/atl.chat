@@ -86,25 +86,38 @@ class XMPPAdapter:
                         is_edit = evt.raw.get("is_edit", False)
                         if is_edit:
                             # Look up original XMPP message ID
-                            original_xmpp_id = self._component._msgid_tracker.get_xmpp_id(evt.message_id)
+                            original_xmpp_id = self._component._msgid_tracker.get_xmpp_id(
+                                evt.message_id
+                            )
                             if original_xmpp_id:
                                 await self._component.send_correction_as_user(
                                     evt.author_id, muc_jid, evt.content, nick, original_xmpp_id
                                 )
                             else:
-                                logger.warning("Cannot send XMPP correction: original message ID not found for {}", evt.message_id)
+                                logger.warning(
+                                    "Cannot send XMPP correction: original message ID not found for {}",
+                                    evt.message_id,
+                                )
                         else:
                             # Look up reply target XMPP message ID if replying
                             reply_to_xmpp_id = None
                             if evt.reply_to_id:
-                                reply_to_xmpp_id = self._component._msgid_tracker.get_xmpp_id(evt.reply_to_id)
+                                reply_to_xmpp_id = self._component._msgid_tracker.get_xmpp_id(
+                                    evt.reply_to_id
+                                )
 
                             # Send new message and track ID
                             xmpp_msg_id = await self._component.send_message_as_user(
-                                evt.author_id, muc_jid, evt.content, nick, reply_to_id=reply_to_xmpp_id
+                                evt.author_id,
+                                muc_jid,
+                                evt.content,
+                                nick,
+                                reply_to_id=reply_to_xmpp_id,
                             )
                             if xmpp_msg_id:
-                                self._component._msgid_tracker.store(xmpp_msg_id, evt.message_id, muc_jid)
+                                self._component._msgid_tracker.store(
+                                    xmpp_msg_id, evt.message_id, muc_jid
+                                )
 
                 await asyncio.sleep(0.25)
             except asyncio.CancelledError:
@@ -163,9 +176,7 @@ class XMPPAdapter:
         port = _get_component_port()
 
         if not component_jid or not secret or not server:
-            logger.warning(
-                "XMPP component config incomplete; XMPP adapter disabled"
-            )
+            logger.warning("XMPP component config incomplete; XMPP adapter disabled")
             return
 
         if not self._identity:

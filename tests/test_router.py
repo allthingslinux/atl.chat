@@ -1,6 +1,5 @@
 """Test channel router and mappings."""
 
-
 from bridge.gateway.router import ChannelRouter
 
 
@@ -18,7 +17,12 @@ class TestChannelRouter:
             "mappings": [
                 {
                     "discord_channel_id": "123",
-                    "irc": {"server": "irc.libera.chat", "channel": "#test", "port": 6667, "tls": False},
+                    "irc": {
+                        "server": "irc.libera.chat",
+                        "channel": "#test",
+                        "port": 6667,
+                        "tls": False,
+                    },
                     "xmpp": {"muc_jid": "test@conference.example.com"},
                 }
             ]
@@ -43,10 +47,16 @@ class TestChannelRouter:
 
     def test_irc_defaults_port_and_tls(self):
         router = ChannelRouter()
-        router.load_from_config({
-            "mappings": [{"discord_channel_id": "123",
-                          "irc": {"server": "irc.libera.chat", "channel": "#test"}}]
-        })
+        router.load_from_config(
+            {
+                "mappings": [
+                    {
+                        "discord_channel_id": "123",
+                        "irc": {"server": "irc.libera.chat", "channel": "#test"},
+                    }
+                ]
+            }
+        )
         irc = router.all_mappings()[0].irc
         assert irc is not None
         assert irc.port == 6667
@@ -54,30 +64,28 @@ class TestChannelRouter:
 
     def test_irc_non_dict_value_treated_as_absent(self):
         router = ChannelRouter()
-        router.load_from_config({
-            "mappings": [{"discord_channel_id": "123", "irc": "not-a-dict"}]
-        })
+        router.load_from_config({"mappings": [{"discord_channel_id": "123", "irc": "not-a-dict"}]})
         assert router.all_mappings()[0].irc is None
 
     def test_xmpp_without_muc_jid_treated_as_absent(self):
         router = ChannelRouter()
-        router.load_from_config({
-            "mappings": [{"discord_channel_id": "123", "xmpp": {"other_key": "value"}}]
-        })
+        router.load_from_config(
+            {"mappings": [{"discord_channel_id": "123", "xmpp": {"other_key": "value"}}]}
+        )
         assert router.all_mappings()[0].xmpp is None
 
     def test_xmpp_non_dict_value_treated_as_absent(self):
         router = ChannelRouter()
-        router.load_from_config({
-            "mappings": [{"discord_channel_id": "123", "xmpp": "not-a-dict"}]
-        })
+        router.load_from_config({"mappings": [{"discord_channel_id": "123", "xmpp": "not-a-dict"}]})
         assert router.all_mappings()[0].xmpp is None
 
     def test_discord_channel_id_coerced_to_string(self):
         router = ChannelRouter()
-        router.load_from_config({
-            "mappings": [{"discord_channel_id": 123456}]  # integer
-        })
+        router.load_from_config(
+            {
+                "mappings": [{"discord_channel_id": 123456}]  # integer
+            }
+        )
         assert router.all_mappings()[0].discord_channel_id == "123456"
 
     def test_load_config_called_twice_replaces_mappings(self):
@@ -110,34 +118,51 @@ class TestChannelRouter:
 
     def test_get_mapping_for_irc(self):
         router = ChannelRouter()
-        router.load_from_config({
-            "mappings": [{
-                "discord_channel_id": "123",
-                "irc": {"server": "irc.libera.chat", "channel": "#test", "port": 6697, "tls": True},
-            }]
-        })
+        router.load_from_config(
+            {
+                "mappings": [
+                    {
+                        "discord_channel_id": "123",
+                        "irc": {
+                            "server": "irc.libera.chat",
+                            "channel": "#test",
+                            "port": 6697,
+                            "tls": True,
+                        },
+                    }
+                ]
+            }
+        )
         mapping = router.get_mapping_for_irc("irc.libera.chat", "#test")
         assert mapping is not None
         assert mapping.discord_channel_id == "123"
 
     def test_get_mapping_for_irc_wrong_server(self):
         router = ChannelRouter()
-        router.load_from_config({
-            "mappings": [{
-                "discord_channel_id": "123",
-                "irc": {"server": "irc.libera.chat", "channel": "#test"},
-            }]
-        })
+        router.load_from_config(
+            {
+                "mappings": [
+                    {
+                        "discord_channel_id": "123",
+                        "irc": {"server": "irc.libera.chat", "channel": "#test"},
+                    }
+                ]
+            }
+        )
         assert router.get_mapping_for_irc("irc.other.net", "#test") is None
 
     def test_get_mapping_for_irc_wrong_channel(self):
         router = ChannelRouter()
-        router.load_from_config({
-            "mappings": [{
-                "discord_channel_id": "123",
-                "irc": {"server": "irc.libera.chat", "channel": "#test"},
-            }]
-        })
+        router.load_from_config(
+            {
+                "mappings": [
+                    {
+                        "discord_channel_id": "123",
+                        "irc": {"server": "irc.libera.chat", "channel": "#test"},
+                    }
+                ]
+            }
+        )
         assert router.get_mapping_for_irc("irc.libera.chat", "#other") is None
 
     def test_get_mapping_for_irc_on_mapping_without_irc(self):
@@ -147,28 +172,46 @@ class TestChannelRouter:
 
     def test_get_mapping_for_irc_not_found(self):
         router = ChannelRouter()
-        router.load_from_config({
-            "mappings": [{"discord_channel_id": "123",
-                          "irc": {"server": "irc.libera.chat", "channel": "#test"}}]
-        })
+        router.load_from_config(
+            {
+                "mappings": [
+                    {
+                        "discord_channel_id": "123",
+                        "irc": {"server": "irc.libera.chat", "channel": "#test"},
+                    }
+                ]
+            }
+        )
         assert router.get_mapping_for_irc("irc.example.com", "#other") is None
 
     def test_get_mapping_for_xmpp(self):
         router = ChannelRouter()
-        router.load_from_config({
-            "mappings": [{"discord_channel_id": "123",
-                          "xmpp": {"muc_jid": "test@conference.example.com"}}]
-        })
+        router.load_from_config(
+            {
+                "mappings": [
+                    {
+                        "discord_channel_id": "123",
+                        "xmpp": {"muc_jid": "test@conference.example.com"},
+                    }
+                ]
+            }
+        )
         mapping = router.get_mapping_for_xmpp("test@conference.example.com")
         assert mapping is not None
         assert mapping.discord_channel_id == "123"
 
     def test_get_mapping_for_xmpp_not_found(self):
         router = ChannelRouter()
-        router.load_from_config({
-            "mappings": [{"discord_channel_id": "123",
-                          "xmpp": {"muc_jid": "test@conference.example.com"}}]
-        })
+        router.load_from_config(
+            {
+                "mappings": [
+                    {
+                        "discord_channel_id": "123",
+                        "xmpp": {"muc_jid": "test@conference.example.com"},
+                    }
+                ]
+            }
+        )
         assert router.get_mapping_for_xmpp("other@conference.example.com") is None
 
     def test_get_mapping_for_xmpp_on_mapping_without_xmpp(self):
@@ -178,14 +221,20 @@ class TestChannelRouter:
 
     def test_multiple_mappings(self):
         router = ChannelRouter()
-        router.load_from_config({
-            "mappings": [
-                {"discord_channel_id": "123",
-                 "irc": {"server": "irc.libera.chat", "channel": "#test"}},
-                {"discord_channel_id": "456",
-                 "irc": {"server": "irc.libera.chat", "channel": "#other"}},
-            ]
-        })
+        router.load_from_config(
+            {
+                "mappings": [
+                    {
+                        "discord_channel_id": "123",
+                        "irc": {"server": "irc.libera.chat", "channel": "#test"},
+                    },
+                    {
+                        "discord_channel_id": "456",
+                        "irc": {"server": "irc.libera.chat", "channel": "#other"},
+                    },
+                ]
+            }
+        )
         m1 = router.get_mapping_for_discord("123")
         m2 = router.get_mapping_for_discord("456")
         assert m1 is not None and m1.irc is not None
@@ -195,13 +244,15 @@ class TestChannelRouter:
 
     def test_load_config_ignores_invalid_entries(self):
         router = ChannelRouter()
-        router.load_from_config({
-            "mappings": [
-                "invalid",
-                {"discord_channel_id": ""},   # empty ID skipped
-                {"discord_channel_id": "123"},  # valid
-            ]
-        })
+        router.load_from_config(
+            {
+                "mappings": [
+                    "invalid",
+                    {"discord_channel_id": ""},  # empty ID skipped
+                    {"discord_channel_id": "123"},  # valid
+                ]
+            }
+        )
         assert len(router.all_mappings()) == 1
 
     def test_load_config_not_a_list(self):

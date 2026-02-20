@@ -13,8 +13,10 @@ class TestXMPPMessageMapping:
     def test_xmpp_message_mapping_fields(self) -> None:
         """XMPPMessageMapping has xmpp_id, discord_id, room_jid, timestamp."""
         m = XMPPMessageMapping(
-            xmpp_id="xmpp-1", discord_id="discord-1",
-            room_jid="room@conf.example.com", timestamp=1234.5,
+            xmpp_id="xmpp-1",
+            discord_id="discord-1",
+            room_jid="room@conf.example.com",
+            timestamp=1234.5,
         )
         assert m.xmpp_id == "xmpp-1"
         assert m.discord_id == "discord-1"

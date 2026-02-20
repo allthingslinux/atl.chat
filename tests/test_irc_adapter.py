@@ -17,7 +17,10 @@ from bridge.gateway.router import ChannelMapping, IrcTarget
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _make_adapter(identity_nick: str | None = "irc_nick") -> tuple[IRCAdapter, MagicMock, MagicMock]:
+
+def _make_adapter(
+    identity_nick: str | None = "irc_nick",
+) -> tuple[IRCAdapter, MagicMock, MagicMock]:
     bus = MagicMock(spec=Bus)
     router = MagicMock(spec=ChannelRouter)
     identity = AsyncMock()
@@ -30,6 +33,7 @@ def _make_adapter(identity_nick: str | None = "irc_nick") -> tuple[IRCAdapter, M
 def _close_coro(coro: object) -> MagicMock:
     """Close a coroutine passed to a mocked create_task to suppress RuntimeWarning."""
     import inspect
+
     if inspect.iscoroutine(coro):
         coro.close()
     return MagicMock()
@@ -55,17 +59,30 @@ def _mock_client() -> MagicMock:
 # accept_event
 # ---------------------------------------------------------------------------
 
+
 class TestAcceptEvent:
     def test_accepts_message_out_irc(self):
         adapter, _, _ = _make_adapter()
-        evt = MessageOut(target_origin="irc", channel_id="111", author_id="u",
-                         author_display="U", content="hi", message_id="m1")
+        evt = MessageOut(
+            target_origin="irc",
+            channel_id="111",
+            author_id="u",
+            author_display="U",
+            content="hi",
+            message_id="m1",
+        )
         assert adapter.accept_event("discord", evt) is True
 
     def test_rejects_message_out_other(self):
         adapter, _, _ = _make_adapter()
-        evt = MessageOut(target_origin="xmpp", channel_id="111", author_id="u",
-                         author_display="U", content="hi", message_id="m1")
+        evt = MessageOut(
+            target_origin="xmpp",
+            channel_id="111",
+            author_id="u",
+            author_display="U",
+            content="hi",
+            message_id="m1",
+        )
         assert adapter.accept_event("discord", evt) is False
 
     def test_accepts_message_delete_out_irc(self):
@@ -80,14 +97,26 @@ class TestAcceptEvent:
 
     def test_accepts_reaction_out_irc(self):
         adapter, _, _ = _make_adapter()
-        evt = ReactionOut(target_origin="irc", channel_id="111", message_id="m1",
-                          emoji="👍", author_id="u", author_display="U")
+        evt = ReactionOut(
+            target_origin="irc",
+            channel_id="111",
+            message_id="m1",
+            emoji="👍",
+            author_id="u",
+            author_display="U",
+        )
         assert adapter.accept_event("discord", evt) is True
 
     def test_rejects_reaction_out_other(self):
         adapter, _, _ = _make_adapter()
-        evt = ReactionOut(target_origin="xmpp", channel_id="111", message_id="m1",
-                          emoji="👍", author_id="u", author_display="U")
+        evt = ReactionOut(
+            target_origin="xmpp",
+            channel_id="111",
+            message_id="m1",
+            emoji="👍",
+            author_id="u",
+            author_display="U",
+        )
         assert adapter.accept_event("discord", evt) is False
 
     def test_accepts_typing_out_irc(self):
@@ -109,6 +138,7 @@ class TestAcceptEvent:
 # push_event
 # ---------------------------------------------------------------------------
 
+
 class TestPushEvent:
     def test_message_delete_out_creates_task_when_client_present(self):
         adapter, _, _ = _make_adapter()
@@ -128,8 +158,14 @@ class TestPushEvent:
     def test_reaction_out_creates_task_when_client_present(self):
         adapter, _, _ = _make_adapter()
         adapter._client = _mock_client()
-        evt = ReactionOut(target_origin="irc", channel_id="111", message_id="m1",
-                          emoji="👍", author_id="u", author_display="U")
+        evt = ReactionOut(
+            target_origin="irc",
+            channel_id="111",
+            message_id="m1",
+            emoji="👍",
+            author_id="u",
+            author_display="U",
+        )
         with patch("asyncio.create_task", side_effect=_close_coro) as mock_task:
             adapter.push_event("discord", evt)
             mock_task.assert_called_once()
@@ -146,8 +182,14 @@ class TestPushEvent:
         adapter, _, _ = _make_adapter()
         adapter._client = _mock_client()
         adapter._puppet_manager = None
-        evt = MessageOut(target_origin="irc", channel_id="111", author_id="u",
-                         author_display="U", content="hi", message_id="m1")
+        evt = MessageOut(
+            target_origin="irc",
+            channel_id="111",
+            author_id="u",
+            author_display="U",
+            content="hi",
+            message_id="m1",
+        )
         adapter.push_event("discord", evt)
         cast(MagicMock, adapter._client).queue_message.assert_called_once_with(evt)
 
@@ -155,8 +197,14 @@ class TestPushEvent:
         adapter, _, _ = _make_adapter()
         adapter._client = _mock_client()
         adapter._puppet_manager = MagicMock()
-        evt = MessageOut(target_origin="irc", channel_id="111", author_id="u",
-                         author_display="U", content="hi", message_id="m1")
+        evt = MessageOut(
+            target_origin="irc",
+            channel_id="111",
+            author_id="u",
+            author_display="U",
+            content="hi",
+            message_id="m1",
+        )
         with patch("asyncio.create_task", side_effect=_close_coro) as mock_task:
             adapter.push_event("discord", evt)
             mock_task.assert_called_once()
@@ -167,13 +215,20 @@ class TestPushEvent:
 # _send_reaction
 # ---------------------------------------------------------------------------
 
+
 class TestSendReaction:
     @pytest.mark.asyncio
     async def test_no_client_returns_early(self):
         adapter, _, router = _make_adapter()
         router.get_mapping_for_discord.return_value = _irc_mapping()
-        evt = ReactionOut(target_origin="irc", channel_id="111", message_id="m1",
-                          emoji="👍", author_id="u", author_display="U")
+        evt = ReactionOut(
+            target_origin="irc",
+            channel_id="111",
+            message_id="m1",
+            emoji="👍",
+            author_id="u",
+            author_display="U",
+        )
         await adapter._send_reaction(evt)  # no error
 
     @pytest.mark.asyncio
@@ -181,8 +236,14 @@ class TestSendReaction:
         adapter, _, router = _make_adapter()
         adapter._client = _mock_client()
         router.get_mapping_for_discord.return_value = _irc_mapping()
-        evt = ReactionOut(target_origin="irc", channel_id="111", message_id="unknown",
-                          emoji="👍", author_id="u", author_display="U")
+        evt = ReactionOut(
+            target_origin="irc",
+            channel_id="111",
+            message_id="unknown",
+            emoji="👍",
+            author_id="u",
+            author_display="U",
+        )
         await adapter._send_reaction(evt)
         adapter._client.rawmsg.assert_not_called()
 
@@ -192,8 +253,14 @@ class TestSendReaction:
         adapter._client = _mock_client()
         adapter._msgid_tracker.store("irc-id", "discord-id")
         router.get_mapping_for_discord.return_value = None
-        evt = ReactionOut(target_origin="irc", channel_id="111", message_id="discord-id",
-                          emoji="👍", author_id="u", author_display="U")
+        evt = ReactionOut(
+            target_origin="irc",
+            channel_id="111",
+            message_id="discord-id",
+            emoji="👍",
+            author_id="u",
+            author_display="U",
+        )
         await adapter._send_reaction(evt)
         adapter._client.rawmsg.assert_not_called()
 
@@ -203,11 +270,18 @@ class TestSendReaction:
         adapter._client = _mock_client()
         adapter._msgid_tracker.store("irc-id", "discord-id")
         router.get_mapping_for_discord.return_value = _irc_mapping()
-        evt = ReactionOut(target_origin="irc", channel_id="111", message_id="discord-id",
-                          emoji="👍", author_id="u", author_display="U")
+        evt = ReactionOut(
+            target_origin="irc",
+            channel_id="111",
+            message_id="discord-id",
+            emoji="👍",
+            author_id="u",
+            author_display="U",
+        )
         await adapter._send_reaction(evt)
         adapter._client.rawmsg.assert_awaited_once_with(
-            "TAGMSG", "#test",
+            "TAGMSG",
+            "#test",
             tags={"+draft/reply": "irc-id", "+draft/react": "👍"},
         )
 
@@ -215,6 +289,7 @@ class TestSendReaction:
 # ---------------------------------------------------------------------------
 # _send_typing
 # ---------------------------------------------------------------------------
+
 
 class TestSendTyping:
     @pytest.mark.asyncio
@@ -226,6 +301,7 @@ class TestSendTyping:
     @pytest.mark.asyncio
     async def test_throttled_within_3s(self):
         import time
+
         adapter, _, router = _make_adapter()
         adapter._client = _mock_client()
         adapter._client._typing_last = time.time()  # just sent
@@ -260,6 +336,7 @@ class TestSendTyping:
 # ---------------------------------------------------------------------------
 # _send_redact
 # ---------------------------------------------------------------------------
+
 
 class TestSendRedact:
     @pytest.mark.asyncio
@@ -302,13 +379,20 @@ class TestSendRedact:
 # _send_via_puppet
 # ---------------------------------------------------------------------------
 
+
 class TestSendViaPuppet:
     @pytest.mark.asyncio
     async def test_no_puppet_manager_returns_early(self):
         adapter, _, _ = _make_adapter()
         adapter._puppet_manager = None
-        evt = MessageOut(target_origin="irc", channel_id="111", author_id="u",
-                         author_display="U", content="hi", message_id="m1")
+        evt = MessageOut(
+            target_origin="irc",
+            channel_id="111",
+            author_id="u",
+            author_display="U",
+            content="hi",
+            message_id="m1",
+        )
         await adapter._send_via_puppet(evt)  # no error
 
     @pytest.mark.asyncio
@@ -316,8 +400,14 @@ class TestSendViaPuppet:
         adapter, _, router = _make_adapter()
         adapter._puppet_manager = AsyncMock()
         router.get_mapping_for_discord.return_value = None
-        evt = MessageOut(target_origin="irc", channel_id="111", author_id="u",
-                         author_display="U", content="hi", message_id="m1")
+        evt = MessageOut(
+            target_origin="irc",
+            channel_id="111",
+            author_id="u",
+            author_display="U",
+            content="hi",
+            message_id="m1",
+        )
         await adapter._send_via_puppet(evt)
         adapter._puppet_manager.send_message.assert_not_called()
 
@@ -328,8 +418,14 @@ class TestSendViaPuppet:
         assert adapter._identity is not None
         adapter._identity.has_irc = AsyncMock(return_value=True)
         router.get_mapping_for_discord.return_value = _irc_mapping()
-        evt = MessageOut(target_origin="irc", channel_id="111", author_id="u",
-                         author_display="U", content="hi", message_id="m1")
+        evt = MessageOut(
+            target_origin="irc",
+            channel_id="111",
+            author_id="u",
+            author_display="U",
+            content="hi",
+            message_id="m1",
+        )
         await adapter._send_via_puppet(evt)
         adapter._puppet_manager.send_message.assert_awaited_once_with("u", "#test", "hi")
 
@@ -341,8 +437,14 @@ class TestSendViaPuppet:
         assert adapter._identity is not None
         adapter._identity.has_irc = AsyncMock(return_value=False)
         router.get_mapping_for_discord.return_value = _irc_mapping()
-        evt = MessageOut(target_origin="irc", channel_id="111", author_id="u",
-                         author_display="U", content="hi", message_id="m1")
+        evt = MessageOut(
+            target_origin="irc",
+            channel_id="111",
+            author_id="u",
+            author_display="U",
+            content="hi",
+            message_id="m1",
+        )
         await adapter._send_via_puppet(evt)
         cast(MagicMock, adapter._client).queue_message.assert_called_once_with(evt)
 
@@ -350,6 +452,7 @@ class TestSendViaPuppet:
 # ---------------------------------------------------------------------------
 # start
 # ---------------------------------------------------------------------------
+
 
 class TestStart:
     @pytest.mark.asyncio
@@ -372,10 +475,14 @@ class TestStart:
         async def _fake_backoff(client, hostname, port, tls):
             await asyncio.sleep(9999)
 
-        with patch("bridge.adapters.irc.IRCClient") as mock_irc_client, \
-             patch("bridge.adapters.irc._connect_with_backoff", side_effect=_fake_backoff), \
-             patch("bridge.adapters.irc.IRCPuppetManager", return_value=mock_puppet_mgr), \
-             patch.dict("os.environ", {"IRC_NICK": "testbot", "IRC_PUPPET_IDLE_TIMEOUT_HOURS": "12"}):
+        with (
+            patch("bridge.adapters.irc.IRCClient") as mock_irc_client,
+            patch("bridge.adapters.irc._connect_with_backoff", side_effect=_fake_backoff),
+            patch("bridge.adapters.irc.IRCPuppetManager", return_value=mock_puppet_mgr),
+            patch.dict(
+                "os.environ", {"IRC_NICK": "testbot", "IRC_PUPPET_IDLE_TIMEOUT_HOURS": "12"}
+            ),
+        ):
             mock_irc_client.return_value = MagicMock()
             await adapter.start()
 
@@ -391,6 +498,7 @@ class TestStart:
 # ---------------------------------------------------------------------------
 # stop
 # ---------------------------------------------------------------------------
+
 
 class TestStop:
     @pytest.mark.asyncio
@@ -422,14 +530,21 @@ class TestStop:
 # Edge cases / race conditions
 # ---------------------------------------------------------------------------
 
+
 class TestIRCAdapterEdgeCases:
     # --- push_event: MessageOut with no client and no puppet manager ---
 
     def test_push_event_message_out_no_client_no_puppet_does_nothing(self):
         adapter, _, _ = _make_adapter()
         # _client and _puppet_manager are both None by default
-        evt = MessageOut(target_origin="irc", channel_id="111", author_id="u",
-                         author_display="U", content="hi", message_id="m1")
+        evt = MessageOut(
+            target_origin="irc",
+            channel_id="111",
+            author_id="u",
+            author_display="U",
+            content="hi",
+            message_id="m1",
+        )
         adapter.push_event("discord", evt)
         # Nothing queued — no client to send through
         assert adapter._msgid_tracker.get_irc_msgid("m1") is None
@@ -439,6 +554,7 @@ class TestIRCAdapterEdgeCases:
     @pytest.mark.asyncio
     async def test_send_typing_allowed_after_throttle_expires(self):
         import time
+
         adapter, _, router = _make_adapter()
         adapter._client = _mock_client()
         adapter._client._typing_last = time.time() - 4  # 4s ago, past 3s throttle
@@ -465,8 +581,14 @@ class TestIRCAdapterEdgeCases:
         adapter._client.rawmsg = AsyncMock(side_effect=OSError("network error"))
         adapter._msgid_tracker.store("irc-id", "discord-id")
         router.get_mapping_for_discord.return_value = _irc_mapping()
-        evt = ReactionOut(target_origin="irc", channel_id="111", message_id="discord-id",
-                          emoji="👍", author_id="u", author_display="U")
+        evt = ReactionOut(
+            target_origin="irc",
+            channel_id="111",
+            message_id="discord-id",
+            emoji="👍",
+            author_id="u",
+            author_display="U",
+        )
         await adapter._send_reaction(evt)
         # rawmsg was attempted (exception was swallowed, not silently skipped)
         adapter._client.rawmsg.assert_awaited_once()

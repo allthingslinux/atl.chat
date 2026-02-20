@@ -88,6 +88,7 @@ class TestIRCPuppet:
 
     def test_puppet_touch_updates_activity(self):
         import time
+
         puppet = IRCPuppet("user-nick", "discord-123")
         initial = puppet.last_activity
 

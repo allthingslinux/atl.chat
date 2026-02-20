@@ -108,17 +108,13 @@ class TestHasXmpp:
 class TestIrcToDiscordWithServer:
     @pytest.mark.asyncio
     async def test_irc_to_discord_with_server(self):
-        client, resolver = make_resolver(
-            {"discord_id": "456"}, method="get_identity_by_irc_nick"
-        )
+        client, resolver = make_resolver({"discord_id": "456"}, method="get_identity_by_irc_nick")
         assert await resolver.irc_to_discord("nick", "irc.libera.chat") == "456"
         client.get_identity_by_irc_nick.assert_called_once_with("nick", server="irc.libera.chat")
 
     @pytest.mark.asyncio
     async def test_irc_to_discord_cache_hit(self):
-        client, resolver = make_resolver(
-            {"discord_id": "456"}, method="get_identity_by_irc_nick"
-        )
+        client, resolver = make_resolver({"discord_id": "456"}, method="get_identity_by_irc_nick")
         await resolver.irc_to_discord("nick")
         await resolver.irc_to_discord("nick")
         client.get_identity_by_irc_nick.assert_called_once()
@@ -127,9 +123,7 @@ class TestIrcToDiscordWithServer:
 class TestXmppToDiscordCache:
     @pytest.mark.asyncio
     async def test_xmpp_to_discord_cache_hit(self):
-        client, resolver = make_resolver(
-            {"discord_id": "789"}, method="get_identity_by_xmpp_jid"
-        )
+        client, resolver = make_resolver({"discord_id": "789"}, method="get_identity_by_xmpp_jid")
         await resolver.xmpp_to_discord("user@example.com")
         await resolver.xmpp_to_discord("user@example.com")
         client.get_identity_by_xmpp_jid.assert_called_once()
@@ -150,6 +144,7 @@ class TestPortalClientHeaders:
 # ---------------------------------------------------------------------------
 # PortalClient direct HTTP behaviour
 # ---------------------------------------------------------------------------
+
 
 class TestPortalClient:
     """Test PortalClient 404 / error / non-dict responses."""

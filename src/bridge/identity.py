@@ -17,16 +17,18 @@ from tenacity import (
 DEFAULT_RETRY = retry(
     stop=stop_after_attempt(5),
     wait=wait_exponential(multiplier=1, min=2, max=30),
-    retry=retry_if_exception_type((
-        httpx.ConnectError,
-        httpx.ConnectTimeout,
-        httpx.ReadTimeout,
-        httpx.WriteTimeout,
-        httpx.PoolTimeout,
-        httpx.ReadError,
-        httpx.WriteError,
-        httpx.HTTPStatusError,  # Will retry 5xx errors
-    )),
+    retry=retry_if_exception_type(
+        (
+            httpx.ConnectError,
+            httpx.ConnectTimeout,
+            httpx.ReadTimeout,
+            httpx.WriteTimeout,
+            httpx.PoolTimeout,
+            httpx.ReadError,
+            httpx.WriteError,
+            httpx.HTTPStatusError,  # Will retry 5xx errors
+        )
+    ),
     reraise=True,
 )
 

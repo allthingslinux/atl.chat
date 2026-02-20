@@ -22,7 +22,12 @@ class TestEdgeCases:
             "mappings": [
                 {
                     "discord_channel_id": "123",
-                    "irc": {"server": "irc.libera.chat", "channel": "#test", "port": 6667, "tls": False},
+                    "irc": {
+                        "server": "irc.libera.chat",
+                        "channel": "#test",
+                        "port": 6667,
+                        "tls": False,
+                    },
                 }
             ]
         }
@@ -48,7 +53,12 @@ class TestEdgeCases:
             "mappings": [
                 {
                     "discord_channel_id": "123",
-                    "irc": {"server": "irc.libera.chat", "channel": "#test", "port": 6667, "tls": False},
+                    "irc": {
+                        "server": "irc.libera.chat",
+                        "channel": "#test",
+                        "port": 6667,
+                        "tls": False,
+                    },
                 }
             ]
         }
@@ -75,7 +85,12 @@ class TestEdgeCases:
             "mappings": [
                 {
                     "discord_channel_id": "123",
-                    "irc": {"server": "irc.libera.chat", "channel": "#test", "port": 6667, "tls": False},
+                    "irc": {
+                        "server": "irc.libera.chat",
+                        "channel": "#test",
+                        "port": 6667,
+                        "tls": False,
+                    },
                 }
             ]
         }
@@ -102,7 +117,12 @@ class TestEdgeCases:
             "mappings": [
                 {
                     "discord_channel_id": "123",
-                    "irc": {"server": "irc.libera.chat", "channel": "#test", "port": 6667, "tls": False},
+                    "irc": {
+                        "server": "irc.libera.chat",
+                        "channel": "#test",
+                        "port": 6667,
+                        "tls": False,
+                    },
                 }
             ]
         }
@@ -128,7 +148,12 @@ class TestEdgeCases:
             "mappings": [
                 {
                     "discord_channel_id": "123",
-                    "irc": {"server": "irc.libera.chat", "channel": "#test", "port": 6667, "tls": False},
+                    "irc": {
+                        "server": "irc.libera.chat",
+                        "channel": "#test",
+                        "port": 6667,
+                        "tls": False,
+                    },
                 }
             ]
         }
@@ -153,7 +178,12 @@ class TestEdgeCases:
             "mappings": [
                 {
                     "discord_channel_id": "123",
-                    "irc": {"server": "irc.libera.chat", "channel": "#test", "port": 6667, "tls": False},
+                    "irc": {
+                        "server": "irc.libera.chat",
+                        "channel": "#test",
+                        "port": 6667,
+                        "tls": False,
+                    },
                 }
             ]
         }
@@ -186,7 +216,12 @@ class TestConcurrency:
             "mappings": [
                 {
                     "discord_channel_id": "123",
-                    "irc": {"server": "irc.libera.chat", "channel": "#test", "port": 6667, "tls": False},
+                    "irc": {
+                        "server": "irc.libera.chat",
+                        "channel": "#test",
+                        "port": 6667,
+                        "tls": False,
+                    },
                 }
             ]
         }
@@ -214,11 +249,21 @@ class TestConcurrency:
             "mappings": [
                 {
                     "discord_channel_id": "123",
-                    "irc": {"server": "irc.libera.chat", "channel": "#test1", "port": 6667, "tls": False},
+                    "irc": {
+                        "server": "irc.libera.chat",
+                        "channel": "#test1",
+                        "port": 6667,
+                        "tls": False,
+                    },
                 },
                 {
                     "discord_channel_id": "456",
-                    "irc": {"server": "irc.libera.chat", "channel": "#test2", "port": 6667, "tls": False},
+                    "irc": {
+                        "server": "irc.libera.chat",
+                        "channel": "#test2",
+                        "port": 6667,
+                        "tls": False,
+                    },
                 },
             ]
         }
@@ -230,7 +275,9 @@ class TestConcurrency:
 
         # Act
         async def send_message(channel_id, i):
-            _, evt = message_in("discord", channel_id, f"u{i}", f"User{i}", f"Message {i}", f"msg{i}")
+            _, evt = message_in(
+                "discord", channel_id, f"u{i}", f"User{i}", f"Message {i}", f"msg{i}"
+            )
             bus.publish("discord", evt)
 
         await asyncio.gather(
@@ -249,7 +296,12 @@ class TestConcurrency:
             "mappings": [
                 {
                     "discord_channel_id": "123",
-                    "irc": {"server": "irc.libera.chat", "channel": "#test", "port": 6667, "tls": False},
+                    "irc": {
+                        "server": "irc.libera.chat",
+                        "channel": "#test",
+                        "port": 6667,
+                        "tls": False,
+                    },
                 }
             ]
         }

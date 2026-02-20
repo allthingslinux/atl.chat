@@ -20,7 +20,14 @@ if TYPE_CHECKING:
 class IRCPuppet(pydle.Client):
     """Single IRC puppet connection for a Discord user."""
 
-    def __init__(self, nick: str, discord_id: str, ping_interval: int = 120, prejoin_commands: list[str] | None = None, **kwargs):
+    def __init__(
+        self,
+        nick: str,
+        discord_id: str,
+        ping_interval: int = 120,
+        prejoin_commands: list[str] | None = None,
+        **kwargs,
+    ):
         super().__init__(nick, **kwargs)
         self.discord_id = discord_id
         self.last_activity = time.time()
@@ -97,7 +104,12 @@ class IRCPuppetManager:
             return None
 
         # Create and connect puppet
-        puppet = IRCPuppet(nick, discord_id, ping_interval=self._ping_interval, prejoin_commands=self._prejoin_commands)
+        puppet = IRCPuppet(
+            nick,
+            discord_id,
+            ping_interval=self._ping_interval,
+            prejoin_commands=self._prejoin_commands,
+        )
         self._puppets[discord_id] = puppet
 
         try:

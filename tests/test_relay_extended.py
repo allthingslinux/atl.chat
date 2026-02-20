@@ -23,6 +23,7 @@ from bridge.gateway.router import ChannelRouter
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _full_config():
     return {
         "mappings": [
@@ -69,6 +70,7 @@ def _setup(config=None):
 # _transform_content
 # ---------------------------------------------------------------------------
 
+
 class TestTransformContent:
     def test_discord_to_irc_strips_markdown(self):
         result = _transform_content("**bold**", "discord", "irc")
@@ -98,6 +100,7 @@ class TestTransformContent:
 # ---------------------------------------------------------------------------
 # _content_matches_filter
 # ---------------------------------------------------------------------------
+
 
 class TestContentMatchesFilter:
     def test_no_patterns_returns_false(self):
@@ -134,6 +137,7 @@ class TestContentMatchesFilter:
 # ---------------------------------------------------------------------------
 # IRC → XMPP routing
 # ---------------------------------------------------------------------------
+
 
 class TestIRCToXMPP:
     def test_irc_message_routes_to_xmpp(self):
@@ -179,6 +183,7 @@ class TestIRCToXMPP:
 # XMPP → IRC routing
 # ---------------------------------------------------------------------------
 
+
 class TestXMPPToIRC:
     def test_xmpp_message_routes_to_irc(self):
         bus, _discord, irc, _xmpp = _setup()
@@ -220,6 +225,7 @@ class TestXMPPToIRC:
 # No mapping for delete / reaction / typing
 # ---------------------------------------------------------------------------
 
+
 class TestNoMappingRouting:
     def test_delete_no_mapping_produces_no_output(self):
         bus, _discord, irc, xmpp = _setup()
@@ -253,6 +259,7 @@ class TestNoMappingRouting:
 # Outbound event field correctness
 # ---------------------------------------------------------------------------
 
+
 class TestOutboundFields:
     def test_message_out_raw_contains_origin(self):
         bus, _discord, irc, xmpp = _setup()
@@ -269,16 +276,31 @@ class TestOutboundFields:
 
     def test_message_out_raw_is_edit_true_for_edit(self):
         bus, _discord, irc, _xmpp = _setup()
-        evt = MessageIn("discord", "123", "u1", "User", "edited", "m1", is_edit=True,
-                        raw={"replace_id": "orig-1"})
+        evt = MessageIn(
+            "discord",
+            "123",
+            "u1",
+            "User",
+            "edited",
+            "m1",
+            is_edit=True,
+            raw={"replace_id": "orig-1"},
+        )
         bus.publish("discord", evt)
         assert irc.events[0].raw.get("is_edit") is True
         assert irc.events[0].raw.get("replace_id") == "orig-1"
 
     def test_avatar_url_preserved_in_message_out(self):
         bus, _discord, irc, xmpp = _setup()
-        evt = MessageIn("discord", "123", "u1", "User", "hi", "m1",
-                        avatar_url="https://cdn.example.com/avatar.png")
+        evt = MessageIn(
+            "discord",
+            "123",
+            "u1",
+            "User",
+            "hi",
+            "m1",
+            avatar_url="https://cdn.example.com/avatar.png",
+        )
         bus.publish("discord", evt)
         assert irc.events[0].avatar_url == "https://cdn.example.com/avatar.png"
         assert xmpp.events[0].avatar_url == "https://cdn.example.com/avatar.png"
@@ -309,6 +331,7 @@ class TestOutboundFields:
 # push_event with unknown event type
 # ---------------------------------------------------------------------------
 
+
 class TestPushEventUnknown:
     def test_unknown_event_type_produces_no_output(self):
         bus, discord, irc, xmpp = _setup()
@@ -330,16 +353,21 @@ class TestPushEventUnknown:
 # IRC-only mapping (no XMPP)
 # ---------------------------------------------------------------------------
 
+
 class TestIRCOnlyMapping:
     def test_discord_message_only_goes_to_irc(self):
         bus = Bus()
         router = ChannelRouter()
-        router.load_from_config({
-            "mappings": [{
-                "discord_channel_id": "123",
-                "irc": {"server": "s", "channel": "#c", "port": 6667, "tls": False},
-            }]
-        })
+        router.load_from_config(
+            {
+                "mappings": [
+                    {
+                        "discord_channel_id": "123",
+                        "irc": {"server": "s", "channel": "#c", "port": 6667, "tls": False},
+                    }
+                ]
+            }
+        )
         relay = Relay(bus, router)
         bus.register(relay)
         irc = Capture("irc")
@@ -357,6 +385,7 @@ class TestIRCOnlyMapping:
 # ---------------------------------------------------------------------------
 # Content filter skips MessageIn (line 70)
 # ---------------------------------------------------------------------------
+
 
 class TestContentFilter:
     def test_filtered_message_not_relayed(self):
@@ -380,6 +409,7 @@ class TestContentFilter:
 # ---------------------------------------------------------------------------
 # IRC channel_id without slash (line 95)
 # ---------------------------------------------------------------------------
+
 
 class TestIRCChannelIdNoSlash:
     def test_irc_message_no_slash_not_relayed(self):
@@ -416,6 +446,7 @@ class TestIRCChannelIdNoSlash:
 # (lines 138/140/142 for reaction, 171/173/175 for typing, 199/201/203 for delete)
 # ---------------------------------------------------------------------------
 
+
 def _discord_only_setup():
     """Mapping with discord only — no IRC, no XMPP."""
     bus = Bus()
@@ -436,7 +467,16 @@ def _irc_only_setup():
     """Mapping with IRC only — no XMPP."""
     bus = Bus()
     router = ChannelRouter()
-    router.load_from_config({"mappings": [{"discord_channel_id": "123", "irc": {"server": "s", "channel": "#c", "port": 6667, "tls": False}}]})
+    router.load_from_config(
+        {
+            "mappings": [
+                {
+                    "discord_channel_id": "123",
+                    "irc": {"server": "s", "channel": "#c", "port": 6667, "tls": False},
+                }
+            ]
+        }
+    )
     relay = Relay(bus, router)
     bus.register(relay)
     discord = Capture("discord")

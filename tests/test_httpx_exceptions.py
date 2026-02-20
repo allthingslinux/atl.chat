@@ -15,7 +15,9 @@ class TestHttpxExceptions:
     async def test_connect_timeout(self):
         # Arrange
         mock_client = AsyncMock(spec=PortalClient)
-        mock_client.get_identity_by_discord.side_effect = httpx.ConnectTimeout("Connection timed out")
+        mock_client.get_identity_by_discord.side_effect = httpx.ConnectTimeout(
+            "Connection timed out"
+        )
         resolver = IdentityResolver(client=mock_client)
 
         # Act & Assert
@@ -147,7 +149,9 @@ class TestHttpxExceptions:
     async def test_too_many_redirects(self):
         # Arrange
         mock_client = AsyncMock(spec=PortalClient)
-        mock_client.get_identity_by_discord.side_effect = httpx.TooManyRedirects("Too many redirects")
+        mock_client.get_identity_by_discord.side_effect = httpx.TooManyRedirects(
+            "Too many redirects"
+        )
         resolver = IdentityResolver(client=mock_client)
 
         # Act & Assert

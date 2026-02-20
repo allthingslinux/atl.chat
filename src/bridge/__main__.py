@@ -122,6 +122,7 @@ def main() -> None:
     # Run async main (uvloop if available for better I/O throughput)
     try:
         import uvloop
+
         uvloop.run(_run(bus, router, identity_resolver))
     except ImportError:
         asyncio.run(_run(bus, router, identity_resolver))

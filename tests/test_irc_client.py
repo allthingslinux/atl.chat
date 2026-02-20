@@ -14,6 +14,7 @@ from bridge.adapters.irc_msgid import MessageIDTracker
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_client(
     server: str = "irc.libera.chat",
     nick: str = "bot",
@@ -50,6 +51,7 @@ def _mock_message(params=None, tags=None, source="user!user@host"):
 # on_disconnect
 # ---------------------------------------------------------------------------
 
+
 class TestOnDisconnect:
     @pytest.mark.asyncio
     async def test_sets_ready_false(self):
@@ -63,6 +65,7 @@ class TestOnDisconnect:
 # ---------------------------------------------------------------------------
 # on_raw_pong
 # ---------------------------------------------------------------------------
+
 
 class TestOnRawPong:
     @pytest.mark.asyncio
@@ -87,6 +90,7 @@ class TestOnRawPong:
 # ---------------------------------------------------------------------------
 # on_kick
 # ---------------------------------------------------------------------------
+
 
 class TestOnKick:
     @pytest.mark.asyncio
@@ -129,6 +133,7 @@ class TestOnKick:
 # ---------------------------------------------------------------------------
 # on_message
 # ---------------------------------------------------------------------------
+
 
 class TestOnMessage:
     @pytest.mark.asyncio
@@ -192,6 +197,7 @@ class TestOnMessage:
 # on_ctcp_action
 # ---------------------------------------------------------------------------
 
+
 class TestOnCtcpAction:
     @pytest.mark.asyncio
     async def test_skips_private_action(self):
@@ -223,6 +229,7 @@ class TestOnCtcpAction:
 # ---------------------------------------------------------------------------
 # on_raw_tagmsg
 # ---------------------------------------------------------------------------
+
 
 class TestOnRawTagmsg:
     @pytest.mark.asyncio
@@ -294,6 +301,7 @@ class TestOnRawTagmsg:
 # on_raw_redact
 # ---------------------------------------------------------------------------
 
+
 class TestOnRawRedact:
     @pytest.mark.asyncio
     async def test_skips_too_few_params(self):
@@ -335,6 +343,7 @@ class TestOnRawRedact:
 # ---------------------------------------------------------------------------
 # _send_message
 # ---------------------------------------------------------------------------
+
 
 class TestSendMessage:
     @pytest.mark.asyncio
@@ -407,6 +416,7 @@ class TestSendMessage:
 # queue_message
 # ---------------------------------------------------------------------------
 
+
 def test_queue_message():
     client, _, _ = _make_client()
     evt = MagicMock()
@@ -417,6 +427,7 @@ def test_queue_message():
 # ---------------------------------------------------------------------------
 # Edge cases / race conditions
 # ---------------------------------------------------------------------------
+
 
 class TestIRCClientEdgeCases:
     # --- on_kick: case-insensitive nick comparison ---
@@ -496,17 +507,21 @@ class TestIRCClientEdgeCases:
 # _connect_with_backoff
 # ---------------------------------------------------------------------------
 
+
 class TestConnectWithBackoff:
     @pytest.mark.asyncio
     async def test_success_on_first_attempt(self):
         from bridge.adapters.irc import _connect_with_backoff
+
         mock_client = AsyncMock()
         call_count = 0
+
         async def fake_connect(**kwargs):
             nonlocal call_count
             call_count += 1
             if call_count >= 2:
                 raise asyncio.CancelledError()
+
         mock_client.connect.side_effect = fake_connect
         with pytest.raises(asyncio.CancelledError), patch("asyncio.sleep", AsyncMock()):
             await _connect_with_backoff(mock_client, "irc.example.com", 6697, True)
@@ -515,14 +530,17 @@ class TestConnectWithBackoff:
     @pytest.mark.asyncio
     async def test_retries_on_failure_then_succeeds(self):
         from bridge.adapters.irc import _connect_with_backoff
+
         mock_client = AsyncMock()
         call_count = 0
+
         async def fake_connect(**kwargs):
             nonlocal call_count
             call_count += 1
             if call_count < 3:
                 raise ConnectionRefusedError("refused")
             raise asyncio.CancelledError()
+
         mock_client.connect.side_effect = fake_connect
         with pytest.raises(asyncio.CancelledError), patch("asyncio.sleep", AsyncMock()):
             await _connect_with_backoff(mock_client, "irc.example.com", 6697, True)
@@ -531,6 +549,7 @@ class TestConnectWithBackoff:
     @pytest.mark.asyncio
     async def test_raises_after_max_attempts(self):
         from bridge.adapters.irc import _MAX_ATTEMPTS, _connect_with_backoff
+
         mock_client = AsyncMock()
         mock_client.connect.side_effect = ConnectionRefusedError("refused")
         with pytest.raises(ConnectionRefusedError), patch("asyncio.sleep", AsyncMock()):
@@ -541,6 +560,7 @@ class TestConnectWithBackoff:
 # ---------------------------------------------------------------------------
 # Echo-message correlation (lines 195–196)
 # ---------------------------------------------------------------------------
+
 
 class TestEchoMessageCorrelation:
     @pytest.mark.asyncio
@@ -568,6 +588,7 @@ class TestEchoMessageCorrelation:
 # ---------------------------------------------------------------------------
 # Typing throttle (line 368–372)
 # ---------------------------------------------------------------------------
+
 
 class TestTypingThrottle:
     @pytest.mark.asyncio
@@ -616,6 +637,7 @@ class TestTypingThrottle:
 # ---------------------------------------------------------------------------
 # Puppet send path (lines 474–475)
 # ---------------------------------------------------------------------------
+
 
 class TestPuppetSendPath:
     @pytest.mark.asyncio

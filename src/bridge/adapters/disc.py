@@ -75,9 +75,8 @@ class DiscordAdapter:
             return True
         if isinstance(evt, MessageDeleteOut) and evt.target_origin == "discord":
             return True
-        return (
-            (isinstance(evt, ReactionOut) and evt.target_origin == "discord")
-            or (isinstance(evt, TypingOut) and evt.target_origin == "discord")
+        return (isinstance(evt, ReactionOut) and evt.target_origin == "discord") or (
+            isinstance(evt, TypingOut) and evt.target_origin == "discord"
         )
 
     def push_event(self, source: str, evt: object) -> None:
@@ -94,9 +93,7 @@ class DiscordAdapter:
         if isinstance(evt, MessageOut):
             self._queue.put_nowait(evt)
 
-    async def _get_or_create_webhook(
-        self, channel_id: str, author_display: str
-    ) -> Webhook | None:
+    async def _get_or_create_webhook(self, channel_id: str, author_display: str) -> Webhook | None:
         """Get or create webhook for (channel_id, author_display). Caller must hold _send_lock."""
         bot = self._bot
         if not bot:
@@ -348,7 +345,10 @@ class DiscordAdapter:
                             continue
 
                         try:
-                            async with aiohttp.ClientSession() as session, session.get(attachment.url) as resp:
+                            async with (
+                                aiohttp.ClientSession() as session,
+                                session.get(attachment.url) as resp,
+                            ):
                                 if resp.status == 200:
                                     data = await resp.read()
                                     await xmpp_adapter._component.send_file_with_fallback(
@@ -359,9 +359,9 @@ class DiscordAdapter:
                                         nick,
                                     )
                                     logger.info(
-                                            "Sent Discord attachment {} to XMPP",
-                                            attachment.filename,
-                                        )
+                                        "Sent Discord attachment {} to XMPP",
+                                        attachment.filename,
+                                    )
                         except Exception as exc:
                             logger.exception("Failed to bridge attachment to XMPP: {}", exc)
 
@@ -423,7 +423,9 @@ class DiscordAdapter:
             return
 
         # Get avatar URL
-        avatar_url = str(message.author.display_avatar.url) if message.author.display_avatar else None
+        avatar_url = (
+            str(message.author.display_avatar.url) if message.author.display_avatar else None
+        )
 
         _, evt = message_in(
             origin="discord",

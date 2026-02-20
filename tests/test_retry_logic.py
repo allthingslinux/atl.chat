@@ -60,6 +60,7 @@ class TestRetryLogic:
         # Arrange
         mock_client = AsyncMock(spec=PortalClient)
         from unittest.mock import Mock
+
         request = Mock()
         response = Mock()
         response.status_code = 500

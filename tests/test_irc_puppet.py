@@ -15,7 +15,12 @@ from bridge.adapters.irc_puppet import IRCPuppet, IRCPuppetManager
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _make_manager(irc_nick: str | None = "puppet_nick", ping_interval: int = 120, prejoin_commands: list[str] | None = None) -> IRCPuppetManager:
+
+def _make_manager(
+    irc_nick: str | None = "puppet_nick",
+    ping_interval: int = 120,
+    prejoin_commands: list[str] | None = None,
+) -> IRCPuppetManager:
     identity = AsyncMock()
     identity.discord_to_irc = AsyncMock(return_value=irc_nick)
     return IRCPuppetManager(
@@ -48,6 +53,7 @@ def _mock_puppet(discord_id: str = "d1", nick: str = "nick") -> MagicMock:
 # IRCPuppet
 # ---------------------------------------------------------------------------
 
+
 class TestIRCPuppet:
     def test_discord_id_stored_on_init(self):
         puppet = IRCPuppet("nick", "d1")
@@ -79,7 +85,9 @@ class TestIRCPuppet:
 
     @pytest.mark.asyncio
     async def test_on_connect_sends_prejoin_commands_with_nick_substitution(self):
-        puppet = IRCPuppet("mynick", "d1", prejoin_commands=["MODE {nick} +D", "PRIVMSG NickServ IDENTIFY pass"])
+        puppet = IRCPuppet(
+            "mynick", "d1", prejoin_commands=["MODE {nick} +D", "PRIVMSG NickServ IDENTIFY pass"]
+        )
         puppet.rawmsg = AsyncMock()
         with patch.object(type(puppet).__bases__[0], "on_connect", new=AsyncMock()):
             await puppet.on_connect()
@@ -118,6 +126,7 @@ class TestIRCPuppet:
 # ---------------------------------------------------------------------------
 # get_or_create_puppet
 # ---------------------------------------------------------------------------
+
 
 class TestGetOrCreatePuppet:
     @pytest.mark.asyncio
@@ -177,6 +186,7 @@ class TestGetOrCreatePuppet:
 # send_message
 # ---------------------------------------------------------------------------
 
+
 class TestSendMessage:
     @pytest.mark.asyncio
     async def test_skips_when_no_puppet(self):
@@ -222,6 +232,7 @@ class TestSendMessage:
 # join_channel
 # ---------------------------------------------------------------------------
 
+
 class TestJoinChannel:
     @pytest.mark.asyncio
     async def test_skips_when_no_puppet(self):
@@ -256,6 +267,7 @@ class TestJoinChannel:
 # ---------------------------------------------------------------------------
 # _cleanup_idle_puppets
 # ---------------------------------------------------------------------------
+
 
 class TestCleanupIdlePuppets:
     @pytest.mark.asyncio
@@ -305,6 +317,7 @@ class TestCleanupIdlePuppets:
 # start / stop
 # ---------------------------------------------------------------------------
 
+
 class TestStartStop:
     @pytest.mark.asyncio
     async def test_start_creates_cleanup_task(self):
@@ -339,6 +352,7 @@ class TestStartStop:
 # ---------------------------------------------------------------------------
 # Edge cases / race conditions
 # ---------------------------------------------------------------------------
+
 
 class TestPuppetEdgeCases:
     # --- Concurrent get_or_create_puppet for same discord_id ---
@@ -420,6 +434,7 @@ class TestPuppetEdgeCases:
         send_task.cancel()
         await asyncio.gather(stop_task, return_exceptions=True)
         import contextlib
+
         with contextlib.suppress(asyncio.CancelledError):
             await send_task
 
@@ -446,6 +461,7 @@ class TestPuppetEdgeCases:
 
     def test_token_bucket_acquire_zero_when_available(self):
         from bridge.adapters.irc_throttle import TokenBucket
+
         bucket = TokenBucket(limit=10, refill_rate=10.0)
         assert bucket.acquire() == 0.0
 
@@ -453,6 +469,7 @@ class TestPuppetEdgeCases:
 
     def test_token_bucket_acquire_positive_when_empty(self):
         from bridge.adapters.irc_throttle import TokenBucket
+
         bucket = TokenBucket(limit=1, refill_rate=1.0)
         bucket.use_token()  # drain
         assert bucket.acquire() > 0.0
@@ -461,6 +478,7 @@ class TestPuppetEdgeCases:
 
     def test_token_bucket_use_token_false_when_empty(self):
         from bridge.adapters.irc_throttle import TokenBucket
+
         bucket = TokenBucket(limit=1, refill_rate=1.0)
         assert bucket.use_token() is True
         assert bucket.use_token() is False

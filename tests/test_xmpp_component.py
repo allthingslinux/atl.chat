@@ -16,6 +16,7 @@ pytestmark = pytest.mark.filterwarnings("ignore::pytest.PytestUnraisableExceptio
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def make_component(router=None, bus=None):
     """Instantiate XMPPComponent bypassing slixmpp's __init__."""
     comp = object.__new__(XMPPComponent)
@@ -31,6 +32,7 @@ def make_component(router=None, bus=None):
 
 class MockPlugin:
     """Minimal plugin stub with get() support."""
+
     def __init__(self, data=None):
         self._data = data or {}
 
@@ -74,6 +76,7 @@ class MockMsg:
 # _on_groupchat_message
 # ---------------------------------------------------------------------------
 
+
 class TestOnGroupchatMessage:
     def _make_router(self, discord_channel_id="123"):
         router = MagicMock()
@@ -87,7 +90,9 @@ class TestOnGroupchatMessage:
         bus = MagicMock()
         comp = make_component(router=router, bus=bus)
 
-        msg = MockMsg(from_jid="room@conf.example.com/nick", body="hello", mucnick="nick", msg_id="xmpp-1")
+        msg = MockMsg(
+            from_jid="room@conf.example.com/nick", body="hello", mucnick="nick", msg_id="xmpp-1"
+        )
         comp._on_groupchat_message(msg)
 
         bus.publish.assert_called_once()
@@ -126,7 +131,9 @@ class TestOnGroupchatMessage:
         bus = MagicMock()
         comp = make_component(router=router, bus=bus)
 
-        msg = MockMsg("room@conf.example.com/nick", body="secret", plugins={"spoiler": MockPlugin()})
+        msg = MockMsg(
+            "room@conf.example.com/nick", body="secret", plugins={"spoiler": MockPlugin()}
+        )
         comp._on_groupchat_message(msg)
 
         _, evt = bus.publish.call_args[0]
@@ -138,6 +145,7 @@ class TestOnGroupchatMessage:
         comp = make_component(router=router, bus=bus)
 
         replace_plugin = MockPlugin({"id": "orig-id"})
+
         class MsgWithReplace(MockMsg):
             def __getitem__(self, key):
                 if key == "replace":
@@ -175,7 +183,9 @@ class TestOnGroupchatMessage:
         bus = MagicMock()
         comp = make_component(router=router, bus=bus)
 
-        ref_plugin = MockPlugin({"type": "reply", "uri": "xmpp:room@conf.example.com?id=ref-target"})
+        ref_plugin = MockPlugin(
+            {"type": "reply", "uri": "xmpp:room@conf.example.com?id=ref-target"}
+        )
 
         class MsgWithRef(MockMsg):
             def __getitem__(self, key):
@@ -203,6 +213,7 @@ class TestOnGroupchatMessage:
 # ---------------------------------------------------------------------------
 # _on_reactions
 # ---------------------------------------------------------------------------
+
 
 class TestOnReactions:
     def _make_router(self, discord_channel_id="123"):
@@ -290,6 +301,7 @@ class TestOnReactions:
 # ---------------------------------------------------------------------------
 # _on_retraction
 # ---------------------------------------------------------------------------
+
 
 class TestOnRetraction:
     def _make_router(self, discord_channel_id="123"):

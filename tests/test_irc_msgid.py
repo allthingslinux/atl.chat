@@ -86,7 +86,11 @@ class TestMessageIDTracker:
     def test_fresh_entries_not_expired(self) -> None:
         """Entries within TTL are not removed."""
         with patch("bridge.adapters.irc_msgid.time") as mock_time:
-            mock_time.time.side_effect = [1000.0, 1000.5, 1000.5]  # store, get_discord_id, get_irc_msgid
+            mock_time.time.side_effect = [
+                1000.0,
+                1000.5,
+                1000.5,
+            ]  # store, get_discord_id, get_irc_msgid
             tracker = MessageIDTracker(ttl_seconds=3600)
             tracker.store("irc-fresh", "discord-fresh")
             assert tracker.get_discord_id("irc-fresh") == "discord-fresh"

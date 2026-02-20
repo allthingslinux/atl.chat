@@ -356,6 +356,7 @@ class XMPPComponent(ComponentXMPP):
         try:
             import io
             from pathlib import Path
+
             url = await http_upload.upload_file(  # type: ignore[misc]
                 filename=Path(filename),
                 size=len(data),
@@ -379,8 +380,13 @@ class XMPPComponent(ComponentXMPP):
             await self.send_file_as_user(discord_id, muc_jid, data, nick)
 
     async def send_message_as_user(
-        self, discord_id: str, muc_jid: str, content: str, nick: str, xmpp_msg_id: str | None = None,
-        reply_to_id: str | None = None
+        self,
+        discord_id: str,
+        muc_jid: str,
+        content: str,
+        nick: str,
+        xmpp_msg_id: str | None = None,
+        reply_to_id: str | None = None,
     ) -> str:
         """Send message to MUC from a specific Discord user's JID. Returns XMPP message ID."""
         # Escape nick for JID compliance
@@ -513,7 +519,9 @@ class XMPPComponent(ComponentXMPP):
             )
             msg["replace"]["id"] = original_xmpp_id
             msg.send()
-            logger.debug("Sent XMPP correction for {} from {} to {}", original_xmpp_id, user_jid, muc_jid)
+            logger.debug(
+                "Sent XMPP correction for {} from {} to {}", original_xmpp_id, user_jid, muc_jid
+            )
         except Exception as exc:
             logger.exception("Failed to send XMPP correction as {}: {}", user_jid, exc)
 
@@ -534,7 +542,11 @@ class XMPPComponent(ComponentXMPP):
 
         try:
             await muc_plugin.join_muc_wait(  # type: ignore[misc,call-arg]
-                JID(muc_jid), nick, mfrom=JID(user_jid), timeout=30, maxchars=0  # pyright: ignore[reportCallIssue]
+                JID(muc_jid),
+                nick,
+                mfrom=JID(user_jid),
+                timeout=30,
+                maxchars=0,  # pyright: ignore[reportCallIssue]
             )
             logger.info("Joined MUC {} as {}", muc_jid, user_jid)
         except XMPPError as exc:
@@ -543,7 +555,10 @@ class XMPPComponent(ComponentXMPP):
     async def _fetch_avatar_bytes(self, avatar_url: str) -> bytes | None:
         """Download avatar image from URL."""
         try:
-            async with aiohttp.ClientSession() as session, session.get(avatar_url, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+            async with (
+                aiohttp.ClientSession() as session,
+                session.get(avatar_url, timeout=aiohttp.ClientTimeout(total=10)) as resp,
+            ):
                 if resp.status == 200:
                     return await resp.read()
                 logger.warning("Failed to fetch avatar from {}: status {}", avatar_url, resp.status)
@@ -551,9 +566,7 @@ class XMPPComponent(ComponentXMPP):
             logger.exception("Error fetching avatar from {}: {}", avatar_url, exc)
         return None
 
-    async def set_avatar_for_user(
-        self, discord_id: str, nick: str, avatar_url: str | None
-    ) -> None:
+    async def set_avatar_for_user(self, discord_id: str, nick: str, avatar_url: str | None) -> None:
         """Set vCard avatar for Discord user's puppet JID."""
         if not avatar_url:
             return

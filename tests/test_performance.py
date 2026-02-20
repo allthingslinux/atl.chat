@@ -24,7 +24,12 @@ class TestPerformance:
             "mappings": [
                 {
                     "discord_channel_id": "123",
-                    "irc": {"server": "irc.libera.chat", "channel": "#test", "port": 6667, "tls": False},
+                    "irc": {
+                        "server": "irc.libera.chat",
+                        "channel": "#test",
+                        "port": 6667,
+                        "tls": False,
+                    },
                 }
             ]
         }
@@ -57,7 +62,12 @@ class TestPerformance:
             "mappings": [
                 {
                     "discord_channel_id": f"{i}",
-                    "irc": {"server": "irc.libera.chat", "channel": f"#test{i}", "port": 6667, "tls": False},
+                    "irc": {
+                        "server": "irc.libera.chat",
+                        "channel": f"#test{i}",
+                        "port": 6667,
+                        "tls": False,
+                    },
                 }
                 for i in range(10)
             ]
@@ -71,7 +81,9 @@ class TestPerformance:
         # Act
         async def send_messages(channel_id, count):
             for i in range(count):
-                _, evt = message_in("discord", channel_id, f"u{i}", f"User{i}", f"Msg {i}", f"msg{i}")
+                _, evt = message_in(
+                    "discord", channel_id, f"u{i}", f"User{i}", f"Msg {i}", f"msg{i}"
+                )
                 bus.publish("discord", evt)
                 await asyncio.sleep(0)  # Yield to event loop
 
@@ -92,7 +104,12 @@ class TestPerformance:
             "mappings": [
                 {
                     "discord_channel_id": "123",
-                    "irc": {"server": "irc.libera.chat", "channel": "#test", "port": 6667, "tls": False},
+                    "irc": {
+                        "server": "irc.libera.chat",
+                        "channel": "#test",
+                        "port": 6667,
+                        "tls": False,
+                    },
                 }
             ]
         }

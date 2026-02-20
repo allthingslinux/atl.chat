@@ -94,6 +94,7 @@ class TestLoadConfig:
     def test_load_config_invalid_yaml(self):
         # Arrange
         import yaml
+
         with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             f.write("not: a: valid: yaml:")
             path = f.name
@@ -226,7 +227,10 @@ class TestConfig:
         assert Config({"irc_auto_rejoin": False}).irc_auto_rejoin is False
 
     def test_config_content_filter_regex_list(self):
-        assert Config({"content_filter_regex": ["spam", "ads"]}).content_filter_regex == ["spam", "ads"]
+        assert Config({"content_filter_regex": ["spam", "ads"]}).content_filter_regex == [
+            "spam",
+            "ads",
+        ]
 
     def test_config_content_filter_regex_non_list(self):
         assert Config({"content_filter_regex": "not-a-list"}).content_filter_regex == []
@@ -245,22 +249,27 @@ class TestConfig:
         assert Config({"irc_puppet_prejoin_commands": cmds}).irc_puppet_prejoin_commands == cmds
 
     def test_config_irc_puppet_prejoin_commands_non_list(self):
-        assert Config({"irc_puppet_prejoin_commands": "not-a-list"}).irc_puppet_prejoin_commands == []
+        assert (
+            Config({"irc_puppet_prejoin_commands": "not-a-list"}).irc_puppet_prejoin_commands == []
+        )
 
-    @pytest.mark.parametrize("prop,expected", [
-        ("announce_extras", False),
-        ("identity_cache_ttl_seconds", 3600),
-        ("avatar_cache_ttl_seconds", 86400),
-        ("irc_puppet_postfix", ""),
-        ("irc_throttle_limit", 10),
-        ("irc_message_queue", 30),
-        ("irc_rejoin_delay", 5.0),
-        ("irc_auto_rejoin", True),
-        ("irc_use_sasl", False),
-        ("irc_sasl_user", ""),
-        ("irc_sasl_password", ""),
-        ("content_filter_regex", []),
-    ])
+    @pytest.mark.parametrize(
+        "prop,expected",
+        [
+            ("announce_extras", False),
+            ("identity_cache_ttl_seconds", 3600),
+            ("avatar_cache_ttl_seconds", 86400),
+            ("irc_puppet_postfix", ""),
+            ("irc_throttle_limit", 10),
+            ("irc_message_queue", 30),
+            ("irc_rejoin_delay", 5.0),
+            ("irc_auto_rejoin", True),
+            ("irc_use_sasl", False),
+            ("irc_sasl_user", ""),
+            ("irc_sasl_password", ""),
+            ("content_filter_regex", []),
+        ],
+    )
     def test_config_property_defaults(self, prop, expected):
         assert getattr(Config({}), prop) == expected
 

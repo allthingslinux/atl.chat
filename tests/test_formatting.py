@@ -12,16 +12,19 @@ from bridge.formatting.irc_to_discord import irc_to_discord
 class TestDiscordToIrc:
     """Test Discord markdown stripping for IRC."""
 
-    @pytest.mark.parametrize("input,expected", [
-        ("**bold**", "bold"),
-        ("__bold__", "bold"),
-        ("*italic*", "italic"),
-        ("_italic_", "italic"),
-        ("`code`", "code"),
-        ("~~strike~~", "strike"),
-        ("||spoiler||", "spoiler"),
-        ("``double``", "double"),
-    ])
+    @pytest.mark.parametrize(
+        "input,expected",
+        [
+            ("**bold**", "bold"),
+            ("__bold__", "bold"),
+            ("*italic*", "italic"),
+            ("_italic_", "italic"),
+            ("`code`", "code"),
+            ("~~strike~~", "strike"),
+            ("||spoiler||", "spoiler"),
+            ("``double``", "double"),
+        ],
+    )
     def test_strips_markdown(self, input, expected):
         assert discord_to_irc(input) == expected
 
@@ -71,13 +74,13 @@ class TestIrcToDiscord:
         assert irc_to_discord("\x02bold\x02") == "**bold**"
 
     def test_italic(self):
-        assert irc_to_discord("\x1Ditalic\x1D") == "*italic*"
+        assert irc_to_discord("\x1ditalic\x1d") == "*italic*"
 
     def test_strips_colors(self):
         assert irc_to_discord("\x0312colored\x03") == "colored"
 
     def test_reset_closes_formatting(self):
-        assert irc_to_discord("\x02bold\x0F") == "**bold**"
+        assert irc_to_discord("\x02bold\x0f") == "**bold**"
 
     def test_preserves_urls(self):
         text = "https://example.com/foo_bar"
@@ -102,10 +105,10 @@ class TestIrcToDiscord:
 
     def test_unclosed_formatting_closed(self):
         assert irc_to_discord("\x02bold no close") == "**bold no close**"
-        assert irc_to_discord("\x1Ditalic no close") == "*italic no close*"
+        assert irc_to_discord("\x1ditalic no close") == "*italic no close*"
 
     def test_combined_bold_italic_underline(self):
-        s = "\x02bold\x1Ditalic\x1funder\x0f"
+        s = "\x02bold\x1ditalic\x1funder\x0f"
         out = irc_to_discord(s)
         assert "**" in out
         assert "*" in out

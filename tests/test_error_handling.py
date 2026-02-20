@@ -197,13 +197,19 @@ class TestRelayErrors:
             "mappings": [
                 {
                     "discord_channel_id": "123",
-                    "irc": {"server": "irc.libera.chat", "channel": "#test", "port": 6667, "tls": False},
+                    "irc": {
+                        "server": "irc.libera.chat",
+                        "channel": "#test",
+                        "port": 6667,
+                        "tls": False,
+                    },
                 }
             ]
         }
         router.load_from_config(config)
         relay = Relay(bus, router)
         from tests.mocks import MockDiscordAdapter
+
         discord_adapter = MockDiscordAdapter()
         bus.register(relay)
         bus.register(discord_adapter)
@@ -226,6 +232,7 @@ class TestRelayErrors:
 
         # Act - send non-MessageIn event
         from bridge.events import Join
+
         join_evt = Join(origin="discord", channel_id="123", user_id="u1", display="User")
         bus.publish("discord", join_evt)
 
@@ -244,7 +251,12 @@ class TestAdapterErrors:
             "mappings": [
                 {
                     "discord_channel_id": "123",
-                    "irc": {"server": "irc.libera.chat", "channel": "#test", "port": 6667, "tls": False},
+                    "irc": {
+                        "server": "irc.libera.chat",
+                        "channel": "#test",
+                        "port": 6667,
+                        "tls": False,
+                    },
                 }
             ]
         }

@@ -72,6 +72,7 @@ class TestAvatarHashing:
 
     def test_avatar_url_preserved_in_message_out(self):
         from bridge.events import MessageOut
+
         msg = MessageOut(
             target_origin="discord",
             channel_id="123",
@@ -85,8 +86,23 @@ class TestAvatarHashing:
 
     def test_different_users_have_different_avatar_urls(self):
         from bridge.events import MessageIn
-        msg1 = MessageIn("discord", "123", "u1", "A", "hi", "m1",
-                         avatar_url="https://cdn.discord.com/avatars/1/a.png")
-        msg2 = MessageIn("discord", "123", "u2", "B", "hi", "m2",
-                         avatar_url="https://cdn.discord.com/avatars/2/b.png")
+
+        msg1 = MessageIn(
+            "discord",
+            "123",
+            "u1",
+            "A",
+            "hi",
+            "m1",
+            avatar_url="https://cdn.discord.com/avatars/1/a.png",
+        )
+        msg2 = MessageIn(
+            "discord",
+            "123",
+            "u2",
+            "B",
+            "hi",
+            "m2",
+            avatar_url="https://cdn.discord.com/avatars/2/b.png",
+        )
         assert msg1.avatar_url != msg2.avatar_url

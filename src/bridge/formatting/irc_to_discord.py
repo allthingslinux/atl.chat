@@ -7,9 +7,9 @@ import re
 # IRC control codes
 BOLD = "\x02"
 COLOR = "\x03"
-ITALIC = "\x1D"
-UNDERLINE = "\x1F"
-RESET = "\x0F"
+ITALIC = "\x1d"
+UNDERLINE = "\x1f"
+RESET = "\x0f"
 
 # URL pattern - do not escape inside URLs
 _URL_PATTERN = re.compile(

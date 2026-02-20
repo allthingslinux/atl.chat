@@ -107,7 +107,9 @@ def test_resolve_discord_message_id_from_irc(bus: Bus, router: ChannelRouter) ->
     assert adapter._resolve_discord_message_id("unknown", "irc") is None
 
 
-def test_resolve_discord_message_id_unknown_origin_returns_none(bus: Bus, router: ChannelRouter) -> None:
+def test_resolve_discord_message_id_unknown_origin_returns_none(
+    bus: Bus, router: ChannelRouter
+) -> None:
     from bridge.adapters.disc import DiscordAdapter
 
     adapter = DiscordAdapter(bus, router, identity_resolver=None)
@@ -278,7 +280,12 @@ async def test_queue_consumer_edits_when_resolve_succeeds(bus: Bus, router: Chan
     bus._dispatcher._targets = [irc]
 
     evt = MessageOut(
-        "discord", "123", "u1", "Alice", "edited content", "new-msg-id",
+        "discord",
+        "123",
+        "u1",
+        "Alice",
+        "edited content",
+        "new-msg-id",
         raw={"is_edit": True, "replace_id": "orig-123", "origin": "irc"},
     )
     adapter._queue.put_nowait(evt)
@@ -307,7 +314,12 @@ async def test_edit_fallback_to_send_when_resolve_fails(bus: Bus, router: Channe
     bus._dispatcher._targets = []
 
     evt = MessageOut(
-        "discord", "123", "u1", "Alice", "corrected", "corr-2",
+        "discord",
+        "123",
+        "u1",
+        "Alice",
+        "corrected",
+        "corr-2",
         raw={"is_edit": True, "replace_id": "unknown", "origin": "xmpp"},
     )
     adapter._queue.put_nowait(evt)
@@ -322,7 +334,9 @@ async def test_edit_fallback_to_send_when_resolve_fails(bus: Bus, router: Channe
 
 
 @pytest.mark.asyncio
-async def test_webhook_messages_are_skipped_to_prevent_echo(bus: Bus, router: ChannelRouter) -> None:
+async def test_webhook_messages_are_skipped_to_prevent_echo(
+    bus: Bus, router: ChannelRouter
+) -> None:
     """Messages from webhooks (our bridge output) must not be republished to prevent echo loops."""
     from bridge.adapters.disc import DiscordAdapter
 
@@ -465,9 +479,7 @@ async def test_handle_typing_out_triggers_typing(bus: Bus, router: ChannelRouter
     """_handle_typing_out triggers channel.typing()."""
     from bridge.adapters import disc
 
-    with patch.object(disc, "TextChannel", MagicMock), patch(
-        "asyncio.sleep", AsyncMock()
-    ):
+    with patch.object(disc, "TextChannel", MagicMock), patch("asyncio.sleep", AsyncMock()):
         adapter = disc.DiscordAdapter(bus, router, identity_resolver=None)
         adapter._bot = MagicMock()
         mock_channel = MagicMock()

@@ -1,6 +1,5 @@
 """Test event bus and dispatcher."""
 
-
 from bridge.events import Dispatcher, message_in
 from bridge.gateway.bus import Bus
 
@@ -70,8 +69,11 @@ class TestDispatcher:
 
     def test_dispatch_handles_push_event_exception(self):
         class FailingTarget:
-            def accept_event(self, source, evt): return True
-            def push_event(self, source, evt): raise RuntimeError("push failed")
+            def accept_event(self, source, evt):
+                return True
+
+            def push_event(self, source, evt):
+                raise RuntimeError("push failed")
 
         dispatcher = Dispatcher()
         working = MockTarget()
@@ -83,9 +85,13 @@ class TestDispatcher:
 
     def test_dispatch_handles_accept_event_exception(self):
         """accept_event raising should not prevent other targets from receiving."""
+
         class ExplodingTarget:
-            def accept_event(self, source, evt): raise RuntimeError("accept failed")
-            def push_event(self, source, evt): pass
+            def accept_event(self, source, evt):
+                raise RuntimeError("accept failed")
+
+            def push_event(self, source, evt):
+                pass
 
         dispatcher = Dispatcher()
         working = MockTarget()
