@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -489,3 +490,182 @@ class TestIRCClientEdgeCases:
             await client.on_message("#test", "user", "hello")
         _, evt = bus.publish.call_args[0]
         assert evt.message_id.startswith("irc:")
+
+
+# ---------------------------------------------------------------------------
+# _connect_with_backoff
+# ---------------------------------------------------------------------------
+
+class TestConnectWithBackoff:
+    @pytest.mark.asyncio
+    async def test_success_on_first_attempt(self):
+        from bridge.adapters.irc import _connect_with_backoff
+        mock_client = AsyncMock()
+        call_count = 0
+        async def fake_connect(**kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count >= 2:
+                raise asyncio.CancelledError()
+        mock_client.connect.side_effect = fake_connect
+        with pytest.raises(asyncio.CancelledError), patch("asyncio.sleep", AsyncMock()):
+            await _connect_with_backoff(mock_client, "irc.example.com", 6697, True)
+        assert call_count >= 1
+
+    @pytest.mark.asyncio
+    async def test_retries_on_failure_then_succeeds(self):
+        from bridge.adapters.irc import _connect_with_backoff
+        mock_client = AsyncMock()
+        call_count = 0
+        async def fake_connect(**kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count < 3:
+                raise ConnectionRefusedError("refused")
+            raise asyncio.CancelledError()
+        mock_client.connect.side_effect = fake_connect
+        with pytest.raises(asyncio.CancelledError), patch("asyncio.sleep", AsyncMock()):
+            await _connect_with_backoff(mock_client, "irc.example.com", 6697, True)
+        assert call_count == 3
+
+    @pytest.mark.asyncio
+    async def test_raises_after_max_attempts(self):
+        from bridge.adapters.irc import _MAX_ATTEMPTS, _connect_with_backoff
+        mock_client = AsyncMock()
+        mock_client.connect.side_effect = ConnectionRefusedError("refused")
+        with pytest.raises(ConnectionRefusedError), patch("asyncio.sleep", AsyncMock()):
+            await _connect_with_backoff(mock_client, "irc.example.com", 6697, True)
+        assert mock_client.connect.call_count == _MAX_ATTEMPTS
+
+
+# ---------------------------------------------------------------------------
+# Echo-message correlation (lines 195–196)
+# ---------------------------------------------------------------------------
+
+class TestEchoMessageCorrelation:
+    @pytest.mark.asyncio
+    async def test_echo_from_self_stores_msgid_mapping(self):
+        client, _bus, router = _make_client(nick="bot")
+        client.nickname = "bot"  # pydle sets this on connect; set manually for tests
+        router.get_mapping_for_irc.return_value = MagicMock(discord_channel_id="111")
+        client._pending_sends.put_nowait("discord-msg-1")
+        client._message_tags = {"msgid": "irc-abc"}
+        with patch.object(type(client).__mro__[1], "on_message", AsyncMock()):
+            await client.on_message("#test", "bot", "hello")
+        assert client._msgid_tracker.get_discord_id("irc-abc") == "discord-msg-1"
+
+    @pytest.mark.asyncio
+    async def test_echo_with_empty_pending_queue_does_not_crash(self):
+        client, _bus, router = _make_client(nick="bot")
+        client.nickname = "bot"
+        router.get_mapping_for_irc.return_value = MagicMock(discord_channel_id="111")
+        client._message_tags = {"msgid": "irc-xyz"}
+        with patch.object(type(client).__mro__[1], "on_message", AsyncMock()):
+            await client.on_message("#test", "bot", "hello")
+        assert client._msgid_tracker.get_discord_id("irc-xyz") is None
+
+
+# ---------------------------------------------------------------------------
+# Typing throttle (line 368–372)
+# ---------------------------------------------------------------------------
+
+class TestTypingThrottle:
+    @pytest.mark.asyncio
+    async def test_typing_suppressed_within_3s(self):
+        from bridge.adapters.irc import IRCAdapter
+        from bridge.events import TypingOut
+
+        bus = MagicMock()
+        router = MagicMock()
+        adapter = IRCAdapter(bus, router, identity_resolver=None)
+        mock_client = MagicMock()
+        mock_client.rawmsg = AsyncMock()
+        mock_client._typing_last = 9999999999.0  # far future → within 3s
+        adapter._client = mock_client
+
+        irc_target = MagicMock()
+        irc_target.channel = "#test"
+        router.get_mapping_for_discord.return_value = MagicMock(irc=irc_target)
+
+        evt = TypingOut(target_origin="irc", channel_id="111")
+        await adapter._send_typing(evt)
+        mock_client.rawmsg.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_typing_sent_after_3s_elapsed(self):
+        from bridge.adapters.irc import IRCAdapter
+        from bridge.events import TypingOut
+
+        bus = MagicMock()
+        router = MagicMock()
+        adapter = IRCAdapter(bus, router, identity_resolver=None)
+        mock_client = MagicMock()
+        mock_client.rawmsg = AsyncMock()
+        mock_client._typing_last = 0.0  # long ago
+        adapter._client = mock_client
+
+        irc_target = MagicMock()
+        irc_target.channel = "#test"
+        router.get_mapping_for_discord.return_value = MagicMock(irc=irc_target)
+
+        evt = TypingOut(target_origin="irc", channel_id="111")
+        await adapter._send_typing(evt)
+        mock_client.rawmsg.assert_awaited_once()
+
+
+# ---------------------------------------------------------------------------
+# Puppet send path (lines 474–475)
+# ---------------------------------------------------------------------------
+
+class TestPuppetSendPath:
+    @pytest.mark.asyncio
+    async def test_send_via_puppet_uses_puppet_when_has_irc(self):
+        from unittest.mock import AsyncMock
+
+        from bridge.adapters.irc import IRCAdapter
+
+        bus = MagicMock()
+        router = MagicMock()
+        identity = MagicMock()
+        identity.has_irc = AsyncMock(return_value=True)
+        adapter = IRCAdapter(bus, router, identity_resolver=identity)
+        adapter._puppet_manager = MagicMock()
+        adapter._puppet_manager.send_message = AsyncMock()
+
+        irc_target = MagicMock()
+        irc_target.channel = "#test"
+        router.get_mapping_for_discord.return_value = MagicMock(irc=irc_target)
+
+        evt = MagicMock()
+        evt.channel_id = "111"
+        evt.author_id = "u1"
+        evt.content = "hi"
+        await adapter._send_via_puppet(evt)
+        adapter._puppet_manager.send_message.assert_awaited_once_with("u1", "#test", "hi")
+
+    @pytest.mark.asyncio
+    async def test_send_via_puppet_falls_back_to_client_when_no_irc(self):
+        from unittest.mock import AsyncMock
+
+        from bridge.adapters.irc import IRCAdapter
+
+        bus = MagicMock()
+        router = MagicMock()
+        identity = MagicMock()
+        identity.has_irc = AsyncMock(return_value=False)
+        adapter = IRCAdapter(bus, router, identity_resolver=identity)
+        adapter._puppet_manager = MagicMock()
+        mock_client = MagicMock()
+        mock_client.queue_message = MagicMock()
+        adapter._client = mock_client
+
+        irc_target = MagicMock()
+        irc_target.channel = "#test"
+        router.get_mapping_for_discord.return_value = MagicMock(irc=irc_target)
+
+        evt = MagicMock()
+        evt.channel_id = "111"
+        evt.author_id = "u1"
+        evt.content = "hi"
+        await adapter._send_via_puppet(evt)
+        mock_client.queue_message.assert_called_once_with(evt)
