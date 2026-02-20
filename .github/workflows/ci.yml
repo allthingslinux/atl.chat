@@ -114,4 +114,4 @@ jobs:
       - name: Run semantic-release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: uv tool run semantic-release -v version --push --vcs-release
+        run: semantic-release -v version --push --vcs-release
