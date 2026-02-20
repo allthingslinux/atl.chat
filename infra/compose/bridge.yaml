@@ -1,8 +1,7 @@
 # =============================================================================
-# Bridge Stack - Biboumi, Matterbridge
+# Bridge Stack - ATL Bridge (Discord-IRC-XMPP)
 # =============================================================================
-# TODO: Not yet deployed. See apps/bridge/README.md for implementation plan.
-# When ready, uncomment services and wire into root compose.
+# Custom multi-presence bridge: https://github.com/allthingslinux/bridge
 # =============================================================================
 
 name: atl-bridge
@@ -10,5 +9,45 @@ name: atl-bridge
 include:
   - networks.yaml
 
-services: {}
-# Placeholder - bridge services to be added when implemented
+services:
+  atl-bridge:
+    build:
+      context: ../../apps/bridge
+      dockerfile: Containerfile
+    image: allthingslinux/bridge:latest
+    container_name: atl-bridge
+    restart: unless-stopped
+    init: true
+
+    depends_on:
+      atl-xmpp-server:
+        condition: service_healthy
+      atl-irc-server:
+        condition: service_healthy
+
+    volumes:
+      - ../../apps/bridge/config.yaml:/app/config.yaml:ro
+
+    env_file:
+      - path: ../../.env
+        required: false
+
+    environment:
+      - DISCORD_TOKEN=${DISCORD_TOKEN}
+      - PORTAL_BASE_URL=${PORTAL_BASE_URL}
+      - PORTAL_TOKEN=${PORTAL_TOKEN}
+      - XMPP_COMPONENT_JID=${XMPP_COMPONENT_JID:-bridge.atl.chat}
+      - XMPP_COMPONENT_SECRET=${XMPP_COMPONENT_SECRET}
+      - XMPP_COMPONENT_SERVER=${XMPP_COMPONENT_SERVER:-atl-xmpp-server}
+      - XMPP_COMPONENT_PORT=${XMPP_COMPONENT_PORT:-5347}
+      - IRC_NICK=${IRC_NICK:-atl-bridge}
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "${LOG_MAX_SIZE:-50m}"
+        max-file: "${LOG_MAX_FILES:-5}"
+        compress: "true"
+
+    networks:
+      - atl-chat

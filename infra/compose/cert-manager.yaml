@@ -27,6 +27,7 @@ services:
     volumes:
       - ../../data/certs:/data
       - ../../scripts/cert-manager:/scripts:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
 
     networks:
       - atl-chat

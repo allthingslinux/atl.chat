@@ -2,16 +2,15 @@
 
 Overview of protocol bridging in atl.chat.
 
-## Bridges
+## Bridge
 
-- **[Biboumi](../../apps/bridge/biboumi/)** – XMPP-to-IRC gateway
-- **[Matterbridge](../../apps/bridge/matterbridge/)** – Multi-protocol relay
+- **[ATL Bridge](../../apps/bridge/)** – Custom Discord–IRC–XMPP multi-presence bridge
 
 ## Compose
 
-Bridge services are defined in `infra/compose/bridge.yaml`. They use the shared `atl-chat` network to connect to IRC and XMPP.
+Bridge services are defined in `infra/compose/bridge.yaml`. The bridge attaches to the shared `atl-chat` network and connects to both IRC and XMPP internally.
 
 ## See Also
 
-- [apps/bridge/README.md](../../apps/bridge/README.md) – Bridge design and setup
+- [apps/bridge/README.md](../../apps/bridge/README.md) – Bridge setup and configuration
 - [Networking](../infra/networking.md) – Port allocations

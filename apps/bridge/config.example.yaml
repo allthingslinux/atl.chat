@@ -1,0 +1,28 @@
+# ATL Bridge — channel mappings
+# Copy to config.yaml and fill in your Discord channel IDs.
+# Secrets come from env vars (DISCORD_TOKEN, XMPP_COMPONENT_SECRET, etc.)
+
+mappings:
+  - discord_channel_id: "DISCORD_CHANNEL_ID_HERE"
+    irc:
+      server: "atl-irc-server"
+      port: 6697
+      tls: true
+      channel: "#general"
+    xmpp:
+      muc_jid: "general@muc.atl.chat"
+
+announce_joins_and_quits: true
+announce_extras: false
+
+identity_cache_ttl_seconds: 3600
+avatar_cache_ttl_seconds: 86400
+
+irc_puppet_idle_timeout_hours: 24
+irc_puppet_ping_interval: 120
+irc_puppet_postfix: ""
+
+irc_throttle_limit: 10
+irc_message_queue: 30
+irc_rejoin_delay: 5
+irc_auto_rejoin: true
