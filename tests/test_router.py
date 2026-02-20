@@ -27,8 +27,10 @@ class TestChannelRouter:
         mappings = router.all_mappings()
         assert len(mappings) == 1
         assert mappings[0].discord_channel_id == "123"
+        assert mappings[0].irc is not None
         assert mappings[0].irc.server == "irc.libera.chat"
         assert mappings[0].irc.channel == "#test"
+        assert mappings[0].xmpp is not None
         assert mappings[0].xmpp.muc_jid == "test@conference.example.com"
 
     def test_load_config_discord_only(self):
@@ -46,6 +48,7 @@ class TestChannelRouter:
                           "irc": {"server": "irc.libera.chat", "channel": "#test"}}]
         })
         irc = router.all_mappings()[0].irc
+        assert irc is not None
         assert irc.port == 6667
         assert irc.tls is False
 
@@ -96,7 +99,9 @@ class TestChannelRouter:
         router = ChannelRouter()
         router.load_from_config({"mappings": [{"discord_channel_id": "123"}]})
         assert router.get_mapping_for_discord("123") is not None
-        assert router.get_mapping_for_discord("123").discord_channel_id == "123"
+        m = router.get_mapping_for_discord("123")
+        assert m is not None
+        assert m.discord_channel_id == "123"
 
     def test_get_mapping_for_discord_not_found(self):
         router = ChannelRouter()
@@ -181,8 +186,12 @@ class TestChannelRouter:
                  "irc": {"server": "irc.libera.chat", "channel": "#other"}},
             ]
         })
-        assert router.get_mapping_for_discord("123").irc.channel == "#test"
-        assert router.get_mapping_for_discord("456").irc.channel == "#other"
+        m1 = router.get_mapping_for_discord("123")
+        m2 = router.get_mapping_for_discord("456")
+        assert m1 is not None and m1.irc is not None
+        assert m2 is not None and m2.irc is not None
+        assert m1.irc.channel == "#test"
+        assert m2.irc.channel == "#other"
 
     def test_load_config_ignores_invalid_entries(self):
         router = ChannelRouter()
