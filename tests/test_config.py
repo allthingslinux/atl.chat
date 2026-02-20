@@ -189,118 +189,64 @@ class TestConfig:
         assert result == []
 
     def test_config_announce_joins_and_quits_default(self):
-        # Arrange
-        config = Config({})
-
-        # Act
-        result = config.announce_joins_and_quits
-
-        # Assert
-        assert result is True
+        assert Config({}).announce_joins_and_quits is True
 
     def test_config_announce_joins_and_quits_false(self):
-        # Arrange
-        config = Config({"announce_joins_and_quits": False})
-
-        # Act
-        result = config.announce_joins_and_quits
-
-        # Assert
-        assert result is False
+        assert Config({"announce_joins_and_quits": False}).announce_joins_and_quits is False
 
     def test_config_irc_puppet_idle_timeout_default(self):
-        # Arrange
-        config = Config({})
-
-        # Act
-        result = config.irc_puppet_idle_timeout_hours
-
-        # Assert
-        assert result == 24
+        assert Config({}).irc_puppet_idle_timeout_hours == 24
 
     def test_config_irc_puppet_idle_timeout_custom(self):
-        # Arrange
-        config = Config({"irc_puppet_idle_timeout_hours": 48})
-
-        # Act
-        result = config.irc_puppet_idle_timeout_hours
-
-        # Assert
-        assert result == 48
+        assert Config({"irc_puppet_idle_timeout_hours": 48}).irc_puppet_idle_timeout_hours == 48
 
     def test_config_reload(self):
-        # Arrange
         config = Config({"old": "value"})
-
-        # Act
         config.reload({"new": "value"})
-
-        # Assert
         assert config.get("new") == "value"
         assert config.get("old") is None
 
     def test_config_raw_property(self):
         data = {"key": "value"}
-        config = Config(data)
-        assert config.raw == data
+        assert Config(data).raw == data
 
     def test_config_none_defaults_to_empty(self):
-        config = Config(None)
-        assert config.raw == {}
-
-    def test_config_announce_extras_default(self):
-        assert Config({}).announce_extras is False
+        assert Config(None).raw == {}
 
     def test_config_announce_extras_true(self):
         assert Config({"announce_extras": True}).announce_extras is True
 
-    def test_config_identity_cache_ttl_default(self):
-        assert Config({}).identity_cache_ttl_seconds == 3600
-
     def test_config_identity_cache_ttl_custom(self):
         assert Config({"identity_cache_ttl_seconds": 600}).identity_cache_ttl_seconds == 600
-
-    def test_config_avatar_cache_ttl_default(self):
-        assert Config({}).avatar_cache_ttl_seconds == 86400
-
-    def test_config_irc_puppet_postfix_default(self):
-        assert Config({}).irc_puppet_postfix == ""
 
     def test_config_irc_puppet_postfix_custom(self):
         assert Config({"irc_puppet_postfix": "|d"}).irc_puppet_postfix == "|d"
 
-    def test_config_irc_throttle_limit_default(self):
-        assert Config({}).irc_throttle_limit == 10
-
-    def test_config_irc_message_queue_default(self):
-        assert Config({}).irc_message_queue == 30
-
-    def test_config_irc_rejoin_delay_default(self):
-        assert Config({}).irc_rejoin_delay == 5.0
-
-    def test_config_irc_auto_rejoin_default(self):
-        assert Config({}).irc_auto_rejoin is True
-
     def test_config_irc_auto_rejoin_false(self):
         assert Config({"irc_auto_rejoin": False}).irc_auto_rejoin is False
-
-    def test_config_irc_use_sasl_default(self):
-        assert Config({}).irc_use_sasl is False
-
-    def test_config_irc_sasl_user_default(self):
-        assert Config({}).irc_sasl_user == ""
-
-    def test_config_irc_sasl_password_default(self):
-        assert Config({}).irc_sasl_password == ""
-
-    def test_config_content_filter_regex_default(self):
-        assert Config({}).content_filter_regex == []
 
     def test_config_content_filter_regex_list(self):
         assert Config({"content_filter_regex": ["spam", "ads"]}).content_filter_regex == ["spam", "ads"]
 
     def test_config_content_filter_regex_non_list(self):
         assert Config({"content_filter_regex": "not-a-list"}).content_filter_regex == []
+
+    @pytest.mark.parametrize("prop,expected", [
+        ("announce_extras", False),
+        ("identity_cache_ttl_seconds", 3600),
+        ("avatar_cache_ttl_seconds", 86400),
+        ("irc_puppet_postfix", ""),
+        ("irc_throttle_limit", 10),
+        ("irc_message_queue", 30),
+        ("irc_rejoin_delay", 5.0),
+        ("irc_auto_rejoin", True),
+        ("irc_use_sasl", False),
+        ("irc_sasl_user", ""),
+        ("irc_sasl_password", ""),
+        ("content_filter_regex", []),
+    ])
+    def test_config_property_defaults(self, prop, expected):
+        assert getattr(Config({}), prop) == expected
 
     def test_deep_update_non_dict_replaces_dict(self):
         result = _deep_update({"a": {"x": 1}}, {"a": "scalar"})
