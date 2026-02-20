@@ -185,3 +185,4 @@ exclude_commit_patterns = [
 
 [tool.semantic_release.changelog.default_templates]
 changelog_file = "CHANGELOG.md"
+mask_initial_release = false
