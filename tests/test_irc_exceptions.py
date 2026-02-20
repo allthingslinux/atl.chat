@@ -47,14 +47,16 @@ class TestIRCClient:
             msgid_tracker=tracker,
         )
 
-        # Simulate IRCv3 tags and ready state
         client._message_tags = {"msgid": "abc123", "+draft/reply": "xyz789"}
         client._ready = True
 
         await client.on_message("#test", "user", "Hello")
 
-        # Verify message was published
         assert bus.publish.called
+        _, evt = bus.publish.call_args[0]
+        assert evt.message_id == "abc123"
+        assert evt.content == "Hello"
+        assert evt.author_id == "user"
 
 
 class TestMessageIDTracker:
@@ -85,12 +87,14 @@ class TestIRCPuppet:
         assert puppet.discord_id == "discord-123"
 
     def test_puppet_touch_updates_activity(self):
+        import time
         puppet = IRCPuppet("user-nick", "discord-123")
         initial = puppet.last_activity
 
+        time.sleep(0.01)
         puppet.touch()
 
-        assert puppet.last_activity >= initial
+        assert puppet.last_activity > initial
 
 
 class TestIRCPuppetManager:
