@@ -2,7 +2,7 @@
 
 **Production-ready Discord–IRC–XMPP bridge with multi-presence and modern protocol support.**
 
-[![Tests](https://img.shields.io/badge/tests-320%20passing-brightgreen)]() [![Python](https://img.shields.io/badge/python-3.10+-blue)]() [![License](https://img.shields.io/badge/license-MIT-blue)]()
+[![Tests](https://img.shields.io/badge/tests-654%20passing-brightgreen)]() [![Python](https://img.shields.io/badge/python-3.10+-blue)]() [![License](https://img.shields.io/badge/license-MIT-blue)]()
 
 ## Why ATL Bridge?
 
@@ -44,6 +44,8 @@ bridge --config config.yaml
 - **Reply threading**: Discord replies ↔ IRC `+draft/reply` tags
 - **Typing indicators**: Discord typing → IRC `TAGMSG` with `+typing=active`
 - **Puppet management**: Per-user connections with idle timeout (24h default)
+- **Puppet keep-alive**: Configurable PING interval to prevent silent server-side drops
+- **Pre-join commands**: Send NickServ IDENTIFY, MODE, etc. immediately after puppet connects
 - **Message ID tracking**: 1-hour TTL cache for edit/delete correlation
 - **Flood control**: Token bucket rate limiting and configurable throttle
 
@@ -62,14 +64,19 @@ bridge --config config.yaml
 
 ### Discord Support
 - **Webhooks**: Per-identity webhooks for native nick/avatar display
+- **Raw event handling**: Edits and deletes fire for all messages, not just cached ones
+- **Bulk delete**: Moderator purges relay each deleted message to IRC/XMPP
 - **Message edits**: XMPP corrections and IRC edits → Discord `edit_message`
+- **Reactions**: Add and remove reactions bridged to/from IRC/XMPP
 - **Typing indicators**: IRC typing → Discord `channel.typing()`
+- **Mention safety**: `@everyone` and role pings suppressed on bridged content
 - **!bridge status**: Show linked IRC/XMPP accounts (requires Portal identity)
 
 ### Reliability
 - **Retry logic**: Exponential backoff for transient errors (5 attempts, 2-30s)
 - **Error recovery**: Graceful handling of network failures
-- **Comprehensive tests**: 320+ tests covering core, adapters, formatting, and edge cases
+- **Event loop**: uvloop for 2-4x faster async I/O (Linux/macOS; falls back to asyncio on Windows)
+- **Comprehensive tests**: 654 tests covering core, adapters, formatting, and edge cases
 
 ## Configuration
 
@@ -88,6 +95,9 @@ mappings:
 
 announce_joins_and_quits: true
 irc_puppet_idle_timeout_hours: 24
+irc_puppet_ping_interval: 120        # keep-alive PING every 2 minutes
+irc_puppet_prejoin_commands:         # sent immediately after puppet connects
+  - "MODE {nick} +D"
 ```
 
 See `config.example.yaml` for all options (throttling, SASL, content filtering, etc.).
@@ -246,7 +256,7 @@ uv run pytest tests/test_xmpp_features.py -v
 uv run pytest tests --cov --cov-report=html
 ```
 
-**Test Coverage**: 320+ tests covering:
+**Test Coverage**: 654 tests covering:
 - Core bridging logic and relay
 - Discord adapter (webhooks, edits, reactions, typing)
 - IRC reply threading, puppets, message ID tracking
@@ -323,4 +333,4 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ---
 
-**Status**: Production-ready • **Maintained**: Yes • **Tests**: 320+ passing
+**Status**: Production-ready • **Maintained**: Yes • **Tests**: 654 passing
