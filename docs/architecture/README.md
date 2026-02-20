@@ -6,7 +6,7 @@ How the atl.chat services interact and communicate.
 
 - **IRC** (UnrealIRCd + Atheme) – Chat server and services
 - **XMPP** (Prosody) – Modern messaging
-- **Bridges** (Biboumi, Matterbridge) – Protocol bridging
+- **Bridge** (ATL Bridge) – Discord–IRC–XMPP protocol bridging
 - **Web** (Next.js) – Landing and clients
 
 ## Compose Layout
