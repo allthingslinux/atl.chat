@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from bridge.adapters.irc import IRCClient
 from bridge.adapters.irc_msgid import MessageIDTracker
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -179,7 +177,7 @@ class TestOnMessage:
 
     @pytest.mark.asyncio
     async def test_echo_correlates_pending_send(self):
-        client, bus, router = _make_client()
+        client, _bus, router = _make_client()
         router.get_mapping_for_irc.return_value = MagicMock(discord_channel_id="111")
         client.nickname = "bot"
         client._pending_sends.put_nowait("discord-123")
