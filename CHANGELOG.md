@@ -1,5 +1,18 @@
 <!-- version list -->
 
+## v0.2.0 (2026-02-21)
+
+### Bug Fixes
+
+- **identity**: Snake_case field names, add irc/xmpp_to_discord, fix has_irc/has_xmpp
+  ([`724c29c`](https://github.com/allthingslinux/bridge/commit/724c29cc444740fac56fa3b63f26b922f7c5aba6))
+
+### Features
+
+- **identity**: Restore discord_to_irc/xmpp and add portal discordId lookup
+  ([`4273509`](https://github.com/allthingslinux/bridge/commit/4273509d315a1e49f83126747f28c36fa6fb86d5))
+
+
 ## v0.1.0 (2026-02-20)
 
 - Initial Release
