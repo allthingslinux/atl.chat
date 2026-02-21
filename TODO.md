@@ -1,5 +1,161 @@
 # TODO
 
+# Bridge Features & Ideas Checklist
+
+Check the boxes `[x]` for the features you want to include in the bridge. Once you are done, let me know and we will generate a new plan based on your selections.
+
+**Legend:** `[x]` = wanted · `[~]` = partially implemented · `[ ]` = not started · `[-]` = not wanted
+
+## 1. Reliability & Connection Management
+- [~] **IRC Flood Control / Rate Limiting:** Token bucket algorithm to queue messages and prevent server drops.
+- [~] **IRC Rate Limiting Configuration:** Support configuration options like `SendLimit` and `SendBurst`.
+- [~] **Exponential Backoff Reconnection:** Reconnect to servers with increasing delays (and jitter) on network issues.
+- [-] **Linear Reconnect Backoff:** Simple linear alternative (e.g., 10s, 20s, 30s) instead of exponential.
+- [~] **Auto-Rejoin Logic:** Automatically attempt to rejoin IRC/XMPP channels after a `KICK`, disconnect, or ping timeout.
+- [ ] **Connection Limiting:** Hard limits on total active IRC connections to prevent resource exhaustion.
+- [~] **Ready Detection (PING/PONG):** Wait for `005 ISUPPORT` and a PONG response before processing messages.
+- [ ] **Random IPv6 Host Selection:** Randomly pick from available IPv6 addresses for IRC servers to distribute connection load.
+- [~] **Send Lock for Race Conditions:** Use `asyncio.Lock()` to serialize message sends to APIs.
+- [x] **Message Queue with Delay:** Queue Discord webhook sends with configurable fixed delays to ensure strict order.
+- [-] **Fixed Delay Between Messages:** Sleep before/after sending messages (simplistic rate limit).
+- [~] **Async Event for Join Coordination:** Use `asyncio.Event` to prevent duplicate concurrent joins to the same channel.
+- [ ] **Exit on Send Error:** Configurable behavior to exit the bridge or continue on send errors.
+
+## 2. Security & Moderation
+- [x] **AllowedMentions Configuration:** Disable `@everyone` and `@here` (and optionally role mentions) by default in Discord to prevent abuse.
+- [ ] **Permission-Based Channel Joining:** Ensure IRC puppets only join channels they have permission to read/write in on Discord.
+- [ ] **WebIRC Support:** Use `WEBIRC` on the IRC server so puppets show real IPs/hostnames instead of the bridge's IP.
+- [ ] **Allowed/Ignored User Lists:** Whitelist or blacklist specific Discord users from being bridged.
+- [ ] **IRC Hostmask Filtering:** Ignore IRC users matching specific glob patterns.
+- [~] **Message Content Filtering:** Ignore Discord/IRC messages matching regex patterns.
+- [ ] **Message Edit/Delete Logging:** Log all edited and deleted messages to a dedicated moderation channel with before/after comparisons.
+- [~] **SASL Authentication:** Use SASL PLAIN/CAP negotiation for IRC authentication instead of standard `NickServ IDENTIFY`.
+- [x] **Bot Message Filtering:** Configurable `allowBots` flag to skip bridging messages from other bots (check webhook_id/application_id).
+- [ ] **Allowed Speakers Role:** Only bridge messages from Discord users who possess a specific role.
+
+## 3. Messaging & Formatting (Bidirectional)
+- [~] **Advanced Discord Markdown Parser:** Use an AST-based parser to properly convert Discord formatting to IRC.
+- [~] **IRC Formatting to Discord Markdown:** State-machine parser to convert IRC control codes to Discord markdown.
+- [-] **Sophisticated IRC->Discord Formatting (Intervals):** Use bitwise flags and intervals to correctly handle overlapping/nested IRC formatting.
+- [~] **URL-Aware Formatting:** Preserve formatting characters (like `_` or `*`) inside URLs so links aren't broken.
+- [ ] **Custom Format Strings:** Template-based message formatting (e.g., `<{$displayUsername}> {$text}`).
+- [~] **IRC Message Splitting:** Intelligently split long messages into multiple IRC messages (max 512 bytes) at word boundaries.
+- [~] **Message Length Truncation:** Truncate messages over 1900 chars for Discord APIs if not splitting.
+- [ ] **Multi-line Message Handling:** Split Discord messages by newlines and send each line as a separate IRC message.
+- [~] **Automatic Paste Service:** Automatically upload extremely long messages (or multi-line code blocks) to a pastebin service.
+- [x] **Reply Tracking & Fallback Chain:** Track cross-platform replies bidirectional. Fallback: cross-platform cache -> same-platform cache -> API fetch.
+- [~] **Link Buttons for Replies:** Use Discord UI link buttons to display "Replying to..." context compactly.
+- [ ] **Reply vs Forward Detection:** Distinguish between replies and forwarded messages, formatting forwards with source context.
+- [ ] **Discord Thread Support:** Bridge Discord threads to XMPP threads (XEP-0201) or specific IRC topics/channels.
+- [ ] **Topic Synchronization:** Sync the IRC topic or Discord channel topic with the XMPP MUC subject.
+- [ ] **Private Message Support:** Bridge PMs between XMPP/IRC users and Discord users.
+- [ ] **Auto-Creating PM Channels:** Dynamically create a Discord channel for each IRC private message (query window).
+
+## 4. Mentions & Anti-Ping
+- [ ] **Zero-Width Space (ZWS) Anti-Ping:** Insert `\u200B` in nicknames to prevent accidental highlighting.
+  - [ ] *Variant A:* Insert after the first character.
+  - [ ] *Variant B:* Insert after vowels for more natural breaking.
+  - [ ] *Variant C:* Use Unicode grapheme segmentation.
+- [ ] **Strip Anti-Ping Characters:** Remove zero-width spaces when bridging back to Discord.
+- [-] **Cyrillic Substitution Anti-Ping:** Replace Latin characters (like `a`, `o`, `e`) with identical-looking Cyrillic characters.
+- [ ] **Smart Nick Sanitization (Textual algorithm):** Detect word boundaries and `[nick]` syntax to only allow intentional pings.
+- [~] **Cross-Platform Mention Conversion:** Convert Discord `<@id>` to IRC `@nickname`, and IRC `@nickname` to Discord `<@id>`.
+- [~] **Markdown Escaping for IRC Nicks:** Escape Discord markdown characters in IRC nicknames so they don't break formatting.
+- [~] **IRC Nickname Normalization:** Replace conflicting characters (`!` to `ǃ`, `@` to `＠`) in nicknames.
+- [~] **Max Nick Length / Truncation:** Enforce configurable max nickname lengths (e.g., 30 chars).
+- [~] **Nickname Suffix and Separator:** Configure fixed suffixes (e.g. `[d]` or `_d`) for bridged nicknames.
+- [x] **Nick Length Validation:** Ensure webhook usernames are strictly 2-32 chars (pad short ones, truncate long ones).
+- [-] **Username Truncation with Discriminator:** Truncate appropriately while keeping the old #discriminator logic if needed.
+
+## 5. Media, Embeds & Avatars
+- [x] **Webhook Avatar Caching with TTL:** Cache Discord avatar URLs with a Time-To-Live to avoid hitting rate limits.
+- [~] **Avatar Fallback - Hash-based Colors:** Generate deterministic UI Avatars (`ui-avatars.com`) based on a hash of the IRC user's name.
+- [-] **Avatar Fallback - Robohash:** Generate random Robohash avatars for IRC users.
+- [x] **Auto-Detect Avatar from Discord:** When an IRC user speaks, search Discord for a matching nickname and use their avatar.
+- [ ] **Configurable Avatar URL Template:** Allow user config to define the avatar URL format string.
+- [~] **Embed Translation & Extraction:** Extract media (like Tenor GIFs) from embeds and bridge them as raw URLs/attachments.
+- [ ] **Embed Suppression:** Use `suppress_embeds=True` on Discord to prevent URL previews.
+- [~] **Embed Count Indicator:** Append "(N embeds)" text to messages containing embeds.
+- [ ] **Media Link Embedding:** Send standalone media URLs (images/videos) on a separate line so Discord embeds them nicely.
+- [x] **XMPP VCard Avatars:** Fetch avatar hashes and images via XMPP VCards for bridged users.
+- [ ] **Avatar Dominant Color Extraction:** Extract dominant color from avatar to use in Discord webhook embeds.
+- [ ] **Attachment URL Appending:** Append uploaded file URLs to the end of the text message.
+
+## 6. Puppets & Multi-Presence
+- [~] **Puppet Lifecycle / Idle Timeout:** Disconnect IRC puppets after a period of inactivity (e.g., 24-48 hours).
+- [ ] **Puppet Keep-Alive (Pinger):** Periodically send a `PING` from idle puppets to keep their connection alive.
+- [~] **Nickname Collision & Reclaim:** Append `[d]`, `[1]`, `_` on nick collisions, and attempt to reclaim the original nick after a netsplit.
+- [ ] **Nick Change Handling:** Detect IRC nick changes and propagate presence updates/renames across the bridge.
+- [ ] **AFK/UNAFK Status Sync:** Sync Discord's online/idle/dnd status with IRC's `AWAY` status.
+- [-] **IPv6 CIDR Range Puppets:** Assign a deterministic, unique IPv6 address to every puppet to bypass IRC connection limits (Requires infra setup).
+
+## 7. IRC-Specific Features (IRCv3, Modes, Commands)
+- [x] **IRCv3 Base Caps (message-tags, message-ids, echo-message):** Negotiate foundation caps required for reply, react, and redaction.
+- [~] **IRCv3 Replies (+draft/reply):** Use IRCv3 client tags to track exact message replies bidirectionally.
+- [ ] **IRCv3 Message Deletion (draft/message-redaction, REDACT):** Sync deleted messages bidirectionally using the IRCv3 `REDACT` command.
+- [ ] **IRCv3 Reactions (+draft/react):** Sync message reactions (emojis) bidirectionally using IRCv3 tags.
+- [ ] **IRCv3 Typing Notifications:** Show typing indicators between platforms.
+- [~] **IRC Action (/me) Handling:** Detect CTCP `ACTION` and bridge to Discord as italicized `* username action *`.
+- [ ] **Auto-Send Pre-Join Commands:** Send automated commands (like `MODE +D` or NickServ commands) immediately upon connecting.
+- [ ] **CTCP VERSION / SOURCE Responses:** Automatically respond to IRC CTCP requests with bridge info.
+- [ ] **BOT Mode Auto-Detection:** Read `005 ISUPPORT` and automatically set `+B` mode on the connection.
+- [ ] **No-Prefix Regex for Bot Commands:** Allow specific messages (like `.help`) to bridge without the `<Username>` prefix.
+- [ ] **Channel Keys:** Support joining password-protected IRC channels.
+- [ ] **Strip IRC Colors:** Provide a config toggle to strip all color codes from IRC messages completely.
+- [ ] **Color-Coded Nicknames:** Assign consistent IRC colors to bridged user nicknames based on a hash of their name or Discord role color.
+- [ ] **Room Name Validation:** Validate IRC channels strictly start with `#` or standard prefixes.
+- [ ] **IRCv3 away-notify:** Support AFK/UNAFK sync via `AWAY` notifications (requires cap).
+- [ ] **IRCv3 multiline (draft/multiline):** Send long messages as batched PRIVMSG with line breaks.
+- [ ] **IRCv3 channel-context (+draft/channel-context):** Indicate channel context for PM replies.
+
+## 8. XMPP-Specific Features
+- [~] **MUC Join History Suppression:** Send `<history maxchars="0"/>` when joining a MUC to avoid flooding the bridge with backlog.
+- [ ] **XMPP Stanza-ID Tracking:** Track messages using the `<stanza-id>` element for exact deduplication.
+- [ ] **BOSH / WebSockets Support:** Support for connecting to XMPP over BOSH or WebSockets for better firewall bypassing.
+- [-] **Server-to-Server (s2s) Connections:** Support federated bridging using XMPP s2s protocol instead of just c2s.
+- [x] **XMPP Stream Management:** Use XEP-0198 to provide session resumption and reliability for XMPP connections.
+
+## 9. Architecture, Storage & Performance
+- [~] **Message Cache Backup / Persistence:** Save the message ID mapping cache to disk (compressed JSON) on shutdown so edits/deletes still work after a restart.
+- [ ] **Message ID Store for Webhook Edits:** Use `PATCH` with stored Discord message IDs to natively edit webhook messages.
+- [ ] **SQLite Persistence:** Use SQLite for dynamic channel mappings, logs, and user configurations.
+- [ ] **Compressed JSON Storage:** Use `compress_json` for storing caches efficiently.
+- [~] **Webhook Cache Store:** Maintain an in-memory cache of fetched webhooks per server.
+- [-] **Guild Member Lazy Loading:** Fetch guild members on-demand (and cache them) rather than syncing huge guilds on startup.
+- [~] **Message Echo Prevention:** Use a set/cache of recently sent message IDs to ignore self-messages.
+- [ ] **Performance Optimizations:** Integrate `ujson`, `uvloop`, or `aiomultiprocess` for faster bridging throughput.
+- [ ] **Hot-Reloadable Configuration:** Reload channel mappings and settings automatically without restarting.
+- [ ] **Built-in Upgrader:** Automatic configuration file migrations and update checking.
+- [ ] **Mutator / Middleware Pattern:** Message processing pipeline with lifecycle control (`CONTINUE`, `STOP`, `DISCARD`).
+- [ ] **Message Parts Architecture:** Treat messages as objects of distinct parts (text, mentions, actions) rather than flat strings.
+- [-] **Pluggable Architecture:** Support loading external plugins for new protocols or features.
+- [ ] **Queue-Based Command Processing:** Separate threads/queues for processing Discord, IRC, puppet events.
+- [~] **Event Dispatcher Pattern:** Central event dispatcher with graceful error handling per target.
+- [ ] **Silent Message Sending:** Support internal methods to send messages silently without triggering further events (prevent loops).
+
+## 10. UI/UX, Analytics & Logging
+- [ ] **Deduplication Emojis:** Add visual indicators (colored square emojis) to show when messages have been deduplicated.
+- [ ] **Emoji Limit for Spam Prevention:** Restrict the maximum number of custom emojis rendered per message to prevent spam.
+- [ ] **Statistics & Uptime Tracker:** Track total bridged messages per direction and uptime.
+- [ ] **Prometheus Metrics Integration:** Expose prometheus metrics for monitoring.
+- [ ] **Welcome/Goodbye Messages:** Send customizable template messages when users join or leave the bridged channels.
+- [~] **Bridge Member Changes (Join/Part/Quit):** Bridge connect/disconnect events across platforms as text messages.
+- [~] **Configurable Event Logging:** Let admins toggle logging of JOIN/PART/QUIT events per platform.
+- [ ] **HTTP Server for Log Viewing:** Expose a web UI for viewing SQLite message logs.
+- [ ] **User Command History Tracking:** Log admin commands specifically for debugging.
+
+## 11. Testing & Tooling
+- [~] **Mock Discord Backend for Tests:** Implement fake connection states and HTTP clients to run unit tests without hitting APIs.
+- [~] **Factory Pattern for Test Fixtures:** Create realistic test objects (Messages, Users, Attachments) using factories.
+- [ ] **Async Event Runner for Tests:** Ensure all async events are awaited properly to prevent race conditions during test execution.
+- [ ] **Fluent Assertion API (Verify Pattern):** Chainable test assertions (e.g. `verify().message().content("x")`).
+- [ ] **Message Queue for Sent Messages:** Track sent messages in tests with peek capabilities.
+- [ ] **Error Queue for Command Errors:** Specific queue in tests to track and verify caught exceptions.
+- [~] **Pytest Fixtures for Bot Setup:** Auto-setup bot instances per test.
+- [ ] **Attachment Factory:** Generate mock attachments for testing.
+- [ ] **Configuration Decorator:** Enforce test configuration state via decorators.
+
+
 ## High Priority (Reliability)
 
 ### IRC Flood Control
