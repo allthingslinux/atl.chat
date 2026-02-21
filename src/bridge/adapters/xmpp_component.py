@@ -544,7 +544,7 @@ class XMPPComponent(ComponentXMPP):
             await muc_plugin.join_muc_wait(  # type: ignore[misc,call-arg]
                 JID(muc_jid),
                 nick,
-                mfrom=JID(user_jid),
+                mfrom=JID(user_jid),  # pyright: ignore[reportCallIssue]
                 timeout=30,
                 maxchars=0,  # pyright: ignore[reportCallIssue]
             )
