@@ -53,23 +53,28 @@ class TestOnRawChghost:
     @pytest.mark.asyncio
     async def test_chghost_with_two_params_logs(self):
         """on_raw_chghost with two parameters should not raise."""
+        # Arrange
         client = object.__new__(IRCClient)
         client._server = "irc.libera.chat"
-
         msg = MagicMock()
         msg.source = "nick!user@host"
         msg.params = ["new_user", "new_host"]
+
+        # Act / Assert — must not raise
         await client.on_raw_chghost(msg)
 
     @pytest.mark.asyncio
     async def test_chghost_with_one_param_does_not_raise(self):
+        """on_raw_chghost with fewer than two params skips silently."""
+        # Arrange
         client = object.__new__(IRCClient)
         client._server = "irc.libera.chat"
-
         msg = MagicMock()
         msg.source = "nick!user@host"
         msg.params = ["only_user"]
-        await client.on_raw_chghost(msg)  # len(params) < 2, should skip silently
+
+        # Act / Assert — len(params) < 2 path, must not raise
+        await client.on_raw_chghost(msg)
 
 
 # ---------------------------------------------------------------------------
@@ -80,21 +85,26 @@ class TestOnRawChghost:
 class TestOnRawSetname:
     @pytest.mark.asyncio
     async def test_setname_with_params_logs(self):
+        # Arrange
         client = object.__new__(IRCClient)
-
         msg = MagicMock()
         msg.source = "nick!user@host"
         msg.params = ["New Real Name"]
+
+        # Act / Assert — must not raise
         await client.on_raw_setname(msg)
 
     @pytest.mark.asyncio
     async def test_setname_with_empty_params_does_not_raise(self):
+        """on_raw_setname with no params skips silently."""
+        # Arrange
         client = object.__new__(IRCClient)
-
         msg = MagicMock()
         msg.source = "nick!user@host"
         msg.params = []
-        await client.on_raw_setname(msg)  # no params, should skip silently
+
+        # Act / Assert — must not raise
+        await client.on_raw_setname(msg)
 
 
 # ---------------------------------------------------------------------------
@@ -105,15 +115,15 @@ class TestOnRawSetname:
 class TestStartSasl:
     @pytest.mark.asyncio
     async def test_start_injects_sasl_kwargs_when_configured(self):
+        # Arrange
         adapter, _bus, router = _make_adapter()
         router.all_mappings.return_value = [_irc_mapping()]
-
-        mock_puppet_mgr = AsyncMock()
-        mock_puppet_mgr.start = AsyncMock()
+        mock_puppet_mgr = AsyncMock(start=AsyncMock())
 
         async def _fake_backoff(client, hostname, port, tls):
             await asyncio.sleep(9999)
 
+        # Act
         with (
             patch("bridge.adapters.irc.IRCClient") as mock_irc_cls,
             patch("bridge.adapters.irc._connect_with_backoff", side_effect=_fake_backoff),
@@ -133,11 +143,11 @@ class TestStartSasl:
 
             await adapter.start()
 
+            # Assert
             call_kwargs = mock_irc_cls.call_args[1]
             assert call_kwargs.get("sasl_username") == "sasluser"
             assert call_kwargs.get("sasl_password") == "saslpass"
 
-        # cancel the background task
         if adapter._task:
             adapter._task.cancel()
             with contextlib.suppress(asyncio.CancelledError, Exception):
@@ -145,15 +155,15 @@ class TestStartSasl:
 
     @pytest.mark.asyncio
     async def test_start_no_sasl_when_disabled(self):
+        # Arrange
         adapter, _bus, router = _make_adapter()
         router.all_mappings.return_value = [_irc_mapping()]
-
-        mock_puppet_mgr = AsyncMock()
-        mock_puppet_mgr.start = AsyncMock()
+        mock_puppet_mgr = AsyncMock(start=AsyncMock())
 
         async def _fake_backoff(client, hostname, port, tls):
             await asyncio.sleep(9999)
 
+        # Act
         with (
             patch("bridge.adapters.irc.IRCClient") as mock_irc_cls,
             patch("bridge.adapters.irc._connect_with_backoff", side_effect=_fake_backoff),
@@ -173,6 +183,7 @@ class TestStartSasl:
 
             await adapter.start()
 
+            # Assert
             call_kwargs = mock_irc_cls.call_args[1]
             assert "sasl_username" not in call_kwargs
             assert "sasl_password" not in call_kwargs
@@ -191,36 +202,45 @@ class TestStartSasl:
 class TestSendTypingThrottle:
     @pytest.mark.asyncio
     async def test_throttle_hit_does_not_send(self):
-        """If typing was sent < 3s ago, rawmsg is not called."""
+        """If typing was sent < 3 s ago, rawmsg is not called."""
         import time
 
+        # Arrange
         adapter, _, router = _make_adapter()
         adapter._client = _mock_client()
-        # Simulate just-sent typing
-        adapter._client._typing_last = time.time()
+        adapter._client._typing_last = time.time()  # just-sent → throttled
         router.get_mapping_for_discord.return_value = _irc_mapping()
 
         from bridge.events import TypingOut
 
         evt = TypingOut(target_origin="irc", channel_id="111")
+
+        # Act
         await adapter._send_typing(evt)
+
+        # Assert
         adapter._client.rawmsg.assert_not_awaited()
 
     @pytest.mark.asyncio
     async def test_throttle_updates_after_send(self):
-        """After sending, _typing_last should be updated."""
+        """After a successful typing send, _typing_last is updated."""
         import time
 
+        # Arrange
         adapter, _, router = _make_adapter()
         adapter._client = _mock_client()
-        adapter._client._typing_last = 0
+        adapter._client._typing_last = 0  # stale → will send
         router.get_mapping_for_discord.return_value = _irc_mapping()
 
         from bridge.events import TypingOut
 
         evt = TypingOut(target_origin="irc", channel_id="111")
         before = time.time()
+
+        # Act
         await adapter._send_typing(evt)
+
+        # Assert
         assert adapter._client._typing_last >= before
 
 
@@ -232,6 +252,7 @@ class TestSendTypingThrottle:
 class TestSendViaPuppetFallback:
     @pytest.mark.asyncio
     async def test_falls_back_to_client_when_no_irc_identity(self):
+        # Arrange
         adapter, _, router = _make_adapter()
         adapter._puppet_manager = AsyncMock()
         adapter._client = _mock_client()
@@ -246,7 +267,11 @@ class TestSendViaPuppetFallback:
             content="hi",
             message_id="m1",
         )
+
+        # Act
         await adapter._send_via_puppet(evt)
+
+        # Assert — falls back to the main client, not the puppet
         adapter._client.queue_message.assert_called_once_with(evt)  # type: ignore[union-attr]
         adapter._puppet_manager.send_message.assert_not_awaited()
 
@@ -258,6 +283,7 @@ class TestSendViaPuppetFallback:
 
 class TestAdapterBase:
     def test_accept_event_default_returns_false(self):
+        # Arrange
         from bridge.adapters.base import AdapterBase
 
         class ConcreteAdapter(AdapterBase):
@@ -272,9 +298,15 @@ class TestAdapterBase:
                 pass
 
         adapter = ConcreteAdapter()
-        assert adapter.accept_event("source", object()) is False
+
+        # Act
+        result = adapter.accept_event("source", object())
+
+        # Assert
+        assert result is False
 
     def test_push_event_default_is_noop(self):
+        # Arrange
         from bridge.adapters.base import AdapterBase
 
         class ConcreteAdapter(AdapterBase):
@@ -289,6 +321,9 @@ class TestAdapterBase:
                 pass
 
         adapter = ConcreteAdapter()
-        # Should not raise and return None
+
+        # Act
         result = adapter.push_event("source", object())
+
+        # Assert
         assert result is None
