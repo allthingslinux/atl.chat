@@ -1,5 +1,14 @@
 <!-- version list -->
 
+## v0.2.1 (2026-02-22)
+
+### Refactoring
+
+- Implement `TTLCache` for avatar and webhook caches and reuse `aiohttp.ClientSession` for HTTP
+  requests.
+  ([`27a522f`](https://github.com/allthingslinux/bridge/commit/27a522f07eca55914705f33382d30807cb1dada4))
+
+
 ## v0.2.0 (2026-02-21)
 
 ### Bug Fixes
