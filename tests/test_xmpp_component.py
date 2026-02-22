@@ -5,6 +5,7 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 import pytest
+from cachetools import TTLCache
 
 from bridge.adapters.xmpp_component import XMPPComponent
 from bridge.adapters.xmpp_msgid import XMPPMessageIDTracker
@@ -24,7 +25,8 @@ def make_component(router=None, bus=None):
     comp._router = router or MagicMock()
     comp._identity = MagicMock()
     comp._component_jid = "bridge.example.com"
-    comp._avatar_cache = {}
+    comp._session = None
+    comp._avatar_cache = TTLCache(maxsize=10, ttl=60)
     comp._ibb_streams = {}
     comp._msgid_tracker = XMPPMessageIDTracker()
     return comp

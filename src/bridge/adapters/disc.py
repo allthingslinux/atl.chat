@@ -9,6 +9,7 @@ import os
 from typing import TYPE_CHECKING
 
 import aiohttp
+from cachetools import TTLCache
 from discord import AllowedMentions, File, Intents, Message, TextChannel
 from discord.ext import commands
 from discord.webhook import Webhook
@@ -57,9 +58,10 @@ class DiscordAdapter:
         self._router = router
         self._identity = identity_resolver
         self._queue: asyncio.Queue[MessageOut] = asyncio.Queue()
-        self._webhook_cache: dict[tuple[str, str], Webhook] = {}
+        self._webhook_cache: TTLCache[tuple[str, str], Webhook] = TTLCache(maxsize=500, ttl=86400)
         self._send_lock = asyncio.Lock()
         self._bot: commands.Bot | None = None
+        self._session: aiohttp.ClientSession | None = None
         self._consumer_task: asyncio.Task | None = None
         self._bot_task: asyncio.Task | None = None
         self._typing_throttle: dict[str, float] = {}  # channel_id -> last_sent
@@ -345,23 +347,21 @@ class DiscordAdapter:
                             continue
 
                         try:
-                            async with (
-                                aiohttp.ClientSession() as session,
-                                session.get(attachment.url) as resp,
-                            ):
-                                if resp.status == 200:
-                                    data = await resp.read()
-                                    await xmpp_adapter._component.send_file_with_fallback(
-                                        discord_id,
-                                        mapping.xmpp.muc_jid,
-                                        data,
-                                        attachment.filename,
-                                        nick,
-                                    )
-                                    logger.info(
-                                        "Sent Discord attachment {} to XMPP",
-                                        attachment.filename,
-                                    )
+                            if self._session:
+                                async with self._session.get(attachment.url) as resp:
+                                    if resp.status == 200:
+                                        data = await resp.read()
+                                        await xmpp_adapter._component.send_file_with_fallback(
+                                            discord_id,
+                                            mapping.xmpp.muc_jid,
+                                            data,
+                                            attachment.filename,
+                                            nick,
+                                        )
+                                        logger.info(
+                                            "Sent Discord attachment {} to XMPP",
+                                            attachment.filename,
+                                        )
                         except Exception as exc:
                             logger.exception("Failed to bridge attachment to XMPP: {}", exc)
 
@@ -682,6 +682,7 @@ class DiscordAdapter:
             await self._cmd_bridge_status(ctx)
 
         self._bot = bot
+        self._session = aiohttp.ClientSession()
         self._consumer_task = asyncio.create_task(self._queue_consumer())
         self._bot_task = asyncio.create_task(bot.start(token))
 
@@ -700,5 +701,8 @@ class DiscordAdapter:
             self._bot_task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await self._bot_task
+        if self._session:
+            await self._session.close()
         self._bot = None
+        self._session = None
         self._bot_task = None

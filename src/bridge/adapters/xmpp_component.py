@@ -7,6 +7,7 @@ import hashlib
 from typing import TYPE_CHECKING, Any
 
 import aiohttp
+from cachetools import TTLCache
 from loguru import logger
 from slixmpp import JID
 from slixmpp.componentxmpp import ComponentXMPP
@@ -38,7 +39,10 @@ class XMPPComponent(ComponentXMPP):
         self._router = router
         self._identity = identity
         self._component_jid = jid
-        self._avatar_cache: dict[str, str] = {}  # discord_id -> avatar_hash
+        self._avatar_cache: TTLCache[str, str] = TTLCache(
+            maxsize=1000, ttl=86400
+        )  # discord_id -> avatar_hash (24h TTL)
+        self._session: aiohttp.ClientSession | None = None
         self._ibb_streams: dict[str, asyncio.Task] = {}  # sid -> handler task
         self._msgid_tracker = XMPPMessageIDTracker()  # Track message IDs for edits
 
@@ -80,6 +84,25 @@ class XMPPComponent(ComponentXMPP):
         self.add_event_handler("message_retract", self._on_retraction)
         self.add_event_handler("ibb_stream_start", self._on_ibb_stream_start)
         self.add_event_handler("ibb_stream_end", self._on_ibb_stream_end)
+        self.add_event_handler("session_start", self._on_session_start)
+        self.add_event_handler("disconnected", self._on_disconnected)
+
+    def _on_session_start(self, event: Any) -> None:
+        """Initialize HTTP session on XMPP connect."""
+        if not self._session:
+            self._session = aiohttp.ClientSession()
+
+            # To avoid RUF006 (un-awaited asyncio task), just close directly since it's an async fn?
+            # actually _on_disconnected might be synchronous callback.
+            # Let's use asyncio.create_task and store it, or if python 3.10+ we can shield it or await it if the handler is async.
+            # RUF006 says "Store a reference to the return value of `asyncio.create_task`"
+            # Slixmpp event handlers can be async. Let's make it async.
+
+    async def _on_disconnected(self, event: Any) -> None:
+        """Close HTTP session on XMPP disconnect."""
+        if self._session:
+            await self._session.close()
+            self._session = None
 
     def _on_groupchat_message(self, msg: Any) -> None:
         """Handle MUC message; emit MessageIn."""
@@ -554,11 +577,12 @@ class XMPPComponent(ComponentXMPP):
 
     async def _fetch_avatar_bytes(self, avatar_url: str) -> bytes | None:
         """Download avatar image from URL."""
+        if not self._session:
+            return None
         try:
-            async with (
-                aiohttp.ClientSession() as session,
-                session.get(avatar_url, timeout=aiohttp.ClientTimeout(total=10)) as resp,
-            ):
+            async with self._session.get(
+                avatar_url, timeout=aiohttp.ClientTimeout(total=10)
+            ) as resp:
                 if resp.status == 200:
                     return await resp.read()
                 logger.warning("Failed to fetch avatar from {}: status {}", avatar_url, resp.status)
