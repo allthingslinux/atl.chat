@@ -1,5 +1,13 @@
 <!-- version list -->
 
+## v0.2.2 (2026-02-23)
+
+### Bug Fixes
+
+- Update LICENSE
+  ([`afee623`](https://github.com/allthingslinux/bridge/commit/afee623c6725d0878c27cb23e14e3de4d9e5388a))
+
+
 ## v0.2.1 (2026-02-22)
 
 ### Refactoring
