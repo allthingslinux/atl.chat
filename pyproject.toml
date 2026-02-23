@@ -36,6 +36,7 @@ dev = [
     "ruff",
     "basedpyright",
     "hypothesis>=6.151.9",
+    "python-semantic-release>=10.5.3",
 ]
 test = [
     "pytest",
@@ -172,17 +173,7 @@ ignore_merge_commits = true
 [tool.semantic_release.changelog]
 mode = "update"
 insertion_flag = "<!-- version list -->"
-exclude_commit_patterns = [
-    '''chore(?:\([^)]*?\))?: .+''',
-    '''ci(?:\([^)]*?\))?: .+''',
-    '''style(?:\([^)]*?\))?: .+''',
-    '''test(?:\([^)]*?\))?: .+''',
-    '''refactor(?:\([^)]*?\))?: .+''',
-    '''build\((?!deps\b)[^)]*\): .+''',
-    '''Merge pull request .+''',
-    '''Merge branch .+''',
-    '''Initial [Cc]ommit.*''',
-]
+exclude_commit_patterns = []
 
 [tool.semantic_release.changelog.default_templates]
 changelog_file = "CHANGELOG.md"
