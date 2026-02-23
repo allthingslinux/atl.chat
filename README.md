@@ -322,7 +322,7 @@ The bridge requires Prosody (or compatible XMPP server) with component configura
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) file for details.
+GPL3 License - see [LICENSE](LICENSE) file for details.
 
 ## Acknowledgments
 
