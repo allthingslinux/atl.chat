@@ -9,7 +9,7 @@ This application provides the core XMPP services for the `atl.chat` ecosystem, u
 
 | Component | Technology | Purpose |
 |-----------|------------|---------|
-| XMPP Server | Prosody 0.12.4 | Modern XMPP daemon |
+| XMPP Server | Prosody 13.0.4 | Modern XMPP daemon |
 | Database | PostgreSQL 16 | User and message persistence |
 | Web Client | ConverseJS | Integrated browser-based chat |
 
@@ -39,6 +39,14 @@ Use the root `justfile` for most operations:
 | Add user | `just xmpp adduser user@domain` |
 | Delete user | `just xmpp deluser user@domain` |
 | Reload config | `just xmpp reload` |
+| Check (all) | `just xmpp check` |
+| Check config | `just xmpp check-config` |
+| Check certs | `just xmpp check-certs` |
+| Check connectivity | `just xmpp check-connectivity` |
+| Check disabled | `just xmpp check-disabled` |
+| Check DNS | `just xmpp check-dns` |
+| Check features | `just xmpp check-features` |
+| Check TURN | `just xmpp check-turn` or `just xmpp check-turn stun.example.com` |
 
 ## Admin User Setup
 
@@ -67,9 +75,22 @@ docker compose -f compose.yaml exec atl-xmpp-server bash -c "echo -e 'password\n
 
 **Important:** The JID you register must match `PROSODY_ADMIN_JID` in your `.env`. For local development with `PROSODY_DOMAIN=localhost`, use `admin@localhost`.
 
+## User Provisioning (Portal)
+
+Users are provisioned by the [Portal](https://github.com/allthingslinux/portal) via **mod_http_admin_api** (REST API). Self-registration is disabled (`PROSODY_ALLOW_REGISTRATION=false`).
+
+| Module | Purpose |
+|--------|---------|
+| `mod_http_admin_api` | REST API for user create/delete; Portal calls this to provision XMPP accounts |
+| `mod_register` | Kept for password changes (users can change password via XMPP client) |
+| `mod_watchregistrations` | Disabled (no in-band registration) |
+
+To allow self-registration (e.g. local dev), set `PROSODY_ALLOW_REGISTRATION=true` in `.env`.
+
 ## Infrastructure Alignment
 
 - **Networking**: See [Networking Registry](../../docs/infra/networking.md) for XMPP port (5222).
+- **DNS**: See [DNS Configuration](DNS.md) for SRV records and domain setup.
 - **SSL**: Terminated at the `atl.network` gateway. See [SSL Strategy](../../docs/infra/ssl.md).
 - **Deployment**: Managed via standard `Containerfile` and `compose.yaml`.
 
@@ -137,37 +158,53 @@ xmpp-client user@atl.chat
 
 ## Troubleshooting
 
-### Services Not Starting
+### First steps
+
+Run Prosody's sanity checks:
 
 ```bash
-make logs
-make status
+just xmpp check
 ```
 
-### SSL Issues
+This runs `prosodyctl check` (config, certs, dns, etc.). Individual checks: `just xmpp check-config`, `just xmpp check-certs`, `just xmpp check-dns`, `just xmpp check-features`, `just xmpp check-connectivity`, `just xmpp check-turn`.
+
+### Services not starting
 
 ```bash
-make ssl-status
-make ssl-logs
+just logs atl-xmpp-server
+just status
 ```
 
-### Configuration Issues
+### SSL / certificate issues
 
 ```bash
-make restart
-# Check if configuration was generated properly
-ls -la app/config/prosody/prosody.cfg.lua
-
-# If configs are missing, regenerate from templates
-make dev-build
+just xmpp check-certs
+just logs atl-xmpp-server
 ```
+
+### Configuration issues
+
+```bash
+# Verify config exists and was generated
+ls -la apps/prosody/config/prosody.cfg.lua
+
+# Regenerate config and restart
+just init
+docker compose restart atl-xmpp-server
+```
+
+### Can't contact other servers (S2S)
+
+- Ensure port 5269 is open (firewall, NAT)
+- Verify DNS: `just xmpp check-dns`
+- Test connectivity: `telnet yourdomain.com 5269`
 
 ## Development
 
-### Running Tests
+### Running tests
 
 ```bash
-make test
+just test
 ```
 
 #### Test Structure
@@ -214,6 +251,7 @@ make dev-build
 
 ### 🐳 Infrastructure
 
+- [DNS Configuration](DNS.md) - SRV records, A records, and domain setup
 - [Docker Setup](./docs/DOCKER.md) - Containerization, volumes, and networking
 - [Makefile Commands](./docs/MAKE.md) - Build automation and management commands
 - [Configuration](./docs/CONFIG.md) - Template system and environment variables
