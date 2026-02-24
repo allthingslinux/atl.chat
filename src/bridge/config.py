@@ -131,6 +131,20 @@ class Config:
         return bool(self._data.get("irc_auto_rejoin", True))
 
     @property
+    def irc_tls_verify(self) -> bool:
+        """Verify IRC TLS certificates. Set false for dev with self-signed certs."""
+        import os
+
+        env_val = os.environ.get("BRIDGE_IRC_TLS_VERIFY", "").lower()
+        if env_val in ("0", "false", "no"):
+            return False
+        if env_val in ("1", "true", "yes"):
+            return True
+        if os.environ.get("ATL_ENVIRONMENT") == "dev":
+            return bool(self._data.get("irc_tls_verify", False))
+        return bool(self._data.get("irc_tls_verify", True))
+
+    @property
     def irc_use_sasl(self) -> bool:
         """Use SASL PLAIN for IRC authentication."""
         return bool(self._data.get("irc_use_sasl", False))

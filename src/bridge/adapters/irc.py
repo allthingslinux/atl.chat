@@ -33,12 +33,18 @@ async def _connect_with_backoff(
     hostname: str,
     port: int,
     tls: bool,
+    tls_verify: bool = True,
 ) -> None:
     """Connect with exponential backoff and jitter on failure; reconnect on disconnect."""
     attempt = 0
     while True:
         try:
-            await client.connect(hostname=hostname, port=port, tls=tls)
+            await client.connect(
+                hostname=hostname,
+                port=port,
+                tls=tls,
+                tls_verify=tls_verify,
+            )
             # connect() returns when disconnected; reconnect with backoff
             attempt = 0
             delay = min(_BACKOFF_MAX, _BACKOFF_MIN)
@@ -554,6 +560,7 @@ class IRCAdapter:
                 hostname=m.irc.server,
                 port=m.irc.port,
                 tls=m.irc.tls,
+                tls_verify=cfg.irc_tls_verify,
             )
         )
 
@@ -567,6 +574,7 @@ class IRCAdapter:
                 server=m.irc.server,
                 port=m.irc.port,
                 tls=m.irc.tls,
+                tls_verify=cfg.irc_tls_verify,
                 idle_timeout_hours=idle_timeout,
                 ping_interval=cfg.irc_puppet_ping_interval,
                 prejoin_commands=cfg.irc_puppet_prejoin_commands,

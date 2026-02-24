@@ -154,7 +154,7 @@ class TestGetOrCreatePuppet:
 
         assert result is mock_puppet
         mock_puppet.connect.assert_awaited_once_with(
-            hostname="irc.libera.chat", port=6697, tls=True
+            hostname="irc.libera.chat", port=6697, tls=True, tls_verify=True
         )
         assert "d1" in manager._puppets
 

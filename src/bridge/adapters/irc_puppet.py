@@ -74,6 +74,7 @@ class IRCPuppetManager:
         server: str,
         port: int,
         tls: bool,
+        tls_verify: bool = True,
         idle_timeout_hours: int = 24,
         ping_interval: int = 120,
         prejoin_commands: list[str] | None = None,
@@ -84,6 +85,7 @@ class IRCPuppetManager:
         self._server = server
         self._port = port
         self._tls = tls
+        self._tls_verify = tls_verify
         self._idle_timeout = idle_timeout_hours * 3600
         self._ping_interval = ping_interval
         self._prejoin_commands: list[str] = prejoin_commands or []
@@ -117,6 +119,7 @@ class IRCPuppetManager:
                 hostname=self._server,
                 port=self._port,
                 tls=self._tls,
+                tls_verify=self._tls_verify,
             )
             puppet.touch()
             logger.info("Created IRC puppet {} for Discord user {}", nick, discord_id)
