@@ -25,7 +25,7 @@ cd irc.atl.chat
 ### Environment Configuration
 ```bash
 # Copy environment template
-cp env.example .env
+cp .env.example .env
 
 # Edit for local development
 vim .env
@@ -119,8 +119,8 @@ make restart
 
 ### Environment Variables
 ```bash
-# Add new variables to env.example
-vim env.example
+# Add new variables to .env.example
+vim .env.example
 
 # Update .env
 vim .env

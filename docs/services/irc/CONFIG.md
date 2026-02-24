@@ -10,7 +10,7 @@ IRC.atl.chat uses a template-based configuration system:
 
 ```
 Configuration Flow:
-├── env.example          - Template with defaults
+├── .env.example         - Template with defaults
 ├── .env                 - User configuration
 ├── *.template           - Configuration templates
 ├── envsubst             - Variable substitution
@@ -100,7 +100,7 @@ IRC_SERVICES_PASSWORD=password    # Services password
 #### Creating .env File
 ```bash
 # Copy template
-cp env.example .env
+cp .env.example .env
 
 # Edit with your values
 vim .env
@@ -340,7 +340,7 @@ git log --oneline apps/unrealircd/config/*.template apps/atheme/config/*.templat
 ### Environment Setup
 ```bash
 # Copy template to create your configuration
-cp env.example .env
+cp .env.example .env
 
 # Edit with your values
 vim .env
@@ -599,11 +599,11 @@ make test
 
 #### Configuration Documentation
 ```bash
-# Update env.example comments
-vim env.example
+# Update .env.example comments
+vim .env.example
 
 # Document new variables
-echo "# NEW_VAR - Description" >> env.example
+echo "# NEW_VAR - Description" >> .env.example
 
 # Update this documentation
 vim docs/CONFIG.md

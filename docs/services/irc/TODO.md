@@ -92,7 +92,7 @@ This document outlines the comprehensive checklist for preparing IRC.atl.chat fo
 ### 🔒 Security Hardening
 
 - [ ] **Authentication & Authorization**
-  - [ ] All default passwords changed from env.example
+  - [ ] All default passwords changed from .env.example
   - [ ] IRC operator passwords properly hashed (bcrypt/argon2)
   - [ ] Atheme service passwords cryptographically secure (>32 chars)
   - [ ] WebPanel authentication configured with strong credentials
@@ -150,7 +150,7 @@ This document outlines the comprehensive checklist for preparing IRC.atl.chat fo
   - [ ] Troubleshooting guides with common solutions
 
 - [x] **Configuration Documentation**
-  - [x] All environment variables documented in env.example
+  - [x] All environment variables documented in .env.example
   - [x] Configuration template system explained
   - [x] Port mapping and networking requirements
   - [x] Docker Compose configuration options
