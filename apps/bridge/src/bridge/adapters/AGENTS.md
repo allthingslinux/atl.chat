@@ -28,7 +28,7 @@ Protocol-specific adapters. Each registers with the Bus, filters events via `acc
 
 ## Discord Adapter (`disc.py`)
 
-Env: `DISCORD_TOKEN`.
+Env: `BRIDGE_DISCORD_TOKEN`.
 
 - Outbound events (`MessageOut`, `MessageDeleteOut`, `ReactionOut`, `TypingOut`) are queued (`asyncio.Queue`) and consumed with a 250ms delay to avoid rate limits.
 - Webhook cache key is `(channel_id, author_display)` — one webhook per identity per channel.
@@ -42,7 +42,7 @@ Env: `DISCORD_TOKEN`.
 
 ## IRC Adapter (`irc.py`)
 
-Env: `IRC_NICK` (default: `atl-bridge`).
+Env: `BRIDGE_IRC_NICK` (default: `atl-bridge`).
 
 Two classes:
 
@@ -91,7 +91,7 @@ Two classes:
 
 ## XMPP Adapter (`xmpp.py`)
 
-Env: `XMPP_COMPONENT_JID`, `XMPP_COMPONENT_SECRET`, `XMPP_COMPONENT_SERVER`, `XMPP_COMPONENT_PORT` (default: 5347).
+Env: `BRIDGE_XMPP_COMPONENT_JID`, `BRIDGE_XMPP_COMPONENT_SECRET`, `BRIDGE_XMPP_COMPONENT_SERVER`, `BRIDGE_XMPP_COMPONENT_PORT` (default: 5347).
 
 - Disabled at startup if any of JID/secret/server are missing, no identity resolver, or no XMPP mappings.
 - Outbound queue (250ms delay) drains `MessageOut`, `MessageDeleteOut`, `ReactionOut`.

@@ -602,7 +602,7 @@ class TestStart:
     @pytest.mark.asyncio
     async def test_start_missing_secret_returns_early(self):
         adapter, bus, _ = _make_adapter()
-        env = {"XMPP_COMPONENT_JID": "bridge.example.com"}
+        env = {"BRIDGE_XMPP_COMPONENT_JID": "bridge.example.com"}
         with patch.dict("os.environ", env, clear=True):
             await adapter.start()
         bus.register.assert_not_called()
@@ -610,7 +610,10 @@ class TestStart:
     @pytest.mark.asyncio
     async def test_start_missing_server_returns_early(self):
         adapter, bus, _ = _make_adapter()
-        env = {"XMPP_COMPONENT_JID": "bridge.example.com", "XMPP_COMPONENT_SECRET": "s3cr3t"}
+        env = {
+            "BRIDGE_XMPP_COMPONENT_JID": "bridge.example.com",
+            "BRIDGE_XMPP_COMPONENT_SECRET": "s3cr3t",
+        }
         with patch.dict("os.environ", env, clear=True):
             await adapter.start()
         bus.register.assert_not_called()
@@ -622,9 +625,9 @@ class TestStart:
         router.all_mappings.return_value = [_xmpp_mapping()]
         adapter = XMPPAdapter(bus, router, identity_resolver=None)
         env = {
-            "XMPP_COMPONENT_JID": "bridge.example.com",
-            "XMPP_COMPONENT_SECRET": "s3cr3t",
-            "XMPP_COMPONENT_SERVER": "localhost",
+            "BRIDGE_XMPP_COMPONENT_JID": "bridge.example.com",
+            "BRIDGE_XMPP_COMPONENT_SECRET": "s3cr3t",
+            "BRIDGE_XMPP_COMPONENT_SERVER": "localhost",
         }
         with patch.dict("os.environ", env, clear=True):
             await adapter.start()
@@ -638,9 +641,9 @@ class TestStart:
             ChannelMapping(discord_channel_id="111", irc=None, xmpp=None)
         ]
         env = {
-            "XMPP_COMPONENT_JID": "bridge.example.com",
-            "XMPP_COMPONENT_SECRET": "s3cr3t",
-            "XMPP_COMPONENT_SERVER": "localhost",
+            "BRIDGE_XMPP_COMPONENT_JID": "bridge.example.com",
+            "BRIDGE_XMPP_COMPONENT_SECRET": "s3cr3t",
+            "BRIDGE_XMPP_COMPONENT_SERVER": "localhost",
         }
         with patch.dict("os.environ", env, clear=True):
             await adapter.start()
@@ -650,9 +653,9 @@ class TestStart:
     async def test_start_success_registers_and_creates_tasks(self):
         adapter, bus, _router = _make_adapter(mappings=[_xmpp_mapping()])
         env = {
-            "XMPP_COMPONENT_JID": "bridge.example.com",
-            "XMPP_COMPONENT_SECRET": "s3cr3t",
-            "XMPP_COMPONENT_SERVER": "localhost",
+            "BRIDGE_XMPP_COMPONENT_JID": "bridge.example.com",
+            "BRIDGE_XMPP_COMPONENT_SECRET": "s3cr3t",
+            "BRIDGE_XMPP_COMPONENT_SERVER": "localhost",
         }
         mock_comp = MagicMock()
         mock_comp.connect = AsyncMock()
@@ -813,9 +816,9 @@ class TestEdgeCases:
     async def test_start_twice_replaces_component(self):
         adapter, _bus, _router = _make_adapter(mappings=[_xmpp_mapping()])
         env = {
-            "XMPP_COMPONENT_JID": "bridge.example.com",
-            "XMPP_COMPONENT_SECRET": "s3cr3t",
-            "XMPP_COMPONENT_SERVER": "localhost",
+            "BRIDGE_XMPP_COMPONENT_JID": "bridge.example.com",
+            "BRIDGE_XMPP_COMPONENT_SECRET": "s3cr3t",
+            "BRIDGE_XMPP_COMPONENT_SERVER": "localhost",
         }
         comp1, comp2 = MagicMock(), MagicMock()
         comp1.connect = AsyncMock()

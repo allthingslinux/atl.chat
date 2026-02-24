@@ -112,7 +112,7 @@ def main() -> None:
         )
         logger.info("Portal identity client configured: {}", portal_url)
     else:
-        logger.warning("PORTAL_BASE_URL not set; identity resolution disabled")
+        logger.warning("BRIDGE_PORTAL_BASE_URL not set; identity resolution disabled")
 
     logger.info(
         "Bridge ready — {} mappings",
@@ -132,14 +132,14 @@ def _get_portal_url() -> str | None:
     """Read Portal base URL from env."""
     import os
 
-    return os.environ.get("PORTAL_BASE_URL") or os.environ.get("PORTAL_URL")
+    return os.environ.get("BRIDGE_PORTAL_BASE_URL") or os.environ.get("BRIDGE_PORTAL_URL")
 
 
 def _get_portal_token() -> str | None:
     """Read Portal API token from env."""
     import os
 
-    return os.environ.get("PORTAL_TOKEN") or os.environ.get("PORTAL_API_TOKEN")
+    return os.environ.get("BRIDGE_PORTAL_TOKEN") or os.environ.get("BRIDGE_PORTAL_API_TOKEN")
 
 
 async def _run(

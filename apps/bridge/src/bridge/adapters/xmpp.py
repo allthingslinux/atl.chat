@@ -221,16 +221,16 @@ class XMPPAdapter:
 
 
 def _get_component_jid() -> str | None:
-    return os.environ.get("XMPP_COMPONENT_JID")
+    return os.environ.get("BRIDGE_XMPP_COMPONENT_JID")
 
 
 def _get_component_secret() -> str | None:
-    return os.environ.get("XMPP_COMPONENT_SECRET")
+    return os.environ.get("BRIDGE_XMPP_COMPONENT_SECRET")
 
 
 def _get_component_server() -> str | None:
-    return os.environ.get("XMPP_COMPONENT_SERVER")
+    return os.environ.get("BRIDGE_XMPP_COMPONENT_SERVER")
 
 
 def _get_component_port() -> int:
-    return int(os.environ.get("XMPP_COMPONENT_PORT", "5347"))
+    return int(os.environ.get("BRIDGE_XMPP_COMPONENT_PORT", "5347"))

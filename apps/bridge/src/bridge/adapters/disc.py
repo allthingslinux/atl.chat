@@ -622,9 +622,9 @@ class DiscordAdapter:
 
     async def start(self) -> None:
         """Start Discord bot and queue consumer."""
-        token = os.environ.get("DISCORD_TOKEN")
+        token = os.environ.get("BRIDGE_DISCORD_TOKEN")
         if not token:
-            logger.warning("DISCORD_TOKEN not set; Discord adapter disabled")
+            logger.warning("BRIDGE_DISCORD_TOKEN not set; Discord adapter disabled")
             return
 
         intents = Intents.default()

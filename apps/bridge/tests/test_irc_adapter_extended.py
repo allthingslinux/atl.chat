@@ -129,7 +129,7 @@ class TestStartSasl:
             patch("bridge.adapters.irc._connect_with_backoff", side_effect=_fake_backoff),
             patch("bridge.adapters.irc.IRCPuppetManager", return_value=mock_puppet_mgr),
             patch("bridge.adapters.irc.cfg") as mock_cfg,
-            patch.dict("os.environ", {"IRC_NICK": "bot"}),
+            patch.dict("os.environ", {"BRIDGE_IRC_NICK": "bot"}),
         ):
             mock_cfg.irc_use_sasl = True
             mock_cfg.irc_sasl_user = "sasluser"
@@ -169,7 +169,7 @@ class TestStartSasl:
             patch("bridge.adapters.irc._connect_with_backoff", side_effect=_fake_backoff),
             patch("bridge.adapters.irc.IRCPuppetManager", return_value=mock_puppet_mgr),
             patch("bridge.adapters.irc.cfg") as mock_cfg,
-            patch.dict("os.environ", {"IRC_NICK": "bot"}),
+            patch.dict("os.environ", {"BRIDGE_IRC_NICK": "bot"}),
         ):
             mock_cfg.irc_use_sasl = False
             mock_cfg.irc_sasl_user = ""

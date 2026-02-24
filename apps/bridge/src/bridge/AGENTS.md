@@ -20,7 +20,7 @@ The `bridge` Python package. Entry point, config, events, and identity live here
 3. `reload_config(path)` — loads YAML + dotenv, updates `cfg` global
 4. Register `SIGHUP` handler — calls `reload_config` + dispatches `ConfigReload` event
 5. Create `Bus`, `ChannelRouter` (loaded from `cfg.raw`), `Relay` (registered on Bus)
-6. Optionally create `PortalClient` + `IdentityResolver` if `PORTAL_BASE_URL` is set
+6. Optionally create `PortalClient` + `IdentityResolver` if `BRIDGE_PORTAL_BASE_URL` is set
 7. Start `DiscordAdapter`, `IRCAdapter`, `XMPPAdapter`
 8. `uvloop.run()` on Linux/macOS, `asyncio.run()` fallback; sleeps until `CancelledError`
 9. On shutdown: `stop()` called on all adapters in order
@@ -83,14 +83,14 @@ Full property reference (see root AGENTS.md for the table). Additional propertie
 
 | Variable | Purpose |
 |----------|---------|
-| `PORTAL_BASE_URL` / `PORTAL_URL` | Portal API base URL (identity resolution) |
-| `PORTAL_TOKEN` / `PORTAL_API_TOKEN` | Bearer token for Portal API |
-| `DISCORD_TOKEN` | Discord bot token |
-| `IRC_NICK` | Main IRC connection nick (default: `atl-bridge`) |
-| `XMPP_COMPONENT_JID` | XMPP component JID |
-| `XMPP_COMPONENT_SECRET` | XMPP component secret |
-| `XMPP_COMPONENT_SERVER` | XMPP server hostname |
-| `XMPP_COMPONENT_PORT` | XMPP component port (default: `5347`) |
+| `BRIDGE_PORTAL_BASE_URL` / `BRIDGE_PORTAL_URL` | Portal API base URL (identity resolution) |
+| `BRIDGE_PORTAL_TOKEN` / `BRIDGE_PORTAL_API_TOKEN` | Bearer token for Portal API |
+| `BRIDGE_DISCORD_TOKEN` | Discord bot token |
+| `BRIDGE_IRC_NICK` | Main IRC connection nick (default: `atl-bridge`) |
+| `BRIDGE_XMPP_COMPONENT_JID` | XMPP component JID |
+| `BRIDGE_XMPP_COMPONENT_SECRET` | XMPP component secret |
+| `BRIDGE_XMPP_COMPONENT_SERVER` | XMPP server hostname |
+| `BRIDGE_XMPP_COMPONENT_PORT` | XMPP component port (default: `5347`) |
 
 ## Related
 

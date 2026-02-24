@@ -480,7 +480,7 @@ class TestStart:
             patch("bridge.adapters.irc._connect_with_backoff", side_effect=_fake_backoff),
             patch("bridge.adapters.irc.IRCPuppetManager", return_value=mock_puppet_mgr),
             patch.dict(
-                "os.environ", {"IRC_NICK": "testbot", "IRC_PUPPET_IDLE_TIMEOUT_HOURS": "12"}
+                "os.environ", {"BRIDGE_IRC_NICK": "testbot", "IRC_PUPPET_IDLE_TIMEOUT_HOURS": "12"}
             ),
         ):
             mock_irc_client.return_value = MagicMock()

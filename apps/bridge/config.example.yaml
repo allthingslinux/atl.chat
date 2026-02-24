@@ -1,5 +1,5 @@
 # ATL Bridge — Example configuration
-# Copy to config.yaml and fill in values. Secrets from env (DISCORD_TOKEN, PORTAL_*, etc.).
+# Copy to config.yaml and fill in values. Secrets from env (BRIDGE_DISCORD_TOKEN, BRIDGE_PORTAL_*, etc.).
 
 # Channel mappings: Discord channel ID <-> IRC server/channel <-> XMPP MUC JID
 mappings:
@@ -12,7 +12,7 @@ mappings:
     xmpp:
       muc_jid: "bridge@muc.atl.chat"
 
-# Optional: overrides from env (see docs for DISCORD_TOKEN, PORTAL_BASE_URL, etc.)
+# Optional: overrides from env (see docs for BRIDGE_DISCORD_TOKEN, BRIDGE_PORTAL_BASE_URL, etc.)
 
 # Toggles (AUDIT §5)
 announce_joins_and_quits: true
@@ -31,6 +31,9 @@ irc_throttle_limit: 10   # messages per second
 irc_message_queue: 30    # max queue size
 irc_rejoin_delay: 5      # seconds before rejoin after KICK/disconnect
 irc_auto_rejoin: true
+
+# IRC TLS: false for dev (self-signed certs), true for prod
+irc_tls_verify: true
 
 # IRC SASL (optional)
 irc_use_sasl: false

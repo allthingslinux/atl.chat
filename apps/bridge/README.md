@@ -22,11 +22,11 @@ cp config.example.yaml config.yaml
 # Edit config.yaml with your channels and credentials
 
 # Run
-export DISCORD_TOKEN="your-token"
-export PORTAL_BASE_URL="https://portal.example.com"
-export PORTAL_TOKEN="your-portal-token"
-export XMPP_COMPONENT_JID="bridge.atl.chat"
-export XMPP_COMPONENT_SECRET="your-secret"
+export BRIDGE_DISCORD_TOKEN="your-token"
+export BRIDGE_PORTAL_BASE_URL="https://portal.example.com"
+export BRIDGE_PORTAL_TOKEN="your-portal-token"
+export BRIDGE_XMPP_COMPONENT_JID="bridge.atl.chat"
+export BRIDGE_XMPP_COMPONENT_SECRET="your-secret"
 
 bridge --config config.yaml
 ```
@@ -106,14 +106,14 @@ See `config.example.yaml` for all options (throttling, SASL, content filtering, 
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `DISCORD_TOKEN` | Yes | Discord bot token |
-| `PORTAL_BASE_URL` | Yes | Portal API URL |
-| `PORTAL_TOKEN` | Yes | Portal service token |
-| `XMPP_COMPONENT_JID` | Yes | Component JID (e.g., `bridge.atl.chat`) |
-| `XMPP_COMPONENT_SECRET` | Yes | Prosody component secret |
-| `XMPP_COMPONENT_SERVER` | No | Server hostname (default: `localhost`) |
-| `XMPP_COMPONENT_PORT` | No | Component port (default: `5347`) |
-| `IRC_NICK` | No | Main IRC nick (default: `atl-bridge`) |
+| `BRIDGE_DISCORD_TOKEN` | Yes | Discord bot token |
+| `BRIDGE_PORTAL_BASE_URL` | Yes | Portal API URL |
+| `BRIDGE_PORTAL_TOKEN` | Yes | Portal service token |
+| `BRIDGE_XMPP_COMPONENT_JID` | Yes | Component JID (e.g., `bridge.atl.chat`) |
+| `BRIDGE_XMPP_COMPONENT_SECRET` | Yes | Prosody component secret |
+| `BRIDGE_XMPP_COMPONENT_SERVER` | No | Server hostname (default: `localhost`) |
+| `BRIDGE_XMPP_COMPONENT_PORT` | No | Component port (default: `5347`) |
+| `BRIDGE_IRC_NICK` | No | Main IRC nick (default: `atl-bridge`) |
 
 ## Architecture
 
@@ -274,17 +274,17 @@ docker build -f Containerfile -t atl-bridge .
 
 # Run
 docker run -v $(pwd)/config.yaml:/app/config.yaml \
-  -e DISCORD_TOKEN="..." \
-  -e PORTAL_BASE_URL="..." \
-  -e PORTAL_TOKEN="..." \
-  -e XMPP_COMPONENT_JID="..." \
-  -e XMPP_COMPONENT_SECRET="..." \
+  -e BRIDGE_DISCORD_TOKEN="..." \
+  -e BRIDGE_PORTAL_BASE_URL="..." \
+  -e BRIDGE_PORTAL_TOKEN="..." \
+  -e BRIDGE_XMPP_COMPONENT_JID="..." \
+  -e BRIDGE_XMPP_COMPONENT_SECRET="..." \
   atl-bridge
 ```
 
 ## XMPP Server Setup
 
-The bridge requires Prosody (or compatible XMPP server) with component configuration. Configure a component for the `XMPP_COMPONENT_JID` and set the component secret to match `XMPP_COMPONENT_SECRET`.
+The bridge requires Prosody (or compatible XMPP server) with component configuration. Configure a component for the `BRIDGE_XMPP_COMPONENT_JID` and set the component secret to match `BRIDGE_XMPP_COMPONENT_SECRET`.
 
 ## Limitations
 

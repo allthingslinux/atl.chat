@@ -114,7 +114,7 @@ class TestGetPortalEnvVars:
 
         # Act
         with patch.dict(
-            "os.environ", {"PORTAL_BASE_URL": "https://portal.example.com"}, clear=False
+            "os.environ", {"BRIDGE_PORTAL_BASE_URL": "https://portal.example.com"}, clear=False
         ):
             result = _get_portal_url()
 
@@ -128,12 +128,12 @@ class TestGetPortalEnvVars:
         # Act
         with patch.dict(
             "os.environ",
-            {"PORTAL_URL": "https://fallback.example.com", "PORTAL_BASE_URL": ""},
+            {"BRIDGE_PORTAL_URL": "https://fallback.example.com", "BRIDGE_PORTAL_BASE_URL": ""},
             clear=False,
         ):
             result = _get_portal_url()
 
-        # Assert — should use PORTAL_URL when PORTAL_BASE_URL is empty
+        # Assert — should use BRIDGE_PORTAL_URL when BRIDGE_PORTAL_BASE_URL is empty
         assert result in (None, "https://fallback.example.com")
 
     def test_get_portal_url_returns_none_when_not_set(self):
@@ -151,19 +151,21 @@ class TestGetPortalEnvVars:
         from bridge.__main__ import _get_portal_token
 
         # Act
-        with patch.dict("os.environ", {"PORTAL_TOKEN": "secret-token"}, clear=False):
+        with patch.dict("os.environ", {"BRIDGE_PORTAL_TOKEN": "secret-token"}, clear=False):
             result = _get_portal_token()
 
         # Assert
         assert result == "secret-token"
 
     def test_get_portal_token_from_portal_api_token_fallback(self):
-        # Arrange — PORTAL_TOKEN is empty, PORTAL_API_TOKEN is set
+        # Arrange — BRIDGE_PORTAL_TOKEN is empty, BRIDGE_PORTAL_API_TOKEN is set
         from bridge.__main__ import _get_portal_token
 
         # Act
         with patch.dict(
-            "os.environ", {"PORTAL_TOKEN": "", "PORTAL_API_TOKEN": "api-secret"}, clear=False
+            "os.environ",
+            {"BRIDGE_PORTAL_TOKEN": "", "BRIDGE_PORTAL_API_TOKEN": "api-secret"},
+            clear=False,
         ):
             result = _get_portal_token()
 
@@ -235,7 +237,7 @@ class TestMain:
             main()
 
     def test_main_no_identity_when_portal_url_missing(self, tmp_path):
-        """main() passes identity=None to _run when PORTAL_BASE_URL is absent."""
+        """main() passes identity=None to _run when BRIDGE_PORTAL_BASE_URL is absent."""
         # Arrange
         from bridge.__main__ import main
 
@@ -277,7 +279,7 @@ class TestMain:
         assert captured_identity == [None]
 
     def test_main_creates_identity_when_portal_url_present(self, tmp_path):
-        """main() creates PortalClient + IdentityResolver when PORTAL_BASE_URL is set."""
+        """main() creates PortalClient + IdentityResolver when BRIDGE_PORTAL_BASE_URL is set."""
         # Arrange
         from bridge.__main__ import main
 

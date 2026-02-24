@@ -1,3 +1,8 @@
+# Bridge (Discord↔IRC↔XMPP) - loaded via root: mod bridge './apps/bridge'
+
+default:
+    @just --list
+
 lint:
     uv run ruff check src tests
 
