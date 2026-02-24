@@ -163,3 +163,38 @@ class TestXMPPMessageIDTracking:
             tracker._cleanup()
             assert "xmpp-1" not in tracker._xmpp_to_discord
             assert "discord-1" not in tracker._discord_to_xmpp
+
+    def test_update_xmpp_id_replaces_with_stanza_id(self) -> None:
+        """update_xmpp_id replaces client id with MUC stanza-id for reaction targeting."""
+        tracker = XMPPMessageIDTracker()
+        tracker.store("our-client-id", "discord-123", "room@muc.example.com")
+        assert tracker.get_xmpp_id("discord-123") == "our-client-id"
+        updated = tracker.update_xmpp_id("our-client-id", "muc-stanza-id-xyz")
+        assert updated is True
+        assert tracker.get_xmpp_id("discord-123") == "muc-stanza-id-xyz"
+        assert tracker.get_discord_id("muc-stanza-id-xyz") == "discord-123"
+        assert tracker.get_discord_id("our-client-id") is None
+
+    def test_update_xmpp_id_nonexistent_returns_false(self) -> None:
+        """update_xmpp_id returns False when old id is not found."""
+        tracker = XMPPMessageIDTracker()
+        assert tracker.update_xmpp_id("nonexistent", "new-id") is False
+
+    def test_add_stanza_id_alias_enables_reaction_lookup(self) -> None:
+        """add_stanza_id_alias adds stanza-id for get_discord_id and get_xmpp_id_for_reaction."""
+        tracker = XMPPMessageIDTracker()
+        tracker.store("our-id", "discord-123", "room@muc.example.com")
+        assert tracker.add_stanza_id_alias("our-id", "stanza-id-xyz") is True
+        # Corrections still use our_id
+        assert tracker.get_xmpp_id("discord-123") == "our-id"
+        # Reactions prefer stanza-id
+        assert tracker.get_xmpp_id_for_reaction("discord-123") == "stanza-id-xyz"
+        # Incoming XMPP reactions can lookup by stanza-id
+        assert tracker.get_discord_id("stanza-id-xyz") == "discord-123"
+        assert tracker.get_discord_id("our-id") == "discord-123"
+
+    def test_get_xmpp_id_for_reaction_falls_back_to_our_id(self) -> None:
+        """get_xmpp_id_for_reaction returns our_id when no stanza-id alias."""
+        tracker = XMPPMessageIDTracker()
+        tracker.store("our-id", "discord-123", "room@muc.example.com")
+        assert tracker.get_xmpp_id_for_reaction("discord-123") == "our-id"
