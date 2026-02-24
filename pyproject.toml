@@ -32,6 +32,8 @@ members = ["apps/bridge"]
 
 [dependency-groups]
 dev = [
+  "validate-pyproject[all]>=0.25",
+  "yamlfix>=1.19.0",
   "pytest>=8.0.0",
   "pytest-mock>=3.12.0",
   "pytest-asyncio>=0.23.0",
@@ -152,7 +154,7 @@ norecursedirs = [
 ]
 
 [tool.ruff]
-exclude = [".venv", "__pycache__", ".pytest_cache", "logs", "data"]
+exclude = [".venv", "__pycache__", ".pytest_cache", "logs", "data", "tests/legacy"]
 line-length = 120
 target-version = "py311"
 
@@ -172,6 +174,28 @@ select = [
   "SIM", # flake8-simplify
   "PL",  # pylint
   "RUF", # ruff
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Test infra: irctest uses camelCase (assertEqual, connectClient), conditional imports
+"tests/**" = [
+  "PLC0415",   # Lazy imports in fixtures
+  "N806",      # Class-like variables (CustomClient from pydle.featurize)
+  "N802",      # irctest camelCase API (assertEqual, connectClient, etc.)
+  "N815",      # controllerClass (irctest)
+  "N818",      # Exception names (irctest)
+  "E402",      # Conditional imports after importorskip
+  "PLR0911",   # Too many return statements
+  "PLR0912",   # Too many branches
+  "B904",      # raise from (test infra)
+  "SIM102",    # Collapsible if
+  "SIM105",    # contextlib.suppress
+  "PLW1641",   # __hash__ (dataclass)
+  "PLW2901",   # Loop variable overwrite
+  "E721",      # Type comparison
+  "E722",      # Bare except
+  "RUF012",    # Mutable class default
+  "UP035",     # typing.ContextManager deprecated
 ]
 
 [tool.ruff.format]

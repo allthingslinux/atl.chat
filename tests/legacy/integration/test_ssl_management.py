@@ -298,7 +298,7 @@ class TestSSLCertificateRenewal:
         cert_dir = temp_renewal_env / "data/certs/live/example.com"
         cert_file = cert_dir / "fullchain.pem"
 
-        original_content = cert_file.read_text()
+        cert_file.read_text()
         original_mtime = cert_file.stat().st_mtime
 
         # Simulate renewal by updating certificate

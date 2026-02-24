@@ -24,12 +24,14 @@ Wraps `events.Dispatcher`. All adapters register here; the Bus is the only way e
 Registered on the Bus as an `EventTarget`. Accepts `MessageIn`, `MessageDelete`, `ReactionIn`, `TypingIn`.
 
 For each inbound event:
+
 1. Looks up the `ChannelMapping` via `ChannelRouter` based on origin (`discord` / `irc` / `xmpp`)
 2. For IRC channel IDs, parses `"server/channel"` format
 3. Skips if no mapping found or content matches `cfg.content_filter_regex`
 4. Emits a corresponding `*Out` event for every other protocol in the mapping via `Bus.publish("relay", out_evt)`
 
 Format conversion applied by `_transform_content`:
+
 - `discord` → `irc`: `discord_to_irc()`
 - `irc` → `discord`: `irc_to_discord()`
 - All other pairs: content passed through unchanged
@@ -42,11 +44,13 @@ Format conversion applied by `_transform_content`:
 `ChannelRouter` is built from the `mappings` list in config via `load_from_config(cfg.raw)`.
 
 Dataclasses:
+
 - `IrcTarget(server, port, tls, channel)` — IRC side of a mapping
 - `XmppTarget(muc_jid)` — XMPP side of a mapping
 - `ChannelMapping(discord_channel_id, irc, xmpp)` — one full mapping; `irc` or `xmpp` may be `None`
 
 Lookup methods (all return `None` if not found — callers must handle):
+
 - `get_mapping_for_discord(channel_id)`
 - `get_mapping_for_irc(server, channel)`
 - `get_mapping_for_xmpp(muc_jid)`

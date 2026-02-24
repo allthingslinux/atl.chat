@@ -5,10 +5,9 @@ with our existing Docker-based IRC infrastructure.
 """
 
 import pytest
-from typing import cast
 
-from ..utils.base_test_cases import BaseServerTestCase
 from ..controllers import get_unrealircd_controller_class
+from ..utils.base_test_cases import BaseServerTestCase
 
 
 class TestControllerPattern(BaseServerTestCase):
@@ -61,7 +60,7 @@ class TestControllerPattern(BaseServerTestCase):
         self.sendLine(client, "PRIVMSG #testchannel :Hello from controller test!")
 
         # Get messages to ensure synchronization
-        messages = self.getMessages(client)
+        self.getMessages(client)
         # Should have received the message back (echo or channel message)
 
     @pytest.mark.integration

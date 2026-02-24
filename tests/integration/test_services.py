@@ -4,6 +4,7 @@ Tests for IRC services integration including NickServ, ChanServ, and Atheme.
 Uses controlled server with services enabled.
 """
 
+import socket
 import time
 
 import pytest
@@ -27,7 +28,7 @@ class IRCIntegrationClient:
         self.events = []
         self.nickname = None
 
-    def connect(self, nickname: str = None) -> bool:
+    def connect(self, nickname: str | None = None) -> bool:
         """Connect to IRC server."""
         try:
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -334,7 +335,7 @@ class TestServiceIntegration(BaseServerTestCase):
             self.sendLine(client, f"{service} {command}")
             response = self.getMessage(client)
             # Should receive response from each service
-            assert response.command == "NOTICE" or response.command == "PRIVMSG"
+            assert response.command in {"NOTICE", "PRIVMSG"}
 
 
 class TestWebPanelIntegration(BaseServerTestCase):

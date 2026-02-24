@@ -8,7 +8,8 @@ generate_pr_version() {
   local pr_number="${1}"
   local sha="${2}"
   local sha_prefix_length="${3:-7}"
-  local pr_version="pr-${pr_number}-$(echo "$sha" | cut -c1-"${sha_prefix_length}")"
+  local pr_version
+  pr_version="pr-${pr_number}-$(echo "$sha" | cut -c1-"${sha_prefix_length}")"
   echo "version=$pr_version" >> "$GITHUB_OUTPUT"
   echo "Generated PR version: $pr_version"
 }

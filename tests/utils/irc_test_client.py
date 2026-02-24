@@ -3,6 +3,7 @@
 Adapted from irctest's client_mock.py for our testing infrastructure.
 """
 
+import contextlib
 import socket
 import ssl
 import time
@@ -44,10 +45,8 @@ class IRCTestClient:
     def disconnect(self) -> None:
         """Disconnect from IRC server."""
         if self.sock:
-            try:
+            with contextlib.suppress(BaseException):
                 self.sock.close()
-            except:
-                pass
         self.connected = False
         self.sock = None
 

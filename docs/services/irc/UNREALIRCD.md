@@ -33,6 +33,7 @@ unrealircd/
 The primary configuration is generated from `unrealircd.conf.template` using environment variables:
 
 #### Server Identity
+
 ```c
 me {
     name "${IRC_DOMAIN}";           // Server name (irc.atl.chat)
@@ -42,6 +43,7 @@ me {
 ```
 
 #### Administrator Information
+
 ```c
 admin {
     "${IRC_ADMIN_NAME}";           // Admin name
@@ -53,6 +55,7 @@ admin {
 ### Connection Classes
 
 #### Client Connections
+
 ```c
 class clients {
     pingfreq 90;                   // Ping frequency in seconds
@@ -63,6 +66,7 @@ class clients {
 ```
 
 #### Operator Connections
+
 ```c
 class opers {
     pingfreq 90;
@@ -73,6 +77,7 @@ class opers {
 ```
 
 #### Server Links
+
 ```c
 class servers {
     pingfreq 90;
@@ -85,6 +90,7 @@ class servers {
 ### Network Security
 
 #### TLS Configuration
+
 ```c
 listen {
     ip *;
@@ -101,6 +107,7 @@ listen {
 ```
 
 #### Cloaking (Host Privacy)
+
 ```c
 cloak {
     enabled yes;
@@ -116,6 +123,7 @@ cloak {
 ### IRC Operator Configuration
 
 #### Operator Account Setup
+
 ```c
 oper yournick {
     password "$argon2id$...";      // Argon2id hashed password
@@ -127,6 +135,7 @@ oper yournick {
 ```
 
 #### Operator Classes
+
 ```c
 class netadmin {
     maxcon 10;                   // Connection limit
@@ -141,6 +150,7 @@ class netadmin {
 ### Services Integration
 
 #### Atheme Services Link
+
 ```c
 listen {
     ip 127.0.0.1;               // Localhost only
@@ -152,6 +162,7 @@ listen {
 ```
 
 #### Services Authentication
+
 ```c
 link services.atl.chat {
     incoming {
@@ -167,8 +178,6 @@ link services.atl.chat {
 ### Consolidated Configuration
 
 All modules (core, optional, RPC) are defined in `unrealircd.conf.template`. On upgrade, manually diff against the new UnrealIRCd release's `modules.default.conf` and `modules.optional.conf` to pick up changes.
-
-### Third-Party Modules
 
 ### Third-Party Modules
 
@@ -346,6 +355,7 @@ sasl {
 ### Common Issues
 
 #### Connection Problems
+
 ```bash
 # Check server status
 docker logs atl-irc-server
@@ -358,6 +368,7 @@ telnet localhost 6697
 ```
 
 #### Module Loading Errors
+
 ```bash
 # Check module dependencies
 ldd /home/unrealircd/unrealircd/modules/*.so
@@ -367,6 +378,7 @@ unrealircd -c /path/to/config
 ```
 
 #### Performance Issues
+
 ```bash
 # Monitor resource usage
 docker stats atl-irc-server

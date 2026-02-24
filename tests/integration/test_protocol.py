@@ -86,7 +86,7 @@ class TestConnectionProtocol(BaseServerTestCase):
     def test_nick_registration_collision(self):
         """Test nickname registration and collision handling."""
         # Register first client
-        client1 = self.connectClient("alice")
+        self.connectClient("alice")
 
         # Register second client with same nick (should get error)
         client2 = self.addClient("client2")

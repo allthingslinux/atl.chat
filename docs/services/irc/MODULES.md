@@ -66,6 +66,7 @@ third/showwebirc
 ## Module Management Commands
 
 ### Using Make Commands
+
 ```bash
 # List available third-party modules
 make modules-list
@@ -75,6 +76,7 @@ make modules-installed
 ```
 
 ### Using Management Scripts
+
 ```bash
 # List available modules
 docker compose exec atl-irc-server manage-modules.sh list
@@ -93,6 +95,7 @@ docker compose exec atl-irc-server manage-modules.sh installed
 ```
 
 ### Configuration Management
+
 ```bash
 # Add module to configuration
 docker compose exec atl-irc-server module-config.sh add webpanel
@@ -105,6 +108,7 @@ docker compose exec atl-irc-server module-config.sh list
 ```
 
 ### Runtime Module Management
+
 ```bash
 # List loaded modules
 MODULE LIST
@@ -138,6 +142,7 @@ loadmodule "third/showwebirc";
 ### Common Issues
 
 #### Module Not Loading
+
 ```bash
 # Check module file exists
 docker compose exec atl-irc-server ls -la /home/unrealircd/unrealircd/modules/third/
@@ -147,6 +152,7 @@ make logs-ircd | grep -i module
 ```
 
 #### Configuration Errors
+
 ```bash
 # Validate configuration
 docker compose exec atl-irc-server unrealircd -c /home/unrealircd/unrealircd/config/unrealircd.conf
@@ -156,6 +162,7 @@ make logs-ircd | grep -i error
 ```
 
 #### Force Reinstallation
+
 If you need to force reinstallation of modules:
 
 ```bash
@@ -180,10 +187,13 @@ docker compose exec atl-irc-server unrealircdctl module list
 ## Finding Available Modules
 
 ### Online Repository
-Browse available modules at: https://modules.unrealircd.org/
+
+Browse available modules at: <https://modules.unrealircd.org/>
 
 ### Command Line
+
 List available modules from within a running container:
+
 ```bash
 docker compose exec atl-irc-server ./unrealircd module list
 ```
@@ -191,16 +201,19 @@ docker compose exec atl-irc-server ./unrealircd module list
 ## Adding New Modules
 
 1. **Edit the configuration file**:
+
    ```bash
    nano apps/unrealircd/third-party-modules.list
    ```
 
 2. **Add the module name** (one per line):
+
    ```bash
    third/new-module-name
    ```
 
 3. **Rebuild the container**:
+
    ```bash
    make rebuild
    ```
@@ -208,16 +221,19 @@ docker compose exec atl-irc-server ./unrealircd module list
 ## Removing Modules
 
 1. **Remove from the configuration file**:
+
    ```bash
    nano apps/unrealircd/third-party-modules.list
    ```
 
 2. **Comment out or delete the line**:
+
    ```bash
    # third/old-module-name
    ```
 
 3. **Rebuild the container**:
+
    ```bash
    make rebuild
    ```

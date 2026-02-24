@@ -798,8 +798,7 @@ component_secret = Lua.os.getenv("BRIDGE_XMPP_COMPONENT_SECRET") or Lua.os.geten
 -- CONTACT INFO, ROLES, ACCOUNT CLEANUP
 -- ===============================================
 
--- Domain and contact configuration
-local domain = Lua.os.getenv("PROSODY_DOMAIN") or "atl.chat"
+-- Domain and contact configuration (domain from VirtualHosts section above)
 local admin_email = Lua.os.getenv("PROSODY_ADMIN_EMAIL") or ("admin@" .. domain)
 
 contact_info = {

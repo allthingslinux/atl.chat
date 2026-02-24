@@ -25,6 +25,7 @@ WebSocket IRC:   atl-irc-server:8000    (external)
 The JSON-RPC API is built into UnrealIRCd and provides server administration capabilities.
 
 #### Basic Connection
+
 ```bash
 # Test RPC connectivity
 curl -X POST http://localhost:8600/api \
@@ -38,6 +39,7 @@ curl -X POST http://localhost:8600/api \
 ```
 
 #### Authentication
+
 The RPC API uses basic authentication configured in UnrealIRCd:
 
 ```c
@@ -54,21 +56,25 @@ rpc-user adminpanel {
 UnrealIRCd's JSON-RPC API provides these core methods:
 
 #### Server Information
+
 - `server.info` - Get server information
 - `server.stats` - Get server statistics
 - `server.command` - Execute server commands
 
 #### User Management
+
 - `user.list` - List online users
 - `user.get` - Get user details
 - `user.action` - Perform user actions (kill, ban, etc.)
 
 #### Channel Management
+
 - `channel.list` - List channels
 - `channel.get` - Get channel details
 - `channel.action` - Perform channel actions
 
 #### Ban Management
+
 - `ban.list` - List active bans
 - `ban.add` - Add new ban
 - `ban.remove` - Remove ban
@@ -76,6 +82,7 @@ UnrealIRCd's JSON-RPC API provides these core methods:
 ### Example Usage
 
 #### Get Server Information
+
 ```bash
 curl -X POST http://localhost:8600/api \
   -H "Content-Type: application/json" \
@@ -88,6 +95,7 @@ curl -X POST http://localhost:8600/api \
 ```
 
 #### List Online Users
+
 ```bash
 curl -X POST http://localhost:8600/api \
   -H "Content-Type: application/json" \
@@ -100,6 +108,7 @@ curl -X POST http://localhost:8600/api \
 ```
 
 #### Execute Server Command
+
 ```bash
 curl -X POST http://localhost:8600/api \
   -H "Content-Type: application/json" \
@@ -120,6 +129,7 @@ curl -X POST http://localhost:8600/api \
 WebSocket IRC provides standard IRC protocol over WebSocket connections.
 
 #### JavaScript Connection
+
 ```javascript
 const ws = new WebSocket('ws://localhost:8000');
 
@@ -136,6 +146,7 @@ ws.onmessage = function(event) {
 ```
 
 #### Python Connection
+
 ```python
 import websocket
 
@@ -157,12 +168,14 @@ ws.run_forever()
 WebSocket connections use standard IRC protocol:
 
 #### Registration
+
 ```
 NICK mynick
 USER mynick 0 * :Real Name
 ```
 
 #### Channel Operations
+
 ```
 JOIN #channel
 PRIVMSG #channel :Hello world!
@@ -170,6 +183,7 @@ PART #channel
 ```
 
 #### Ping/Pong
+
 ```
 PING :server
 PONG :server
@@ -219,16 +233,19 @@ listen {
 **Cannot connect to RPC API:**
 
 1. **Check if RPC is enabled:**
+
    ```bash
    grep -A5 "listen.*rpc" apps/unrealircd/config/unrealircd.conf
    ```
 
 2. **Verify RPC user configuration:**
+
    ```bash
    grep -A5 "rpc-user" apps/unrealircd/config/unrealircd.conf
    ```
 
 3. **Test connectivity:**
+
    ```bash
    curl -v http://localhost:8600/api
    ```
@@ -238,11 +255,13 @@ listen {
 **WebSocket connection fails:**
 
 1. **Check WebSocket listener:**
+
    ```bash
    grep -A5 "websocket" apps/unrealircd/config/unrealircd.conf
    ```
 
 2. **Test WebSocket connection:**
+
    ```bash
    curl -i -N -H "Connection: Upgrade" \
         -H "Upgrade: websocket" \

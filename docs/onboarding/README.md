@@ -6,7 +6,7 @@ Get your local atl.chat development environment set up.
 
 - Docker and Docker Compose
 - [just](https://github.com/casey/just) command runner
-- [lefthook](https://github.com/evilmartians/lefthook) (optional, for git hooks)
+- [pre-commit](https://pre-commit.com/) (optional, for git hooks)
 
 ## Quick Start
 
@@ -19,6 +19,14 @@ just init
 
 # Start the stack
 just dev
+```
+
+## Git Hooks (optional)
+
+```bash
+uv run pre-commit install
+uv run pre-commit install --hook-type commit-msg
+uv run pre-commit install --hook-type prepare-commit-msg
 ```
 
 ## Next Steps

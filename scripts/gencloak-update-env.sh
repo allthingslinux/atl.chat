@@ -15,7 +15,7 @@ cd "$PROJECT_ROOT"
 output=$(docker compose -f compose.yaml -p atl-chat run --rm atl-irc-server gencloak 2>/dev/null)
 echo "$output"
 
-keys=($(echo "$output" | grep -oE '"[^"]{50,}"' | tr -d '"'))
+mapfile -t keys < <(echo "$output" | grep -oE '"[^"]{50,}"' | tr -d '"')
 if [ ${#keys[@]} -ne 3 ]; then
     echo "Failed to parse 3 cloak keys from gencloak output"
     exit 1

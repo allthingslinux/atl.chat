@@ -34,7 +34,7 @@ class TestIRCFunctionality:
     def test_irc_server_ssl_connection(self, irc_helper):
         """Test SSL connection to IRC server."""
         # Test SSL port (6697)
-        ssl_helper = type(irc_helper)("localhost", 6697)
+        type(irc_helper)("localhost", 6697)
 
         # This will likely fail without SSL setup, but tests the method
         try:

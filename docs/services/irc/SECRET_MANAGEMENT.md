@@ -11,6 +11,7 @@ All secrets are managed through the `.env` file and external credential files. N
 ### Critical Secrets
 
 #### IRC Operator Password
+
 ```bash
 # Generate secure password hash
 docker compose exec atl-irc-server /home/unrealircd/unrealircd/bin/unrealircd mkpasswd
@@ -20,6 +21,7 @@ IRC_OPER_PASSWORD='$argon2id$v=19$m=6144,t=2,p=2$...'
 ```
 
 #### Atheme Service Passwords
+
 ```bash
 # Generate secure random passwords
 openssl rand -base64 32
@@ -30,6 +32,7 @@ ATHEME_RECEIVE_PASSWORD=your_secure_password_here
 ```
 
 #### WebPanel RPC Password
+
 ```bash
 # Add to .env
 WEBPANEL_RPC_PASSWORD=your_secure_password_here
@@ -38,6 +41,7 @@ WEBPANEL_RPC_PASSWORD=your_secure_password_here
 ## External Credentials
 
 ### Cloudflare API Token
+
 ```bash
 # Copy template
 cp cloudflare-credentials.ini.template cloudflare-credentials.ini
@@ -53,6 +57,7 @@ chmod 600 cloudflare-credentials.ini
 ## Security Best Practices
 
 ### File Permissions
+
 ```bash
 # Secure .env file
 chmod 600 .env
@@ -62,6 +67,7 @@ chmod 600 cloudflare-credentials.ini
 ```
 
 ### Password Generation
+
 ```bash
 # Generate secure passwords
 openssl rand -base64 32
@@ -71,6 +77,7 @@ docker compose exec atl-irc-server /home/unrealircd/unrealircd/bin/unrealircd mk
 ```
 
 ### Regular Rotation
+
 - Rotate passwords every 6-12 months
 - Update API tokens when possible
 - Monitor for security updates
@@ -78,6 +85,7 @@ docker compose exec atl-irc-server /home/unrealircd/unrealircd/bin/unrealircd mk
 ## Validation
 
 ### Check Configuration
+
 ```bash
 # Validate environment setup
 make test-env
@@ -87,6 +95,7 @@ make ssl-status
 ```
 
 ### Verify Secrets
+
 ```bash
 # Check .env file exists and is secure
 ls -la .env
@@ -98,6 +107,7 @@ ls -la cloudflare-credentials.ini
 ## Troubleshooting
 
 ### Permission Issues
+
 ```bash
 # Fix file permissions
 chmod 600 .env cloudflare-credentials.ini
@@ -107,6 +117,7 @@ ls -la .env
 ```
 
 ### Missing Secrets
+
 ```bash
 # Check required variables
 grep -E "(PASSWORD|TOKEN)" .env

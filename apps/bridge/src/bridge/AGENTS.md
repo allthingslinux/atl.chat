@@ -73,6 +73,7 @@ Full property reference (see root AGENTS.md for the table). Additional propertie
 `PortalClient` retries on transient HTTP errors (5 attempts, exponential backoff 2–30s via tenacity). Returns `None` on 404 — never raises for missing identity.
 
 `IdentityResolver` wraps the client with a `TTLCache` (default 1h). Supported directions:
+
 - `discord_to_irc(discord_id)` → IRC nick or `None`
 - `discord_to_xmpp(discord_id)` → XMPP JID or `None`
 - `irc_to_discord(nick, server?)` → Discord ID or `None`

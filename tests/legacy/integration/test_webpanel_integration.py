@@ -1,16 +1,9 @@
 """Integration tests for WebPanel functionality."""
 
-import pytest
-import subprocess
-import tempfile
 import shutil
-import os
-import requests
-import time
-import socket
-from pathlib import Path
-from unittest.mock import patch, MagicMock
-import json
+import subprocess
+
+import pytest
 
 
 class TestWebPanelConfiguration:
@@ -142,7 +135,7 @@ services:
 
         import yaml
 
-        with open(compose_file, "r") as f:
+        with open(compose_file) as f:
             config = yaml.safe_load(f)
 
         # Check WebPanel service configuration
@@ -368,7 +361,7 @@ services:
 
         import yaml
 
-        with open(compose_file, "r") as f:
+        with open(compose_file) as f:
             config = yaml.safe_load(f)
 
         webpanel = config["services"]["unrealircd-webpanel"]
@@ -389,7 +382,7 @@ services:
 
         import yaml
 
-        with open(compose_file, "r") as f:
+        with open(compose_file) as f:
             config = yaml.safe_load(f)
 
         services = config["services"]
@@ -414,7 +407,7 @@ services:
 
         import yaml
 
-        with open(compose_file, "r") as f:
+        with open(compose_file) as f:
             config = yaml.safe_load(f)
 
         webpanel = config["services"]["unrealircd-webpanel"]

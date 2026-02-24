@@ -1,7 +1,6 @@
+---
 # Convert TODOs/FIXMEs to GitHub issues
-
 name: Maintenance
-
 on:
   push:
     branches: [main]
@@ -13,11 +12,9 @@ on:
       manual_base_ref:
         description: Base SHA for TODO comparison (optional)
         required: false
-
 concurrency:
   group: maintenance-${{ github.ref }}
   cancel-in-progress: false
-
 jobs:
   todos:
     name: TODOs

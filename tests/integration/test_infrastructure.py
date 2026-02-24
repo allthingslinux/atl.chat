@@ -147,7 +147,7 @@ class TestDockerServices:
                 pytest.skip("No IRC.atl.chat containers running")
 
             healthy_containers = 0
-            total_containers = len(containers)
+            len(containers)
 
             for container in containers:
                 attrs = container.attrs
@@ -365,7 +365,7 @@ class TestEnvironmentSetup(BaseServerTestCase):
 
         # Test that server info is available using a properly registered client
         info_messages = self.connectClient("info_test")
-        info_commands = [msg.command for msg in info_messages]
+        [msg.command for msg in info_messages]
         # Should receive INFO responses (371/374) or other server info
         # The server is responding correctly to commands
 

@@ -1,20 +1,36 @@
 {
-  "name": "atl.chat-monorepo",
+  "name": "atl.chat",
   "version": "0.1.0",
   "private": true,
-  "packageManager": "pnpm@9.15.0",
+  "packageManager": "pnpm@10.28.2",
   "scripts": {
     "dev": "just dev",
     "build": "just build",
     "lint": "just lint",
     "test": "just test",
-    "release": "semantic-release"
+    "release": "semantic-release",
+    "commitlint": "commitlint",
+    "commit": "cz",
+    "cz": "cz"
   },
-  "workspaces": ["apps/*"],
+  "config": {
+    "commitizen": {
+      "path": "@commitlint/cz-commitlint"
+    }
+  },
+  "workspaces": [
+    "apps/*"
+  ],
   "devDependencies": {
+    "@commitlint/cli": "^20.4.2",
+    "@commitlint/config-conventional": "^20.4.2",
+    "@commitlint/cz-commitlint": "^20.4.1",
     "@semantic-release/changelog": "^6.0.3",
     "@semantic-release/exec": "^7.0.0",
     "@semantic-release/git": "^10.0.1",
+    "commitizen": "^4.3.1",
+    "inquirer": "^13.3.0",
+    "markdownlint-cli": "^0.47.0",
     "semantic-release": "^25.0.2",
     "semantic-release-major-tag": "^0.3.2"
   }

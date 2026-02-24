@@ -4,25 +4,22 @@
 # ============================================================================
 # Add this configuration to your main Prometheus prometheus.yml file
 # under the scrape_configs section
-
 scrape_configs:
   # ============================================================================
   # PROSODY XMPP SERVER METRICS
   # ============================================================================
-  - job_name: "xmpp-prosody"
-    metrics_path: "/metrics"
-    scheme: "http" # Use 'https' if SSL enabled on port 5281
+  - job_name: xmpp-prosody
+    metrics_path: /metrics
+    scheme: http  # Use 'https' if SSL enabled on port 5281
     scrape_interval: 30s
     scrape_timeout: 10s
-
     static_configs:
-      - targets: ["xmpp.atl.chat:5280"] # Change to your domain/IP
+      - targets: [xmpp.atl.chat:5280]  # Change to your domain/IP
         labels:
-          service: "prosody"
-          environment: "production" # Change as needed
-          instance_type: "xmpp_server"
-          domain: "atl.chat" # Your XMPP domain
-
+          service: prosody
+          environment: production  # Change as needed
+          instance_type: xmpp_server
+          domain: atl.chat  # Your XMPP domain
 # ============================================================================
 # POSTGRESQL DATABASE METRICS (if postgres_exporter is running)
 # ============================================================================
@@ -60,31 +57,31 @@ scrape_configs:
 # The Prosody metrics endpoint provides the following metric families:
 #
 # Connection Metrics:
-# - prosody_c2s_connections_total          # Client connections
-# - prosody_s2s_connections_total          # Server-to-server connections
-# - prosody_c2s_auth_success_total         # Successful authentications
-# - prosody_c2s_auth_failure_total         # Failed authentications
+# - prosody_c2s_connections_total  # Client connections
+# - prosody_s2s_connections_total  # Server-to-server connections
+# - prosody_c2s_auth_success_total  # Successful authentications
+# - prosody_c2s_auth_failure_total  # Failed authentications
 #
 # Message Metrics:
-# - prosody_messages_sent_total            # Messages sent
-# - prosody_messages_received_total        # Messages received
-# - prosody_presence_sent_total            # Presence updates sent
-# - prosody_presence_received_total        # Presence updates received
+# - prosody_messages_sent_total  # Messages sent
+# - prosody_messages_received_total  # Messages received
+# - prosody_presence_sent_total  # Presence updates sent
+# - prosody_presence_received_total  # Presence updates received
 #
 # Storage Metrics:
-# - prosody_storage_operations_total       # Database operations
-# - prosody_storage_errors_total           # Storage errors
+# - prosody_storage_operations_total  # Database operations
+# - prosody_storage_errors_total  # Storage errors
 #
 # Module Metrics:
-# - prosody_module_*                       # Various module-specific metrics
+# - prosody_module_*  # Various module-specific metrics
 #
 # HTTP Metrics:
-# - prosody_http_requests_total           # HTTP requests (BOSH/WebSocket)
+# - prosody_http_requests_total  # HTTP requests (BOSH/WebSocket)
 # - prosody_http_request_duration_seconds  # HTTP request duration
 #
 # System Metrics:
-# - prosody_memory_usage_bytes             # Memory usage
-# - prosody_cpu_usage_seconds_total        # CPU usage
+# - prosody_memory_usage_bytes  # Memory usage
+# - prosody_cpu_usage_seconds_total  # CPU usage
 #
 # ============================================================================
 # GRAFANA DASHBOARD RECOMMENDATIONS

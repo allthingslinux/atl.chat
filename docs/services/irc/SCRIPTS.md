@@ -21,6 +21,7 @@ SSL: Use cert-manager (Lego) via `just irc ssl-setup`. See SSL.md.
 **Purpose**: Initialize the IRC.atl.chat environment and create required directories.
 
 **Usage**:
+
 ```bash
 # Automatic initialization (called by make up)
 ./scripts/init.sh
@@ -30,6 +31,7 @@ DEBUG=1 ./scripts/init.sh
 ```
 
 **What it does**:
+
 1. Creates persistent data directories (`data/`, `logs/`)
 2. Sets proper ownership for host user
 3. Validates environment variables (PUID/PGID)
@@ -40,6 +42,7 @@ DEBUG=1 ./scripts/init.sh
 **Purpose**: Process template files and generate production configurations.
 
 **Usage**:
+
 ```bash
 # Process all configuration templates
 ./scripts/prepare-config.sh
@@ -49,6 +52,7 @@ VERBOSE=1 ./scripts/prepare-config.sh
 ```
 
 **What it does**:
+
 1. Validates `.env` file exists and is readable
 2. Processes all `.template` files with `envsubst`
 3. Generates `.conf` files from templates
@@ -59,19 +63,25 @@ VERBOSE=1 ./scripts/prepare-config.sh
 ## Script Features
 
 ### Error Handling
+
 All scripts use proper error handling:
+
 - `set -euo pipefail` for strict error handling
 - Proper exit codes
 - Clear error messages
 
 ### Logging
+
 Scripts provide structured logging:
+
 - Timestamps for all operations
 - Clear success/failure messages
 - Debug output when `DEBUG=1` is set
 
 ### Configuration
+
 Scripts are environment-driven:
+
 - Read from `.env` file
 - Use environment variables for configuration
 - Support debug and verbose modes
@@ -79,6 +89,7 @@ Scripts are environment-driven:
 ## Usage Examples
 
 ### Complete Setup
+
 ```bash
 # Initialize environment
 ./scripts/init.sh
@@ -97,6 +108,7 @@ docker compose ps
 ```
 
 ### Maintenance Tasks
+
 ```bash
 # Check SSL certificate status
 ./scripts/ssl-manager.sh check
@@ -109,6 +121,7 @@ docker compose ps
 ```
 
 ### Troubleshooting
+
 ```bash
 # Debug initialization
 DEBUG=1 ./scripts/init.sh
@@ -135,6 +148,7 @@ make ssl-renew   # Uses ssl-manager.sh renew
 ## Troubleshooting
 
 ### Script Failures
+
 ```bash
 # Check script permissions
 ls -la scripts/
@@ -147,6 +161,7 @@ env | grep -E "(PUID|PGID|IRC_)"
 ```
 
 ### Permission Issues
+
 ```bash
 # Fix script permissions
 chmod +x scripts/*.sh
@@ -156,6 +171,7 @@ sudo chown -R $(id -u):$(id -g) data/ logs/
 ```
 
 ### Configuration Issues
+
 ```bash
 # Validate .env file
 bash -n .env

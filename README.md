@@ -138,7 +138,7 @@ just status        # Container status
 # Build & test
 just build         # Build images
 just test          # Run pytest
-just lint          # lefthook pre-commit
+just lint          # pre-commit run --all-files
 ```
 
 ## Data Layout

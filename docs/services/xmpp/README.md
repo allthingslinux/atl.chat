@@ -68,11 +68,13 @@ docker compose -f compose.yaml exec atl-xmpp-server bash -c "echo -e 'password\n
 **Important:** The JID you register must match `PROSODY_ADMIN_JID` in your `.env`. For local development with `PROSODY_DOMAIN=localhost`, use `admin@localhost`.
 
 ## Infrastructure Alignment
+
 - **Networking**: See [Networking Registry](../../docs/infra/networking.md) for XMPP port (5222).
 - **SSL**: Terminated at the `atl.network` gateway. See [SSL Strategy](../../docs/infra/ssl.md).
 - **Deployment**: Managed via standard `Containerfile` and `compose.yaml`.
 
 ### Module Management
+
 ```bash
 make list-modules          # List available modules
 make enable-module         # Enable a module
@@ -80,6 +82,7 @@ make update-modules        # Update module collection
 ```
 
 ### Database Operations
+
 ```bash
 make db-backup            # Backup database
 make db-restore           # Restore database
@@ -135,18 +138,21 @@ xmpp-client user@atl.chat
 ## Troubleshooting
 
 ### Services Not Starting
+
 ```bash
 make logs
 make status
 ```
 
 ### SSL Issues
+
 ```bash
 make ssl-status
 make ssl-logs
 ```
 
 ### Configuration Issues
+
 ```bash
 make restart
 # Check if configuration was generated properly
@@ -159,11 +165,13 @@ make dev-build
 ## Development
 
 ### Running Tests
+
 ```bash
 make test
 ```
 
 #### Test Structure
+
 XMPP.atl.chat uses a comprehensive testing framework organized by testing level:
 
 - **`tests/unit/`** - Unit tests for individual components
@@ -178,11 +186,13 @@ XMPP.atl.chat uses a comprehensive testing framework organized by testing level:
 - **`tests/e2e/`** - End-to-end workflow tests
 
 ### Linting
+
 ```bash
 make lint
 ```
 
 ### Building
+
 ```bash
 make dev-build
 ```
@@ -190,17 +200,20 @@ make dev-build
 ## Documentation
 
 ### 🚀 Getting Started
+
 - [Quick Start](README.md#quick-start) - Basic installation and setup
 - [Configuration](README.md#configuration) - Environment variables and settings
 - [Troubleshooting](./docs/TROUBLESHOOTING.md) - Common issues and solutions
 
 ### 🏗️ Core Components
+
 - [Prosody Server](./docs/PROSODY.md) - XMPP server configuration and management
 - [Modules](./docs/MODULES.md) - Prosody module system and third-party extensions
 - [Web Client](./docs/WEBCLIENT.md) - ConverseJS configuration and customization
 - [Database](./docs/DATABASE.md) - PostgreSQL setup and management
 
 ### 🐳 Infrastructure
+
 - [Docker Setup](./docs/DOCKER.md) - Containerization, volumes, and networking
 - [Makefile Commands](./docs/MAKE.md) - Build automation and management commands
 - [Configuration](./docs/CONFIG.md) - Template system and environment variables
@@ -208,15 +221,18 @@ make dev-build
 - [Testing](./docs/TESTING.md) - Comprehensive test suite and framework
 
 ### 🔒 Security & Operations
+
 - [SSL Certificates](./docs/SSL.md) - Let's Encrypt automation and certificate management
 - [Secret Management](./docs/SECRET_MANAGEMENT.md) - Passwords, API tokens, and security practices
 - [Backup & Recovery](./docs/BACKUP_RECOVERY.md) - Data protection and disaster recovery
 
 ### 🔌 APIs & Integration
+
 - [API Reference](./docs/API.md) - HTTP API and admin interface
 - [Scripts](./docs/SCRIPTS.md) - Management and utility scripts
 
 ### 🛠️ Development
+
 - [Development Guide](./docs/DEVELOPMENT.md) - Local setup, contribution guidelines, and workflow
 
 ## License

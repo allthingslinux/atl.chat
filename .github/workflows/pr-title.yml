@@ -1,18 +1,14 @@
+---
 # Validate PR titles follow Conventional Commits
-
 name: PR Title Validation
-
 on:
   pull_request_target:
     types: [opened, reopened, edited, synchronize]
-
 concurrency:
   group: pr-title-${{ github.ref }}
   cancel-in-progress: false
-
 permissions:
   pull-requests: write
-
 jobs:
   validate-pr-title:
     name: Validate PR Title

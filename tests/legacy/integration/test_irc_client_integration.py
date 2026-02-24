@@ -1,9 +1,9 @@
 """Integration tests using the IRC library with controlled IRC server."""
 
-import pytest
-import time
 import threading
-from typing import Optional
+import time
+
+import pytest
 
 # Import IRC library conditionally to avoid import errors if not installed
 irc = pytest.importorskip("irc")
@@ -268,7 +268,7 @@ class TestIRCIntegration(BaseServerTestCase):
 
         try:
             # Create and connect multiple clients
-            for i in range(num_clients):
+            for _i in range(num_clients):
                 client = IRCClientTest()
                 connected = client.connect()
 
@@ -292,7 +292,7 @@ class TestIRCIntegration(BaseServerTestCase):
             # Verify join events were received
             for client in connected_clients:
                 join_events = [e for e in client.events if e[0] == "join"]
-                assert len(join_events) > 0, f"Client did not receive join events"
+                assert len(join_events) > 0, "Client did not receive join events"
 
         finally:
             # Clean up all clients

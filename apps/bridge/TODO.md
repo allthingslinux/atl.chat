@@ -7,6 +7,7 @@ Check the boxes `[x]` for the features you want to include in the bridge. Once y
 **Legend:** `[x]` = wanted · `[~]` = partially implemented · `[ ]` = not started · `[-]` = not wanted
 
 ## 1. Reliability & Connection Management
+
 - [~] **IRC Flood Control / Rate Limiting:** Token bucket algorithm to queue messages and prevent server drops.
 - [~] **IRC Rate Limiting Configuration:** Support configuration options like `SendLimit` and `SendBurst`.
 - [~] **Exponential Backoff Reconnection:** Reconnect to servers with increasing delays (and jitter) on network issues.
@@ -22,6 +23,7 @@ Check the boxes `[x]` for the features you want to include in the bridge. Once y
 - [ ] **Exit on Send Error:** Configurable behavior to exit the bridge or continue on send errors.
 
 ## 2. Security & Moderation
+
 - [x] **AllowedMentions Configuration:** Disable `@everyone` and `@here` (and optionally role mentions) by default in Discord to prevent abuse.
 - [ ] **Permission-Based Channel Joining:** Ensure IRC puppets only join channels they have permission to read/write in on Discord.
 - [ ] **WebIRC Support:** Use `WEBIRC` on the IRC server so puppets show real IPs/hostnames instead of the bridge's IP.
@@ -34,6 +36,7 @@ Check the boxes `[x]` for the features you want to include in the bridge. Once y
 - [ ] **Allowed Speakers Role:** Only bridge messages from Discord users who possess a specific role.
 
 ## 3. Messaging & Formatting (Bidirectional)
+
 - [~] **Advanced Discord Markdown Parser:** Use an AST-based parser to properly convert Discord formatting to IRC.
 - [~] **IRC Formatting to Discord Markdown:** State-machine parser to convert IRC control codes to Discord markdown.
 - [-] **Sophisticated IRC->Discord Formatting (Intervals):** Use bitwise flags and intervals to correctly handle overlapping/nested IRC formatting.
@@ -52,6 +55,7 @@ Check the boxes `[x]` for the features you want to include in the bridge. Once y
 - [ ] **Auto-Creating PM Channels:** Dynamically create a Discord channel for each IRC private message (query window).
 
 ## 4. Mentions & Anti-Ping
+
 - [ ] **Zero-Width Space (ZWS) Anti-Ping:** Insert `\u200B` in nicknames to prevent accidental highlighting.
   - [ ] *Variant A:* Insert after the first character.
   - [ ] *Variant B:* Insert after vowels for more natural breaking.
@@ -68,6 +72,7 @@ Check the boxes `[x]` for the features you want to include in the bridge. Once y
 - [-] **Username Truncation with Discriminator:** Truncate appropriately while keeping the old #discriminator logic if needed.
 
 ## 5. Media, Embeds & Avatars
+
 - [x] **Webhook Avatar Caching with TTL:** Cache Discord avatar URLs with a Time-To-Live to avoid hitting rate limits.
 - [~] **Avatar Fallback - Hash-based Colors:** Generate deterministic UI Avatars (`ui-avatars.com`) based on a hash of the IRC user's name.
 - [-] **Avatar Fallback - Robohash:** Generate random Robohash avatars for IRC users.
@@ -82,6 +87,7 @@ Check the boxes `[x]` for the features you want to include in the bridge. Once y
 - [ ] **Attachment URL Appending:** Append uploaded file URLs to the end of the text message.
 
 ## 6. Puppets & Multi-Presence
+
 - [~] **Puppet Lifecycle / Idle Timeout:** Disconnect IRC puppets after a period of inactivity (e.g., 24-48 hours).
 - [ ] **Puppet Keep-Alive (Pinger):** Periodically send a `PING` from idle puppets to keep their connection alive.
 - [~] **Nickname Collision & Reclaim:** Append `[d]`, `[1]`, `_` on nick collisions, and attempt to reclaim the original nick after a netsplit.
@@ -90,6 +96,7 @@ Check the boxes `[x]` for the features you want to include in the bridge. Once y
 - [-] **IPv6 CIDR Range Puppets:** Assign a deterministic, unique IPv6 address to every puppet to bypass IRC connection limits (Requires infra setup).
 
 ## 7. IRC-Specific Features (IRCv3, Modes, Commands)
+
 - [x] **IRCv3 Base Caps (message-tags, message-ids, echo-message):** Negotiate foundation caps required for reply, react, and redaction.
 - [~] **IRCv3 Replies (+draft/reply):** Use IRCv3 client tags to track exact message replies bidirectionally.
 - [ ] **IRCv3 Message Deletion (draft/message-redaction, REDACT):** Sync deleted messages bidirectionally using the IRCv3 `REDACT` command.
@@ -109,6 +116,7 @@ Check the boxes `[x]` for the features you want to include in the bridge. Once y
 - [ ] **IRCv3 channel-context (+draft/channel-context):** Indicate channel context for PM replies.
 
 ## 8. XMPP-Specific Features
+
 - [~] **MUC Join History Suppression:** Send `<history maxchars="0"/>` when joining a MUC to avoid flooding the bridge with backlog.
 - [ ] **XMPP Stanza-ID Tracking:** Track messages using the `<stanza-id>` element for exact deduplication.
 - [ ] **BOSH / WebSockets Support:** Support for connecting to XMPP over BOSH or WebSockets for better firewall bypassing.
@@ -116,6 +124,7 @@ Check the boxes `[x]` for the features you want to include in the bridge. Once y
 - [x] **XMPP Stream Management:** Use XEP-0198 to provide session resumption and reliability for XMPP connections.
 
 ## 9. Architecture, Storage & Performance
+
 - [~] **Message Cache Backup / Persistence:** Save the message ID mapping cache to disk (compressed JSON) on shutdown so edits/deletes still work after a restart.
 - [ ] **Message ID Store for Webhook Edits:** Use `PATCH` with stored Discord message IDs to natively edit webhook messages.
 - [ ] **SQLite Persistence:** Use SQLite for dynamic channel mappings, logs, and user configurations.
@@ -134,6 +143,7 @@ Check the boxes `[x]` for the features you want to include in the bridge. Once y
 - [ ] **Silent Message Sending:** Support internal methods to send messages silently without triggering further events (prevent loops).
 
 ## 10. UI/UX, Analytics & Logging
+
 - [ ] **Deduplication Emojis:** Add visual indicators (colored square emojis) to show when messages have been deduplicated.
 - [ ] **Emoji Limit for Spam Prevention:** Restrict the maximum number of custom emojis rendered per message to prevent spam.
 - [ ] **Statistics & Uptime Tracker:** Track total bridged messages per direction and uptime.
@@ -145,6 +155,7 @@ Check the boxes `[x]` for the features you want to include in the bridge. Once y
 - [ ] **User Command History Tracking:** Log admin commands specifically for debugging.
 
 ## 11. Testing & Tooling
+
 - [~] **Mock Discord Backend for Tests:** Implement fake connection states and HTTP clients to run unit tests without hitting APIs.
 - [~] **Factory Pattern for Test Fixtures:** Create realistic test objects (Messages, Users, Attachments) using factories.
 - [ ] **Async Event Runner for Tests:** Ensure all async events are awaited properly to prevent race conditions during test execution.
@@ -155,20 +166,22 @@ Check the boxes `[x]` for the features you want to include in the bridge. Once y
 - [ ] **Attachment Factory:** Generate mock attachments for testing.
 - [ ] **Configuration Decorator:** Enforce test configuration state via decorators.
 
-
 ## High Priority (Reliability)
 
 ### IRC Flood Control
+
 **Status:** Not implemented
 **Priority:** High
 **Source:** Matterbridge audit, Biboumi audit
 
 **What it does:**
+
 - Message queue with configurable delay between sends
 - Prevents rate limiting and connection drops
 - Token bucket algorithm for rate limiting
 
 **Biboumi implementation:**
+
 - Token bucket: 1 token per second refill
 - Default limit: 10 messages
 - Messages queued when tokens exhausted
@@ -176,6 +189,7 @@ Check the boxes `[x]` for the features you want to include in the bridge. Once y
 - Can bypass throttling for critical messages (PING/PONG)
 
 **Implementation:**
+
 ```python
 # Add to IRC adapter
 class TokenBucket:
@@ -204,27 +218,32 @@ tokens_bucket: TokenBucket
 ```
 
 **Config:**
+
 ```yaml
 irc_throttle_limit: 10  # messages per second
 irc_message_queue: 30   # max queue size
 ```
 
 ### IRC Rejoin Logic
+
 **Status:** Not implemented
 **Priority:** High
 **Source:** Matterbridge audit, Biboumi audit
 
 **What it does:**
+
 - Automatic rejoin after KICK
 - Automatic rejoin on disconnect/ping timeout
 - Configurable rejoin delay
 
 **Biboumi status:**
+
 - Tracks channels to join but NO automatic rejoin after KICK
 - Marks channel as not joined but doesn't attempt rejoin
 - Opportunity for improvement over biboumi
 
 **Implementation:**
+
 ```python
 async def handle_kick(self, channel: str, reason: str):
     # Don't rejoin if banned
@@ -242,26 +261,31 @@ async def on_disconnect(self):
 ```
 
 **Config:**
+
 ```yaml
 irc_rejoin_delay: 5  # seconds
 irc_auto_rejoin: true
 ```
 
 ### Nick Sanitization
+
 **Status:** Not implemented
 **Priority:** High
 **Source:** Matterbridge audit
 
 **What it does:**
+
 - Sanitize Discord usernames for IRC compatibility
 - Replace special characters (@#:/) with safe alternatives
 - Prevent IRC command injection
 
 **Biboumi status:**
+
 - Not needed in biboumi (uses XMPP JIDs, not Discord usernames)
 - ATL Bridge needs this due to puppet model using Discord names directly
 
 **Implementation:**
+
 ```python
 def sanitize_nick(nick: str) -> str:
     # Remove/replace IRC special chars
@@ -274,22 +298,26 @@ def sanitize_nick(nick: str) -> str:
 ```
 
 ### Connection Backoff
+
 **Status:** Partial (Portal client has retry)
 **Priority:** High
 **Source:** Matterbridge audit, Biboumi audit
 
 **What it does:**
+
 - Exponential backoff for IRC/XMPP reconnects
 - Prevents connection spam on network issues
 - Configurable min/max backoff times
 
 **Biboumi implementation:**
+
 - Fixed 2-second delay for XMPP reconnection
 - Port fallback for IRC (tries next port on failure)
 - No exponential backoff or jitter
 - No max retry limit
 
 **Implementation:**
+
 ```python
 from tenacity import retry, wait_exponential
 
@@ -312,21 +340,25 @@ async def connect(self):
 ## Medium Priority (Features)
 
 ### IRC Channel Keys
+
 **Status:** Not implemented
 **Priority:** Medium
 **Source:** Matterbridge audit, Biboumi audit
 
 **What it does:**
+
 - Support password-protected IRC channels
 - Per-channel key configuration
 
 **Biboumi implementation:**
+
 - Full support with batched JOIN commands
 - Handles multiple channels with different keys
 - Proper error handling (475 ERR_BADCHANNELKEY)
 - Sends: `JOIN #chan1,#chan2 key1,key2`
 
 **Config:**
+
 ```yaml
 mappings:
   - discord_channel_id: "123"
@@ -337,6 +369,7 @@ mappings:
 ```
 
 **Implementation:**
+
 ```python
 # Store keys securely, handle 475 numeric
 async def join_channel(self, channel: str, key: str = ""):
@@ -347,22 +380,26 @@ async def join_channel(self, channel: str, key: str = ""):
 ```
 
 ### SASL Authentication
+
 **Status:** Not implemented (using NickServ IDENTIFY)
 **Priority:** Medium
 **Source:** Matterbridge audit, Biboumi audit
 
 **What it does:**
+
 - More secure IRC authentication
 - No password in plaintext IDENTIFY command
 - Alternative to NickServ
 
 **Biboumi implementation:**
+
 - Full SASL PLAIN support with CAP negotiation
 - Graceful fallback on failure
 - Per-server credential storage
 - State machine: unneeded → needed → success/failure
 
 **CAP negotiation flow:**
+
 1. Send `CAP REQ :sasl`
 2. Server responds `CAP ACK :sasl`
 3. Send `AUTHENTICATE PLAIN`
@@ -372,6 +409,7 @@ async def join_channel(self, channel: str, key: str = ""):
 7. Send `CAP END`
 
 **Config:**
+
 ```yaml
 irc_use_sasl: true
 irc_sasl_user: "username"
@@ -379,15 +417,18 @@ irc_sasl_password: "password"
 ```
 
 ### Verbose Join/Part
+
 **Status:** Partial (basic join/part)
 **Priority:** Low
 **Source:** Matterbridge audit
 
 **What it does:**
+
 - Include ident@host in presence messages
 - More detailed join/part notifications
 
 **Config:**
+
 ```yaml
 verbose_join_part: true  # "user (ident@host) joins"
 ```
@@ -395,14 +436,17 @@ verbose_join_part: true  # "user (ident@host) joins"
 ## Future XEP Implementations
 
 ### XEP-0394: Message Markup
+
 **Status:** Deferred - needs investigation
 
 **What it does:**
+
 - Semantic markup for bold, italic, code, quotes, lists
 - Uses character position ranges instead of Markdown syntax
 - Example: `<span start="6" end="11"><emphasis/></span>` for bold text
 
 **Why deferred:**
+
 - Complex bidirectional conversion between Discord Markdown and positional markup
 - Requires parsing `**bold**`, `*italic*`, `` `code` ``, `> quote` and calculating offsets
 - Breaks on edits (positions shift)
@@ -410,6 +454,7 @@ verbose_join_part: true  # "user (ident@host) joins"
 - High implementation complexity for marginal UX improvement
 
 **Implementation notes if revisited:**
+
 - Need robust Markdown parser for Discord → XMPP
 - Need to reconstruct Markdown from position spans for XMPP → Discord
 - Handle nested formatting, Unicode, emojis correctly
@@ -417,6 +462,7 @@ verbose_join_part: true  # "user (ident@host) joins"
 - Test with complex messages (mixed formatting, mentions, links)
 
 **Dependencies:**
+
 - `xep_0030` (Service Discovery)
 - `xep_0071` (XHTML-IM) - deprecated, may need alternative approach
 
@@ -458,6 +504,7 @@ verbose_join_part: true  # "user (ident@host) joins"
 ### Implementation Priorities from Biboumi
 
 **Immediate (High Priority):**
+
 1. IRC Flood Control - Token bucket (~2-3 hours)
 2. IRC Rejoin Logic - Auto-rejoin after KICK (~1 hour)
 3. Connection Backoff - Exponential with jitter (~30 min)
@@ -474,18 +521,21 @@ verbose_join_part: true  # "user (ident@host) joins"
 ### Code Quality Observations
 
 **Strengths:**
+
 - Robust error handling for every IRC numeric
 - Database-driven per-server config
 - Modular design (IRC/XMPP/bridge separation)
 - Comprehensive test suite (16 test files)
 
 **Weaknesses:**
+
 - C++ complexity (memory management)
 - Fixed delays (no exponential backoff)
 - Limited documentation
 - No metrics/monitoring
 
 **Lessons for ATL Bridge:**
+
 - Use database/Portal for per-server config
 - Implement error handlers for all IRC numerics
 - Add metrics from the start
@@ -510,11 +560,13 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Use `asyncio.Lock()` to serialize message sends
    - Prevents interleaved messages and API race conditions
    - Implementation:
+
      ```python
      self.send_lock = asyncio.Lock()
      async with self.send_lock:
          msg = await channel.send(text)
      ```
+
    - **Priority:** Medium - Add to Discord adapter
    - **Effort:** 30 minutes
 
@@ -523,6 +575,7 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Cache fetched guild IDs to prevent duplicate fetches
    - Rate limiting awareness (don't fetch for large guilds by default)
    - Implementation:
+
      ```python
      self.guild_members_fetch_lock = asyncio.Lock()
      self.guild_members_fetched: set[int] = set()
@@ -532,6 +585,7 @@ verbose_join_part: true  # "user (ident@host) joins"
              await guild.fetch_members(cache=True)
              self.guild_members_fetched.add(guild.id)
      ```
+
    - **Priority:** Low - We use webhooks, don't need full member list
    - **Effort:** 1 hour if needed
 
@@ -551,11 +605,13 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Extract Tenor GIFs from Discord embeds
    - Send as attachments instead of URLs
    - Implementation:
+
      ```python
      for embed in message.embeds:
          if embed.provider.name == "Tenor":
              attachments.append(Attachment(url=embed.video.url))
      ```
+
    - **Priority:** Low - Nice-to-have
    - **Effort:** 1 hour
 
@@ -563,11 +619,13 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Distinguish between Discord replies and forwarded messages
    - Format forwarded messages with source context
    - Implementation:
+
      ```python
      if message.type != MessageType.reply and reply_to is not None:
          # This is a forwarded message
          text = f"↱ Forwarded from {source}\n> {quoted_text}"
      ```
+
    - **Priority:** Low - Edge case
    - **Effort:** 2 hours
 
@@ -581,13 +639,16 @@ verbose_join_part: true  # "user (ident@host) joins"
 ### Recommended Additions to ATL Bridge
 
 **Immediate:**
+
 - Add send lock to Discord adapter (30 min)
 
 **Short-term:**
+
 - Discord thread support (3-4 hours)
 - Embed extraction for Tenor GIFs (1 hour)
 
 **Long-term:**
+
 - Reply vs forward detection (2 hours)
 - Guild member lazy loading if needed (1 hour)
 
@@ -607,6 +668,7 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Configurable delay between webhook sends (default: 0.25s)
    - Background consumer processes queue with `asyncio.Event`
    - Implementation:
+
      ```python
      self._queue = []
      self._incoming = asyncio.Event()
@@ -620,6 +682,7 @@ verbose_join_part: true  # "user (ident@host) joins"
              self._queue.clear()
              self._incoming.clear()
      ```
+
    - **Priority:** Medium - Ensures message order
    - **Effort:** 2 hours
    - **Note:** We already use webhooks, this adds ordering guarantee
@@ -630,6 +693,7 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Uses `time.monotonic()` for stable timing
    - Prevents rate limiting from repeated avatar fetches
    - Implementation:
+
      ```python
      self._avatar_cache = {}  # { user_id: (invalidation_ts, avatar_url) }
      
@@ -651,6 +715,7 @@ verbose_join_part: true  # "user (ident@host) joins"
              return await self._get_from_cache(user_id)
          return avatar_url
      ```
+
    - **Priority:** High - We already cache avatars, but no TTL
    - **Effort:** 1 hour to add TTL invalidation
    - **Status:** Partial - We have MD5-based cache, add time-based invalidation
@@ -660,6 +725,7 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Uses `ExpiringDict` with 1-hour TTL and 1000 message limit
    - Enables PATCH webhook for edits instead of new POST
    - Implementation:
+
      ```python
      from expiringdict import ExpiringDict
      
@@ -677,6 +743,7 @@ verbose_join_part: true  # "user (ident@host) joins"
          discord_message = await resp.json()
          self._message_id_store[store_key] = discord_message["id"]
      ```
+
    - **Priority:** High - Better than our current approach
    - **Effort:** 2-3 hours
    - **Status:** We track message IDs but don't use webhook PATCH for edits
@@ -686,6 +753,7 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Convert user/role mentions to non-mentioning format
    - Prevents mention abuse from XMPP side
    - Implementation:
+
      ```python
      def clean_content(content: str) -> str:
          content = content.replace("@everyone", "@\u200beveryone")
@@ -693,6 +761,7 @@ verbose_join_part: true  # "user (ident@host) joins"
          content = re.sub(r"<@[!&]?(\d+)>", lambda m: m.group(0).strip("<>"), content)
          return content
      ```
+
    - **Priority:** High - Security/anti-abuse
    - **Effort:** 30 minutes
    - **Status:** Not implemented
@@ -702,6 +771,7 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Pad short nicks: `<x>` for single-char nicks
    - Truncate long nicks to 32 chars
    - Implementation:
+
      ```python
      def ensure_valid_nick(nick: str) -> str:
          if len(nick) < 2:
@@ -710,6 +780,7 @@ verbose_join_part: true  # "user (ident@host) joins"
              return nick[:32]
          return nick
      ```
+
    - **Priority:** Medium - Prevents webhook errors
    - **Effort:** 15 minutes
    - **Status:** Not implemented
@@ -718,10 +789,12 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Truncate messages over 1900 chars with "... (trimmed)"
    - Prevents Discord API errors (2000 char limit)
    - Implementation:
+
      ```python
      if len(content) > 1900:
          content = content[:1900] + "... (trimmed)"
      ```
+
    - **Priority:** Medium - Better than silent failure
    - **Effort:** 15 minutes
    - **Status:** Not implemented (we should split instead)
@@ -730,11 +803,13 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Append attachment URLs to message content
    - Simple approach: just add URLs separated by spaces
    - Implementation:
+
      ```python
      if message.attachments:
          urls = " ".join(attachment.proxy_url for attachment in message.attachments)
          content += " " + urls
      ```
+
    - **Priority:** Low - We already handle attachments better
    - **Effort:** N/A
    - **Status:** We use proper file uploads
@@ -743,17 +818,20 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Add "(N embeds)" to message when embeds present
    - Simple notification that embeds exist
    - Implementation:
+
      ```python
      if message.embeds:
          s = "" if len(message.embeds) == 1 else "s"
          content += f" ({len(message.embeds)} embed{s})"
      ```
+
    - **Priority:** Low - Nice-to-have
    - **Effort:** 15 minutes
 
 ### Recommended Additions to ATL Bridge
 
 **Immediate (High Priority):**
+
 1. Mention sanitization - Prevent @everyone/@here abuse (30 min)
 2. Avatar cache TTL - Add time-based invalidation (1 hour)
 3. Message ID store for webhook edits - Use PATCH instead of new messages (2-3 hours)
@@ -771,18 +849,21 @@ verbose_join_part: true  # "user (ident@host) joins"
 ### Key Insights from Black-Hole
 
 **Strengths:**
+
 - Simple, focused implementation (8 files, ~500 LOC)
 - Effective use of asyncio primitives (Event, Queue pattern)
 - Smart caching with TTL to avoid rate limits
 - Webhook PATCH for edits (better than reposting)
 
 **Weaknesses:**
+
 - No retry logic or error recovery
 - Truncates long messages instead of splitting
 - No IRC support (XMPP-Discord only)
 - Limited XEP support
 
 **Best practices to adopt:**
+
 - Use `time.monotonic()` for cache invalidation (more stable than `time.time()`)
 - Queue messages with delay for ordering guarantees
 - PATCH webhook messages for edits (requires storing webhook URL + message ID)
@@ -802,6 +883,7 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Track original message ID, author, created message ID, channel
    - Enables cross-platform reply threading
    - Implementation:
+
      ```python
      @dataclass
      class CachedMessage:
@@ -822,6 +904,7 @@ verbose_join_part: true  # "user (ident@host) joins"
          # Reply to the original XMPP message
          reply_to = cross_platform_ref.parent_message
      ```
+
    - **Priority:** High - Enables proper reply threading
    - **Effort:** 2-3 hours
    - **Status:** We track message IDs but not bidirectionally
@@ -832,6 +915,7 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Final fallback: fetch message from API
    - Graceful degradation if fetch fails
    - Implementation:
+
      ```python
      # 1. Check cross-platform cache
      cross_ref = find_in_cache(other_platform_cache, reply_id)
@@ -850,6 +934,7 @@ verbose_join_part: true  # "user (ident@host) joins"
      except NotFound:
          return "[message not found]"
      ```
+
    - **Priority:** Medium - Better UX for replies
    - **Effort:** 1-2 hours
 
@@ -857,6 +942,7 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Truncate to 32 chars for webhook usernames
    - Include discriminator only if not new username system
    - Implementation:
+
      ```python
      def format_username(username: str, discriminator: str) -> str:
          # New username system has discriminator "0"
@@ -864,6 +950,7 @@ verbose_join_part: true  # "user (ident@host) joins"
              return username[:32]
          return f"{username}#{discriminator}"[:32]
      ```
+
    - **Priority:** Low - Discord removed discriminators
    - **Effort:** 15 minutes
    - **Status:** Not needed (Discord changed system)
@@ -873,6 +960,7 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Only allow embeds from bots (security)
    - Graceful failure if translation fails
    - Implementation:
+
      ```python
      if message.embeds and message.author.bot:
          try:
@@ -882,6 +970,7 @@ verbose_join_part: true  # "user (ident@host) joins"
              log.warning("Failed to translate embed: %s", e)
              # Continue without embed
      ```
+
    - **Priority:** Medium - Better embed support
    - **Effort:** 3-4 hours
    - **Status:** We extract some embeds (Tenor), not full translation
@@ -890,12 +979,14 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Append all attachment URLs to message content
    - Simple newline-separated list
    - Implementation:
+
      ```python
      message_string = content + "\n"
      for attachment in attachments:
          message_string += attachment.url + "\n"
      message_string = message_string.rstrip("\n")
      ```
+
    - **Priority:** Low - We handle attachments better
    - **Effort:** N/A
    - **Status:** We use proper file uploads
@@ -905,11 +996,13 @@ verbose_join_part: true  # "user (ident@host) joins"
    - `allowBots` flag in channel mapping
    - Skip messages from own bot application
    - Implementation:
+
      ```python
      if target and message.application_id != bot.user.id:
          if not message.author.bot or target.allow_bots:
              # Bridge the message
      ```
+
    - **Priority:** Medium - Prevents bot loops
    - **Effort:** 1 hour
    - **Status:** We check webhook_id, add application_id check
@@ -918,6 +1011,7 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Limit displayed custom emojis to 5
    - Prevents emoji spam/bombing
    - Implementation:
+
      ```python
      emojis = re.findall(EMOJI_PATTERN, content)
      for i, emoji in enumerate(emojis):
@@ -927,6 +1021,7 @@ verbose_join_part: true  # "user (ident@host) joins"
          else:
              content = content.replace(emoji, f":{emoji_name}:")
      ```
+
    - **Priority:** Low - Anti-spam measure
    - **Effort:** 30 minutes
 
@@ -935,6 +1030,7 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Sequelize ORM for easy management
    - Auto-sync schema on startup
    - Implementation:
+
      ```python
      # Using SQLAlchemy or similar
      class Mapping(Base):
@@ -945,6 +1041,7 @@ verbose_join_part: true  # "user (ident@host) joins"
          irc_channel = Column(String)
          allow_bots = Column(Boolean, default=True)
      ```
+
    - **Priority:** Medium - Better than YAML for dynamic mappings
    - **Effort:** 2-3 hours
    - **Status:** We use YAML config, consider DB for dynamic mappings
@@ -952,6 +1049,7 @@ verbose_join_part: true  # "user (ident@host) joins"
 ### Recommended Additions to ATL Bridge
 
 **Immediate (High Priority):**
+
 1. Cross-platform reply tracking - Bidirectional cache (2-3 hours)
 2. Bot message filtering - Add application_id check (1 hour)
 
@@ -968,6 +1066,7 @@ verbose_join_part: true  # "user (ident@host) joins"
 ### Key Insights from Revcord
 
 **Strengths:**
+
 - Bidirectional message caching for cross-platform replies
 - Graceful fallback chain for reply resolution
 - Per-channel bot filtering configuration
@@ -975,12 +1074,14 @@ verbose_join_part: true  # "user (ident@host) joins"
 - Emoji spam prevention
 
 **Weaknesses:**
+
 - No rate limiting or throttling
 - No retry logic
 - TypeScript (not Python, harder to adapt)
 - Revolt-specific (not IRC/XMPP)
 
 **Best practices to adopt:**
+
 - Separate caches for each bridge direction
 - Three-tier fallback for reply resolution (cache → cache → API)
 - Per-channel configuration flags (allow_bots, etc.)
@@ -1000,11 +1101,13 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Use WebIRC for enhanced security and proper hostname display
    - Prevents impersonation and shows real Discord user info
    - Implementation:
+
      ```python
      connection.send_raw(
          f"WEBIRC {password} {hostname} {hostname} {ip_address}"
      )
      ```
+
    - **Priority:** High - Better security and UX
    - **Effort:** 1-2 hours
    - **Status:** Not implemented - we use standard IRC connection
@@ -1013,6 +1116,7 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Puppets only join channels they have Discord permissions for
    - Dynamic join/part based on role changes
    - Implementation:
+
      ```python
      async def accessible_channels(self, user_id):
          channels = []
@@ -1029,6 +1133,7 @@ verbose_join_part: true  # "user (ident@host) joins"
              channels = await self.accessible_channels(after.id)
              await send_command(after, 'join_part', channels)
      ```
+
    - **Priority:** High - Respects Discord permissions
    - **Effort:** 2-3 hours
    - **Status:** Not implemented - puppets join all mapped channels
@@ -1037,6 +1142,7 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Set IRC AWAY status based on Discord presence
    - Automatic AFK when offline/DND, UNAFK when online/idle
    - Implementation:
+
      ```python
      async def on_presence_update(self, before, after):
          previously_inactive = before.status in (Status.offline, Status.dnd)
@@ -1047,6 +1153,7 @@ verbose_join_part: true  # "user (ident@host) joins"
          elif previously_active and now_inactive:
              await send_irc_command(after, 'afk')
      ```
+
    - **Priority:** Medium - Nice UX feature
    - **Effort:** 1 hour
    - **Status:** Not implemented
@@ -1056,6 +1163,7 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Split at word boundaries when possible
    - Respect 512 byte IRC message limit
    - Implementation:
+
      ```python
      def msg_reserved_bytes(self, target, nickname, hostname):
          # :<nick>!<nick>@<host> PRIVMSG <target> :\r\n
@@ -1079,6 +1187,7 @@ verbose_join_part: true  # "user (ident@host) joins"
              message = message[len(chunk):].lstrip()
          return lines
      ```
+
    - **Priority:** High - Prevents message truncation
    - **Effort:** 2 hours
    - **Status:** Not implemented - we should split instead of truncate
@@ -1088,6 +1197,7 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Deactivate puppet when user leaves guild
    - Track active puppets in memory
    - Implementation:
+
      ```python
      active_puppets: set[int] = set()
      
@@ -1101,6 +1211,7 @@ verbose_join_part: true  # "user (ident@host) joins"
              self.active_puppets.remove(member.id)
              await send_irc_command(member, 'die')
      ```
+
    - **Priority:** Medium - Better resource management
    - **Effort:** 1-2 hours
    - **Status:** Partial - we have idle timeout, not guild leave detection
@@ -1110,6 +1221,7 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Ensure first character is letter or special char
    - Truncate to fit IRC limits with display name + username
    - Implementation:
+
      ```python
      def irc_safe_nickname(self, nickname: str) -> str:
          allowed_special = r"\[\]\\`_^{|}"
@@ -1138,6 +1250,7 @@ verbose_join_part: true  # "user (ident@host) joins"
          
          return f"{display_name}[{username}]{suffix}"
      ```
+
    - **Priority:** High - Prevents IRC errors
    - **Effort:** 1-2 hours
    - **Status:** Partial - we sanitize but not as thoroughly
@@ -1146,6 +1259,7 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Retry with increasing delays: 10s, 20s, 30s... up to 300s (5 min)
    - Automatic reconnection on disconnect
    - Implementation:
+
      ```python
      def connect_and_retry(self, server, port, nickname, tls=False):
          retry_count = 1
@@ -1166,6 +1280,7 @@ verbose_join_part: true  # "user (ident@host) joins"
      def on_disconnect(self, c, e):
          self.connect_and_retry(self.server, self.port, self.nickname, self.tls)
      ```
+
    - **Priority:** High - Better reliability
    - **Effort:** 1 hour
    - **Status:** Not implemented - we should add this
@@ -1175,6 +1290,7 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Worker threads process queues asynchronously
    - Commands: send, afk, unafk, nick, join_part, send_dm, die
    - Implementation:
+
      ```python
      queues = {
          'in_queue': Queue(),      # Discord → IRC
@@ -1199,6 +1315,7 @@ verbose_join_part: true  # "user (ident@host) joins"
                  case 'die':
                      self.end('has left discord')
      ```
+
    - **Priority:** Medium - Better architecture
    - **Effort:** 3-4 hours
    - **Status:** We use event bus, not queues
@@ -1207,6 +1324,7 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Generate random avatars for IRC users without Discord accounts
    - Use robohash.org for consistent avatar generation
    - Implementation:
+
      ```python
      def get_avatar_url(self, irc_nick, discord_users):
          # Check if IRC nick matches Discord user
@@ -1217,6 +1335,7 @@ verbose_join_part: true  # "user (ident@host) joins"
          # Generate robohash avatar
          return f"https://robohash.org/{irc_nick}.png"
      ```
+
    - **Priority:** Low - Nice-to-have
    - **Effort:** 30 minutes
    - **Status:** We use Portal for avatars
@@ -1224,6 +1343,7 @@ verbose_join_part: true  # "user (ident@host) joins"
 ### Recommended Additions to ATL Bridge
 
 **Immediate (High Priority):**
+
 1. WebIRC integration - Better security (1-2 hours)
 2. Permission-based channel joining - Respect Discord perms (2-3 hours)
 3. IRC message splitting - Proper 512 byte handling (2 hours)
@@ -1243,6 +1363,7 @@ verbose_join_part: true  # "user (ident@host) joins"
 ### Key Insights from CatPuppetBridge
 
 **Strengths:**
+
 - WebIRC for enhanced security and proper hostnames
 - Permission-aware puppet joining (unique feature)
 - Proper IRC message splitting with word boundary detection
@@ -1251,12 +1372,14 @@ verbose_join_part: true  # "user (ident@host) joins"
 - Queue-based architecture for command processing
 
 **Weaknesses:**
+
 - Threading instead of asyncio (less efficient)
 - No rate limiting or flood control
 - No message ID tracking for edits/deletes
 - Limited error recovery
 
 **Best practices to adopt:**
+
 - WebIRC for all puppet connections
 - Check Discord permissions before joining IRC channels
 - Calculate IRC protocol overhead for accurate message splitting
@@ -1277,11 +1400,13 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Insert `\ufeff` (zero-width space) after first character
    - Prevents accidental pings when relaying names
    - Implementation:
+
      ```python
      def sanitize_name(self, name):
          # Insert a zero-width space to prevent accidental pings on IRC
          return name[0] + "\ufeff" + name[1:]
      ```
+
    - **Priority:** High - Prevents ping spam
    - **Effort:** 15 minutes
    - **Status:** Not implemented
@@ -1291,6 +1416,7 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Handles `[nick]` passthrough for intentional pings
    - Word boundary detection to avoid false matches
    - Implementation:
+
      ```python
      def sanitize_irc_names(self, text, nicks):
          # Sort by length to match "OatmealDome" before "Oatmeal"
@@ -1324,6 +1450,7 @@ verbose_join_part: true  # "user (ident@host) joins"
          
          return full_pattern.sub(replacement_callback, text)
      ```
+
    - **Priority:** High - Sophisticated ping prevention
    - **Effort:** 2 hours
    - **Status:** Not implemented
@@ -1333,6 +1460,7 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Extract original sender from bot's relayed messages
    - Conditional ping based on bot mention in parent
    - Implementation:
+
      ```python
      def relay_discord_message(self, msg, bot_user, edited=False):
          preamble_items = []
@@ -1355,6 +1483,7 @@ verbose_join_part: true  # "user (ident@host) joins"
          preamble = "(" + ", ".join(preamble_items) + ") " if preamble_items else ""
          irc_message = f"{bold(name)}: {preamble}{text}"
      ```
+
    - **Priority:** Medium - Better context for replies
    - **Effort:** 1-2 hours
    - **Status:** Partial - we handle replies, not forwards
@@ -1364,6 +1493,7 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Convert to Discord markdown equivalents
    - Escape special characters to prevent parsing
    - Implementation:
+
      ```python
      def format_irc_message(self, msg):
          chunklist = Tags.parse(msg)  # Parse IRC formatting
@@ -1389,6 +1519,7 @@ verbose_join_part: true  # "user (ident@host) joins"
          
          return ret
      ```
+
    - **Priority:** Medium - Better formatting preservation
    - **Effort:** 2-3 hours
    - **Status:** Not implemented
@@ -1398,6 +1529,7 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Look up Discord guild members by name
    - Convert to Discord mention format `<@user_id>`
    - Implementation:
+
      ```python
      def relay_irc_message(self, who, what, action):
          text = f"**<{who}>** {self.format_irc_message(what)}"
@@ -1417,6 +1549,7 @@ verbose_join_part: true  # "user (ident@host) joins"
          
          await channel.send(text, suppress_embeds=True)
      ```
+
    - **Priority:** Medium - Better mention handling
    - **Effort:** 1 hour
    - **Status:** Not implemented
@@ -1425,6 +1558,7 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Use SASL for IRC authentication
    - More secure than NickServ IDENTIFY
    - Implementation:
+
      ```python
      self.ident(
          self.cfg.nick,
@@ -1432,6 +1566,7 @@ verbose_join_part: true  # "user (ident@host) joins"
          sasl_password=self.cfg.sasl_password,
      )
      ```
+
    - **Priority:** Medium - Better security
    - **Effort:** 1 hour (if IRC library supports)
    - **Status:** Not implemented
@@ -1440,9 +1575,11 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Simple linear backoff: 10s, 20s, 30s, 40s...
    - Simpler than exponential, still effective
    - Implementation:
+
      ```python
      self.set_reconnect(lambda n: 10 * n)  # n = retry count
      ```
+
    - **Priority:** Medium - Alternative to exponential
    - **Effort:** 30 minutes
    - **Status:** Not implemented
@@ -1452,6 +1589,7 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Targets register to receive specific event types
    - Graceful error handling per target
    - Implementation:
+
      ```python
      class Dispatcher:
          def __init__(self):
@@ -1470,6 +1608,7 @@ verbose_join_part: true  # "user (ident@host) joins"
                      logging.exception("Failed to pass event to %r", tgt)
                      continue  # Don't let one target break others
      ```
+
    - **Priority:** Low - We already have event bus
    - **Effort:** N/A
    - **Status:** We have similar architecture
@@ -1478,9 +1617,11 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Use `suppress_embeds=True` when sending to Discord
    - Prevents automatic URL preview embeds
    - Implementation:
+
      ```python
      await channel.send(text, suppress_embeds=True)
      ```
+
    - **Priority:** Low - Cleaner message display
    - **Effort:** 5 minutes
    - **Status:** Not implemented
@@ -1488,6 +1629,7 @@ verbose_join_part: true  # "user (ident@host) joins"
 ### Recommended Additions to ATL Bridge
 
 **Immediate (High Priority):**
+
 1. Zero-width space ping prevention - Simple and effective (15 min)
 2. Smart IRC nick sanitization - Sophisticated algorithm (2 hours)
 
@@ -1506,6 +1648,7 @@ verbose_join_part: true  # "user (ident@host) joins"
 ### Key Insights from Chat-Bridge
 
 **Strengths:**
+
 - Zero-width space for ping prevention (simple, effective)
 - Sophisticated word-boundary nick matching (from Textual)
 - `[username]` passthrough for intentional pings
@@ -1514,6 +1657,7 @@ verbose_join_part: true  # "user (ident@host) joins"
 - SASL authentication support
 
 **Weaknesses:**
+
 - No puppet system (single bot)
 - No message ID tracking
 - No rate limiting
@@ -1521,6 +1665,7 @@ verbose_join_part: true  # "user (ident@host) joins"
 - Custom for Dolphin project (not general purpose)
 
 **Best practices to adopt:**
+
 - Zero-width space (`\ufeff`) for ping prevention
 - Word boundary detection for nick matching
 - Sort nicks by length to match longer names first
@@ -1543,6 +1688,7 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Parts can be `toString()`ed or socket-specific rendering
    - Enables rich message composition and transformation
    - Implementation:
+
      ```python
      @dataclass
      class MessagePart:
@@ -1576,6 +1722,7 @@ verbose_join_part: true  # "user (ident@host) joins"
                  for p in self.parts
              )
      ```
+
    - **Priority:** Medium - Better abstraction
    - **Effort:** 4-5 hours to refactor
    - **Status:** We use simple strings, not parts
@@ -1585,6 +1732,7 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Chain multiple augmentations
    - Enables flexible message processing
    - Implementation:
+
      ```python
      class Message:
          def augment(self, test, action):
@@ -1634,6 +1782,7 @@ verbose_join_part: true  # "user (ident@host) joins"
             .augment(ActionMarker, lambda _: ["* ", message.sender, " "]) \
             .augment(r'\n', lambda: NewLine())
      ```
+
    - **Priority:** Low - Interesting pattern but complex
    - **Effort:** 6-8 hours
    - **Status:** Not needed for our use case
@@ -1642,6 +1791,7 @@ verbose_join_part: true  # "user (ident@host) joins"
    - `send()` triggers message events, `sendSilent()` doesn't
    - Prevents infinite loops in bridge relaying
    - Implementation:
+
      ```python
      class Channel:
          async def send(self, *parts, silent=False):
@@ -1657,6 +1807,7 @@ verbose_join_part: true  # "user (ident@host) joins"
          async def send_silent(self, *parts):
              await self.send(*parts, silent=True)
      ```
+
    - **Priority:** High - Prevents bridge loops
    - **Effort:** 1 hour
    - **Status:** We check webhook_id/author, not silent flag
@@ -1666,6 +1817,7 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Common interface works across all sockets
    - Bridge plug relays between any linked channels
    - Implementation:
+
      ```python
      class Plug:
          def __init__(self, cord, config):
@@ -1690,6 +1842,7 @@ verbose_join_part: true  # "user (ident@host) joins"
                  if channel != message.target:
                      channel.send_silent(*message.parts)
      ```
+
    - **Priority:** Low - We have adapter pattern
    - **Effort:** N/A
    - **Status:** Similar architecture already
@@ -1698,6 +1851,7 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Built-in flood protection in IRC library
    - Enabled by default with `floodProtection: true`
    - Implementation:
+
      ```python
      # Using irc library with flood protection
      irc_options = {
@@ -1706,6 +1860,7 @@ verbose_join_part: true  # "user (ident@host) joins"
          'stripColors': True
      }
      ```
+
    - **Priority:** High - Already in TODO from other audits
    - **Effort:** N/A
    - **Status:** Should implement token bucket
@@ -1714,11 +1869,13 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Automatically strip IRC color codes
    - Cleaner messages for Discord
    - Implementation:
+
      ```python
      irc_options = {
          'stripColors': True  # Remove IRC color codes
      }
      ```
+
    - **Priority:** Low - Simple feature
    - **Effort:** 30 minutes
    - **Status:** Not implemented
@@ -1728,6 +1885,7 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Format: `socket_id:identifier`
    - Enables cross-platform resolution
    - Implementation:
+
      ```python
      class Resolveable:
          @property
@@ -1746,6 +1904,7 @@ verbose_join_part: true  # "user (ident@host) joins"
              for resolve in channel.resolve_strings:
                  self._resolve_map[resolve] = self.get_bridge(channel)
      ```
+
    - **Priority:** Low - Interesting pattern
    - **Effort:** 3-4 hours
    - **Status:** We use direct ID mapping
@@ -1753,6 +1912,7 @@ verbose_join_part: true  # "user (ident@host) joins"
 ### Recommended Additions to ATL Bridge
 
 **Immediate (High Priority):**
+
 1. Silent message sending - Prevent bridge loops (1 hour)
 
 **Short-term (Medium Priority):**
@@ -1768,6 +1928,7 @@ verbose_join_part: true  # "user (ident@host) joins"
 ### Key Insights from Cord
 
 **Strengths:**
+
 - Message parts architecture enables rich composition
 - Augmentation pattern for flexible message transformation
 - Silent sending prevents bridge loops
@@ -1776,6 +1937,7 @@ verbose_join_part: true  # "user (ident@host) joins"
 - Resolve strings for cross-platform resolution
 
 **Weaknesses:**
+
 - JavaScript (not Python)
 - Complex abstraction (parts + augmentation)
 - No message ID tracking
@@ -1783,6 +1945,7 @@ verbose_join_part: true  # "user (ident@host) joins"
 - Personal bot, not production-focused
 
 **Best practices to adopt:**
+
 - Silent message sending to prevent event loops
 - Message parts for platform-agnostic composition
 - Augmentation pattern for flexible transformations
@@ -1806,6 +1969,7 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Use UI Avatars API for avatar generation
    - Fallback when Discord user not found
    - Implementation:
+
      ```python
      def nick_to_hexcolor(nick: str) -> str:
          hash_val = 0
@@ -1821,6 +1985,7 @@ verbose_join_part: true  # "user (ident@host) joins"
      def gen_avatar_from_nick(nick: str) -> str:
          return f"https://eu.ui-avatars.com/api/?background={nick_to_hexcolor(nick)}&name={nick}"
      ```
+
    - **Priority:** Medium - Better than robohash
    - **Effort:** 30 minutes
    - **Status:** We use Portal for avatars
@@ -1830,6 +1995,7 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Include before/after content for edits
    - Markdown formatting for readability
    - Implementation:
+
      ```python
      @bot.event
      async def on_message_edit(before, after):
@@ -1864,6 +2030,7 @@ verbose_join_part: true  # "user (ident@host) joins"
          
          await log_channel.send("\n".join(data))
      ```
+
    - **Priority:** Low - Audit feature, not core bridging
    - **Effort:** 1-2 hours
    - **Status:** Not implemented
@@ -1873,6 +2040,7 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Triggered on member join/remove
    - Includes timestamp and date
    - Implementation:
+
      ```python
      from string import Template
      from datetime import datetime
@@ -1899,6 +2067,7 @@ verbose_join_part: true  # "user (ident@host) joins"
          )
          await welcome_channel.send(m)
      ```
+
    - **Priority:** Low - Nice-to-have feature
    - **Effort:** 1 hour
    - **Status:** Not implemented
@@ -1907,6 +2076,7 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Respond to CTCP VERSION with system info
    - Respond to CTCP SOURCE with repository URL
    - Implementation:
+
      ```python
      @irc.on('privmsg')
      async def irc_message(nick, target, message, **kwargs):
@@ -1919,6 +2089,7 @@ verbose_join_part: true  # "user (ident@host) joins"
                  irc.send('NOTICE', target=nick,
                          message='\001SOURCE https://github.com/d0p1s4m4/devse-chan\001')
      ```
+
    - **Priority:** Low - IRC etiquette
    - **Effort:** 30 minutes
    - **Status:** Not implemented
@@ -1927,6 +2098,7 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Sleep 1s before sending, 2s after sending
    - Simple flood control (not sophisticated)
    - Implementation:
+
      ```python
      def to_irc(self, author, msg_list):
          for msg in msg_list:
@@ -1935,6 +2107,7 @@ verbose_join_part: true  # "user (ident@host) joins"
                  self.irc.send(author, msg)
                  time.sleep(2)  # Wait after send
      ```
+
    - **Priority:** Low - Too simplistic
    - **Effort:** N/A
    - **Status:** Should use token bucket instead
@@ -1943,12 +2116,14 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Use `\x03` color codes for nicknames
    - Color 6 (magenta) for bridged nicknames
    - Implementation:
+
      ```python
      def send(self, nick, message):
          # \x036 = magenta color, \x0F = reset
          self.irc.send('PRIVMSG', target=channel, 
                       message=f"<\x036{nick}\x0F> {message}")
      ```
+
    - **Priority:** Low - Cosmetic feature
    - **Effort:** 15 minutes
    - **Status:** Not implemented
@@ -1957,12 +2132,14 @@ verbose_join_part: true  # "user (ident@host) joins"
    - YAML-based configuration with validation
    - Hierarchical config access
    - Implementation:
+
      ```python
      import confuse
      
      config = confuse.Configuration('devsechan')
      # Access: config['discord']['token'].get()
      ```
+
    - **Priority:** Low - We use pydantic
    - **Effort:** N/A
    - **Status:** We have better config system
@@ -1970,9 +2147,11 @@ verbose_join_part: true  # "user (ident@host) joins"
 ### Recommended Additions to ATL Bridge
 
 **Immediate (High Priority):**
+
 - None (no critical patterns)
 
 **Short-term (Medium Priority):**
+
 1. Hash-based avatar generation - Better fallback (30 min)
 
 **Long-term (Low Priority):**
@@ -1986,6 +2165,7 @@ verbose_join_part: true  # "user (ident@host) joins"
 ### Key Insights from DevSE-Chan
 
 **Strengths:**
+
 - Simple, focused implementation (~200 LOC)
 - Hash-based avatar generation (deterministic colors)
 - Message edit/delete logging for moderation
@@ -1993,6 +2173,7 @@ verbose_join_part: true  # "user (ident@host) joins"
 - CTCP VERSION/SOURCE responses
 
 **Weaknesses:**
+
 - Fixed delays instead of proper rate limiting (1s + 2s)
 - No message ID tracking
 - No retry logic
@@ -2000,6 +2181,7 @@ verbose_join_part: true  # "user (ident@host) joins"
 - Very basic implementation
 
 **Best practices to adopt:**
+
 - Hash-based avatar color generation (deterministic)
 - UI Avatars API for fallback avatars
 - Message edit/delete logging to separate channel
@@ -2022,6 +2204,7 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Optional uvloop for faster asyncio event loop
    - aiomultiprocess for parallel message sending
    - Implementation:
+
      ```python
      # Import ujson if available for 2-3x faster JSON
      try:
@@ -2043,6 +2226,7 @@ verbose_join_part: true  # "user (ident@host) joins"
      if not sys.platform == 'win32':
          aiomultiprocess.set_start_method("fork")
      ```
+
    - **Priority:** Medium - Performance boost
    - **Effort:** 30 minutes
    - **Status:** Not implemented
@@ -2052,6 +2236,7 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Avoid repeated webhook fetches
    - Store by identifier for quick lookup
    - Implementation:
+
      ```python
      class WebhookCacheStore:
          def __init__(self, bot):
@@ -2079,6 +2264,7 @@ verbose_join_part: true  # "user (ident@host) joins"
              else:
                  self.webhooks = {}
      ```
+
    - **Priority:** High - Reduces API calls
    - **Effort:** 1 hour
    - **Status:** Partial - we cache but not as structured
@@ -2088,6 +2274,7 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Persist message IDs between restarts
    - Enables reply/edit/delete after restart
    - Implementation:
+
      ```python
      import compress_json
      
@@ -2107,6 +2294,7 @@ verbose_join_part: true  # "user (ident@host) joins"
          except FileNotFoundError:
              self.message_cache = {}
      ```
+
    - **Priority:** High - Better reliability
    - **Effort:** 2 hours
    - **Status:** Not implemented
@@ -2115,6 +2303,7 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Visual indicators for message deduplication
    - Colored square emojis to identify duplicates
    - Implementation:
+
      ```python
      dedupe_emojis = [
          '\U0001F7E5',  # Red square
@@ -2132,6 +2321,7 @@ verbose_join_part: true  # "user (ident@host) joins"
          # Use message ID to deterministically pick emoji
          return dedupe_emojis[hash(message_id) % len(dedupe_emojis)]
      ```
+
    - **Priority:** Low - Visual feature
    - **Effort:** 30 minutes
    - **Status:** Not implemented
@@ -2140,6 +2330,7 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Disable @everyone and role mentions by default
    - Emergency mentions for alerts
    - Implementation:
+
      ```python
      mentions = nextcord.AllowedMentions(
          everyone=False,
@@ -2156,6 +2347,7 @@ verbose_join_part: true  # "user (ident@host) joins"
      # Use in messages
      await channel.send(content, allowed_mentions=mentions)
      ```
+
    - **Priority:** High - Security/anti-abuse
    - **Effort:** 15 minutes
    - **Status:** Not implemented
@@ -2165,6 +2357,7 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Revolt and Guilded support plugins
    - Extensible architecture
    - Implementation:
+
      ```python
      class PlatformPlugin:
          def __init__(self, bot):
@@ -2183,6 +2376,7 @@ verbose_join_part: true  # "user (ident@host) joins"
              module = importlib.import_module(f'plugins.{plugin_file[:-3]}')
              plugins[module.PLATFORM_NAME] = module.Plugin(bot)
      ```
+
    - **Priority:** Low - We focus on IRC/XMPP/Discord
    - **Effort:** N/A
    - **Status:** Not needed for our scope
@@ -2192,6 +2386,7 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Version management
    - Easy updates
    - Implementation:
+
      ```python
      async def upgrade(self):
          current_version = self.config['version']
@@ -2203,6 +2398,7 @@ verbose_join_part: true  # "user (ident@host) joins"
              await self.migrate_config(current_version, latest_version)
              await self.restart()
      ```
+
    - **Priority:** Low - Nice-to-have
    - **Effort:** 4-5 hours
    - **Status:** Not implemented
@@ -2211,6 +2407,7 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Use compress_json for data storage
    - Reduces disk usage
    - Implementation:
+
      ```python
      import compress_json
      
@@ -2220,6 +2417,7 @@ verbose_join_part: true  # "user (ident@host) joins"
      # Load
      data = compress_json.load('data.json.gz')
      ```
+
    - **Priority:** Low - Optimization
    - **Effort:** 30 minutes
    - **Status:** Not implemented
@@ -2227,6 +2425,7 @@ verbose_join_part: true  # "user (ident@host) joins"
 ### Recommended Additions to ATL Bridge
 
 **Immediate (High Priority):**
+
 1. Webhook cache store - Reduce API calls (1 hour)
 2. Message cache backup - Persist between restarts (2 hours)
 3. AllowedMentions configuration - Security (15 min)
@@ -2244,6 +2443,7 @@ verbose_join_part: true  # "user (ident@host) joins"
 ### Key Insights from Unifier
 
 **Strengths:**
+
 - Production-focused with 33 msg/s throughput claim
 - Performance optimizations (ujson, uvloop, aiomultiprocess)
 - Webhook caching reduces API calls
@@ -2254,11 +2454,13 @@ verbose_join_part: true  # "user (ident@host) joins"
 - Compressed JSON for storage efficiency
 
 **Weaknesses:**
+
 - Large codebase (complex)
 - Discord-focused (limited IRC/XMPP)
 - AGPLv3 license (copyleft)
 
 **Best practices to adopt:**
+
 - Optional performance libraries (ujson, uvloop)
 - Structured webhook cache with per-server storage
 - Message cache backup on graceful shutdown
@@ -2269,10 +2471,12 @@ verbose_join_part: true  # "user (ident@host) joins"
 **Note:** Unifier is a large, production-focused Discord bridge with impressive performance claims (33 msg/s). The most valuable patterns are the webhook cache store, message cache backup, and performance optimizations. The plugin system is interesting but out of scope for our IRC/XMPP/Discord focus. The AllowedMentions configuration is a simple but important security feature we should adopt.
 
 ### 9. **✅ Link Buttons for Replies**
-   - Use Discord link buttons to show reply context
-   - Jump to original message with URL button
-   - Compact and comfortable display modes
-   - Implementation:
+
+- Use Discord link buttons to show reply context
+- Jump to original message with URL button
+- Compact and comfortable display modes
+- Implementation:
+
      ```python
      import nextcord
      
@@ -2309,15 +2513,16 @@ verbose_join_part: true  # "user (ident@host) joins"
      
      await channel.send(content, view=components)
      ```
-   - **Priority:** Medium - Better UX for replies
-   - **Effort:** 2-3 hours
-   - **Status:** Not implemented
-   - **Benefits:**
-     - Visual reply context without quoting full message
-     - Jump to original message with one click
-     - Cleaner than text-based reply indicators
-     - Platform-specific button colors (Discord=blue, Revolt=red, etc.)
-     - Attachment indicator emoji
+
+- **Priority:** Medium - Better UX for replies
+- **Effort:** 2-3 hours
+- **Status:** Not implemented
+- **Benefits:**
+  - Visual reply context without quoting full message
+  - Jump to original message with one click
+  - Cleaner than text-based reply indicators
+  - Platform-specific button colors (Discord=blue, Revolt=red, etc.)
+  - Attachment indicator emoji
 
 **Updated total estimated effort:** 10-13 hours for immediate + short-term features
 
@@ -2335,6 +2540,7 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Bypasses IRC network connection limits (typically 3 per IP)
    - Deterministic IP assignment (same user = same IP)
    - Implementation:
+
      ```python
      import ipaddress
      import hashlib
@@ -2372,6 +2578,7 @@ verbose_join_part: true  # "user (ident@host) joins"
                  )
              )
      ```
+
    - **Priority:** Low - Advanced feature, requires infrastructure
    - **Effort:** 4-5 hours + infrastructure setup
    - **Status:** Not implemented
@@ -2392,6 +2599,7 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Fall back to `[1]`, `[2]`, etc.
    - Automatic nick reclaim after netsplit
    - Implementation:
+
      ```python
      def on_nicknameinuse(self, client, event):
          # First try: add [d] for Discord
@@ -2419,6 +2627,7 @@ verbose_join_part: true  # "user (ident@host) joins"
          self.nickname_iteration = 0
          self.client.nick(self.nickname)
      ```
+
    - **Priority:** Medium - Better nick handling
    - **Effort:** 1 hour
    - **Status:** Partial - we handle collisions but not reclaim
@@ -2428,6 +2637,7 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Configurable timeout per puppet
    - Automatic cleanup
    - Implementation:
+
      ```python
      async def start_idle_timeout(self):
          await self.stop_idle_timeout()
@@ -2449,6 +2659,7 @@ verbose_join_part: true  # "user (ident@host) joins"
      async def on_message_sent(self):
          await self.start_idle_timeout()  # Reset timer
      ```
+
    - **Priority:** High - Already in TODO
    - **Effort:** 1 hour
    - **Status:** We have 24h timeout, should make configurable
@@ -2458,6 +2669,7 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Pick random one to distribute load
    - Avoid RFC getaddrinfo() sorting bias
    - Implementation:
+
      ```python
      import random
      import socket
@@ -2481,6 +2693,7 @@ verbose_join_part: true  # "user (ident@host) joins"
          self.log.info("Connecting to %s (%s)", irc_host, irc_host_ipv6)
          await self.connection.connect(irc_host_ipv6, port, nick)
      ```
+
    - **Priority:** Low - Optimization
    - **Effort:** 30 minutes
    - **Status:** Not implemented
@@ -2489,6 +2702,7 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Send PING every 120 seconds to keep connection alive
    - Prevent idle disconnects
    - Implementation:
+
      ```python
      async def _pinger(self):
          while True:
@@ -2500,6 +2714,7 @@ verbose_join_part: true  # "user (ident@host) joins"
              self.pinger_task.cancel()
          self.pinger_task = asyncio.create_task(self._pinger())
      ```
+
    - **Priority:** Medium - Keep-alive
    - **Effort:** 30 minutes
    - **Status:** Not implemented
@@ -2507,9 +2722,11 @@ verbose_join_part: true  # "user (ident@host) joins"
 ### Recommended Additions to ATL Bridge
 
 **Immediate (High Priority):**
+
 - None (IPv6 puppets require infrastructure)
 
 **Short-term (Medium Priority):**
+
 1. Nickname collision handling with reclaim (1 hour)
 2. Puppet pinger task - Keep-alive (30 min)
 
@@ -2522,6 +2739,7 @@ verbose_join_part: true  # "user (ident@host) joins"
 ### Key Insights from DIBridge
 
 **Strengths:**
+
 - IPv6 CIDR range for puppets is innovative and elegant
 - Solves IRC connection limit problem
 - Native IRC feel (no `<username>` prefix)
@@ -2530,12 +2748,14 @@ verbose_join_part: true  # "user (ident@host) joins"
 - Puppet idle timeout for cleanup
 
 **Weaknesses:**
+
 - Requires IPv6 infrastructure and kernel config
 - Linux 4.3+ only for IPv6 binding
 - Single channel bridge only
 - No edit/reaction support
 
 **Best practices to adopt:**
+
 - IPv6 puppet addressing (if infrastructure available)
 - Nickname collision handling with `[d]` suffix
 - Automatic nick reclaim after netsplit
@@ -2560,6 +2780,7 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Lifecycle control (CONTINUE, STOP, DISCARD)
    - Track applied mutators to prevent double-application
    - Implementation:
+
      ```python
      from enum import Enum
      from typing import Protocol
@@ -2596,6 +2817,7 @@ verbose_join_part: true  # "user (ident@host) joins"
              
              return message
      ```
+
    - **Priority:** Medium - Clean architecture
    - **Effort:** 3-4 hours
    - **Status:** Not implemented
@@ -2605,6 +2827,7 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Replace with short summary + paste URL
    - Configurable thresholds (length, newlines, code blocks)
    - Implementation:
+
      ```python
      class PasteLongMessages(Mutator):
          def __init__(self, config):
@@ -2643,6 +2866,7 @@ verbose_join_part: true  # "user (ident@host) joins"
              
              return LifeCycle.CONTINUE
      ```
+
    - **Priority:** High - Better UX for long messages
    - **Effort:** 2-3 hours
    - **Status:** Not implemented
@@ -2652,6 +2876,7 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Prevents accidental pings
    - Place after vowels for natural breaking
    - Implementation:
+
      ```python
      ANTI_PING_CHAR = '\u200B'  # Zero-width space
      
@@ -2671,6 +2896,7 @@ verbose_join_part: true  # "user (ident@host) joins"
      # Usage
      safe_nick = rebuild_with_anti_ping("username")  # "us\u200Bern\u200Bame"
      ```
+
    - **Priority:** High - Already in TODO from other audits
    - **Effort:** 30 minutes
    - **Status:** Not implemented
@@ -2679,6 +2905,7 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Remove zero-width spaces from IRC → Discord
    - Clean up for Discord display
    - Implementation:
+
      ```python
      class StripAntiPingCharacters(Mutator):
          def mutate(self, message: Message) -> LifeCycle:
@@ -2686,6 +2913,7 @@ verbose_join_part: true  # "user (ident@host) joins"
                  message.content = message.content.replace('\u200B', '')
              return LifeCycle.CONTINUE
      ```
+
    - **Priority:** Medium - Cleanup
    - **Effort:** 15 minutes
    - **Status:** Not implemented
@@ -2695,6 +2923,7 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Configurable regex pattern
    - Example: `^\\.[A-Za-z0-9]` matches `.help`, `.info`
    - Implementation:
+
      ```python
      import re
      
@@ -2716,6 +2945,7 @@ verbose_join_part: true  # "user (ident@host) joins"
      # ".help" → ".help" (no prefix)
      # "hello" → "<username> hello" (with prefix)
      ```
+
    - **Priority:** Medium - Better bot integration
    - **Effort:** 1 hour
    - **Status:** Not implemented
@@ -2724,6 +2954,7 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Use IRC color codes for nicknames
    - Configurable enable/disable
    - Implementation:
+
      ```python
      def create_sender_prefix(sender: str, use_color: bool, anti_ping: bool) -> str:
          name = sender
@@ -2738,6 +2969,7 @@ verbose_join_part: true  # "user (ident@host) joins"
          
          return f"<{name}>"
      ```
+
    - **Priority:** Low - Cosmetic
    - **Effort:** 30 minutes
    - **Status:** Not implemented
@@ -2747,6 +2979,7 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Uptime tracking
    - Expose via command
    - Implementation:
+
      ```python
      class StatisticsManager:
          def __init__(self):
@@ -2769,6 +3002,7 @@ verbose_join_part: true  # "user (ident@host) joins"
                  'total': self.messages_discord_to_irc + self.messages_irc_to_discord
              }
      ```
+
    - **Priority:** Low - Monitoring
    - **Effort:** 1 hour
    - **Status:** Not implemented
@@ -2776,6 +3010,7 @@ verbose_join_part: true  # "user (ident@host) joins"
 ### Recommended Additions to ATL Bridge
 
 **Immediate (High Priority):**
+
 1. Automatic paste service for long messages (2-3 hours)
 2. Strategic zero-width space insertion (30 min)
 
@@ -2793,6 +3028,7 @@ verbose_join_part: true  # "user (ident@host) joins"
 ### Key Insights from Dis4IRC
 
 **Strengths:**
+
 - Mutator pattern provides clean, extensible architecture
 - Automatic paste service for long messages (smart thresholds)
 - Strategic zero-width space placement (after vowels)
@@ -2801,11 +3037,13 @@ verbose_join_part: true  # "user (ident@host) joins"
 - Statistics tracking
 
 **Weaknesses:**
+
 - Kotlin (not Python, harder to adapt)
 - No multi-presence/puppets
 - Single channel bridge
 
 **Best practices to adopt:**
+
 - Mutator pattern for extensible message processing
 - Automatic paste service with configurable thresholds
 - Zero-width space after vowels (more natural than after first char)
@@ -2862,6 +3100,7 @@ verbose_join_part: true  # "user (ident@host) joins"
 ### Key Insights from discord-irc
 
 **Strengths:**
+
 - Popular, well-maintained (Reactiflux)
 - IRC formatting library for bidirectional conversion
 - Auto-send commands on connect
@@ -2869,11 +3108,13 @@ verbose_join_part: true  # "user (ident@host) joins"
 - Webhook support with avatar templates
 
 **Weaknesses:**
+
 - No puppets (single bot)
 - JavaScript (not Python)
 - Basic feature set
 
 **Best practices to adopt:**
+
 - Use dedicated IRC formatting library
 - Auto-send commands for NickServ/MODE
 - Template-based message formatting
@@ -2896,7 +3137,7 @@ verbose_join_part: true  # "user (ident@host) joins"
    - IRC → Discord: Escapes markdown special chars in nicknames
    - Prevents IRC nicks from breaking Discord formatting
    - Pattern: `re.sub(r"(]|-|\\|[`*_{}[()#+.!])", r'\\\1', nick)`
-   - Escapes: `] - \ [ ` * _ { } [ ( ) # + . !`
+   - Escapes: `] - \ [` * _ { } [ ( ) # + . !`
    - **Priority:** Medium - Prevents formatting issues
    - **Effort:** 1-2 hours
    - **Status:** Not implemented
@@ -2934,6 +3175,7 @@ verbose_join_part: true  # "user (ident@host) joins"
    - **Status:** Not implemented
 
 ### Patterns NOT Worth Implementing
+
 - Threading model (we use async)
 - Global variables (poor design)
 - Latin-1 encoding (we use UTF-8)
@@ -2944,11 +3186,13 @@ verbose_join_part: true  # "user (ident@host) joins"
 ### Key Insights from Discord-IRC-Python
 
 **Strengths:**
+
 - Simple, minimal implementation
 - Markdown escaping for IRC nicks
 - Clean content usage
 
 **Weaknesses:**
+
 - Threading instead of async
 - Global variables
 - No puppets (single bot)
@@ -2958,11 +3202,13 @@ verbose_join_part: true  # "user (ident@host) joins"
 - Latin-1 encoding
 
 **Best practices to adopt:**
+
 - Markdown escaping for IRC nicks in Discord messages
 
 **Total estimated effort:** 1-2 hours (markdown escaping only)
 
 **Priority Assessment:**
+
 - **Immediate:** None
 - **Short-term:** Markdown escaping for IRC nicks (1-2 hours)
 - **Long-term:** Bot owner commands consideration
@@ -3010,7 +3256,7 @@ verbose_join_part: true  # "user (ident@host) joins"
    - Handles: Bold (0x02), Italic (0x1d), Underline (0x1f), Strikethrough (0x1e), Monospace (0x11)
    - Color codes (0x03) with fg/bg support → Discord spoilers when fg==bg
    - Reverse color (0x16), Reset (0x0f)
-   - Escapes Discord markdown in non-URL text: `_ * ` > \`
+   - Escapes Discord markdown in non-URL text: `_ *` > \`
    - URL detection with regex, preserves underscores in URLs
    - Stack-based formatting state management
    - **Priority:** High - Professional IRC formatting support
@@ -3059,6 +3305,7 @@ verbose_join_part: true  # "user (ident@host) joins"
    - **Assessment:** ✅ We already use this pattern
 
 ### Patterns NOT Worth Implementing
+
 - Ozinger FAKEMSG (network-specific)
 - Rust-specific patterns (we use Python)
 - Stopper pattern (we have our own shutdown logic)
@@ -3066,6 +3313,7 @@ verbose_join_part: true  # "user (ident@host) joins"
 ### Key Insights from discord-irc-rs
 
 **Strengths:**
+
 - Sophisticated IRC formatting parser with state machine
 - Strategic zero-width space insertion using grapheme segmentation
 - Auto-detect avatars from Discord members
@@ -3074,11 +3322,13 @@ verbose_join_part: true  # "user (ident@host) joins"
 - Comprehensive formatting conversion
 
 **Weaknesses:**
+
 - No puppets (single bot, except ozinger FAKEMSG)
 - Rust (not Python, but well-written)
 - Limited to single channel pair
 
 **Best practices to adopt:**
+
 - IRC formatting to Discord markdown conversion (high priority)
 - Strategic zero-width space insertion (high priority)
 - Nickname normalization (medium priority)
@@ -3088,6 +3338,7 @@ verbose_join_part: true  # "user (ident@host) joins"
 **Total estimated effort:** 17-24 hours
 
 **Priority Assessment:**
+
 - **Immediate:** IRC formatting conversion (8-12 hours), Strategic ZWS insertion (2-3 hours)
 - **Short-term:** Auto-detect avatars (3-4 hours), Nickname normalization (1 hour), Multi-line handling (1 hour)
 - **Long-term:** Bridge member changes (2-3 hours), Exit on send error (1 hour)
@@ -3188,6 +3439,7 @@ verbose_join_part: true  # "user (ident@host) joins"
    - **Status:** Partially implemented
 
 ### Patterns NOT Worth Implementing
+
 - Threading architecture (we use async)
 - Per-user bot spawning (we have puppets)
 - Notification system (we have event bus)
@@ -3196,6 +3448,7 @@ verbose_join_part: true  # "user (ident@host) joins"
 ### Key Insights from discord-irc-sync
 
 **Strengths:**
+
 - Sophisticated IRC→Discord formatting with interval logic
 - Cyrillic character substitution for anti-ping
 - Automatic mention conversion
@@ -3204,6 +3457,7 @@ verbose_join_part: true  # "user (ident@host) joins"
 - IRC action (/me) handling
 
 **Weaknesses:**
+
 - Threading instead of async
 - Complex bot spawning logic
 - Python 3.5+ (old)
@@ -3211,6 +3465,7 @@ verbose_join_part: true  # "user (ident@host) joins"
 - No reconnection logic
 
 **Best practices to adopt:**
+
 - IRC→Discord formatting with interval logic (high priority)
 - Cyrillic character substitution (medium priority)
 - Automatic mention conversion (medium priority)
@@ -3220,6 +3475,7 @@ verbose_join_part: true  # "user (ident@host) joins"
 **Total estimated effort:** 13-21 hours
 
 **Priority Assessment:**
+
 - **Immediate:** IRC→Discord formatting (6-10 hours)
 - **Short-term:** Discord→IRC formatting (3-4 hours), Mention conversion (2-3 hours), IRC action handling (1-2 hours), Cyrillic substitution (1-2 hours)
 - **Long-term:** Configurable event logging (30 minutes)
@@ -3237,7 +3493,7 @@ verbose_join_part: true  # "user (ident@host) joins"
 
 1. **✅ IRCv3 Typing Notifications**
    - Discord typing → IRC `TAGMSG` with `+typing: active` tag
-   - Uses IRCv3 client tag: https://ircv3.net/specs/client-tags/typing.html
+   - Uses IRCv3 client tag: <https://ircv3.net/specs/client-tags/typing.html>
    - Sends typing indicator when Discord user starts typing
    - **Priority:** Medium - Nice UX feature
    - **Effort:** 2-3 hours
@@ -3369,6 +3625,7 @@ verbose_join_part: true  # "user (ident@host) joins"
     - **Status:** Not applicable (we split by newline)
 
 ### Patterns NOT Worth Implementing
+
 - Newline replacement (we split by newline instead)
 - Go-specific patterns (we use Python)
 
@@ -3379,6 +3636,7 @@ Reply, react, and redaction require: `message-tags`, `message-ids`, `echo-messag
 ### Key Insights from discord-ircv3
 
 **Strengths:**
+
 - Excellent IRCv3 support (typing, replies, redaction, reactions)
 - Advanced Discord formatting parser with AST
 - Color-coded nicknames with fallback chain
@@ -3389,11 +3647,13 @@ Reply, react, and redaction require: `message-tags`, `message-ids`, `echo-messag
 - Clean Go implementation with goroutines
 
 **Weaknesses:**
+
 - No puppets (single bot)
 - Go (not Python, but well-written)
 - Limited to single channel pair
 
 **Best practices to adopt:**
+
 - IRCv3 typing notifications (medium priority)
 - IRCv3 message deletion/redaction (high priority)
 - IRCv3 reactions (medium priority)
@@ -3407,6 +3667,7 @@ Reply, react, and redaction require: `message-tags`, `message-ids`, `echo-messag
 **Total estimated effort:** 30-42 hours
 
 **Priority Assessment:**
+
 - **Immediate:** IRCv3 message deletion (2-3 hours), URL-aware formatting (6-8 hours), Advanced Discord parser (5-8 hours), Rate limiting (1 hour)
 - **Short-term:** IRCv3 replies implementation (3-4 hours), Color-coded nicks (2-3 hours), Mention/emoji conversion (3-4 hours), Typing notifications (2-3 hours), Reactions (2-3 hours), Media embedding (1-2 hours)
 - **Long-term:** BOT mode detection (1 hour), Ready detection (30 minutes)
@@ -3500,6 +3761,7 @@ Reply, react, and redaction require: `message-tags`, `message-ids`, `echo-messag
    - **Status:** ✅ Already implemented
 
 ### Patterns NOT Worth Implementing
+
 - Pomf file upload (we use Discord CDN)
 - Redis bridge mapping (we use YAML config)
 - Channel prefix convention (config-based better)
@@ -3508,6 +3770,7 @@ Reply, react, and redaction require: `message-tags`, `message-ids`, `echo-messag
 ### Key Insights from discord-xmpp-bridge
 
 **Strengths:**
+
 - XMPP VCard avatar fetching
 - Avatar dominant color extraction
 - XMPP stanza-id tracking
@@ -3515,6 +3778,7 @@ Reply, react, and redaction require: `message-tags`, `message-ids`, `echo-messag
 - Redis-based persistence
 
 **Weaknesses:**
+
 - JavaScript (not Python)
 - Limited feature set
 - No IRC support
@@ -3523,6 +3787,7 @@ Reply, react, and redaction require: `message-tags`, `message-ids`, `echo-messag
 - No puppets/multi-presence
 
 **Best practices to adopt:**
+
 - XMPP VCard avatar fetching (medium priority)
 - MUC join with history limit (medium priority)
 - XMPP stanza-id tracking (medium priority)
@@ -3531,6 +3796,7 @@ Reply, react, and redaction require: `message-tags`, `message-ids`, `echo-messag
 **Total estimated effort:** 6.5-9.5 hours
 
 **Priority Assessment:**
+
 - **Immediate:** None
 - **Short-term:** XMPP VCard avatars (3-4 hours), Stanza-ID tracking (1-2 hours), MUC history limit (30 minutes)
 - **Long-term:** Avatar color extraction (2-3 hours)
@@ -3636,6 +3902,7 @@ Reply, react, and redaction require: `message-tags`, `message-ids`, `echo-messag
 ### Key Insights from dpytest
 
 **Strengths:**
+
 - Complete Discord API mocking
 - No network requests needed for tests
 - Fluent assertion API
@@ -3644,11 +3911,13 @@ Reply, react, and redaction require: `message-tags`, `message-ids`, `echo-messag
 - Fast test execution
 
 **Weaknesses:**
+
 - Specific to discord.py (not directly applicable to our multi-protocol bridge)
 - Requires significant setup
 - Mock state can diverge from real Discord behavior
 
 **Best practices to adopt:**
+
 - Factory pattern for creating test objects (high priority)
 - Async event runner to prevent race conditions (high priority)
 - Message queue with peek functionality (high priority)
@@ -3659,6 +3928,7 @@ Reply, react, and redaction require: `message-tags`, `message-ids`, `echo-messag
 **Total estimated effort:** 34-50 hours
 
 **Priority Assessment:**
+
 - **Immediate:** Factory pattern (4-6 hours), Async event runner (2-3 hours), Message queue refinement (2-3 hours)
 - **Short-term:** Mock HTTP client (6-8 hours), Mock Discord state (8-12 hours), Fluent assertions (6-8 hours)
 - **Long-term:** Error queue (2-3 hours), Attachment factory (1-2 hours), Pytest fixtures (2-3 hours), Config decorator (1 hour)
@@ -3762,6 +4032,7 @@ Reply, react, and redaction require: `message-tags`, `message-ids`, `echo-messag
     - **Status:** Not implemented
 
 ### Patterns NOT Worth Implementing
+
 - Multi-process architecture (we use single process)
 - Redis IPC (we use event bus)
 - Auto-creating PM channels (architectural difference)
@@ -3773,6 +4044,7 @@ Reply, react, and redaction require: `message-tags`, `message-ids`, `echo-messag
 ### Key Insights from DRC
 
 **Strengths:**
+
 - Production-ready IRC client
 - Comprehensive logging with SQLite
 - Web interface for logs
@@ -3781,6 +4053,7 @@ Reply, react, and redaction require: `message-tags`, `message-ids`, `echo-messag
 - Feature-rich (AI, plotting, sentiment analysis)
 
 **Weaknesses:**
+
 - Not a bridge (IRC client using Discord as UI)
 - JavaScript (not Python)
 - Complex multi-process setup
@@ -3788,6 +4061,7 @@ Reply, react, and redaction require: `message-tags`, `message-ids`, `echo-messag
 - Many features out of scope
 
 **Best practices to adopt:**
+
 - SQLite log storage with query builder (medium priority)
 - Dynamic module reloading (low priority)
 - Prometheus metrics (low priority)
@@ -3795,6 +4069,7 @@ Reply, react, and redaction require: `message-tags`, `message-ids`, `echo-messag
 **Total estimated effort:** 8-12 hours (SQLite logs only)
 
 **Priority Assessment:**
+
 - **Immediate:** None
 - **Short-term:** SQLite log storage (8-12 hours)
 - **Long-term:** Dynamic reloading (2-3 hours), Prometheus metrics (3-4 hours)
@@ -3946,6 +4221,7 @@ Reply, react, and redaction require: `message-tags`, `message-ids`, `echo-messag
 ### Key Insights from go-discord-irc
 
 **Strengths:**
+
 - Mature puppet-based architecture (similar to ours)
 - Hot-reloadable configuration
 - Comprehensive access control (allowed/ignored users)
@@ -3954,11 +4230,13 @@ Reply, react, and redaction require: `message-tags`, `message-ids`, `echo-messag
 - Connection limiting for resource management
 
 **Weaknesses:**
+
 - Go (not Python)
 - No XMPP support
 - Requires custom IRC server config for best experience
 
 **Best practices to adopt:**
+
 - Puppet cooldown/idle timeout (high priority)
 - WEBIRC support (high priority)
 - Pre-join commands (medium priority)
@@ -3970,6 +4248,7 @@ Reply, react, and redaction require: `message-tags`, `message-ids`, `echo-messag
 **Total estimated effort:** 21-31 hours
 
 **Priority Assessment:**
+
 - **Immediate:** Puppet cooldown (2-3 hours), WEBIRC (3-4 hours)
 - **Short-term:** Pre-join commands (2-3 hours), Connection limit (2-3 hours), Allowed/ignored users (2-3 hours), Hostmask filtering (2-3 hours), Nick suffix/separator (1-2 hours)
 - **Long-term:** Message filtering (2-3 hours), Hot-reload config (3-4 hours), Max nick length (1 hour), Show join/quit (1 hour), Avatar URL template (1 hour)
@@ -4020,23 +4299,27 @@ Reply, react, and redaction require: `message-tags`, `message-ids`, `echo-messag
 ### Key Insights from koishi
 
 **Strengths:**
+
 - Python implementation (same as ours)
 - XMPP component with puppeting
 - Async event coordination
 
 **Weaknesses:**
+
 - Very early development
 - Matrix-XMPP (not IRC-Discord)
 - Hardcoded values (not production-ready)
 - Limited features
 
 **Best practices to adopt:**
+
 - Async event for join coordination (medium priority)
 - Background task set (low priority)
 
 **Total estimated effort:** 2-4 hours
 
 **Priority Assessment:**
+
 - **Immediate:** None
 - **Short-term:** Async event for join coordination (2-3 hours)
 - **Long-term:** Background task set (1 hour)
@@ -4117,6 +4400,7 @@ Reply, react, and redaction require: `message-tags`, `message-ids`, `echo-messag
    - **Status:** Not implemented
 
 ### Patterns NOT Worth Implementing
+
 - Synchronous join waiting (we use async/await)
 - Lua-specific patterns
 - Prosody module architecture
@@ -4125,18 +4409,21 @@ Reply, react, and redaction require: `message-tags`, `message-ids`, `echo-messag
 ### Key Insights from mod_muc_irc
 
 **Strengths:**
+
 - Server-side XMPP module
 - Per-user IRC connections (like our puppets)
 - Topic synchronization
 - Private message support
 
 **Weaknesses:**
+
 - Lua (not Python)
 - Prosody-specific
 - Synchronous blocking patterns
 - Different architecture (server module vs standalone bridge)
 
 **Best practices to adopt:**
+
 - Room name validation (low priority)
 - Private message support (medium priority)
 - Topic synchronization (medium priority)
@@ -4144,6 +4431,7 @@ Reply, react, and redaction require: `message-tags`, `message-ids`, `echo-messag
 **Total estimated effort:** 4.5-6.5 hours
 
 **Priority Assessment:**
+
 - **Immediate:** None
 - **Short-term:** Private message support (2-3 hours), Topic sync (2-3 hours)
 - **Long-term:** Room name validation (30 minutes), MUC history suppression (30 minutes)
@@ -4185,6 +4473,7 @@ Reply, react, and redaction require: `message-tags`, `message-ids`, `echo-messag
 ### Key Insights
 
 **Strengths:**
+
 - Modern Matrix-Discord bridge
 - Efficient (memory, database, algorithms)
 - Comprehensive test suite
@@ -4192,6 +4481,7 @@ Reply, react, and redaction require: `message-tags`, `message-ids`, `echo-messag
 - Latest Discord API
 
 **Weaknesses:**
+
 - JavaScript (not Python)
 - Matrix-Discord (not IRC)
 - No puppetting support
@@ -4199,6 +4489,7 @@ Reply, react, and redaction require: `message-tags`, `message-ids`, `echo-messag
 - Not applicable to our use case
 
 **Best practices to adopt:**
+
 - None - different protocols and architecture
 
 **Total estimated effort:** 0 hours (not applicable)
@@ -4233,11 +4524,13 @@ Reply, react, and redaction require: `message-tags`, `message-ids`, `echo-messag
 ### Key Insights
 
 **Strengths:**
+
 - XMPP component architecture
 - PubSub-based message distribution
 - TypeScript implementation
 
 **Weaknesses:**
+
 - Pre-alpha/WIP status
 - Nostr protocol (not IRC/Discord)
 - TypeScript (not Python)
@@ -4245,6 +4538,7 @@ Reply, react, and redaction require: `message-tags`, `message-ids`, `echo-messag
 - Not applicable to our use case
 
 **Best practices to adopt:**
+
 - None - different protocol (Nostr) and architecture
 
 **Total estimated effort:** 0 hours (not applicable)
@@ -4292,6 +4586,7 @@ Reply, react, and redaction require: `message-tags`, `message-ids`, `echo-messag
 ### Key Insights from Matterbridge
 
 **Strengths:**
+
 - Mature, production-ready
 - Supports 15+ protocols
 - Gateway-based architecture
@@ -4299,11 +4594,13 @@ Reply, react, and redaction require: `message-tags`, `message-ids`, `echo-messag
 - Active development and community
 
 **Weaknesses:**
+
 - Go (not Python)
 - Complex codebase due to multi-protocol support
 - More features than we need
 
 **Best practices already adopted:**
+
 - All key patterns extracted and documented in TODO.md
 - IRC flood control (token bucket)
 - IRC rejoin logic

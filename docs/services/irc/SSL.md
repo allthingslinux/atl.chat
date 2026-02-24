@@ -97,6 +97,7 @@ just irc ssl-stop
 ### Certificate Locations
 
 **Certificate layout:**
+
 ```
 data/certs/
 ├── certificates/       # cert-manager (Lego) output
@@ -141,6 +142,7 @@ just status
 ### Common Issues
 
 #### "CLOUDFLARE_DNS_API_TOKEN not set"
+
 ```bash
 # Add to .env file
 echo "CLOUDFLARE_DNS_API_TOKEN=your-token" >> .env
@@ -151,6 +153,7 @@ just irc ssl-setup
 ```
 
 #### "DNS challenge failed"
+
 ```bash
 # Verify DNS records exist
 dig TXT _acme-challenge.yourdomain.com
@@ -163,6 +166,7 @@ dig TXT _acme-challenge.*.yourdomain.com
 ```
 
 #### "Certificate expiry warnings"
+
 ```bash
 # Restart cert-manager to trigger renewal check
 just irc ssl-renew
@@ -172,6 +176,7 @@ openssl x509 -in data/certs/certificates/_.atl.chat.crt -noout -dates
 ```
 
 #### "Services won't start after certificate update"
+
 ```bash
 # Check certificate file permissions
 ls -la data/certs/live/
@@ -246,6 +251,7 @@ IRC_SSL_KEY_PATH=/home/unrealircd/unrealircd/certs/live/irc.atl.chat/privkey.pem
 ### Multiple Domains
 
 The current setup issues certificates for:
+
 - `yourdomain.com`
 - `*.yourdomain.com`
 
@@ -254,6 +260,7 @@ For additional domains, set `IRC_ROOT_DOMAIN` in `.env` and restart cert-manager
 ### Rate Limiting
 
 Let's Encrypt has rate limits:
+
 - **Certificates per domain**: 5 per week
 - **Failed validations**: 5 per hour
 - **Duplicate certificates**: 1 per week
@@ -279,16 +286,19 @@ just irc ssl-renew
 If certificates expire unexpectedly:
 
 1. **Immediate action**: Check why renewal failed
+
    ```bash
    just irc ssl-logs
    ```
 
 2. **Manual renewal**: Force certificate issuance
+
    ```bash
    just irc ssl-setup
    ```
 
 3. **Service restart**: Ensure services use new certificates
+
    ```bash
    make restart
    ```

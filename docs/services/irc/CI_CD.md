@@ -30,9 +30,11 @@ CI/CD Workflows:
 ## CI Workflow (ci.yml)
 
 ### Purpose
+
 Primary CI workflow that runs on every push and pull request to validate code quality, security, and functionality.
 
 ### Triggers
+
 ```yaml
 on:
   push:
@@ -45,6 +47,7 @@ on:
 ### Jobs Overview
 
 #### 1. File Detection (`changes`)
+
 Detects which types of files have changed to optimize workflow execution:
 
 ```yaml
@@ -58,12 +61,14 @@ jobs:
 ```
 
 **Detection Rules:**
+
 - **Docker**: Containerfile, Dockerfile, compose.yaml, .dockerignore
-- **Shell**: *.sh, *.bash, *.zsh, scripts/ directory
+- **Shell**: *.sh,*.bash, *.zsh, scripts/ directory
 - **Workflows**: .github/workflows/ files
-- **YAML**: *.yml, *.yaml, .github/ files
+- **YAML**: *.yml,*.yaml, .github/ files
 
 #### 2. Shell Linting (`shell`)
+
 Runs when shell scripts change (excluding Renovate bot):
 
 ```yaml
@@ -73,10 +78,12 @@ shell:
 ```
 
 **Tools:**
+
 - **shellcheck**: Static analysis for shell scripts
 - **shfmt**: Shell script formatting and validation
 
 #### 3. Workflow Validation (`workflows`)
+
 Validates GitHub Actions workflow syntax:
 
 ```yaml
@@ -86,9 +93,11 @@ workflows:
 ```
 
 **Tools:**
+
 - **actionlint**: GitHub Actions workflow linter
 
 #### 4. Docker Linting (`docker`)
+
 Validates Docker and container configurations:
 
 ```yaml
@@ -98,10 +107,12 @@ docker:
 ```
 
 **Tools:**
+
 - **hadolint**: Dockerfile linter with security checks
 - **dclint**: Docker Compose linter
 
 #### 5. YAML Validation (`yaml`)
+
 Validates YAML syntax and structure:
 
 ```yaml
@@ -111,9 +122,11 @@ yaml:
 ```
 
 **Tools:**
+
 - **yamllint**: YAML syntax and style validation
 
 #### 6. Security Scanning (`security`)
+
 Runs security checks on all changes:
 
 ```yaml
@@ -123,14 +136,17 @@ security:
 ```
 
 **Tools:**
+
 - **gitleaks**: Secret detection and credential scanning
 
 ## Docker Workflow (docker.yml)
 
 ### Purpose
+
 Handles Docker image building, validation, publishing, and maintenance for all IRC.atl.chat services.
 
 ### Triggers
+
 ```yaml
 on:
   push:
@@ -145,9 +161,11 @@ on:
 ### Jobs Overview
 
 #### 1. File Detection (`changes`)
+
 Detects Docker-related file changes to optimize builds.
 
 #### 2. Validation (`validate`)
+
 Validates Docker builds without publishing (runs on PRs):
 
 ```yaml
@@ -158,12 +176,14 @@ validate:
 ```
 
 **Per-Service Validation:**
+
 - Build container images
 - Cache layers for faster builds
 - Security scanning with Trivy
 - PR-specific tagging (pr-123-service)
 
 #### 3. Build & Push (`build`)
+
 Builds and publishes Docker images (runs on releases):
 
 ```yaml
@@ -172,12 +192,14 @@ build:
 ```
 
 **Publishing Strategy:**
+
 - **Registry**: GitHub Container Registry (ghcr.io)
 - **Tagging**: Semantic versioning (v1.0.0, v1.0, latest)
 - **Metadata**: OCI image labels and annotations
 - **Security**: Final image vulnerability scanning
 
 #### 4. Cleanup (`cleanup`)
+
 Monthly maintenance to clean old container images:
 
 ```yaml
@@ -186,6 +208,7 @@ cleanup:
 ```
 
 **Cleanup Policy:**
+
 - Keep last 15 versions
 - Remove untagged images
 - Automated monthly execution
@@ -193,6 +216,7 @@ cleanup:
 ### Build Configuration
 
 #### Multi-Service Matrix
+
 ```yaml
 strategy:
   matrix:
@@ -200,6 +224,7 @@ strategy:
 ```
 
 #### Build Arguments
+
 ```yaml
 build-args: |
   VERSION=${{ steps.release_version.outputs.version }}
@@ -208,6 +233,7 @@ build-args: |
 ```
 
 #### Image Metadata
+
 ```yaml
 labels: |
   org.opencontainers.image.title=IRC.atl.chat - ${{ matrix.service }}
@@ -219,9 +245,11 @@ labels: |
 ## Security Workflow (security.yml)
 
 ### Purpose
+
 Comprehensive security scanning and vulnerability assessment.
 
 ### Triggers
+
 ```yaml
 on:
   push:
@@ -235,6 +263,7 @@ on:
 ### Security Tools
 
 #### CodeQL Analysis
+
 ```yaml
 - name: Initialize CodeQL
   uses: github/codeql-action/init@v3
@@ -249,12 +278,14 @@ on:
 ```
 
 #### Dependency Scanning
+
 ```yaml
 - name: Dependency Review
   uses: actions/dependency-review-action@v4
 ```
 
 #### Container Scanning
+
 ```yaml
 - name: Container Scan
   uses: anchore/scan-action@v3
@@ -263,6 +294,7 @@ on:
 ```
 
 #### Secret Detection
+
 ```yaml
 - name: Secret Scan
   uses: trufflesecurity/trufflehog@main
@@ -275,9 +307,11 @@ on:
 ## Release Workflow (release.yml)
 
 ### Purpose
+
 Automated release creation, versioning, and changelog generation.
 
 ### Triggers
+
 ```yaml
 on:
   push:
@@ -287,6 +321,7 @@ on:
 ### Release Process
 
 #### 1. Version Extraction
+
 ```yaml
 - name: Get Version
   run: |
@@ -295,6 +330,7 @@ on:
 ```
 
 #### 2. Changelog Generation
+
 ```yaml
 - name: Generate Changelog
   uses: tj-actions/git-cliff@v1
@@ -306,6 +342,7 @@ on:
 ```
 
 #### 3. Release Creation
+
 ```yaml
 - name: Create Release
   uses: actions/create-release@v1
@@ -318,6 +355,7 @@ on:
 ```
 
 #### 4. Artifact Publishing
+
 ```yaml
 - name: Upload Release Assets
   uses: actions/upload-release-asset@v1
@@ -330,9 +368,11 @@ on:
 ## Deployment Workflow (deploy.yml)
 
 ### Purpose
+
 Automated deployment to staging and production environments.
 
 ### Triggers
+
 ```yaml
 on:
   release:
@@ -349,6 +389,7 @@ on:
 ### Deployment Strategy
 
 #### Environment-Based Deployment
+
 ```yaml
 jobs:
   deploy-staging:
@@ -363,6 +404,7 @@ jobs:
 ```
 
 #### Deployment Steps
+
 ```yaml
 - name: Deploy to ${{ env.ENVIRONMENT }}
   run: |
@@ -380,9 +422,11 @@ jobs:
 ## Maintenance Workflow (maintenance.yml)
 
 ### Purpose
+
 Automated maintenance tasks including dependency updates and health checks.
 
 ### Triggers
+
 ```yaml
 on:
   schedule:
@@ -393,6 +437,7 @@ on:
 ### Maintenance Tasks
 
 #### Dependency Updates
+
 ```yaml
 - name: Update Dependencies
   uses: renovatebot/github-action@v39
@@ -401,6 +446,7 @@ on:
 ```
 
 #### Health Checks
+
 ```yaml
 - name: Health Check
   run: |
@@ -415,6 +461,7 @@ on:
 ```
 
 #### Log Rotation
+
 ```yaml
 - name: Rotate Logs
   run: |
@@ -428,9 +475,11 @@ on:
 ## Cleanup Workflow (cleanup.yml)
 
 ### Purpose
+
 Automated cleanup of artifacts, caches, and temporary files.
 
 ### Triggers
+
 ```yaml
 on:
   schedule:
@@ -441,6 +490,7 @@ on:
 ### Cleanup Tasks
 
 #### Artifact Cleanup
+
 ```yaml
 - name: Clean Artifacts
   uses: actions/github-script@v7
@@ -467,6 +517,7 @@ on:
 ```
 
 #### Cache Cleanup
+
 ```yaml
 - name: Clean Cache
   run: |
@@ -476,6 +527,7 @@ on:
 ```
 
 #### Registry Cleanup
+
 ```yaml
 - name: Clean Registry
   uses: actions/delete-package-versions@v5
@@ -490,6 +542,7 @@ on:
 ### Common Configuration
 
 #### Environment Variables
+
 ```yaml
 env:
   REGISTRY: ghcr.io
@@ -499,6 +552,7 @@ env:
 ```
 
 #### Permissions
+
 ```yaml
 permissions:
   contents: read
@@ -510,6 +564,7 @@ permissions:
 ### Reusable Workflows
 
 #### Testing Workflow
+
 ```yaml
 jobs:
   test:
@@ -518,6 +573,7 @@ jobs:
 ```
 
 #### Security Workflow
+
 ```yaml
 jobs:
   security:
@@ -530,6 +586,7 @@ jobs:
 ### Workflow Status Monitoring
 
 #### Status Badges
+
 ```markdown
 ![CI](https://github.com/allthingslinux/irc.atl.chat/workflows/CI/badge.svg)
 ![Docker](https://github.com/allthingslinux/irc.atl.chat/workflows/Docker/badge.svg)
@@ -537,6 +594,7 @@ jobs:
 ```
 
 #### Alert Configuration
+
 ```yaml
 - name: Notify on Failure
   if: failure()
@@ -549,6 +607,7 @@ jobs:
 ### Performance Monitoring
 
 #### Workflow Metrics
+
 ```yaml
 - name: Workflow Telemetry
   uses: codacy/git-version@2.7.1
@@ -558,6 +617,7 @@ jobs:
 ```
 
 #### Resource Usage
+
 ```yaml
 - name: Monitor Resources
   run: |
@@ -576,6 +636,7 @@ jobs:
 ### Common CI/CD Issues
 
 #### Workflow Not Triggering
+
 ```yaml
 # Check trigger conditions
 on:
@@ -586,6 +647,7 @@ on:
 ```
 
 #### Permission Errors
+
 ```yaml
 # Check permissions
 permissions:
@@ -595,6 +657,7 @@ permissions:
 ```
 
 #### Cache Issues
+
 ```yaml
 # Clear cache manually
 gh actions-cache delete --all --confirm
@@ -604,6 +667,7 @@ gh actions-cache list
 ```
 
 #### Build Failures
+
 ```yaml
 # Check build logs
 # Look for:
@@ -616,6 +680,7 @@ gh actions-cache list
 ### Debug Mode
 
 #### Enable Debug Logging
+
 ```yaml
 - name: Enable Debug
   run: |
@@ -624,6 +689,7 @@ gh actions-cache list
 ```
 
 #### Manual Workflow Dispatch
+
 ```yaml
 # Trigger workflow manually
 gh workflow run ci.yml --ref main
@@ -634,6 +700,7 @@ gh workflow run ci.yml --ref main
 ### Workflow Organization
 
 #### Naming Conventions
+
 ```yaml
 # Consistent naming
 name: CI Pipeline          # Clear, descriptive names
@@ -642,6 +709,7 @@ name: Security Scan        # Purpose-driven naming
 ```
 
 #### Job Structure
+
 ```yaml
 jobs:
   lint:                    # Fast, parallel jobs first
@@ -653,6 +721,7 @@ jobs:
 ### Security Best Practices
 
 #### Secret Management
+
 ```yaml
 # Use GitHub secrets
 secrets:
@@ -664,6 +733,7 @@ secrets:
 ```
 
 #### Access Control
+
 ```yaml
 # Restrict workflow triggers
 on:
@@ -677,6 +747,7 @@ on:
 ### Performance Optimization
 
 #### Caching Strategy
+
 ```yaml
 - name: Cache Dependencies
   uses: actions/cache@v4
@@ -692,6 +763,7 @@ on:
 ```
 
 #### Parallel Execution
+
 ```yaml
 strategy:
   matrix:
@@ -704,6 +776,7 @@ strategy:
 ### Renovate Integration
 
 #### Dependency Updates
+
 ```json
 {
   "extends": ["config:base"],
@@ -716,6 +789,7 @@ strategy:
 ### CodeQL Integration
 
 #### Advanced Configuration
+
 ```yaml
 - name: Initialize CodeQL
   uses: github/codeql-action/init@v3
@@ -727,6 +801,7 @@ strategy:
 ### Slack Integration
 
 #### Notification Configuration
+
 ```yaml
 - name: Notify Slack
   uses: 8398a7/action-slack@v3

@@ -5,11 +5,13 @@ The UnrealIRCd WebPanel provides a web-based administration interface for managi
 ## Quick Start
 
 1. **Start the WebPanel:**
+
    ```bash
    make up
    ```
 
 2. **Access the interface:**
+
    ```
    http://localhost:8080
    ```
@@ -30,21 +32,25 @@ The WebPanel is automatically configured through Docker. Key settings:
 ## Features
 
 ### Dashboard
+
 - Server status and uptime
 - User count and channel statistics
 - Recent activity logs
 
 ### User Management
+
 - View online users
 - Manage user bans (K-line, Z-line, G-line)
 - User search and details
 
 ### Channel Administration
+
 - Channel list and details
 - Channel mode management
 - Topic editing
 
 ### Server Configuration
+
 - Remote configuration editing
 - Module management
 - Log viewing
@@ -56,16 +62,19 @@ The WebPanel is automatically configured through Docker. Key settings:
 **WebPanel shows "Connection failed":**
 
 1. **Check RPC connectivity:**
+
    ```bash
    docker exec atl-irc-webpanel nc -z unrealircd 8600
    ```
 
 2. **Check UnrealIRCd logs:**
+
    ```bash
    make logs-ircd | grep -i rpc
    ```
 
 3. **Verify RPC configuration:**
+
    ```bash
    grep -A5 "listen.*rpc" apps/unrealircd/config/unrealircd.conf
    ```
@@ -75,11 +84,13 @@ The WebPanel is automatically configured through Docker. Key settings:
 **Slow loading:**
 
 1. **Restart WebPanel:**
+
    ```bash
    docker restart atl-irc-webpanel
    ```
 
 2. **Clear cache:**
+
    ```bash
    docker exec atl-irc-webpanel rm -rf /tmp/*
    ```
@@ -87,12 +98,14 @@ The WebPanel is automatically configured through Docker. Key settings:
 ## Backup
 
 **Backup WebPanel data:**
+
 ```bash
 docker run --rm -v atl-irc-webpanel-data:/data \
     alpine tar czf - -C /data . > webpanel-backup-$(date +%Y%m%d).tar.gz
 ```
 
 **Restore WebPanel data:**
+
 ```bash
 docker run --rm -v atl-irc-webpanel-data:/data \
     -v $(pwd):/backup alpine \

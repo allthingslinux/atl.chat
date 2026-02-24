@@ -4,6 +4,7 @@ Comprehensive performance and load testing for IRC servers using controlled envi
 Tests connection throughput, message performance, and concurrent operations.
 """
 
+import contextlib
 import socket
 import statistics
 import time
@@ -110,10 +111,8 @@ class IRCPerformanceClient:
     def disconnect(self):
         """Disconnect from server."""
         if self.socket:
-            try:
+            with contextlib.suppress(BaseException):
                 self.socket.close()
-            except:
-                pass
         self.connected = False
 
 
@@ -216,7 +215,6 @@ class LoadTestRunner:
         """Test concurrent channel join performance."""
         clients = self.create_clients(client_count)
         connected_clients = []
-        join_times = []
 
         # Connect clients first
         for client in clients:
@@ -366,7 +364,7 @@ class TestPerformanceLoad(BaseServerTestCase):
                 successful_joins += 1
             time.sleep(0.05)  # Small stagger
 
-        join_time = time.time() - join_start
+        time.time() - join_start
 
         # Phase 3: Send messages
         message_times = []

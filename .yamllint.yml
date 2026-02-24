@@ -1,0 +1,50 @@
+---
+extends: default
+ignore: |
+  .git/
+  node_modules/
+  .venv/
+  compose.yaml
+  compose.yml
+  infra/compose/
+  infra/turn-standalone/compose.yaml
+rules:
+  document-start: enable
+
+  # Allow longer lines for readability in configuration files
+  line-length:
+    max: 185
+    level: warning
+
+  # Allow empty values in mappings (common in Docker Compose)
+  empty-values:
+    forbid-in-block-mappings: false
+    forbid-in-flow-mappings: false
+
+  # Be more lenient with indentation for nested structures
+  indentation:
+    spaces: 2
+    indent-sequences: true
+    check-multi-line-strings: false
+  truthy:
+    check-keys: false
+
+  # Allow comments to start anywhere
+  comments-indentation: disable
+
+  # Allow trailing spaces in empty lines
+  empty-lines:
+    max-start: 1
+    max-end: 1
+    max: 2
+
+  # Allow dashes in key names (common in GitHub Actions)
+  key-duplicates: enable
+
+  # Allow brackets in flow sequences
+  brackets: enable
+
+  # Allow braces in flow mappings
+  braces: enable
+  comments:
+    min-spaces-from-content: 1

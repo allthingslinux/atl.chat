@@ -50,7 +50,7 @@ def xfailIf(condition: Any, reason: str) -> Any:
                     import pytest
 
                     pytest.xfail(reason)
-                    assert False  # make mypy happy
+                    raise AssertionError()  # make mypy happy
             else:
                 return f(self, *args, **kwargs)
 

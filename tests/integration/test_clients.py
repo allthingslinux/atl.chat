@@ -139,9 +139,7 @@ class IRCClientTest(client.SimpleIRCClient if client else object):
                 ssl_ctx = ssl.create_default_context()
                 ssl_ctx.check_hostname = False
                 ssl_ctx.verify_mode = ssl.CERT_NONE
-                wrapper = functools.partial(
-                    ssl_ctx.wrap_socket, server_hostname=self.host
-                )
+                wrapper = functools.partial(ssl_ctx.wrap_socket, server_hostname=self.host)
                 connect_factory = client.connection.Factory(wrapper=wrapper)
 
             super().connect(
@@ -283,17 +281,15 @@ class TestPydleIntegration(BaseServerTestCase):
         client = PydleTestBot(f"pydle_test_{int(time.time())}")
 
         try:
-            await client.connect(
-                self.hostname, self.port, tls=True, tls_verify=False
-            )
+            await client.connect(self.hostname, self.port, tls=True, tls_verify=False)
             await asyncio.sleep(2)
 
             assert client.connected, "Client should be connected to IRC server"
             # Optional: on_connect event if pydle version fires it
             if client.events_log:
-                assert any(
-                    event[0] == "connect" for event in client.events_log
-                ), f"Expected connect event, got: {client.events_log}"
+                assert any(event[0] == "connect" for event in client.events_log), (
+                    f"Expected connect event, got: {client.events_log}"
+                )
 
         finally:
             await client.disconnect()
@@ -315,9 +311,7 @@ class TestPydleIntegration(BaseServerTestCase):
         client = PydleTestBot(f"pydle_chan_{int(time.time())}")
 
         try:
-            await client.connect(
-                self.hostname, self.port, tls=True, tls_verify=False
-            )
+            await client.connect(self.hostname, self.port, tls=True, tls_verify=False)
             await asyncio.sleep(1)
 
             # Basic check: client should be connected and able to send commands
@@ -351,12 +345,8 @@ class TestPydleIntegration(BaseServerTestCase):
         client2 = PydleTestBot(f"pydle_msg2_{int(time.time())}")
 
         try:
-            await client1.connect(
-                self.hostname, self.port, tls=True, tls_verify=False
-            )
-            await client2.connect(
-                self.hostname, self.port, tls=True, tls_verify=False
-            )
+            await client1.connect(self.hostname, self.port, tls=True, tls_verify=False)
+            await client2.connect(self.hostname, self.port, tls=True, tls_verify=False)
             # Wait longer for proper registration
             await asyncio.sleep(3)
 
@@ -406,12 +396,8 @@ class TestPydleIntegration(BaseServerTestCase):
         client2 = PydleTestBot(f"pydle_priv2_{int(time.time())}")
 
         try:
-            await client1.connect(
-                self.hostname, self.port, tls=True, tls_verify=False
-            )
-            await client2.connect(
-                self.hostname, self.port, tls=True, tls_verify=False
-            )
+            await client1.connect(self.hostname, self.port, tls=True, tls_verify=False)
+            await client2.connect(self.hostname, self.port, tls=True, tls_verify=False)
             # Wait longer for proper registration
             await asyncio.sleep(3)
 
@@ -540,11 +526,11 @@ class TestPydleFeatures:
 
         assert len(client.messages_received) == 3
 
-        private_msg = [msg for msg in client.messages_received if msg.get("type") == "private"][0]
+        private_msg = next(msg for msg in client.messages_received if msg.get("type") == "private")
         assert private_msg["source"] == "user1"
         assert private_msg["message"] == "hello bot"
 
-        channel_msg = [msg for msg in client.messages_received if msg.get("type") == "channel"][0]
+        channel_msg = next(msg for msg in client.messages_received if msg.get("type") == "channel")
         assert channel_msg["channel"] == "#test"
         assert channel_msg["source"] == "user2"
 

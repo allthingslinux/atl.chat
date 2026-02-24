@@ -1,7 +1,8 @@
 """IRC protocol integration tests using the controller framework."""
 
-import pytest
 import time
+
+import pytest
 
 from ..utils.base_test_cases import BaseServerTestCase
 from ..utils.specifications import mark_specifications
@@ -35,7 +36,7 @@ class TestIRCConnectionProtocol(BaseServerTestCase):
     def test_nick_registration(self):
         """Test nickname registration and collision handling."""
         # Register first client
-        client1 = self.connectClient("alice")
+        self.connectClient("alice")
 
         # Register second client with same nick (should get error)
         client2 = self.addClient("client2")
@@ -148,7 +149,7 @@ class TestIRCChannelProtocol(BaseServerTestCase):
         # Try to join non-existent channel (should work - channels are created on join)
         # Try to join channel that requires key without key
         self.sendLine(client, "JOIN #keyed_channel key_required")
-        error_msg = self.getMessage(client)
+        self.getMessage(client)
         # This depends on server configuration - may succeed or fail
 
         # Test invalid channel name

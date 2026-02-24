@@ -149,7 +149,7 @@ class BaseController:
                 used_ports.discard((hostname, port))
                 self._own_ports.discard((hostname, port))
 
-    def execute(self, command: Sequence[Union[str, Path]], **kwargs: Any) -> subprocess.Popen:
+    def execute(self, command: Sequence[str | Path], **kwargs: Any) -> subprocess.Popen:
         """Execute a command with appropriate output handling."""
         output_to = None if self.debug_mode else subprocess.DEVNULL
         env = kwargs.pop("env", os.environ.copy())
@@ -160,7 +160,7 @@ class DirectoryBasedController(BaseController):
     """Helper for controllers whose software configuration is based on an
     arbitrary directory."""
 
-    directory: Optional[Path] = None
+    directory: Path | None = None
 
     def __init__(self, test_config: TestCaseControllerConfig, **kwargs):
         super().__init__(test_config, **kwargs)
@@ -264,9 +264,9 @@ class BaseServerController(BaseController):
     port_open = False
     port: int
     hostname: str
-    services_controller: Optional[BaseServicesController] = None
-    services_controller_class: Type[BaseServicesController]
-    extban_mute_char: Optional[str] = None
+    services_controller: BaseServicesController | None = None
+    services_controller_class: type[BaseServicesController]
+    extban_mute_char: str | None = None
     """Character used for the 'mute' extban"""
     nickserv = "NickServ"
     sync_sleep_time = 0.0
@@ -285,7 +285,7 @@ class BaseServerController(BaseController):
         hostname: str,
         port: int,
         *,
-        password: Optional[str],
+        password: str | None,
         ssl: bool,
         run_services: bool,
     ) -> None:
@@ -296,7 +296,7 @@ class BaseServerController(BaseController):
         self,
         case: Any,  # Forward reference to test case
         username: str,
-        password: Optional[str] = None,
+        password: str | None = None,
     ) -> None:
         """Register a user with the services. Default implementation for no services."""
         if self.services_controller is not None:
@@ -416,7 +416,7 @@ class BaseServicesController(BaseController):
                     elif "nickserv" in (msg.prefix or "").lower():
                         break
                 else:
-                    assert False, f"unexpected reply from NickServ: {msg}"
+                    raise AssertionError(f"unexpected reply from NickServ: {msg}")
             else:
                 if time.time() > timeout:
                     raise Exception("Timeout while waiting for NickServ")
@@ -431,10 +431,10 @@ class BaseServicesController(BaseController):
         c.disconnect()
         self.services_up = True
 
-    def getNickServResponse(self, client: Any, timeout: int = 0) -> List[Any]:
+    def getNickServResponse(self, client: Any, timeout: int = 0) -> list[Any]:
         """Wrapper around getMessages() that waits longer, because NickServ
         is queried asynchronously."""
-        msgs: List[Any] = []
+        msgs: list[Any] = []
         start_time = time.time()
         while not msgs and (not timeout or start_time + timeout > time.time()):
             time.sleep(0.05)
@@ -445,7 +445,7 @@ class BaseServicesController(BaseController):
         self,
         case: Any,
         username: str,
-        password: Optional[str] = None,
+        password: str | None = None,
     ) -> None:
         """Register a user with the services."""
         if not case.run_services:

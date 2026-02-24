@@ -34,12 +34,14 @@ bridge --config config.yaml
 ## Features
 
 ### Core Bridging
+
 - **Event-driven architecture**: Central event bus with typed events (MessageIn/Out, Join, Part, Delete, Reaction, Typing)
 - **Channel mappings**: Config-based Discord ↔ IRC ↔ XMPP routing
 - **Identity resolution**: Portal API integration with configurable TTL caching
 - **Message relay**: Bidirectional with edit/delete support; content filtering (regex)
 
 ### IRC Support
+
 - **IRCv3 capabilities**: message-tags, msgid, draft/reply, echo-message, labeled-response
 - **Reply threading**: Discord replies ↔ IRC `+draft/reply` tags
 - **Typing indicators**: Discord typing → IRC `TAGMSG` with `+typing=active`
@@ -50,6 +52,7 @@ bridge --config config.yaml
 - **Flood control**: Token bucket rate limiting and configurable throttle
 
 ### XMPP Support
+
 - **Component protocol**: Single connection, multiple JIDs (XEP-0114)
 - **Stream Management**: Reliable delivery with resumption (XEP-0198)
 - **Message features**:
@@ -63,6 +66,7 @@ bridge --config config.yaml
 - **History filtering**: XEP-0203 delayed delivery detection
 
 ### Discord Support
+
 - **Webhooks**: Per-identity webhooks for native nick/avatar display
 - **Raw event handling**: Edits and deletes fire for all messages, not just cached ones
 - **Bulk delete**: Moderator purges relay each deleted message to IRC/XMPP
@@ -73,6 +77,7 @@ bridge --config config.yaml
 - **!bridge status**: Show linked IRC/XMPP accounts (requires Portal identity)
 
 ### Reliability
+
 - **Retry logic**: Exponential backoff for transient errors (5 attempts, 2-30s)
 - **Error recovery**: Graceful handling of network failures
 - **Event loop**: uvloop for 2-4x faster async I/O (Linux/macOS; falls back to asyncio on Windows)
@@ -166,6 +171,7 @@ See `config.example.yaml` for all options (throttling, SASL, content filtering, 
 ### Data Flow
 
 **Discord → IRC/XMPP:**
+
 1. Discord user sends message
 2. Discord adapter creates `MessageIn` event
 3. Event bus dispatches to all adapters
@@ -175,6 +181,7 @@ See `config.example.yaml` for all options (throttling, SASL, content filtering, 
 7. XMPP component sends from user's JID (e.g., `user@bridge.atl.chat`)
 
 **IRC → Discord/XMPP:**
+
 1. IRC puppet receives message with `msgid` tag
 2. IRC adapter creates `MessageIn` event, stores msgid mapping
 3. Event bus dispatches to Discord + XMPP adapters
@@ -182,12 +189,14 @@ See `config.example.yaml` for all options (throttling, SASL, content filtering, 
 5. XMPP component relays to MUC from bridge JID
 
 **Edit/Delete Flow:**
+
 1. Discord edit event received → Relay emits MessageOut with `is_edit`
 2. IRC/XMPP adapters look up stored msgid; Discord adapter resolves via trackers
 3. IRC: `TAGMSG` with edit; XMPP: correction (XEP-0308); Discord: `webhook.edit_message`
 4. IRC REDACT / XMPP retraction → Discord `message.delete`
 
 **Reactions & Typing:**
+
 - Discord reactions → Relay → IRC/XMPP; IRC/XMPP reactions → Relay → Discord
 - Typing indicators bridged both directions (Discord ↔ IRC; throttled)
 
@@ -257,6 +266,7 @@ uv run pytest tests --cov --cov-report=html
 ```
 
 **Test Coverage**: 654 tests covering:
+
 - Core bridging logic and relay
 - Discord adapter (webhooks, edits, reactions, typing)
 - IRC reply threading, puppets, message ID tracking
@@ -296,17 +306,20 @@ The bridge requires Prosody (or compatible XMPP server) with component configura
 ## Troubleshooting
 
 ### Bridge not connecting to IRC
+
 - Check firewall rules for IRC ports (6667, 6697)
 - Verify IRC server allows multiple connections from same IP
 - Check IRC nick is not already in use
 
 ### XMPP messages not bridging
+
 - Verify Prosody component configuration
 - Check component secret matches
 - Ensure MUC exists and bridge has joined
 - Review Prosody logs: `/var/log/prosody/prosody.log`
 
 ### Discord messages delayed
+
 - Check Portal API is responding (< 100ms)
 - Verify identity cache is working (check logs)
 - Monitor event bus queue depth

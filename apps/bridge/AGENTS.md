@@ -63,10 +63,12 @@ references/              # Upstream source for discord.py, slixmpp, unrealircd, 
 ## Common Tasks
 
 ### Development
+
 - `uv sync` — install all dependencies
 - `uv run bridge --config config.yaml` — run the bridge
 
 ### Quality
+
 - `just lint` — ruff check
 - `just format` — ruff format
 - `just typecheck` — basedpyright

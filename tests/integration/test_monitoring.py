@@ -69,7 +69,7 @@ class UnrealIRCMonitor:
         """Monitor user activity and connections."""
         try:
             users = self.rpc.User.list()
-            current_time = time.time()
+            time.time()
 
             activity = {
                 "total_users": len(users),

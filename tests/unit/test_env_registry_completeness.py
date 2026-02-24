@@ -94,21 +94,13 @@ class TestEnvRegistryCompleteness:
     def test_no_forbidden_vars_present(self, env_vars: dict[str, str]) -> None:
         """Dead variables must not appear in .env.example (Requirements 9.1, 9.2)."""
         present_forbidden = FORBIDDEN_VARS & env_vars.keys()
-        assert not present_forbidden, (
-            f"Forbidden (dead) variables found in .env.example: {sorted(present_forbidden)}"
-        )
+        assert not present_forbidden, f"Forbidden (dead) variables found in .env.example: {sorted(present_forbidden)}"
 
     def test_required_vars_have_non_empty_values(self, env_vars: dict[str, str]) -> None:
         """Every required variable must have a non-empty value or a change_me_ placeholder
         (Requirement 11.5)."""
-        empty_vars = [
-            var
-            for var in REQUIRED_VARS
-            if var in env_vars and not env_vars[var]
-        ]
-        assert not empty_vars, (
-            f"Required variables have empty values in .env.example: {sorted(empty_vars)}"
-        )
+        empty_vars = [var for var in REQUIRED_VARS if var in env_vars and not env_vars[var]]
+        assert not empty_vars, f"Required variables have empty values in .env.example: {sorted(empty_vars)}"
 
     def test_xmpp_domain_is_atl_chat(self, env_vars: dict[str, str]) -> None:
         """XMPP_DOMAIN must be atl.chat (Requirement 7.1)."""
@@ -167,14 +159,13 @@ class TestEnvRegistryCompleteness:
         }
         for var in secret_vars:
             value = env_vars.get(var, "")
-            assert value.startswith("change_me_"), (
-                f"{var} should have a 'change_me_' placeholder, got '{value}'"
-            )
+            assert value.startswith("change_me_"), f"{var} should have a 'change_me_' placeholder, got '{value}'"
 
 
 # ---------------------------------------------------------------------------
 # Property-based test: for any subset of required vars, all must be present
 # ---------------------------------------------------------------------------
+
 
 @given(sampled_vars=st.lists(st.sampled_from(sorted(REQUIRED_VARS)), min_size=1, unique=True))
 @settings(max_examples=50)
@@ -190,11 +181,7 @@ def test_property_required_vars_always_present(
     env_vars = parse_env_example(env_example_path)
 
     missing = [v for v in sampled_vars if v not in env_vars]
-    assert not missing, (
-        f"Required variables missing from .env.example: {missing}"
-    )
+    assert not missing, f"Required variables missing from .env.example: {missing}"
 
     empty = [v for v in sampled_vars if v in env_vars and not env_vars[v]]
-    assert not empty, (
-        f"Required variables have empty values in .env.example: {empty}"
-    )
+    assert not empty, f"Required variables have empty values in .env.example: {empty}"

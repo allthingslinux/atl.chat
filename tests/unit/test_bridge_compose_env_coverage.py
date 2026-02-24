@@ -78,9 +78,7 @@ class TestBridgeComposeEnvCoverage:
     def test_all_required_env_vars_present(self, bridge_env_vars: set[str]) -> None:
         """All 8 required env vars must appear in the atl-bridge environment block."""
         missing = set(REQUIRED_BRIDGE_ENV_VARS) - bridge_env_vars
-        assert not missing, (
-            f"Missing required env vars in atl-bridge environment block: {sorted(missing)}"
-        )
+        assert not missing, f"Missing required env vars in atl-bridge environment block: {sorted(missing)}"
 
     def test_image_is_set(self, bridge_data: dict) -> None:
         """The atl-bridge service must specify the correct image."""
@@ -128,11 +126,8 @@ class TestBridgeComposeEnvCoverage:
 # Property-based test: for any subset of required vars, all must be present
 # ---------------------------------------------------------------------------
 
-@given(
-    sampled_vars=st.lists(
-        st.sampled_from(REQUIRED_BRIDGE_ENV_VARS), min_size=1, unique=True
-    )
-)
+
+@given(sampled_vars=st.lists(st.sampled_from(REQUIRED_BRIDGE_ENV_VARS), min_size=1, unique=True))
 @settings(max_examples=50)
 def test_property_bridge_env_vars_always_present(
     sampled_vars: list[str],
@@ -147,6 +142,4 @@ def test_property_bridge_env_vars_always_present(
     env_vars = get_bridge_env_vars(bridge_data)
 
     missing = [v for v in sampled_vars if v not in env_vars]
-    assert not missing, (
-        f"Required env vars missing from atl-bridge environment block: {missing}"
-    )
+    assert not missing, f"Required env vars missing from atl-bridge environment block: {missing}"

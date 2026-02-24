@@ -44,6 +44,7 @@ This directory contains the comprehensive test suite for IRC.atl.chat using pyte
 ## Running Tests
 
 ### Using Make (Recommended)
+
 ```bash
 make test              # Run all tests
 make test-unit         # Run unit tests only
@@ -52,6 +53,7 @@ make test-docker       # Run Docker-related tests
 ```
 
 ### Using uv directly
+
 ```bash
 uv run pytest tests/                    # Run all tests
 uv run pytest tests/unit/              # Run unit tests
@@ -73,12 +75,14 @@ uv run pytest -m slow                  # Run slow tests
 ## Configuration
 
 Tests are configured via:
+
 - `pyproject.toml` - pytest configuration and dependencies
 - `pytest.ini` - Additional pytest settings
 
 ## Fixtures
 
 Common fixtures available:
+
 - `docker_client` - Docker API client
 - `project_root` - Project root directory
 - `compose_file` - Docker Compose file path

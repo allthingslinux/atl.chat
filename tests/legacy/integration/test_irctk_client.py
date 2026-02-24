@@ -1,8 +1,9 @@
 """Integration tests using irc-toolkit (irctk) library."""
 
-import pytest
 import asyncio
-from unittest.mock import Mock, AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
+
+import pytest
 
 # Import irc-toolkit conditionally
 irctk = pytest.importorskip("irctk")
@@ -23,9 +24,7 @@ class IRCToolkitBot:
         self.client.delegate = self
 
         # Mock the connection for testing
-        with patch.object(
-            self.client, "connect", new_callable=AsyncMock
-        ) as mock_connect:
+        with patch.object(self.client, "connect", new_callable=AsyncMock) as mock_connect:
             mock_connect.return_value = None
             await self.client.connect(hostname, port, secure)
             self.connected = True
@@ -232,10 +231,7 @@ class TestIRCToolkitIntegration:
             # Verify state
             assert bot.connected is False
             assert "#test" in bot.joined_channels
-            assert (
-                len([msg for msg in bot.messages_received if msg["type"] == "channel"])
-                == 1
-            )
+            assert len([msg for msg in bot.messages_received if msg["type"] == "channel"]) == 1
 
     def test_irctk_message_types(self):
         """Test different IRC message types."""

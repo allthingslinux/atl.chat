@@ -23,6 +23,7 @@ Stateless format converters between Discord markdown and IRC control codes, plus
 `irc_to_discord(content)` — converts IRC formatting to Discord markdown. Splits on URLs first.
 
 Strips IRC color codes (`\x03NN`, `\x03N,N`, `\x04RRGGBB`). Converts:
+
 - `\x02` (bold) → `**…**`
 - `\x1d` (italic) → `*…*`
 - `\x1f` (underline) → `__…__`

@@ -1,13 +1,11 @@
 """Integration tests using unrealircd-rpc-py library for direct server management."""
 
+from unittest.mock import Mock, patch
+
 import pytest
-from unittest.mock import Mock, patch, AsyncMock
 
 # Import unrealircd-rpc-py conditionally
 unrealircd_rpc = pytest.importorskip("unrealircd_rpc_py")
-
-from ..utils.base_test_cases import BaseServerTestCase
-from ..utils.specifications import mark_specifications
 
 
 class UnrealIRCTestHelper:
@@ -406,7 +404,7 @@ class TestUnrealIRCRPCIntegration:
 
     def test_configuration_validation(self):
         """Test RPC configuration validation."""
-        helper = UnrealIRCTestHelper()
+        UnrealIRCTestHelper()
 
         # Test valid configurations
         valid_configs = [

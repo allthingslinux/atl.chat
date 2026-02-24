@@ -17,6 +17,7 @@ Services:
 ## Container Configuration
 
 ### UnrealIRCd Container
+
 ```yaml
 atl-irc-server:
   build:
@@ -39,6 +40,7 @@ atl-irc-server:
 ```
 
 ### Atheme Container
+
 ```yaml
 atheme:
   build:
@@ -57,6 +59,7 @@ atheme:
 ```
 
 ### WebPanel Container
+
 ```yaml
 atl-irc-webpanel:
   build:
@@ -78,6 +81,7 @@ atl-irc-webpanel:
 ## Volume Management
 
 ### Persistent Volumes
+
 ```yaml
 volumes:
   atl-irc-webpanel-data:
@@ -86,6 +90,7 @@ volumes:
 ```
 
 ### Bind Mounts
+
 ```yaml
 volumes:
   - ./apps/unrealircd/config:/home/unrealircd/unrealircd/config
@@ -96,6 +101,7 @@ volumes:
 ## Networking
 
 ### Network Architecture
+
 ```yaml
 networks:
   atl-chat:
@@ -104,6 +110,7 @@ networks:
 ```
 
 ### Port Mapping
+
 - **6697**: IRC over TLS (external)
 - **6900**: Server-to-server TLS (external)
 - **6901**: Atheme services connection (localhost)
@@ -114,6 +121,7 @@ networks:
 ## Security
 
 ### Non-Root Containers
+
 All containers run as non-root users with proper UID/GID mapping:
 
 ```yaml
@@ -123,6 +131,7 @@ environment:
 ```
 
 ### File Permissions
+
 ```bash
 # Set proper permissions
 chmod 600 .env cloudflare-credentials.ini
@@ -132,6 +141,7 @@ chmod 755 data/ logs/
 ## Health Checks
 
 ### Container Health Monitoring
+
 ```yaml
 healthcheck:
   test: ['CMD', 'nc', '-z', 'localhost', '6697']
@@ -142,6 +152,7 @@ healthcheck:
 ```
 
 ### Health Check Commands
+
 ```bash
 # Check container health
 docker ps --filter "health=healthy"
@@ -156,6 +167,7 @@ docker compose logs atl-irc-server
 ## Management Commands
 
 ### Service Management
+
 ```bash
 # Start all services
 make up
@@ -171,6 +183,7 @@ make status
 ```
 
 ### Container Management
+
 ```bash
 # Build containers
 make build
@@ -186,6 +199,7 @@ make logs-webpanel
 ```
 
 ### Debugging
+
 ```bash
 # Access container shell
 docker compose exec atl-irc-server sh
@@ -203,6 +217,7 @@ docker stats
 ### Common Issues
 
 #### Permission Errors
+
 ```bash
 # Fix file ownership
 sudo chown -R $(id -u):$(id -g) data/ logs/
@@ -212,6 +227,7 @@ echo "PUID: $(id -u), PGID: $(id -g)"
 ```
 
 #### Container Won't Start
+
 ```bash
 # Check logs
 docker compose logs atl-irc-server
@@ -224,6 +240,7 @@ docker compose ps
 ```
 
 #### Network Issues
+
 ```bash
 # Check network connectivity
 docker network ls

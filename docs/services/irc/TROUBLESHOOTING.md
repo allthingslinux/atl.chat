@@ -5,6 +5,7 @@ This guide covers common issues and solutions for IRC.atl.chat deployment and op
 ## Quick Diagnosis
 
 ### System Health Check
+
 ```bash
 # Check service status
 make status
@@ -19,9 +20,11 @@ make test-quick
 ## Common Issues
 
 ### Docker Not Available
+
 **Symptoms:** `docker: command not found`
 
 **Solutions:**
+
 ```bash
 # Install Docker (Ubuntu/Debian)
 sudo apt update && sudo apt install docker.io docker-compose-plugin
@@ -40,9 +43,11 @@ docker compose version
 ```
 
 ### Permission Denied
+
 **Symptoms:** `Permission denied` when accessing files
 
 **Solutions:**
+
 ```bash
 # Fix .env file permissions
 chmod 600 .env
@@ -56,9 +61,11 @@ echo "PUID: $PUID, PGID: $PGID"
 ```
 
 ### Services Won't Start
+
 **Symptoms:** Containers fail to start or exit immediately
 
 **Solutions:**
+
 ```bash
 # Check service status
 make status
@@ -75,9 +82,11 @@ make restart
 ```
 
 ### SSL Certificate Issues
+
 **Symptoms:** SSL setup fails or certificates expire
 
 **Solutions:**
+
 ```bash
 # Check SSL status
 make ssl-status
@@ -93,9 +102,11 @@ cat cloudflare-credentials.ini
 ```
 
 ### Configuration Issues
+
 **Symptoms:** Services start but don't work properly
 
 **Solutions:**
+
 ```bash
 # Validate configuration
 make test-env
@@ -111,9 +122,11 @@ make restart
 ```
 
 ### Network Issues
+
 **Symptoms:** Can't connect to IRC server
 
 **Solutions:**
+
 ```bash
 # Check if ports are open
 netstat -tlnp | grep -E "(6697|8080|8600)"
@@ -132,6 +145,7 @@ sudo ufw allow 8080/tcp
 ## Service-Specific Issues
 
 ### UnrealIRCd Issues
+
 ```bash
 # Check UnrealIRCd logs
 make logs-ircd
@@ -144,6 +158,7 @@ docker compose exec atl-irc-server unrealircd -c /home/unrealircd/unrealircd/con
 ```
 
 ### Atheme Issues
+
 ```bash
 # Check Atheme logs
 make logs-atheme
@@ -156,6 +171,7 @@ ls -la data/atheme/data/
 ```
 
 ### WebPanel Issues
+
 ```bash
 # Check WebPanel logs
 make logs-webpanel
@@ -170,6 +186,7 @@ docker compose exec atl-irc-server nc -z localhost 8600
 ## Debug Mode
 
 ### Enable Verbose Logging
+
 ```bash
 # Add debug flags
 DEBUG=1 make up
@@ -179,6 +196,7 @@ VERBOSE=1 make ssl-setup
 ```
 
 ### Manual Service Access
+
 ```bash
 # Access UnrealIRCd container
 docker compose exec atl-irc-server sh
@@ -193,6 +211,7 @@ docker ps --filter "health=unhealthy"
 ## Recovery Procedures
 
 ### Complete Reset
+
 ```bash
 # WARNING: Destroys all data
 make reset
@@ -202,6 +221,7 @@ make up
 ```
 
 ### Service Recovery
+
 ```bash
 # Restart failed services
 make restart
@@ -216,6 +236,7 @@ make logs
 ## Getting Help
 
 ### Log Analysis
+
 ```bash
 # All service logs
 make logs
@@ -230,6 +251,7 @@ docker compose logs -f
 ```
 
 ### System Information
+
 ```bash
 # Show system info
 make info

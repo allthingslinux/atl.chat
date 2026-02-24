@@ -1,7 +1,8 @@
 """Comparison tests between irc and irc-toolkit libraries."""
 
-import pytest
 from unittest.mock import Mock, patch
+
+import pytest
 
 # Import both IRC libraries conditionally
 irc = pytest.importorskip("irc")
@@ -208,7 +209,7 @@ class IRCComparisonTest:
         # This is more about graceful failure handling
         try:
             # Test with invalid message
-            invalid_message = irctk.Message.parse("INVALID MESSAGE")
+            irctk.Message.parse("INVALID MESSAGE")
         except Exception:
             # Should handle invalid messages gracefully
             pass
@@ -242,7 +243,6 @@ class IRCComparisonTest:
 
         # irc-toolkit has native async support
         try:
-            import asyncio
             import inspect
 
             client = irctk.Client()
@@ -250,16 +250,13 @@ class IRCComparisonTest:
             # Check if connect method is a coroutine
             connect_method = getattr(client, "connect", None)
             if connect_method:
-                assert inspect.iscoroutinefunction(connect_method), (
-                    "irc-toolkit connect should be async"
-                )
+                assert inspect.iscoroutinefunction(connect_method), "irc-toolkit connect should be async"
 
         except Exception as e:
             pytest.fail(f"irc-toolkit async support test failed: {e}")
 
         # pydle is fully async-first
         try:
-            import asyncio
             import inspect
 
             client = pydle.Client("TestBot")
@@ -268,16 +265,12 @@ class IRCComparisonTest:
             # Check if connect method is a coroutine
             connect_method = getattr(client, "connect", None)
             if connect_method:
-                assert inspect.iscoroutinefunction(connect_method), (
-                    "pydle connect should be async"
-                )
+                assert inspect.iscoroutinefunction(connect_method), "pydle connect should be async"
 
             # Check if other methods are async
             message_method = getattr(client, "message", None)
             if message_method:
-                assert inspect.iscoroutinefunction(message_method), (
-                    "pydle message should be async"
-                )
+                assert inspect.iscoroutinefunction(message_method), "pydle message should be async"
 
         except Exception as e:
             pytest.fail(f"pydle async support test failed: {e}")
@@ -340,7 +333,7 @@ class IRCComparisonTest:
         }
 
         # Verify our understanding of features
-        for feature, support in features.items():
+        for _feature, support in features.items():
             assert isinstance(support["irc"], bool)
             assert isinstance(support["irc_toolkit"], bool)
             assert isinstance(support["pydle"], bool)
@@ -352,13 +345,13 @@ class IRCComparisonTest:
         # Test client creation speed
         start_time = time.time()
         for _ in range(10):
-            client = irctk.Client()
+            irctk.Client()
         irctk_creation_time = time.time() - start_time
 
         start_time = time.time()
         for _ in range(10):
             with patch("irc.client.Reactor"):
-                client = irc.client.IRC()
+                irc.client.IRC()
         irc_creation_time = time.time() - start_time
 
         # Both should be reasonably fast (< 1 second total for 10 creations)

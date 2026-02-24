@@ -57,15 +57,19 @@ The `examples/` directory contains configuration templates and examples:
 ## Quick Navigation
 
 ### For New Users
+
 Start with: [CONFIG.md](./CONFIG.md) → [DOCKER.md](./DOCKER.md) → [TROUBLESHOOTING.md](./TROUBLESHOOTING.md)
 
 ### For Administrators
+
 Focus on: [UNREALIRCD.md](./UNREALIRCD.md) → [ATHEME.md](./ATHEME.md) → [MONITORING.md](./MONITORING.md)
 
 ### For Developers
+
 Check out: [DEVELOPMENT.md](./DEVELOPMENT.md) → [TESTING.md](./TESTING.md) → [API.md](./API.md)
 
 ### For Security
+
 Review: [SSL.md](./SSL.md) → [SECRET_MANAGEMENT.md](./SECRET_MANAGEMENT.md) → [BACKUP_RECOVERY.md](./BACKUP_RECOVERY.md)
 
 ## Contributing to Documentation

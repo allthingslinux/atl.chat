@@ -1,12 +1,10 @@
 """Service integration tests for IRC.atl.chat components using controller framework."""
 
-import pytest
-import time
 import socket
+import time
+
+import pytest
 import requests
-import subprocess
-from pathlib import Path
-from typing import List, Optional
 
 from ..utils.base_test_cases import BaseServerTestCase
 from ..utils.specifications import mark_services, mark_specifications
@@ -60,7 +58,7 @@ class IRCIntegrationClient:
             self.connected = False
             return False
 
-    def receive_response(self, timeout: int = 5) -> Optional[str]:
+    def receive_response(self, timeout: int = 5) -> str | None:
         """Receive response from server."""
         if not self.connected:
             return None

@@ -1,13 +1,14 @@
 """Performance and load testing for IRC servers using controlled test environment."""
 
-import pytest
-import time
-import threading
+import contextlib
 import socket
 import statistics
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import List, Dict, Any
+from typing import Any
+
 import psutil
+import pytest
 import requests
 
 from ..utils.base_test_cases import BaseServerTestCase
@@ -24,7 +25,7 @@ class IRCPerformanceClient:
         self.socket: socket.socket | None = None
         self.connected = False
         self.connect_time = 0.0
-        self.response_times: List[float] = []
+        self.response_times: list[float] = []
 
     def connect(self) -> float:
         """Connect to IRC server and return connection time."""
@@ -84,10 +85,8 @@ class IRCPerformanceClient:
     def disconnect(self):
         """Disconnect from server."""
         if self.socket:
-            try:
+            with contextlib.suppress(Exception):
                 self.socket.close()
-            except Exception:
-                pass
         self.connected = False
 
 
@@ -99,7 +98,7 @@ class LoadTestRunner:
         self.port = port
         self.clients = []
 
-    def create_clients(self, count: int) -> List[IRCPerformanceClient]:
+    def create_clients(self, count: int) -> list[IRCPerformanceClient]:
         """Create multiple IRC clients."""
         clients = []
         for i in range(count):
@@ -107,7 +106,7 @@ class LoadTestRunner:
             clients.append(client)
         return clients
 
-    def run_connect_test(self, client_count: int) -> Dict[str, Any]:
+    def run_connect_test(self, client_count: int) -> dict[str, Any]:
         """Run connection performance test."""
         clients = self.create_clients(client_count)
         connect_times = []
@@ -137,7 +136,7 @@ class LoadTestRunner:
             "connections_per_second": len(connect_times) / total_time if total_time > 0 else 0,
         }
 
-    def run_message_test(self, client_count: int, messages_per_client: int) -> Dict[str, Any]:
+    def run_message_test(self, client_count: int, messages_per_client: int) -> dict[str, Any]:
         """Run messaging performance test."""
         clients = self.create_clients(client_count)
         connected_clients = []
@@ -186,7 +185,7 @@ class LoadTestRunner:
             "response_times": response_times,
         }
 
-    def _send_messages(self, client: IRCPerformanceClient, channel: str, count: int) -> Dict[str, Any]:
+    def _send_messages(self, client: IRCPerformanceClient, channel: str, count: int) -> dict[str, Any]:
         """Send multiple messages from a client."""
         messages_sent = 0
         response_times = []
@@ -221,7 +220,7 @@ class TestPerformanceLoad(BaseServerTestCase):
         assert result["avg_connect_time"] < 5.0, "Average connect time should be reasonable"
         assert result["connections_per_second"] > 0, "Should have connection throughput"
 
-        print(f"Connection Performance Results:")
+        print("Connection Performance Results:")
         print(f"  Clients: {result['client_count']}")
         print(".3f")
         print(".3f")
@@ -272,7 +271,7 @@ class TestPerformanceLoad(BaseServerTestCase):
                 if join_time > 0:
                     join_times.append(join_time)
 
-        total_time = time.time() - start_time
+        time.time() - start_time
 
         # Cleanup
         for client in connected_clients:
@@ -297,7 +296,7 @@ class TestPerformanceLoad(BaseServerTestCase):
 
             # Run a small load test
             load_tester = LoadTestRunner()
-            result = load_tester.run_connect_test(client_count=20)
+            load_tester.run_connect_test(client_count=20)
 
             # Get resource usage after load
             final_cpu = psutil.cpu_percent(interval=1)
@@ -321,7 +320,6 @@ class TestPerformanceLoad(BaseServerTestCase):
     @pytest.mark.slow
     def test_webpanel_performance(self):
         """Test WebPanel performance under load."""
-        import requests
 
         # Test basic response time
         start_time = time.time()
@@ -344,7 +342,7 @@ class TestPerformanceLoad(BaseServerTestCase):
         connect_times = []
 
         # Test multiple SSL connections
-        for i in range(5):
+        for _i in range(5):
             start_time = time.time()
             try:
                 context = ssl.create_default_context()
@@ -356,7 +354,7 @@ class TestPerformanceLoad(BaseServerTestCase):
                         connect_time = time.time() - start_time
                         connect_times.append(connect_time)
 
-            except (socket.error, ssl.SSLError):
+            except (OSError, ssl.SSLError):
                 continue
 
         if connect_times:
@@ -408,7 +406,7 @@ class TestPerformanceLoad(BaseServerTestCase):
             start_memory = self._get_container_memory(container)
 
             # Run multiple load cycles
-            for i in range(3):
+            for _i in range(3):
                 load_tester.run_connect_test(client_count=15)
                 time.sleep(2)
 
@@ -439,7 +437,7 @@ class TestPerformanceLoad(BaseServerTestCase):
         latencies = []
 
         # Test multiple connections to measure latency
-        for i in range(10):
+        for _i in range(10):
             start_time = time.time()
 
             try:

@@ -1,8 +1,9 @@
 """Tests showcasing pydle's IRCv3 features and advanced capabilities."""
 
-import pytest
 import asyncio
-from unittest.mock import Mock, AsyncMock, patch
+from unittest.mock import patch
+
+import pytest
 
 # Import pydle conditionally
 pydle = pytest.importorskip("pydle")
@@ -107,9 +108,7 @@ class TestPydleIRCv3:
         assert client.sasl_identity == "testaccount"
 
         # Test SASL with external (certificate) auth
-        client_cert = pydle.Client(
-            "TestBot", sasl_mechanism="EXTERNAL", tls_client_cert="/path/to/cert"
-        )
+        client_cert = pydle.Client("TestBot", sasl_mechanism="EXTERNAL", tls_client_cert="/path/to/cert")
 
         assert client_cert.sasl_mechanism == "EXTERNAL"
         assert client_cert.tls_client_cert == "/path/to/cert"
@@ -117,12 +116,10 @@ class TestPydleIRCv3:
     @pytest.mark.asyncio
     async def test_pydle_message_tags_support(self):
         """Test pydle's message tags (IRCv3.2) support."""
-        client = IRCv3TestBot("TestBot")
+        IRCv3TestBot("TestBot")
 
         # Mock message with tags
-        tagged_message = (
-            "@time=2023-01-01T12:00:00.000Z :user!host@server PRIVMSG #channel :Hello"
-        )
+        tagged_message = "@time=2023-01-01T12:00:00.000Z :user!host@server PRIVMSG #channel :Hello"
 
         # pydle should handle tagged messages
         # This would normally be handled by the message parsing system

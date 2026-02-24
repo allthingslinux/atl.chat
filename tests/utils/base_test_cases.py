@@ -453,7 +453,7 @@ class BaseServerTestCase(_IRCTestCase[BaseServerController], Generic[TClientName
             self.controller.wait_for_services()
         if not name:
             used_ids: list[int] = [int(name) for name in self.clients if isinstance(name, (int, str))]
-            new_name = max(used_ids + [0]) + 1
+            new_name = max([*used_ids, 0]) + 1
             name = cast(TClientName, new_name)
         show_io = show_io if show_io is not None else self.show_io
         self.clients[name] = IRCTestClient(name=name, show_io=show_io)
@@ -606,7 +606,7 @@ class BaseServerTestCase(_IRCTestCase[BaseServerController], Generic[TClientName
             self.authenticateClient(client, account or nick, password)
 
         self.sendLine(client, f"NICK {nick}")
-        self.sendLine(client, "USER %s * * :Realname" % (ident,))
+        self.sendLine(client, f"USER {ident} * * :Realname")
         if capabilities:
             self.sendLine(client, "CAP END")
 

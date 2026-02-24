@@ -35,6 +35,7 @@ tests/
 Fast, isolated tests that don't require external dependencies:
 
 #### Configuration Testing
+
 ```python
 def test_environment_validation():
     """Test environment variable validation logic"""
@@ -44,6 +45,7 @@ def test_environment_validation():
 ```
 
 #### Docker Client Testing
+
 ```python
 def test_docker_client_connection(docker_client):
     """Test Docker API connectivity"""
@@ -53,6 +55,7 @@ def test_docker_client_connection(docker_client):
 ```
 
 #### IRC Server Mock Testing
+
 ```python
 def test_irc_server_mock():
     """Test IRC server mock responses"""
@@ -68,6 +71,7 @@ def test_irc_server_mock():
 Tests that verify component interactions with controlled environments:
 
 #### IRC Protocol Compliance
+
 ```python
 def test_rfc1459_nick_command(irc_server):
     """Test RFC1459 NICK command implementation"""
@@ -88,6 +92,7 @@ def test_rfc1459_nick_command(irc_server):
 ```
 
 #### Service Integration
+
 ```python
 def test_nickserv_registration(irc_services):
     """Test NickServ registration workflow"""
@@ -106,6 +111,7 @@ def test_nickserv_registration(irc_services):
 ```
 
 #### Client Library Integration
+
 ```python
 def test_python_irc_client():
     """Test python-irc library integration"""
@@ -126,6 +132,7 @@ def test_python_irc_client():
 Complete workflow validation from user perspective:
 
 #### Full IRC Session
+
 ```python
 def test_complete_irc_workflow():
     """Test complete user journey"""
@@ -161,6 +168,7 @@ def test_complete_irc_workflow():
 IRC specification compliance validation:
 
 #### Message Parsing
+
 ```python
 def test_irc_message_parsing():
     """Test IRC message format parsing"""
@@ -179,6 +187,7 @@ def test_irc_message_parsing():
 ```
 
 #### RFC Compliance
+
 ```python
 def test_rfc2812_channel_modes():
     """Test RFC2812 channel mode specifications"""
@@ -200,6 +209,7 @@ def test_rfc2812_channel_modes():
 Test controllers provide controlled test environments:
 
 #### IRC Server Controller
+
 ```python
 class UnrealIRCdController:
     def __init__(self, config_path):
@@ -225,6 +235,7 @@ class UnrealIRCdController:
 ```
 
 #### Atheme Services Controller
+
 ```python
 class AthemeController:
     def __init__(self, irc_host, irc_port):
@@ -247,6 +258,7 @@ class AthemeController:
 Reusable test fixtures provide common test data:
 
 #### Docker Fixtures
+
 ```python
 @pytest.fixture(scope="session")
 def docker_client():
@@ -263,6 +275,7 @@ def docker_compose_helper(project_root):
 ```
 
 #### IRC Test Fixtures
+
 ```python
 @pytest.fixture
 def irc_server():
@@ -286,6 +299,7 @@ def irc_client(irc_server):
 Utility functions for common testing operations:
 
 #### IRC Client Helper
+
 ```python
 class IRCTestClient:
     def __init__(self, host, port, tls=False):
@@ -329,6 +343,7 @@ class IRCTestClient:
 ### Command Line Execution
 
 #### Using Make (Recommended)
+
 ```bash
 # Complete test suite
 make test
@@ -347,6 +362,7 @@ make test-quick        # Fast environment check
 ```
 
 #### Using uv Directly
+
 ```bash
 # All tests
 uv run pytest tests/
@@ -362,6 +378,7 @@ uv run pytest -v tests/unit/
 ```
 
 #### Selective Test Execution
+
 ```bash
 # Run specific test file
 uv run pytest tests/integration/test_services.py
@@ -379,6 +396,7 @@ uv run pytest --log-level=DEBUG tests/
 ### Test Configuration
 
 #### pytest.ini
+
 ```ini
 [tool:pytest]
 testpaths = tests
@@ -398,6 +416,7 @@ markers =
 ```
 
 #### pyproject.toml
+
 ```toml
 [tool.pytest.ini_options]
 minversion = "7.0"
@@ -419,6 +438,7 @@ markers = [
 ## Test Data & Fixtures
 
 ### Sample Data
+
 ```python
 @pytest.fixture
 def sample_irc_config():
@@ -453,6 +473,7 @@ def sample_user_registration():
 ### Test Scenarios
 
 #### Channel Operations
+
 ```python
 def test_channel_creation_and_join(irc_server, irc_client):
     """Test channel creation and joining"""
@@ -470,6 +491,7 @@ def test_channel_creation_and_join(irc_server, irc_client):
 ```
 
 #### User Modes
+
 ```python
 def test_user_mode_changes(irc_client):
     """Test user mode modifications"""
@@ -487,6 +509,7 @@ def test_user_mode_changes(irc_client):
 ## Performance Testing
 
 ### Load Testing
+
 ```python
 def test_concurrent_connections(irc_server):
     """Test multiple concurrent connections"""
@@ -509,6 +532,7 @@ def test_concurrent_connections(irc_server):
 ```
 
 ### Stress Testing
+
 ```python
 def test_message_flood_protection(irc_server, irc_client):
     """Test flood protection mechanisms"""
@@ -525,6 +549,7 @@ def test_message_flood_protection(irc_server, irc_client):
 ```
 
 ### Benchmarking
+
 ```python
 def test_message_throughput(benchmark):
     """Benchmark message processing throughput"""
@@ -547,6 +572,7 @@ def test_message_throughput(benchmark):
 ## CI/CD Integration
 
 ### GitHub Actions Testing
+
 ```yaml
 - name: Run Tests
   run: |
@@ -564,6 +590,7 @@ def test_message_throughput(benchmark):
 ```
 
 ### Test Reporting
+
 ```bash
 # Generate HTML reports
 uv run pytest --html=report.html --self-contained-html
@@ -578,6 +605,7 @@ uv run pytest --junitxml=test-results.xml
 ## Debugging Tests
 
 ### Test Isolation
+
 ```python
 # Run single failing test
 uv run pytest tests/integration/test_services.py::test_nickserv_registration -v
@@ -592,6 +620,7 @@ uv run pytest --log-cli-level=DEBUG -s
 ### Common Issues
 
 #### Docker Connection Issues
+
 ```bash
 # Verify Docker is running
 docker ps
@@ -604,6 +633,7 @@ docker run hello-world
 ```
 
 #### Port Conflicts
+
 ```bash
 # Find used ports
 netstat -tlnp | grep :6697
@@ -617,6 +647,7 @@ def irc_server():
 ```
 
 #### Service Dependencies
+
 ```bash
 # Ensure services start in order
 @pytest.fixture(scope="session", autouse=True)
@@ -632,6 +663,7 @@ def start_services():
 ### Adding New Tests
 
 #### Unit Test Template
+
 ```python
 import pytest
 
@@ -668,6 +700,7 @@ class TestConfigurationValidation:
 ```
 
 #### Integration Test Template
+
 ```python
 import pytest
 
@@ -701,6 +734,7 @@ class TestIRCConnectivity:
 ### Test Organization
 
 #### Test File Structure
+
 ```
 tests/
 ├── unit/
@@ -721,6 +755,7 @@ tests/
 ```
 
 #### Test Naming Conventions
+
 ```python
 # Unit tests
 def test_function_name_condition_expected_result():
@@ -738,12 +773,14 @@ def test_complete_user_journey():
 ## Coverage Goals
 
 ### Target Coverage Metrics
+
 - **Unit Tests**: >90% coverage
 - **Integration Tests**: >80% coverage
 - **Critical Paths**: 100% coverage
 - **Error Handling**: Complete coverage
 
 ### Coverage Reporting
+
 ```bash
 # Generate coverage report
 uv run pytest --cov=src --cov-report=html --cov-report=term
@@ -761,6 +798,7 @@ uv run pytest --cov=src --cov-report=html \
 ## Performance Benchmarks
 
 ### Test Execution Times
+
 - **Unit Tests**: <30 seconds
 - **Integration Tests**: <2 minutes
 - **End-to-End Tests**: <5 minutes
@@ -768,6 +806,7 @@ uv run pytest --cov=src --cov-report=html \
 - **Full Suite**: <20 minutes
 
 ### Resource Usage
+
 - **Memory**: <512MB per test run
 - **Disk**: <1GB for test data
 - **Network**: Minimal external dependencies

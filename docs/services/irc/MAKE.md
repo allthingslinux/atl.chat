@@ -7,6 +7,7 @@ This guide covers the Makefile system used for building, deploying, and managing
 ### Command Categories
 
 #### Quick Start Commands
+
 ```bash
 make up          # Complete setup and start (recommended)
 make down        # Stop all services
@@ -15,6 +16,7 @@ make status      # Check service status
 ```
 
 #### Development Commands
+
 ```bash
 make test        # Run all tests
 make build       # Build containers
@@ -27,6 +29,7 @@ make lint        # Code quality checks
 ### Service Lifecycle
 
 #### Complete Setup (`make up`)
+
 ```bash
 # What it does:
 # 1. Initializes directories and permissions
@@ -38,6 +41,7 @@ make up
 ```
 
 #### Service Management
+
 ```bash
 # Start services (assumes setup complete)
 make start-only
@@ -56,6 +60,7 @@ make rebuild
 ```
 
 #### Selective Service Control
+
 ```bash
 # View specific service logs
 make logs-ircd        # UnrealIRCd logs
@@ -69,6 +74,7 @@ make webpanel         # Open WebPanel info
 ### Building and Development
 
 #### Container Building
+
 ```bash
 # Build all containers
 make build
@@ -81,6 +87,7 @@ make setup
 ```
 
 #### Development Environment
+
 ```bash
 # Access development shell
 make dev-shell
@@ -95,6 +102,7 @@ make lint
 ### Testing Framework
 
 #### Test Categories
+
 ```bash
 # Complete test suite
 make test
@@ -122,6 +130,7 @@ make test-docker
 ```
 
 #### Specialized Testing
+
 ```bash
 # Environment validation
 make test-env
@@ -136,6 +145,7 @@ make test-quick
 ### SSL Certificate Management
 
 #### Certificate Lifecycle
+
 ```bash
 # One-command SSL setup
 make ssl-setup
@@ -159,6 +169,7 @@ make ssl-clean
 ### Module Management
 
 #### Module Operations
+
 ```bash
 # List available modules
 make modules-list
@@ -175,6 +186,7 @@ make generate-password
 ### System Management
 
 #### Information and Diagnostics
+
 ```bash
 # Comprehensive help
 make help
@@ -187,6 +199,7 @@ make test-quick
 ```
 
 #### Maintenance Operations
+
 ```bash
 # Clean up containers and images
 make clean
@@ -243,6 +256,7 @@ make reset
 ### Common Issues
 
 #### Permission Errors
+
 ```bash
 # Symptom: "Permission denied"
 # Solution: Check PUID/PGID in .env
@@ -254,6 +268,7 @@ export PGID=$(id -g)
 ```
 
 #### Build Failures
+
 ```bash
 # Symptom: "Build failed"
 # Solution: Clean rebuild
@@ -264,6 +279,7 @@ docker compose build --progress=plain unrealircd
 ```
 
 #### Service Won't Start
+
 ```bash
 # Check service status
 make status
@@ -278,6 +294,7 @@ make test-env
 ### Debug Mode
 
 #### Enable Verbose Output
+
 ```bash
 # Add debug flags
 DEBUG=1 make up
@@ -287,6 +304,7 @@ VERBOSE=1 make ssl-setup
 ```
 
 #### Manual Command Execution
+
 ```bash
 # Run commands manually
 docker compose up -d
@@ -301,6 +319,7 @@ env | grep -E "(PUID|PGID|VERSION)"
 ### Usage Guidelines
 
 #### Development Workflow
+
 ```bash
 # Daily development cycle
 make up          # Start environment
@@ -311,6 +330,7 @@ make down        # Clean shutdown
 ```
 
 #### Production Deployment
+
 ```bash
 # Careful production updates
 make test        # Full validation
@@ -321,6 +341,7 @@ make status      # Verify health
 ### Security Considerations
 
 #### Access Control
+
 ```bash
 # Secure file permissions
 chmod 600 .env cloudflare-credentials.ini

@@ -31,6 +31,7 @@ This is the list of all user modes that can be set on a user. You can only set u
 ## Configuration Tips for System Operators
 
 ### Default User Modes
+
 Set in your `unrealircd.conf`:
 
 ```c
@@ -48,6 +49,7 @@ set {
 ### Security Considerations
 
 #### Recommended Default Modes
+
 ```c
 set {
     /* Secure defaults: cloak (+x), invisible (+i), wallops (+w) */
@@ -59,6 +61,7 @@ set {
 ```
 
 #### Cloaking Configuration
+
 ```c
 cloak {
     /* Enable hostname cloaking */
@@ -79,6 +82,7 @@ cloak {
 ### IRC Operator Configuration
 
 #### Operator Block Example
+
 ```c
 oper yournick {
     /* Password hash from mkpasswd */
@@ -99,6 +103,7 @@ oper yournick {
 ```
 
 #### Operator Classes
+
 ```c
 class netadmin {
     /* Maximum connections */
@@ -116,11 +121,13 @@ class netadmin {
 ### Bot Configuration
 
 #### Bot Service Modes
+
 - Bots should use `+B` (marks as bot)
 - Consider `+d` (deaf to channel messages) for command bots
 - Use `+q` (unkickable) sparingly for critical bots
 
 #### Example Bot Oper Block
+
 ```c
 oper botserv {
     password "$argon2id$...";
@@ -133,6 +140,7 @@ oper botserv {
 ### Monitoring and Management
 
 #### Snomask Configuration
+
 ```c
 /* Enable server notice masks for operators */
 set {
@@ -141,6 +149,7 @@ set {
 ```
 
 #### Common Snomasks
+
 - `+s` - Server notices
 - `+k` - Kill notices
 - `+c` - Connect notices
@@ -149,11 +158,13 @@ set {
 ### Troubleshooting
 
 #### Mode Issues
+
 - **Can't set mode**: Check oper privileges or mode restrictions
 - **Modes not working**: Verify module loading in unrealircd.conf
 - **Cloaking not working**: Check cloak-keys configuration
 
 #### Permission Errors
+
 - **Oper denied**: Verify password hash and oper block
 - **Mode restricted**: Check oper class permissions
 - **Vhost failed**: Ensure vhost block exists in config
@@ -161,18 +172,21 @@ set {
 ### Best Practices
 
 #### Security
+
 - Use strong passwords with Argon2id hashing
 - Limit oper privileges to necessary permissions
 - Regularly audit oper accounts
 - Use vhosts to hide operator identities
 
 #### User Experience
+
 - Set appropriate default modes for privacy
 - Configure cloaking to protect user privacy
 - Use snomasks for effective monitoring
 - Document custom modes for users
 
 #### Performance
+
 - Avoid excessive mode changes in channels
 - Use appropriate flood controls
 - Monitor for mode lock conflicts

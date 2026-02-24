@@ -1,14 +1,13 @@
 """Integration tests for IRC.atl.chat configuration validation."""
 
-import pytest
-import subprocess
-import tempfile
-import shutil
 import os
+import shutil
+import subprocess
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
+
+import pytest
 import yaml
-import json
 
 
 class TestConfigurationValidation:
@@ -49,7 +48,7 @@ class TestConfigurationValidation:
 
         # Test YAML syntax
         try:
-            with open(compose_file, "r") as f:
+            with open(compose_file) as f:
                 config = yaml.safe_load(f)
 
             assert isinstance(config, dict)
@@ -211,7 +210,7 @@ class TestConfigurationValidation:
         if not compose_file.exists():
             pytest.skip("compose.yaml not found")
 
-        with open(compose_file, "r") as f:
+        with open(compose_file) as f:
             config = yaml.safe_load(f)
 
         services = config.get("services", {})

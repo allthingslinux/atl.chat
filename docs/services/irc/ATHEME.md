@@ -65,6 +65,7 @@ atheme:
 The primary configuration is generated from `atheme.conf.template`:
 
 #### Server Connection (Uplink)
+
 ```c
 serverinfo {
     name = "${ATHEME_SERVER_NAME}";           // services.atl.chat
@@ -77,6 +78,7 @@ serverinfo {
 ```
 
 #### Authentication
+
 ```c
 uplink {
     send_password = "${ATHEME_SEND_PASSWORD}";
@@ -88,6 +90,7 @@ uplink {
 ### Module Loading
 
 #### Core Modules
+
 ```c
 loadmodule "protocol/unreal4";       // UnrealIRCd protocol support
 loadmodule "backend/opensex";        // SQLite database backend
@@ -95,6 +98,7 @@ loadmodule "crypto/pbkdf2v2";        // Password hashing
 ```
 
 #### Service Modules
+
 ```c
 // Nickname services
 loadmodule "nickserv/main";
@@ -157,12 +161,14 @@ docker exec atheme pgrep -f atheme-services
 #### NickServ - Nickname Management
 
 **Registration:**
+
 ```irc
 /msg NickServ REGISTER password email@example.com
 /msg NickServ IDENTIFY nickname password
 ```
 
 **Account Management:**
+
 ```irc
 /msg NickServ SET PASSWORD newpassword
 /msg NickServ SET EMAIL newemail@example.com
@@ -170,6 +176,7 @@ docker exec atheme pgrep -f atheme-services
 ```
 
 **Security Features:**
+
 ```irc
 /msg NickServ SET HIDEMAIL ON
 /msg NickServ SET PRIVATE ON
@@ -179,12 +186,14 @@ docker exec atheme pgrep -f atheme-services
 #### ChanServ - Channel Management
 
 **Channel Registration:**
+
 ```irc
 /msg ChanServ REGISTER #channel
 /msg ChanServ SET #channel FOUNDER
 ```
 
 **Access Control:**
+
 ```irc
 /msg ChanServ ACCESS #channel ADD nickname AOP
 /msg ChanServ ACCESS #channel DEL nickname
@@ -192,6 +201,7 @@ docker exec atheme pgrep -f atheme-services
 ```
 
 **Channel Settings:**
+
 ```irc
 /msg ChanServ SET #channel GUARD ON
 /msg ChanServ SET #channel MLOCK +nt
@@ -201,6 +211,7 @@ docker exec atheme pgrep -f atheme-services
 #### OperServ - Administrative Services
 
 **Network Management:**
+
 ```irc
 /msg OperServ AKILL ADD mask reason
 /msg OperServ AKILL DEL mask
@@ -208,6 +219,7 @@ docker exec atheme pgrep -f atheme-services
 ```
 
 **Service Control:**
+
 ```irc
 /msg OperServ RESTART
 /msg OperServ SHUTDOWN
@@ -215,6 +227,7 @@ docker exec atheme pgrep -f atheme-services
 ```
 
 **User Management:**
+
 ```irc
 /msg OperServ MODE nickname +o
 /msg OperServ KILL nickname reason
@@ -223,12 +236,14 @@ docker exec atheme pgrep -f atheme-services
 #### MemoServ - Private Messaging
 
 **Sending Memos:**
+
 ```irc
 /msg MemoServ SEND nickname message
 /msg MemoServ SEND #channel message
 ```
 
 **Managing Memos:**
+
 ```irc
 /msg MemoServ LIST
 /msg MemoServ READ number
@@ -300,6 +315,7 @@ crypto {
 ### Access Controls
 
 #### Operator Permissions
+
 ```c
 operclass "sra" {
     privileges = "admin:*";
@@ -311,6 +327,7 @@ oper "admin" {
 ```
 
 #### Service Restrictions
+
 ```c
 nickserv {
     register_enabled = yes;
@@ -372,22 +389,26 @@ docker exec atheme nc -z localhost 6901
 ### Registration Process
 
 1. **Connect to IRC**
+
    ```irc
    /server irc.atl.chat +6697
    ```
 
 2. **Register Nickname**
+
    ```irc
    /msg NickServ REGISTER mypassword user@example.com
    ```
 
 3. **Verify Email** (if required)
    - Check email for verification code
+
    ```irc
    /msg NickServ VERIFY code
    ```
 
 4. **Identify**
+
    ```irc
    /msg NickServ IDENTIFY mypassword
    ```
@@ -395,18 +416,21 @@ docker exec atheme nc -z localhost 6901
 ### Channel Management
 
 1. **Register Channel**
+
    ```irc
    /join #mychannel
    /msg ChanServ REGISTER #mychannel
    ```
 
 2. **Set Channel Modes**
+
    ```irc
    /msg ChanServ SET #mychannel MLOCK +nt
    /msg ChanServ SET #mychannel GUARD ON
    ```
 
 3. **Manage Access**
+
    ```irc
    /msg ChanServ ACCESS #mychannel ADD friend AOP
    ```
@@ -416,6 +440,7 @@ docker exec atheme nc -z localhost 6901
 ### Common Issues
 
 #### Services Not Starting
+
 ```bash
 # Check container logs
 docker logs atheme
@@ -428,6 +453,7 @@ docker exec atheme atheme-services -c /usr/local/atheme/etc/atheme.conf
 ```
 
 #### Authentication Problems
+
 ```bash
 # Check password hash
 grep "BADPASSWORD" data/atheme/logs/atheme.log
@@ -437,6 +463,7 @@ sqlite3 data/atheme/data/services.db "SELECT * FROM nick_table WHERE nick='nickn
 ```
 
 #### Database Issues
+
 ```bash
 # Check database file
 ls -la data/atheme/data/services.db
@@ -449,6 +476,7 @@ cp backup/services.db data/atheme/data/services.db
 ```
 
 #### Memory Issues
+
 ```bash
 # Monitor memory usage
 docker stats atheme
@@ -502,6 +530,7 @@ service "myservice" {
 ### Integration Features
 
 #### IRCv3 Support
+
 ```c
 loadmodule "extensions/ircv3";
 
@@ -511,6 +540,7 @@ ircv3 {
 ```
 
 #### Web Interface
+
 ```c
 loadmodule "httpd/main";
 
@@ -523,6 +553,7 @@ httpd {
 ### Backup and Recovery
 
 #### Automated Backups
+
 ```bash
 # Database backup script
 #!/bin/bash
@@ -533,6 +564,7 @@ cp apps/atheme/config/atheme.conf backup/
 ```
 
 #### Recovery Process
+
 ```bash
 # Stop services
 docker stop atheme

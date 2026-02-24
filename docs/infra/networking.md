@@ -11,7 +11,7 @@ We operate on a distributed "VPC" using Tailscale's CGNAT subnet: `100.64.0.0/10
 
 ### Traffic Flow
 
-1. **HTTP/S Traffic**: 
+1. **HTTP/S Traffic**:
    `Internet` -> `Cloudflare` -> `atl.network` (Nginx Proxy Manager) -> `Tailnet` -> `atl.chat` (Containers)
 
 2. **TCP/UDP (IRC/XMPP) Traffic**:
@@ -39,9 +39,11 @@ To avoid collisions and simplify proxy configuration, we use standardized port a
 ## SSL & DNS Strategy
 
 ### Hostnames
+
 Standardize on Tailnet DNS for internal service discovery (e.g., `irc.atl.chat.tailnet-name.ts.net`).
 
 ### Certificates
+
 - **Termination**: Handled at `atl.network` (Nginx Proxy Manager).
 - **Renewal**: Automatic via Cloudflare DNS-01 challenges.
 - **Internal Transport**: Tailscale provides wireguard-level encryption between all nodes in the mesh.

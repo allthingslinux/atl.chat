@@ -5,17 +5,20 @@ This guide covers essential backup procedures for IRC.atl.chat data and configur
 ## What to Backup
 
 ### Critical Data
+
 - **Atheme Database**: User accounts, channel registrations (`data/atheme/data/services.db`)
 - **SSL Certificates**: Private keys and certificates (`data/certs/`)
 - **Configuration**: Environment variables (`.env`)
 
 ### Optional Data
+
 - **Logs**: Service logs (`data/irc/logs/`, `data/atheme/logs/`)
 - **Channel Data**: UnrealIRCd runtime data (`data/irc/data/`)
 
 ## Backup Procedures
 
 ### Manual Backup
+
 ```bash
 # Create backup directory
 mkdir -p backup/$(date +%Y%m%d)
@@ -34,6 +37,7 @@ tar -czf backup-$(date +%Y%m%d).tar.gz backup/$(date +%Y%m%d)/
 ```
 
 ### Automated Backup Script
+
 ```bash
 #!/bin/bash
 # Simple backup script
@@ -60,6 +64,7 @@ echo "Backup completed: irc-backup-$(date +%Y%m%d).tar.gz"
 ## Recovery Procedures
 
 ### Restore from Backup
+
 ```bash
 # Stop services
 docker compose down
@@ -76,6 +81,7 @@ docker compose up -d
 ```
 
 ### Verify Recovery
+
 ```bash
 # Check services are running
 make status
@@ -97,6 +103,7 @@ make ssl-status
 ## Troubleshooting
 
 ### Backup Issues
+
 ```bash
 # Check disk space
 df -h
@@ -109,6 +116,7 @@ ls -la data/
 ```
 
 ### Recovery Issues
+
 ```bash
 # Check service logs
 make logs

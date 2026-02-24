@@ -1,13 +1,12 @@
 """Integration tests for shell scripts used in IRC.atl.chat deployment."""
 
-import pytest
-import subprocess
-import tempfile
-import shutil
 import os
-from pathlib import Path
-from unittest.mock import patch, MagicMock
+import shutil
 import stat
+import subprocess
+from pathlib import Path
+
+import pytest
 
 
 class TestInitScript:

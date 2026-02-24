@@ -21,6 +21,7 @@ MockDiscordAdapter → Bus → Relay → Bus → MockIRCAdapter
 ```
 
 The real adapters (Discord, IRC, XMPP) are replaced with mocks that:
+
 - Accept events through the same `accept_event`/`push_event` interface
 - Capture outbound messages instead of sending them
 - Never connect to real services
@@ -51,12 +52,14 @@ async def test_discord_to_irc_message(harness: BridgeTestHarness):
 ## What Gets Tested
 
 ✅ **Tested:**
+
 - Event routing logic (bus → relay → adapters)
 - Message transformation (MessageIn → MessageOut)
 - Channel mapping (Discord ↔ IRC ↔ XMPP)
 - Event filtering (messages don't echo to origin)
 
 ❌ **Not Tested:**
+
 - Real Discord/IRC/XMPP protocol behavior
 - Network issues, rate limits, authentication
 - Webhook creation, IRC puppet management

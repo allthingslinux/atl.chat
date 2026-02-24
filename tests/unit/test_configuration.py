@@ -146,7 +146,7 @@ IRC_ADMIN_EMAIL=admin@test.com
         config_file = tmp_path / "test.conf"
         config_file.write_text("original content")
 
-        backup_content = config_file.read_text()
+        config_file.read_text()
 
         # Simulate configuration update
         new_content = "updated content"

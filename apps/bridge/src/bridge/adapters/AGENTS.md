@@ -47,6 +47,7 @@ Env: `BRIDGE_IRC_NICK` (default: `atl-bridge`).
 Two classes:
 
 **`IRCClient`** (pydle.Client) — main IRC connection:
+
 - IRCv3 capability negotiation on connect; `_ready_fallback` joins channels if `RPL_005` not received.
 - `on_message` / `on_ctcp_action` — emit `MessageIn` to Bus.
 - `on_raw_tagmsg` — handles `+draft/reply` (threading) and `+draft/react` (reactions).
@@ -59,6 +60,7 @@ Two classes:
 - Deletes: `REDACT` command with original IRC msgid.
 
 **`IRCAdapter`** — Bus-facing wrapper:
+
 - Accepts `MessageOut`, `MessageDeleteOut`, `ReactionOut`, `TypingOut` targeting `"irc"`.
 - Routes `MessageOut` via puppet if identity available, otherwise falls back to main connection.
 - Starts `IRCPuppetManager` if `IdentityResolver` is present.
@@ -85,6 +87,7 @@ Two classes:
 ## IRC Throttle (`irc_throttle.py`)
 
 `TokenBucket(limit, refill_rate=1.0)`:
+
 - `use_token()` → `True` if token available (consumes it), `False` if bucket empty.
 - `acquire()` → seconds to wait before a token is available (0 if available now).
 - Refills continuously based on elapsed time since last refill.
@@ -125,6 +128,7 @@ Env: `BRIDGE_XMPP_COMPONENT_JID`, `BRIDGE_XMPP_COMPONENT_SECRET`, `BRIDGE_XMPP_C
 | 0461 | Message Replies — threading |
 
 Key methods:
+
 - `send_message_as_user(discord_id, muc_jid, content, nick, reply_to_id?)` — sends MUC message as puppet JID; returns XMPP message ID.
 - `send_correction_as_user(...)` — XEP-0308 correction.
 - `send_retraction_as_user(...)` — XEP-0424 retraction.
@@ -134,6 +138,7 @@ Key methods:
 - `join_muc_as_user(muc_jid, nick)` — joins MUC as puppet.
 
 Inbound handlers:
+
 - `_on_groupchat_message` — emits `MessageIn` to Bus; skips delayed delivery (XEP-0203).
 - `_on_reactions` — emits `ReactionIn` to Bus.
 - `_on_retraction` — emits `MessageDelete` to Bus.

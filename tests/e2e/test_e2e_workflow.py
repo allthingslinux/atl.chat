@@ -103,7 +103,7 @@ class E2EWorkflowTest:
                 assert result.returncode == 0, f"Config preparation failed: {result.stderr}"
 
             # Step 3: Docker Compose validation
-            compose_file = project_dir / "compose.yaml"
+            project_dir / "compose.yaml"
             result = subprocess.run(
                 ["docker", "compose", "config"],
                 check=False,

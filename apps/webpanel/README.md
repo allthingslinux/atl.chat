@@ -10,6 +10,7 @@ This directory contains the UnrealIRCd WebPanel - a web-based administration int
 ## What is the WebPanel?
 
 The UnrealIRCd WebPanel provides a user-friendly web interface to:
+
 - Monitor your IRC network in real-time
 - Manage users, channels, and server settings
 - Configure bans, spamfilters, and other administrative tasks
@@ -17,11 +18,12 @@ The UnrealIRCd WebPanel provides a user-friendly web interface to:
 
 ## Access
 
-Once running, access the webpanel at: **http://localhost:8080**
+Once running, access the webpanel at: **<http://localhost:8080>**
 
 ## Configuration
 
 The webpanel automatically configures itself during the first run. You can customize:
+
 - Authentication backend (file-based or SQL)
 - RPC connection settings
 - Security parameters
@@ -42,6 +44,7 @@ The webpanel automatically configures itself during the first run. You can custo
 ## Troubleshooting
 
 If the webpanel fails to start:
+
 1. Check that UnrealIRCd is running and healthy
 2. Verify port 8600 is accessible for JSON-RPC
 3. Check container logs: `docker compose logs unrealircd-webpanel`

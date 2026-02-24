@@ -32,7 +32,7 @@ For more IRC-specific details (runtime commands, troubleshooting, etc.), see [IR
 ### Key Paths
 
 - **Config**: `apps/unrealircd/third-party-modules.list`
-- **Catalog**: https://modules.unrealircd.org/
+- **Catalog**: <https://modules.unrealircd.org/>
 - **List installed**: `docker compose exec atl-irc-server unrealircd module list`
 
 ---
@@ -45,7 +45,7 @@ Prosody uses a **source** directory and an **enabled** directory:
 
 | Directory                | Purpose                                                                 |
 |--------------------------|-------------------------------------------------------------------------|
-| `prosody-modules`        | Full clone of community modules from https://hg.prosody.im/prosody-modules/ |
+| `prosody-modules`        | Full clone of community modules from <https://hg.prosody.im/prosody-modules/> |
 | `prosody-modules-enabled`| Symlinks to only the modules we want (from `modules.list`)              |
 
 Prosody loads modules from `prosody-modules-enabled` via `plugin_paths` in `prosody.cfg.lua`.

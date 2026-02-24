@@ -1,9 +1,10 @@
 """Monitoring and health check tests using UnrealIRCd RPC with controlled server."""
 
-import pytest
 import time
-from unittest.mock import Mock, patch
-from datetime import datetime, timedelta
+from datetime import datetime
+from unittest.mock import Mock
+
+import pytest
 
 # Import unrealircd-rpc-py conditionally
 unrealircd_rpc = pytest.importorskip("unrealircd_rpc_py")

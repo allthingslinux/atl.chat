@@ -67,10 +67,10 @@ logs service="":
 status:
     docker compose ps
 
-# Run all linters via lefthook
+# Run all linters via pre-commit
 [group('Verification')]
 lint:
-    lefthook run pre-commit
+    pre-commit run --all-files
 
 # Run security scans (Gitleaks, Trivy)
 [group('Verification')]

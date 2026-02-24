@@ -3,9 +3,10 @@
 Tests pydle IRC client library functionality against our controller-managed server.
 """
 
-import pytest
 import asyncio
 import time
+
+import pytest
 
 # Import pydle conditionally
 pydle = pytest.importorskip("pydle")
@@ -300,11 +301,11 @@ class TestPydleFeatures:
         # Verify messages were recorded
         assert len(client.messages_received) == 3
 
-        private_msg = [msg for msg in client.messages_received if msg.get("type") == "private"][0]
+        private_msg = next(msg for msg in client.messages_received if msg.get("type") == "private")
         assert private_msg["source"] == "user1"
         assert private_msg["message"] == "hello bot"
 
-        channel_msg = [msg for msg in client.messages_received if msg.get("type") == "channel"][0]
+        channel_msg = next(msg for msg in client.messages_received if msg.get("type") == "channel")
         assert channel_msg["channel"] == "#test"
         assert channel_msg["source"] == "user2"
 

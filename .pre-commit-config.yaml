@@ -1,0 +1,91 @@
+---
+ci:
+  autofix_commit_msg: 'style: auto fixes from pre-commit hooks'
+  autoupdate_commit_msg: 'chore: update pre-commit hook versions'
+default_language_version:
+  python: python3.11
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-json
+      - id: check-toml
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+        exclude: \.md$
+  - repo: https://github.com/abravalheri/validate-pyproject
+    rev: v0.25
+    hooks:
+      - id: validate-pyproject
+        files: ^(pyproject\.toml|apps/.*/pyproject\.toml)$
+        additional_dependencies: ['validate-pyproject-schema-store[all]']
+  - repo: https://github.com/lyz-code/yamlfix
+    rev: 1.19.1
+    hooks:
+      - id: yamlfix
+        exclude: \.(commitlintrc|pre-commit-hooks)\.yaml$|compose\.(yaml|yml)$|infra/compose/|infra/turn-standalone/
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.38.0
+    hooks:
+      - id: yamllint
+        exclude: compose\.(yaml|yml)$|infra/compose/|infra/turn-standalone/
+        args: [-c=.yamllint.yml]
+  - repo: https://github.com/rhysd/actionlint
+    rev: v1.7.11
+    hooks:
+      - id: actionlint
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.47.0
+    hooks:
+      - id: markdownlint-fix
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.2
+    hooks:
+      - id: ruff-check
+        args: [--fix]
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.2
+    hooks:
+      - id: ruff-format
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.11.0.1
+    hooks:
+      - id: shellcheck
+  - repo: https://github.com/scop/pre-commit-shfmt
+    rev: v3.12.0-2
+    hooks:
+      - id: shfmt
+        args: [-ln, bash, -i, '2', -ci, -bn, -sr, -kp, -s]
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.0
+    hooks:
+      - id: gitleaks
+        args: [--config, .gitleaks.toml]
+  - repo: https://github.com/alessandrojcm/commitlint-pre-commit-hook
+    rev: v9.24.0
+    hooks:
+      - id: commitlint
+        stages: [commit-msg]
+        additional_dependencies:
+          - '@commitlint/cli@^20.4.2'
+          - '@commitlint/config-conventional@^20.4.2'
+  - repo: local
+    hooks:
+      - id: luacheck
+        name: Luacheck
+        entry: ghcr.io/lunarmodules/luacheck:latest
+        language: docker_image
+        types: [lua]
+      - id: commitizen
+        name: Commitizen (interactive commit)
+        entry: sh -c '[ -t 0 ] || exit 0; exec </dev/tty && pnpm exec cz --hook'
+        language: system
+        stages: [prepare-commit-msg]
+        pass_filenames: false
+      - id: lint-web
+        name: Web (Biome/ultracite)
+        entry: bash -c 'cd apps/web && pnpm run fix "$@" && pnpm run check "$@"'
+        language: system
+        types: [javascript, tsx]
+        files: ^apps/web/
+exclude: ^(\.archive/|.*typings/|node_modules/|\.venv/|\.uv_cache/|data/|\.next/|\.cursor/).*$

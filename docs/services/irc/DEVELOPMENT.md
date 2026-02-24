@@ -12,6 +12,7 @@ This guide covers the development workflow and local setup for IRC.atl.chat.
 ## Local Setup
 
 ### Clone Repository
+
 ```bash
 # Clone with SSH (recommended)
 git clone git@github.com:allthingslinux/irc.atl.chat.git
@@ -23,6 +24,7 @@ cd irc.atl.chat
 ```
 
 ### Environment Configuration
+
 ```bash
 # Copy environment template
 cp .env.example .env
@@ -39,6 +41,7 @@ LETSENCRYPT_EMAIL=dev@localhost
 ```
 
 ### Development Startup
+
 ```bash
 # Start full development environment
 make up
@@ -51,6 +54,7 @@ make status
 ```
 
 ### Development URLs
+
 - **IRC Server**: `localhost:6697` (TLS)
 - **WebPanel**: `http://localhost:8080`
 - **JSON-RPC API**: `localhost:8600`
@@ -59,6 +63,7 @@ make status
 ## Development Workflow
 
 ### Branching Strategy
+
 ```bash
 # Create feature branch
 git checkout -b feature/my-feature
@@ -71,6 +76,7 @@ git checkout -b docs/update-guide
 ```
 
 ### Making Changes
+
 ```bash
 # Start development environment
 make up
@@ -89,6 +95,7 @@ make status
 ```
 
 ### Testing
+
 ```bash
 # Run all tests
 make test
@@ -105,6 +112,7 @@ make test-quick
 ## Configuration Development
 
 ### Template Changes
+
 ```bash
 # Edit configuration templates
 vim apps/irc/services/unrealircd/config/unrealircd.conf.template
@@ -118,6 +126,7 @@ make restart
 ```
 
 ### Environment Variables
+
 ```bash
 # Add new variables to .env.example
 vim .env.example
@@ -132,6 +141,7 @@ make test-env
 ## Docker Development
 
 ### Container Debugging
+
 ```bash
 # Access UnrealIRCd container
 docker compose exec atl-irc-server sh
@@ -145,6 +155,7 @@ docker compose logs atl-irc-services
 ```
 
 ### Container Rebuilding
+
 ```bash
 # Rebuild specific service
 docker compose build unrealircd
@@ -159,6 +170,7 @@ docker compose build --no-cache
 ## Code Quality
 
 ### Linting
+
 ```bash
 # Run linting checks
 make lint
@@ -169,6 +181,7 @@ shellcheck scripts/*.sh
 ```
 
 ### Testing
+
 ```bash
 # Run test suite
 make test
@@ -181,6 +194,7 @@ uv run pytest tests/integration/
 ## Contributing
 
 ### Pull Request Process
+
 1. **Fork the repository**
 2. **Create feature branch**: `git checkout -b feature/my-feature`
 3. **Make changes**: Follow coding standards
@@ -190,6 +204,7 @@ uv run pytest tests/integration/
 7. **Create pull request**
 
 ### Code Standards
+
 - **Shell scripts**: Use `shellcheck` for validation
 - **YAML files**: Use `yamllint` for validation
 - **Documentation**: Update relevant docs for changes
@@ -198,6 +213,7 @@ uv run pytest tests/integration/
 ## Debugging
 
 ### Enable Debug Mode
+
 ```bash
 # Debug environment setup
 DEBUG=1 make up
@@ -210,6 +226,7 @@ DEBUG=1 ./scripts/prepare-config.sh
 ```
 
 ### Log Analysis
+
 ```bash
 # View all logs
 make logs
@@ -226,6 +243,7 @@ docker compose logs -f
 ## Common Development Tasks
 
 ### Adding New Modules
+
 ```bash
 # Edit module list
 vim apps/irc/services/unrealircd/third-party-modules.list
@@ -238,6 +256,7 @@ make modules-installed
 ```
 
 ### SSL Development
+
 ```bash
 # Check SSL status
 make ssl-status
@@ -250,6 +269,7 @@ make ssl-logs
 ```
 
 ### Configuration Changes
+
 ```bash
 # Edit templates
 vim apps/irc/services/*/config/*.template
