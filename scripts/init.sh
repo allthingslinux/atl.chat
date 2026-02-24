@@ -233,6 +233,9 @@ generate_cert() {
     else
         log_info "Self-signed certificate already exists for $domain"
     fi
+
+    # Ensure privkey is readable by container user (openssl defaults to 0600; container runs as PUID)
+    chmod 644 "$live_dir/privkey.pem" 2>/dev/null || sudo chmod 644 "$live_dir/privkey.pem" 2>/dev/null || true
 }
 
 generate_dev_certs() {
