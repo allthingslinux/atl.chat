@@ -323,7 +323,7 @@ prepare_config_files() {
 # Function to create .env template if it doesn't exist
 create_env_template() {
     local env_file="$PROJECT_ROOT/.env"
-    local env_example="$PROJECT_ROOT/env.example"
+    local env_example="$PROJECT_ROOT/.env.example"
 
     if [ ! -f "$env_file" ] && [ -f "$env_example" ]; then
         cp "$env_example" "$env_file"
