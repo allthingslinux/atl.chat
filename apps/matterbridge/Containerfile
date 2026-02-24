@@ -1,6 +1,0 @@
-FROM 42wim/matterbridge:latest AS base
-
-# Add any custom plugins or configuration logic here if needed
-# For now, we use the standard image as our base standard.
-
-ENTRYPOINT ["/bin/matterbridge", "-conf", "/etc/matterbridge/matterbridge.toml"]

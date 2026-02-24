@@ -23,8 +23,6 @@ flowchart TB
         xmpp --> prosody[services/prosody]
         xmpp --> web_assets[web/]
         bridge[apps/bridge]
-        bridge --> matterbridge[matterbridge/]
-        bridge --> biboumi[biboumi/]
     end
 
     subgraph proposed [Proposed]
@@ -34,8 +32,7 @@ flowchart TB
         g[apps/gamja]
         p[apps/prosody]
         wa[apps/web]
-        m[apps/matterbridge]
-        b[apps/biboumi]
+        b[apps/bridge]
     end
 ```
 
@@ -51,8 +48,7 @@ apps/
   gamja/           # was apps/irc/services/gamja
   prosody/         # was apps/xmpp/services/prosody + xmpp/web (merged)
   web/             # unchanged (Next.js)
-  matterbridge/    # was apps/bridge/matterbridge
-  biboumi/         # was apps/bridge/biboumi
+  bridge/          # Discord↔IRC↔XMPP (submodule)
 
 scripts/           # NEW: root-level (from apps/irc/scripts)
   init.sh
@@ -77,8 +73,7 @@ tests/             # NEW: root-level (from apps/irc/tests)
 | `apps/irc/services/gamja/`      | `apps/gamja/`                                                                    |
 | `apps/xmpp/services/prosody/`   | `apps/prosody/`                                                                  |
 | `apps/xmpp/web/`                | `apps/prosody/web/` (merged into prosody; Prosody mounts this as http_files_dir) |
-| `apps/bridge/matterbridge/`     | `apps/matterbridge/`                                                             |
-| `apps/bridge/biboumi/`          | `apps/biboumi/`                                                                  |
+| `apps/bridge/`                  | Submodule (Discord↔IRC↔XMPP)                                                    |
 
 
 ### 2. Move shared scripts to root
@@ -139,7 +134,7 @@ Prosody mounts `http_files_dir` from the host. Currently: `apps/xmpp/web/assets`
 
 - `apps/irc/` (after moving services, scripts, tests)
 - `apps/xmpp/` (after moving prosody, web)
-- `apps/bridge/` (after moving matterbridge, biboumi)
+- `apps/bridge/` (submodule)
 
 ### 10. Update documentation
 
@@ -159,7 +154,7 @@ Prosody mounts `http_files_dir` from the host. Currently: `apps/xmpp/web/assets`
 1. Create `scripts/`, move init.sh and prepare-config.sh, update their paths
 2. Create `apps/unrealircd`, `apps/atheme`, `apps/webpanel`, `apps/gamja` – move content
 3. Create `apps/prosody`, move prosody + merge xmpp/web into prosody/web
-4. Create `apps/matterbridge`, `apps/biboumi` – move from bridge
+4. Bridge is now `apps/bridge` submodule (no separate biboumi/matterbridge)
 5. Move `apps/irc/tests` → `tests/`
 6. Update compose (irc.yaml, xmpp.yaml)
 7. Update root justfile, pyproject, CI, .gitignore

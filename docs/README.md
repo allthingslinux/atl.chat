@@ -22,8 +22,7 @@ Learn more about the specific applications in this monorepo:
 
 ### Bridging & Interoperability
 - **[Bridge Infrastructure](./bridges/README.md)** - Overview of protocol bridging logic.
-- **[Biboumi](../apps/bridge/biboumi/README.md)** - XMPP-to-IRC gateway.
-- **[Matterbridge](../apps/bridge/matterbridge/README.md)** - Multi-protocol message relay.
+- **[Bridge (apps/bridge)](../apps/bridge/README.md)** - Discord↔IRC↔XMPP bridge.
 
 ---
 > [!NOTE]

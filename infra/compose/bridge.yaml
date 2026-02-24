@@ -1,8 +1,5 @@
 # =============================================================================
-# Bridge Stack - Biboumi, Matterbridge
-# =============================================================================
-# TODO: Not yet deployed. See apps/bridge/README.md for implementation plan.
-# When ready, uncomment services and wire into root compose.
+# Bridge Stack - Discord↔IRC↔XMPP (apps/bridge submodule)
 # =============================================================================
 
 name: atl-bridge

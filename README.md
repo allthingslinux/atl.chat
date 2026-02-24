@@ -13,8 +13,7 @@ apps/
 ├── webpanel/       # UnrealIRCd web admin
 ├── prosody/        # XMPP server
 ├── web/            # Next.js web application
-├── biboumi/        # XMPP↔IRC gateway (planned)
-├── matterbridge/   # Multi-protocol relay (planned)
+├── bridge/         # Discord↔IRC↔XMPP bridge (submodule)
 └── gamja/          # IRC web client (planned)
 ```
 
@@ -23,7 +22,7 @@ Compose fragments in `infra/compose/`:
 - `irc.yaml` — UnrealIRCd, Atheme, WebPanel
 - `xmpp.yaml` — Prosody
 - `cert-manager.yaml` — Lego (Let's Encrypt)
-- `bridge.yaml` — Bridges (stub, not yet deployed)
+- `bridge.yaml` — Discord↔IRC↔XMPP bridge
 - `networks.yaml` — Shared `atl-chat` network
 
 ## Quick Start
@@ -114,10 +113,7 @@ just web dev
 
 ### Bridges
 
-Biboumi (XMPP↔IRC) and Matterbridge are planned. Stub in `infra/compose/bridge.yaml`.
-
-- [apps/biboumi/](apps/biboumi/) — Biboumi
-- [apps/matterbridge/](apps/matterbridge/) — Matterbridge
+Discord↔IRC↔XMPP bridge (submodule). See [apps/bridge/](apps/bridge/) and `infra/compose/bridge.yaml`.
 
 ## Task Running
 

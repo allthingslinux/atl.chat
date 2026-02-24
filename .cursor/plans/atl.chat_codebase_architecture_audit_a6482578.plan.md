@@ -14,7 +14,7 @@ The monorepo contains:
 - **apps/irc** – UnrealIRCd + Atheme + WebPanel (Python tests, shell scripts)
 - **apps/xmpp** – Prosody XMPP server (Lua config)
 - **apps/web** – Next.js 15 landing page
-- **apps/bridge** – Biboumi + Matterbridge (currently disabled)
+- **apps/bridge** – Discord↔IRC↔XMPP bridge (submodule)
 - **infra/** – Shared Docker networks, cert-manager, base images
 - **docs/** – Centralized documentation (IRC-heavy)
 - **lib/** – Empty Python package stubs (`atl_docker`, `atl_testing`, `atl_common`)
@@ -89,7 +89,7 @@ The IRC service uses **config** at `apps/irc/services/unrealircd/config/`, but t
 - `./architecture/new-service.md` – does not exist
 - `./bridges/README.md` – does not exist
 - `./services/irc/README.md` – actual path is `./services/irc/README.md` (exists)
-- `../apps/bridge/biboumi/README.md` – does not exist
+- `../apps/bridge/README.md` – bridge submodule
 
 **Fix:** Either create stub docs or remove/fix broken links.
 
@@ -135,13 +135,10 @@ Without it, PROXY protocol from NPM will break XMPP C2S/S2S when NPM is in front
 
 **Fix:** Add `mod_net_proxy` to modules.list; add `"net_proxy"` to prosody.cfg.lua `modules_enabled`; configure `proxy_port_mappings` and `proxy_trusted_proxies` per [Prosody docs](https://modules.prosody.im/mod_net_proxy). Or, if not using NPM PROXY for XMPP, document that and remove PROXY from NPM stream config for 5222/5269.
 
-### 12. Bridge Compose Fragmentation
+### 12. Bridge Compose
 
-- [apps/bridge/compose.yaml](apps/bridge/compose.yaml) is fully commented out
-- [apps/bridge/biboumi/compose.yaml](apps/bridge/biboumi/compose.yaml) and [apps/bridge/matterbridge/compose.yaml](apps/bridge/matterbridge/compose.yaml) use `atl-network` instead of `atl-chat`
-- Root [compose.yaml](compose.yaml) includes `apps/bridge/compose.yaml` (which defines nothing)
-
-**Fix:** Unify bridge services under one compose, use `atl-chat` network, and include in root stack when ready.
+- [infra/compose/bridge.yaml](infra/compose/bridge.yaml) defines `atl-bridge` service using `ghcr.io/allthingslinux/bridge` image
+- Root [compose.yaml](compose.yaml) includes `infra/compose/bridge.yaml`
 
 ### 13. E2E Test Fixture Assumptions
 
@@ -165,7 +162,7 @@ atl.chat/
 │   ├── irc/           # UnrealIRCd + Atheme + WebPanel
 │   ├── xmpp/          # Prosody
 │   ├── web/            # Next.js
-│   └── bridge/         # Biboumi, Matterbridge
+│   └── bridge/         # Discord↔IRC↔XMPP (submodule)
 ├── infra/
 │   └── docker/
 │       ├── compose/
@@ -265,7 +262,7 @@ Root compose uses `dev`, `staging`, `prod`. Bridge sub-composes use `bridge` pro
 
 ### G. Bridge – Delete or Implement
 
-`apps/bridge/compose.yaml` is 100% commented out. Either implement it or delete. If Biboumi is planned, keep `bridge/README.md` explaining intent and a compose with `# TODO: not yet deployed` at the top – not 50 lines of commented YAML.
+Bridge is defined in `infra/compose/bridge.yaml` using the `atl-bridge` service.
 
 ### H. Gamja (IRC Web Client)
 
@@ -738,7 +735,7 @@ flowchart TB
         IRC[IRC: UnrealIRCd + Atheme + WebPanel]
         XMPP[XMPP: Prosody]
         Web[Web: Next.js]
-        Bridge[Bridge: Biboumi + Matterbridge]
+        Bridge[Bridge: Discord↔IRC↔XMPP]
     end
 
     subgraph infra [Infrastructure]

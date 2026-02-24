@@ -6,7 +6,7 @@ How the atl.chat services interact and communicate.
 
 - **IRC** (UnrealIRCd + Atheme) – Chat server and services
 - **XMPP** (Prosody) – Modern messaging
-- **Bridges** (Biboumi, Matterbridge) – Protocol bridging
+- **Bridges** (apps/bridge) – Discord↔IRC↔XMPP protocol bridging
 - **Web** (Next.js) – Landing and clients
 
 ## Compose Layout
@@ -17,7 +17,7 @@ All orchestration lives under `infra/compose/`. The root `compose.yaml` includes
 - `irc.yaml` – UnrealIRCd, Atheme, WebPanel
 - `xmpp.yaml` – Prosody
 - `cert-manager.yaml` – Let's Encrypt (Lego)
-- `bridge.yaml` – Bridges (when implemented)
+- `bridge.yaml` – Discord↔IRC↔XMPP bridge
 
 ## See Also
 

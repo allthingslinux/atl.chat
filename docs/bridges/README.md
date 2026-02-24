@@ -2,10 +2,9 @@
 
 Overview of protocol bridging in atl.chat.
 
-## Bridges
+## Bridge
 
-- **[Biboumi](../../apps/bridge/biboumi/)** – XMPP-to-IRC gateway
-- **[Matterbridge](../../apps/bridge/matterbridge/)** – Multi-protocol relay
+The [apps/bridge/](../../apps/bridge/) submodule provides Discord↔IRC↔XMPP bridging. It connects to UnrealIRCd, Prosody, and Discord to relay messages across protocols.
 
 ## Compose
 
