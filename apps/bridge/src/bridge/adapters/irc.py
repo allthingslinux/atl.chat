@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, ClassVar
 import pydle
 from loguru import logger
 
-from bridge.adapters.irc_msgid import MessageIDTracker
+from bridge.adapters.irc_msgid import MessageIDTracker, ReactionTracker
 from bridge.adapters.irc_puppet import IRCPuppetManager
 from bridge.adapters.irc_throttle import TokenBucket
 from bridge.config import cfg
@@ -45,7 +45,10 @@ async def _connect_with_backoff(
                 tls=tls,
                 tls_verify=tls_verify,
             )
-            # connect() returns when disconnected; reconnect with backoff
+            # pydle.connect() returns immediately after spawning handle_forever.
+            # Wait for actual disconnect before reconnecting.
+            while client.connected:
+                await asyncio.sleep(0.5)
             attempt = 0
             delay = min(_BACKOFF_MAX, _BACKOFF_MIN)
             jitter = random.uniform(0.5, 1.5)
@@ -96,6 +99,7 @@ class IRCClient(pydle.Client):
         nick: str,
         channels: list[str],
         msgid_tracker: MessageIDTracker,
+        reaction_tracker: ReactionTracker,
         throttle_limit: int = 10,
         rejoin_delay: float = 5,
         auto_rejoin: bool = True,
@@ -109,11 +113,13 @@ class IRCClient(pydle.Client):
         self._outbound: asyncio.Queue[MessageOut] = asyncio.Queue()
         self._consumer_task: asyncio.Task | None = None
         self._msgid_tracker = msgid_tracker
+        self._reaction_tracker = reaction_tracker
         self._throttle = TokenBucket(limit=throttle_limit, refill_rate=float(throttle_limit))
         self._rejoin_delay = rejoin_delay
         self._auto_rejoin = auto_rejoin
         self._ready = False
         self._pending_sends: asyncio.Queue[str] = asyncio.Queue()  # discord_id for echo correlation
+        self._pending_reactions: asyncio.Queue[tuple[str, str, str]] = asyncio.Queue()
 
     async def on_connect(self):
         """After connect, join channels and start consumer."""
@@ -122,9 +128,25 @@ class IRCClient(pydle.Client):
         logger.info("IRC connected to {}", self._server)
         for channel in self._channels:
             await self.join(channel)
+        await self._ensure_channels_permanent()
         self._consumer_task = asyncio.create_task(self._consume_outbound())
         # Fallback: if no PONG within 10s, mark ready anyway (some servers don't echo PING)
         asyncio.create_task(self._ready_fallback())  # noqa: RUF006
+
+    async def _ensure_channels_permanent(self) -> None:
+        """OPER up and set +P (permanent) on bridged channels so they persist when empty."""
+        oper_password = os.environ.get("BRIDGE_IRC_OPER_PASSWORD", "").strip()
+        if not oper_password:
+            return
+        oper_name = "atl-bridge"  # Must match oper block in UnrealIRCd
+        try:
+            await self.rawmsg("OPER", oper_name, oper_password)
+            await asyncio.sleep(1)  # Allow server to process OPER
+            for channel in self._channels:
+                await self.rawmsg("MODE", channel, "+P")
+                logger.info("Set {} permanent (+P)", channel)
+        except Exception as exc:
+            logger.warning("Could not set channels permanent (OPER/MODE): {}", exc)
 
     async def _ready_fallback(self) -> None:
         await asyncio.sleep(10)
@@ -135,7 +157,15 @@ class IRCClient(pydle.Client):
     async def on_raw_005(self, message):
         """After 005 ISUPPORT, send PING ready for ready detection."""
         await super().on_raw_005(message)
-        self.rawmsg("PING", "ready")
+        await self.rawmsg("PING", "ready")
+
+    async def on_raw_396(self, message: object) -> None:
+        """RPL_HOSTHIDDEN: host change notice (InspIRCd/UnrealIRCd). No-op to avoid Unknown command."""
+        pass
+
+    async def on_raw_379(self, message: object) -> None:
+        """RPL_WHOISHOST: mode info in WHOIS. No-op to avoid Unknown command."""
+        pass
 
     async def on_raw_pong(self, message) -> None:
         """Mark ready when we receive PONG ready (echo of our PING)."""
@@ -194,12 +224,14 @@ class IRCClient(pydle.Client):
             discord_reply_to = self._msgid_tracker.get_discord_id(reply_to)
 
         # If this is our echo (from bridge), correlate with pending send for msgid tracking
-        if source == self.nickname and msgid:
-            try:
-                discord_id = self._pending_sends.get_nowait()
-                self._msgid_tracker.store(msgid, discord_id)  # irc_msgid, discord_id
-            except asyncio.QueueEmpty:
-                pass
+        if source == self.nickname:
+            if msgid:
+                try:
+                    discord_id = self._pending_sends.get_nowait()
+                    self._msgid_tracker.store(msgid, discord_id)  # irc_msgid, discord_id
+                except asyncio.QueueEmpty:
+                    pass
+            return  # Skip publishing our own echoed messages to prevent doubling
 
         _, evt = message_in(
             origin="irc",
@@ -223,6 +255,9 @@ class IRCClient(pydle.Client):
         mapping = self._router.get_mapping_for_irc(self._server, target)
         if not mapping:
             return
+
+        if by == self.nickname:
+            return  # Skip our own /me echo
 
         content = f"* {by} {message}"
         _, evt = message_in(
@@ -261,8 +296,21 @@ class IRCClient(pydle.Client):
         if react and reply_to:
             discord_id = self._msgid_tracker.get_discord_id(reply_to)
             if discord_id:
+                # Our own echo: capture reaction TAGMSG msgid for removal via REDACT
+                if nick == self.nickname:
+                    msgid = tags.get("msgid")
+                    if msgid:
+                        try:
+                            pending = self._pending_reactions.get_nowait()
+                            self._reaction_tracker.store(pending[0], pending[1], pending[2], msgid)
+                        except asyncio.QueueEmpty:
+                            pass
+                    return
                 from bridge.events import reaction_in
 
+                msgid = tags.get("msgid")
+                if msgid:
+                    self._reaction_tracker.store_incoming(msgid, discord_id, react, nick)
                 _, evt = reaction_in(
                     origin="irc",
                     channel_id=f"{self._server}/{target}",
@@ -283,7 +331,7 @@ class IRCClient(pydle.Client):
             self._bus.publish("irc", evt)
 
     async def on_raw_redact(self, message) -> None:
-        """Handle IRC REDACT; publish MessageDelete for Relay to route to Discord."""
+        """Handle IRC REDACT; publish MessageDelete or ReactionIn (removal) for Relay."""
         params = getattr(message, "params", [])
         if len(params) < 2:
             return
@@ -293,6 +341,27 @@ class IRCClient(pydle.Client):
         mapping = self._router.get_mapping_for_irc(self._server, target)
         if not mapping:
             return
+
+        # REDACT on reaction TAGMSG → reaction removal
+        reaction_key = self._reaction_tracker.get_reaction_key(irc_msgid)
+        if reaction_key:
+            discord_id, emoji, author_id = reaction_key
+            source = getattr(message, "source", "") or ""
+            nick = source.split("!")[0] if "!" in source else source
+            from bridge.events import reaction_in
+
+            _, evt = reaction_in(
+                origin="irc",
+                channel_id=f"{self._server}/{target}",
+                message_id=discord_id,
+                emoji=emoji,
+                author_id=nick or author_id,
+                author_display=nick or author_id,
+                raw={"is_remove": True},
+            )
+            self._bus.publish("irc", evt)
+            return
+
         discord_id = self._msgid_tracker.get_discord_id(irc_msgid)
         if not discord_id:
             logger.debug("No Discord msgid for IRC REDACT {}; skip", irc_msgid)
@@ -395,6 +464,7 @@ class IRCAdapter:
         self._puppet_manager: IRCPuppetManager | None = None
         self._puppet_tasks: set[asyncio.Task] = set()
         self._msgid_tracker = MessageIDTracker(ttl_seconds=3600)
+        self._reaction_tracker = ReactionTracker(ttl_seconds=3600)
 
     @property
     def name(self) -> str:
@@ -434,18 +504,39 @@ class IRCAdapter:
                 self._client.queue_message(evt)
 
     async def _send_reaction(self, evt: ReactionOut) -> None:
-        """Send IRC TAGMSG with +draft/react for Discord reaction."""
+        """Send IRC TAGMSG with +draft/react for add, or REDACT for removal."""
         if not self._client:
             return
-        irc_msgid = self._msgid_tracker.get_irc_msgid(evt.message_id)
-        if not irc_msgid:
-            logger.debug("No IRC msgid for reaction on {}; skip", evt.message_id)
-            return
+        is_remove = evt.raw.get("is_remove", False)
         mapping = self._router.get_mapping_for_discord(evt.channel_id)
         if not mapping or not mapping.irc:
             return
         target = mapping.irc.channel
+
+        if is_remove:
+            irc_reaction_msgid = self._client._reaction_tracker.get_reaction_msgid(
+                evt.message_id, evt.emoji, evt.author_id
+            )
+            if not irc_reaction_msgid:
+                logger.debug(
+                    "No IRC reaction msgid for removal {} on {}; skip",
+                    evt.emoji,
+                    evt.message_id,
+                )
+                return
+            try:
+                await self._client.rawmsg("REDACT", target, irc_reaction_msgid)
+                logger.debug("Sent REDACT for reaction {} on {}", evt.emoji, evt.message_id)
+            except Exception as exc:
+                logger.exception("Reaction REDACT failed: {}", exc)
+            return
+
+        irc_msgid = self._msgid_tracker.get_irc_msgid(evt.message_id)
+        if not irc_msgid:
+            logger.debug("No IRC msgid for reaction on {}; skip", evt.message_id)
+            return
         try:
+            self._client._pending_reactions.put_nowait((evt.message_id, evt.emoji, evt.author_id))
             await self._client.rawmsg(
                 "TAGMSG",
                 target,
@@ -546,6 +637,7 @@ class IRCAdapter:
             nick=nick,
             channels=channels,
             msgid_tracker=self._msgid_tracker,
+            reaction_tracker=self._reaction_tracker,
             throttle_limit=cfg.irc_throttle_limit,
             rejoin_delay=cfg.irc_rejoin_delay,
             auto_rejoin=cfg.irc_auto_rejoin,
