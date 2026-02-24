@@ -1,0 +1,3 @@
+[submodule "apps/bridge"]
+	path = apps/bridge
+	url = git@github.com:allthingslinux/bridge.git
