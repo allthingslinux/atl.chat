@@ -13,8 +13,14 @@ pre-commit:
       run: luacheck {files}
     lint-web:
       root: apps/web/
-      glob: "*.{js,ts,jsx,tsx}"
+      glob: "apps/web/**/*.{js,ts,jsx,tsx}"
       run: pnpm run fix {files} && pnpm run check {files}
+      stage_fixed: true
+    lint-bridge:
+      root: apps/bridge/
+      glob: "apps/bridge/**/*.py"
+      run: uv run ruff check --fix src tests && uv run ruff format src tests
+      stage_fixed: true
     yaml-lint:
       glob: "*.{yml,yaml}"
       run: yamllint {files}
