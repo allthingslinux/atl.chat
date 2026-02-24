@@ -9,6 +9,9 @@ include:
 
 services:
   atl-bridge:
+    build:
+      context: ../..
+      dockerfile: apps/bridge/Containerfile
     image: ghcr.io/allthingslinux/bridge:latest
     container_name: atl-bridge
     restart: unless-stopped
@@ -20,6 +23,8 @@ services:
     env_file:
       - path: ../../.env
         required: false
+      - path: ../../.env.dev
+        required: false
     environment:
       - BRIDGE_DISCORD_TOKEN
       - BRIDGE_PORTAL_BASE_URL
@@ -29,6 +34,7 @@ services:
       - BRIDGE_XMPP_COMPONENT_SERVER
       - BRIDGE_XMPP_COMPONENT_PORT
       - BRIDGE_IRC_NICK
+      - BRIDGE_IRC_OPER_PASSWORD
       - ATL_ENVIRONMENT
       - BRIDGE_IRC_TLS_VERIFY
     volumes:
