@@ -19,6 +19,7 @@ Thumbs.db
 .env.*
 !.env.example
 !.env.shared.example
+!.env.dev.example
 *.pem
 cloudflare-credentials.ini
 
