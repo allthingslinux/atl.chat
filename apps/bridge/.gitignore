@@ -1,0 +1,89 @@
+# Project-specific
+references
+
+# Virtual environments
+.venv/
+venv/
+env/
+.env/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg
+*.egg-info/
+.eggs/
+dist/
+build/
+wheels/
+
+# uv
+.uv_cache/
+
+# Testing
+.pytest_cache/
+.coverage
+coverage.xml
+coverage.json
+htmlcov/
+lcov.info
+.tox/
+.nox/
+
+# Linting / type check
+.ruff_cache/
+.mypy_cache/
+.pyrightcache/
+
+# IDE / editor
+.idea/
+*.swp
+*.swo
+
+# Runtime
+config.yaml
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+audit/AUDIT.md
+audit/biboumi.md
+audit/black-hole.md
+audit/CatPuppetBridge.md
+audit/chat-bridge.md
+audit/cord.md
+audit/devse-chan.md
+audit/dibridge.md
+audit/Dis4IRC.md
+audit/Discord-IRC-Bridge.md
+audit/Discord-IRC-Python.md
+audit/discord-irc-rs.md
+audit/discord-irc-sync.md
+audit/discord-irc.md
+audit/discord-ircv3.md
+audit/discord-xmpp-bridge.md
+audit/discord.md
+audit/drc.md
+audit/emulsion.md
+audit/go-discord-irc.md
+audit/koishi.md
+audit/legacy-module-template.md
+audit/lightning.md
+audit/matrix-bifrost.md
+audit/matterbridge.md
+audit/mod_muc_irc.md
+audit/out-of-your-element.md
+audit/pages.md
+audit/README.md
+audit/renostr.md
+audit/revcord.md
+audit/slidcord.md
+audit/slidgnal.md
+audit/STRUCTURE.md
+audit/unifier.md
+.hypothesis

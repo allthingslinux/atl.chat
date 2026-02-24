@@ -1,0 +1,179 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "bridge"
+version = "0.1.0"
+description = "Custom Discord–IRC–XMPP bridge (multi-presence, Portal identity)"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "All Things Linux", email = "admin@allthingslinux.org" }]
+
+dependencies = [
+    "discord.py",
+    "slixmpp",
+    "httpx",
+    "pyyaml",
+    "python-dotenv",
+    "cachetools",
+    "loguru",
+    "tenacity",
+    "pydle>=1.1.0",
+    "uvloop>=0.22.1; sys_platform != 'win32'",
+]
+
+[project.urls]
+repository = "https://github.com/allthingslinux/bridge"
+homepage = "https://atl.chat"
+
+[project.scripts]
+bridge = "bridge.__main__:main"
+
+[dependency-groups]
+dev = [
+    "ruff",
+    "basedpyright",
+    "hypothesis>=6.151.9",
+    "python-semantic-release>=10.5.3",
+]
+test = [
+    "pytest",
+    "pytest-asyncio",
+    "pytest-mock",
+    "pytest-cov",
+    "pytest-timeout",
+    "pytest-httpx",
+    "pytest-socket",
+    "pytest-loguru",
+    "pytest-randomly",
+    "pytest-xdist",
+    "pytest-html",
+]
+types = ["types-pyyaml", "types-mock", "annotated-types"]
+
+[tool.uv]
+default-groups = ["dev", "test", "types"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/bridge"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/bridge", "config.example.yaml"]
+
+[tool.ruff]
+exclude = [
+    ".git",
+    ".venv",
+    "venv",
+    "__pypackages__",
+    ".pytest_cache",
+    ".ruff_cache",
+    "build",
+    "dist",
+]
+line-length = 100
+indent-width = 4
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "B", "SIM", "RUF"]
+ignore = [
+    "E501",
+    "RUF001", # ambiguous unicode (en-dash in descriptions intentional)
+    "RUF002",
+    "RUF003",
+    "B027",   # empty method in ABC (push_event override point)
+]
+fixable = ["ALL"]
+unfixable = []
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--strict-markers",
+    "--tb=short",
+    "-v",
+    "--durations=10",
+    "--asyncio-mode=auto",
+]
+asyncio_mode = "auto"
+timeout = 60
+minversion = "8.0"
+filterwarnings = ["ignore::DeprecationWarning"]
+pythonpath = ["src"]
+norecursedirs = [
+    ".git",
+    ".venv",
+    "venv",
+    "__pypackages__",
+    "build",
+    "dist",
+    ".pytest_cache",
+    ".ruff_cache",
+    ".hypothesis",
+]
+markers = [
+    "unit: Unit tests with isolated components",
+    "integration: Integration tests combining multiple components",
+    "async: Async tests using asyncio",
+]
+
+[tool.coverage.run]
+source = ["src/bridge"]
+branch = true
+parallel = true
+omit = ["*/tests/*", "*/test_*.py", "*/conftest.py"]
+
+[tool.coverage.report]
+precision = 2
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+]
+
+[tool.basedpyright]
+pythonVersion = "3.10"
+typeCheckingMode = "basic"
+exclude = [".venv", "__pypackages__", ".pytest_cache", "references"]
+
+[tool.semantic_release]
+version_toml = ["pyproject.toml:project.version"]
+tag_format = "v{version}"
+commit_message = "chore(release): {version} [skip ci]"
+major_on_zero = false
+allow_zero_version = true
+commit_parser = "conventional"
+build_command = """
+uv lock --upgrade-package bridge
+git add uv.lock
+"""
+
+[tool.semantic_release.branches.main]
+match = "(main|master)"
+prerelease = false
+
+[tool.semantic_release.commit_parser_options]
+minor_tags = ["feat"]
+patch_tags = ["fix", "perf"]
+parse_squash_commits = true
+ignore_merge_commits = true
+
+[tool.semantic_release.changelog]
+mode = "init"
+exclude_commit_patterns = []
+
+[tool.semantic_release.changelog.default_templates]
+changelog_file = "CHANGELOG.md"
+mask_initial_release = false

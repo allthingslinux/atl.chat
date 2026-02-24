@@ -1,0 +1,134 @@
+# ATL Bridge
+
+> Scope: Root project (applies to all subdirectories unless overridden)
+
+Production-ready Discord–IRC–XMPP bridge with multi-presence and Portal identity.
+
+## Quick Facts
+
+- **Language:** Python 3.10+
+- **Package Manager:** uv (never pip directly)
+- **Key Commands:** `just check`, `just test`, `just lint`, `just format`, `just typecheck`
+- **Entry Point:** `uv run bridge --config config.yaml`
+
+## Tech Stack
+
+discord.py · pydle (IRC) · slixmpp (XMPP) · asyncio · uvloop · loguru · tenacity · httpx · pyyaml · basedpyright · ruff
+
+## Architecture
+
+Event-driven: all protocol adapters communicate through a central `Bus`. No adapter talks directly to another.
+
+```
+Discord Adapter  ──┐
+IRC Adapter      ──→  Bus → Relay → Bus → target adapters
+XMPP Adapter     ──┘
+```
+
+- **Bus** (`gateway/bus.py`) — dispatches typed events to registered adapters
+- **Relay** (`gateway/relay.py`) — transforms `MessageIn` → `MessageOut` for other protocols; applies content filtering
+- **Router** (`gateway/router.py`) — maps Discord channel IDs ↔ IRC channels ↔ XMPP MUCs
+- **Identity** (`identity.py`) — Portal API client with TTL cache; resolves Discord ID → IRC nick / XMPP JID
+
+## Repository Structure
+
+```
+src/bridge/
+├── __main__.py          # Entry point + signal handling
+├── config.py            # YAML config + env overlay (Config class)
+├── events.py            # All event dataclasses + factory functions
+├── identity.py          # Portal API client + TTL cache
+├── gateway/
+│   ├── bus.py           # Event dispatcher
+│   ├── relay.py         # MessageIn → MessageOut routing
+│   └── router.py        # Channel mapping
+├── formatting/
+│   ├── discord_to_irc.py
+│   ├── irc_to_discord.py
+│   └── irc_message_split.py
+└── adapters/
+    ├── base.py          # Adapter protocol (accept_event / push_event)
+    ├── disc.py          # Discord adapter (webhooks, raw events)
+    ├── irc.py           # IRC adapter (pydle, IRCv3)
+    ├── irc_puppet.py    # Per-user IRC puppet manager
+    ├── irc_throttle.py  # Token bucket flood control
+    ├── irc_msgid.py     # IRC msgid ↔ Discord ID tracker (1h TTL)
+    ├── xmpp.py          # XMPP adapter
+    ├── xmpp_component.py # slixmpp component + XEPs
+    └── xmpp_msgid.py    # XMPP stanza-id ↔ Discord ID tracker
+tests/                   # pytest suite (654 tests)
+references/              # Upstream source for discord.py, slixmpp, unrealircd, IRCv3 specs
+```
+
+## Common Tasks
+
+### Development
+- `uv sync` — install all dependencies
+- `uv run bridge --config config.yaml` — run the bridge
+
+### Quality
+- `just lint` — ruff check
+- `just format` — ruff format
+- `just typecheck` — basedpyright
+- `just test` — pytest (all 654 tests)
+- `just test -k foo` — run matching tests
+- `just check` — all of the above in sequence
+
+## Event System
+
+All events are dataclasses in `events.py`. Factory functions (decorated with `@event`) return `(type_name, instance)` tuples.
+
+| Event | Direction |
+|-------|-----------|
+| `MessageIn` / `MessageOut` | Inbound / outbound message |
+| `MessageDelete` / `MessageDeleteOut` | Inbound / outbound delete (REDACT / retraction) |
+| `ReactionIn` / `ReactionOut` | Inbound / outbound reaction |
+| `TypingIn` / `TypingOut` | Inbound / outbound typing indicator |
+| `Join` / `Part` / `Quit` | Presence events |
+| `ConfigReload` | Dispatched on SIGHUP after config is reloaded |
+
+## Configuration
+
+Config is YAML + env overlay (dotenv loaded at startup). Key properties on `Config`:
+
+| Property | Default | Description |
+|----------|---------|-------------|
+| `announce_joins_and_quits` | `true` | Relay join/part/quit to other protocols |
+| `announce_extras` | `false` | Relay topic/mode changes |
+| `content_filter_regex` | `[]` | Messages matching any pattern are not bridged |
+| `identity_cache_ttl_seconds` | 3600 | TTL for Portal identity cache |
+| `avatar_cache_ttl_seconds` | 86400 | TTL for avatar URL cache |
+| `irc_puppet_idle_timeout_hours` | 24 | Disconnect idle puppets after N hours |
+| `irc_puppet_ping_interval` | 120 | Keep-alive PING interval (seconds) |
+| `irc_puppet_prejoin_commands` | `[]` | Commands sent after puppet connects (supports `{nick}`) |
+| `irc_puppet_postfix` | `""` | Suffix appended to puppet nicks |
+| `irc_throttle_limit` | 10 | IRC messages per second (token bucket) |
+| `irc_message_queue` | 30 | Max IRC outbound queue size |
+| `irc_rejoin_delay` | 5 | Seconds before rejoin after KICK/disconnect |
+| `irc_auto_rejoin` | `true` | Auto-rejoin channels after KICK/disconnect |
+| `irc_use_sasl` | `false` | Use SASL PLAIN for IRC auth |
+| `irc_sasl_user` | `""` | SASL username |
+| `irc_sasl_password` | `""` | SASL password |
+
+## Critical Rules
+
+- Never import one adapter from another — all cross-adapter communication goes through the Bus.
+- `uvloop.run()` is used on Linux/macOS; falls back to `asyncio.run()` on Windows.
+- `AllowedMentions(everyone=False, roles=False)` on all webhook sends — never allow mass pings from bridged content.
+- Raw Discord events (`on_raw_*`) are used throughout — never the cached variants.
+
+## Finish the Task
+
+- [ ] Run `just check` before committing.
+- [ ] Update the relevant `AGENTS.md` if you changed structure, entry points, or conventions.
+- [ ] Update `README.md` if you changed setup steps, features, or test count.
+- [ ] Summarize changes in conventional commit form (`feat:`, `fix:`, `docs:`, etc.).
+
+## Related
+
+- [src/AGENTS.md](src/AGENTS.md)
+- [src/bridge/AGENTS.md](src/bridge/AGENTS.md)
+- [src/bridge/adapters/AGENTS.md](src/bridge/adapters/AGENTS.md)
+- [src/bridge/gateway/AGENTS.md](src/bridge/gateway/AGENTS.md)
+- [src/bridge/formatting/AGENTS.md](src/bridge/formatting/AGENTS.md)
+- [tests/AGENTS.md](tests/AGENTS.md)

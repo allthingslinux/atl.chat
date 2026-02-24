@@ -1,0 +1,41 @@
+# ATL Bridge — Example configuration
+# Copy to config.yaml and fill in values. Secrets from env (DISCORD_TOKEN, PORTAL_*, etc.).
+
+# Channel mappings: Discord channel ID <-> IRC server/channel <-> XMPP MUC JID
+mappings:
+  - discord_channel_id: "123456789012345678"
+    irc:
+      server: "irc.atl.chat"
+      port: 6697
+      tls: true
+      channel: "#bridge"
+    xmpp:
+      muc_jid: "bridge@muc.atl.chat"
+
+# Optional: overrides from env (see docs for DISCORD_TOKEN, PORTAL_BASE_URL, etc.)
+
+# Toggles (AUDIT §5)
+announce_joins_and_quits: true
+announce_extras: false  # topics, mode changes
+
+# Timeouts and limits
+identity_cache_ttl_seconds: 3600
+avatar_cache_ttl_seconds: 86400
+irc_puppet_idle_timeout_hours: 24
+
+# Optional: puppet postfix (e.g. "|d" so nicks show as Alice|d)
+irc_puppet_postfix: ""
+
+# IRC flood control and rejoin
+irc_throttle_limit: 10   # messages per second
+irc_message_queue: 30    # max queue size
+irc_rejoin_delay: 5      # seconds before rejoin after KICK/disconnect
+irc_auto_rejoin: true
+
+# IRC SASL (optional)
+irc_use_sasl: false
+irc_sasl_user: ""
+irc_sasl_password: ""
+
+# Message content filtering (regex list; matching messages are not bridged)
+# content_filter_regex: ["spam", "\\bblocked\\b"]

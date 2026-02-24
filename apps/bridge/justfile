@@ -1,0 +1,17 @@
+lint:
+    uv run ruff check src tests
+
+format:
+    uv run ruff format src tests
+
+typecheck:
+    uv run basedpyright
+
+test *args:
+    uv run pytest tests {{args}}
+
+check:
+    uv run ruff check src tests
+    uv run ruff format src tests
+    uv run basedpyright
+    uv run pytest tests -q
