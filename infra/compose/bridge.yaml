@@ -29,6 +29,8 @@ services:
       - XMPP_COMPONENT_SERVER
       - XMPP_COMPONENT_PORT
       - IRC_NICK
+      - ATL_ENVIRONMENT
+      - BRIDGE_IRC_TLS_VERIFY
     volumes:
       - ../../apps/bridge/config.yaml:/app/config.yaml:ro
     networks:

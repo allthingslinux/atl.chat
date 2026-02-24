@@ -63,6 +63,8 @@ prepare_config() {
   # Bridge: IRC server hostname inside Docker network; Prosody domain for MUC JID
   export IRC_BRIDGE_SERVER="${IRC_BRIDGE_SERVER:-atl-irc-server}"
   export PROSODY_DOMAIN="${PROSODY_DOMAIN:-${XMPP_DOMAIN:-xmpp.localhost}}"
+  # IRC TLS verify: false for dev (self-signed certs), true for prod
+  export IRC_TLS_VERIFY="${BRIDGE_IRC_TLS_VERIFY:-${IRC_TLS_VERIFY:-$([ "${ATL_ENVIRONMENT:-}" = "dev" ] && echo "false" || echo "true")}}"
 
   # IRC cert paths: use shared data/certs (Let's Encrypt layout), matching Prosody
   export IRC_SSL_CERT_PATH="${IRC_SSL_CERT_PATH:-/home/unrealircd/unrealircd/certs/live/${IRC_DOMAIN:-irc.localhost}/fullchain.pem}"
