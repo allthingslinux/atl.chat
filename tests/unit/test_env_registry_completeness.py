@@ -15,11 +15,11 @@ from hypothesis import strategies as st
 
 # The complete set of variables that must be present in .env.example
 REQUIRED_VARS: set[str] = {
-    # Requirement 1: XMPP Component JID Registration
-    "XMPP_COMPONENT_JID",
-    "XMPP_COMPONENT_SECRET",
-    "XMPP_COMPONENT_SERVER",
-    "XMPP_COMPONENT_PORT",
+    # Requirement 1: Bridge XMPP Component JID Registration
+    "BRIDGE_XMPP_COMPONENT_JID",
+    "BRIDGE_XMPP_COMPONENT_SECRET",
+    "BRIDGE_XMPP_COMPONENT_SERVER",
+    "BRIDGE_XMPP_COMPONENT_PORT",
     # Requirement 3: IRC Environment Variable Standardization
     "IRC_SERVER",
     "IRC_PORT",
@@ -35,13 +35,13 @@ REQUIRED_VARS: set[str] = {
     "IRC_UNREAL_RPC_PASSWORD",
     # Requirement 7: XMPP Domain Single Source of Truth
     "XMPP_DOMAIN",
-    # Requirement 8: Portal Connection Variables
-    "PORTAL_BASE_URL",
-    "PORTAL_TOKEN",
+    # Requirement 8: Bridge Portal Connection Variables
+    "BRIDGE_PORTAL_BASE_URL",
+    "BRIDGE_PORTAL_TOKEN",
     # Requirement 9: IRC Services Password (dead vars removed)
     "IRC_SERVICES_PASSWORD",
     # Requirement 11: Bridge nick
-    "IRC_NICK",
+    "BRIDGE_IRC_NICK",
 }
 
 # Variables that must NOT be present (dead/removed)
@@ -131,16 +131,16 @@ class TestEnvRegistryCompleteness:
         assert env_vars.get("IRC_PORT") == "6697"
 
     def test_xmpp_component_jid_matches_expected(self, env_vars: dict[str, str]) -> None:
-        """XMPP_COMPONENT_JID must be bridge.atl.chat (Requirement 1.1)."""
-        assert env_vars.get("XMPP_COMPONENT_JID") == "bridge.atl.chat"
+        """BRIDGE_XMPP_COMPONENT_JID must be bridge.atl.chat (Requirement 1.1)."""
+        assert env_vars.get("BRIDGE_XMPP_COMPONENT_JID") == "bridge.atl.chat"
 
     def test_xmpp_component_port_matches_expected(self, env_vars: dict[str, str]) -> None:
-        """XMPP_COMPONENT_PORT must be 5347 (Requirement 1.4)."""
-        assert env_vars.get("XMPP_COMPONENT_PORT") == "5347"
+        """BRIDGE_XMPP_COMPONENT_PORT must be 5347 (Requirement 1.4)."""
+        assert env_vars.get("BRIDGE_XMPP_COMPONENT_PORT") == "5347"
 
     def test_portal_base_url_matches_expected(self, env_vars: dict[str, str]) -> None:
-        """PORTAL_BASE_URL must be https://portal.atl.tools (Requirement 8.1)."""
-        assert env_vars.get("PORTAL_BASE_URL") == "https://portal.atl.tools"
+        """BRIDGE_PORTAL_BASE_URL must be https://portal.atl.tools (Requirement 8.1)."""
+        assert env_vars.get("BRIDGE_PORTAL_BASE_URL") == "https://portal.atl.tools"
 
     def test_irc_atheme_jsonrpc_url_matches_expected(self, env_vars: dict[str, str]) -> None:
         """IRC_ATHEME_JSONRPC_URL must be http://atl-irc-server:8081/jsonrpc (Requirement 5.1)."""
@@ -161,9 +161,9 @@ class TestEnvRegistryCompleteness:
     def test_secret_vars_have_change_me_placeholder(self, env_vars: dict[str, str]) -> None:
         """Secret variables must use change_me_ placeholders (Requirement 11.5)."""
         secret_vars = {
-            "XMPP_COMPONENT_SECRET",
+            "BRIDGE_XMPP_COMPONENT_SECRET",
             "PROSODY_REST_PASSWORD",
-            "PORTAL_TOKEN",
+            "BRIDGE_PORTAL_TOKEN",
         }
         for var in secret_vars:
             value = env_vars.get(var, "")
