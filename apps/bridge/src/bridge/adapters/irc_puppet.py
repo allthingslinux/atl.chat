@@ -58,7 +58,7 @@ class IRCPuppet(pydle.Client):
         while True:
             await asyncio.sleep(self._ping_interval)
             try:
-                self.rawmsg("PING", "keep-alive")
+                await self.rawmsg("PING", "keep-alive")
             except Exception:
                 break
 
