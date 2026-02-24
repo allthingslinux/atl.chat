@@ -54,7 +54,7 @@ docs/               # Architecture, services, onboarding, bridges
 ## Environment
 
 - `.env` — Copy from `.env.example`; customize domains, passwords, tokens. Required for `just init` and compose.
-- `.env.dev` — Overlay for `just dev`; override `IRC_DOMAIN`, `PROSODY_DOMAIN`, etc. for localhost. Required for `just dev`; create from `.env.example`.
+- `.env.dev` — Overlay for `just dev`; override `IRC_DOMAIN`, `PROSODY_DOMAIN`, etc. for localhost. Required for `just dev`; copy from `.env.dev.example`.
 
 ## Per-App Commands (via `just <mod>`)
 
