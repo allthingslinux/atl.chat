@@ -3,7 +3,7 @@
 FROM debian:bookworm-slim AS builder
 
 ARG LUAROCKS_VERSION=3.11.1
-ARG PROSODY_VERSION=13.0.3
+ARG PROSODY_VERSION=13.0.4
 
 # Set shell options for better error handling
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
