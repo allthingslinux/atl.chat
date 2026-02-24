@@ -10,6 +10,9 @@ mod irc './apps/unrealircd'
 # Web Application (Next.js)
 mod web './apps/web'
 
+# Bridge (Discord↔IRC↔XMPP)
+mod bridge './apps/bridge'
+
 set export := true
 
 
@@ -81,10 +84,16 @@ scan:
 build:
     docker compose build
 
-# Run tests (IRC pytest; add web/prosody as needed)
+# Run tests (atl.chat root tests)
 [group('Build')]
 test:
     uv run pytest tests/
+
+# Run all tests (root + bridge)
+[group('Build')]
+test-all:
+    uv run pytest tests/
+    just bridge test
 
 # Clean up unused Docker resources
 [group('Maintenance')]
