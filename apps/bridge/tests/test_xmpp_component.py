@@ -29,6 +29,9 @@ def make_component(router=None, bus=None):
     comp._avatar_cache = TTLCache(maxsize=10, ttl=60)
     comp._ibb_streams = {}
     comp._msgid_tracker = XMPPMessageIDTracker()
+    comp._puppets_joined = set()
+    comp._seen_msg_ids = TTLCache(maxsize=500, ttl=60)
+    comp._reactions_by_user = TTLCache(maxsize=2000, ttl=3600)
     return comp
 
 
@@ -103,7 +106,7 @@ class TestOnGroupchatMessage:
         assert isinstance(evt, MessageIn)
         assert evt.content == "hello"
         assert evt.author_display == "nick"
-        assert evt.channel_id == "123"
+        assert evt.channel_id == "room@conf.example.com"
         assert evt.message_id == "xmpp-1"
         assert evt.is_edit is False
 
