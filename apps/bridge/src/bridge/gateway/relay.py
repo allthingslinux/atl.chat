@@ -113,6 +113,7 @@ class Relay:
                     "is_edit": evt.is_edit,
                     "replace_id": evt.raw.get("replace_id"),
                     "origin": evt.origin,
+                    "xmpp_id_aliases": evt.raw.get("xmpp_id_aliases", []),
                 },
             )
             self._bus.publish("relay", out_evt)
