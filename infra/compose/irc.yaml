@@ -40,6 +40,8 @@ services:
     env_file:
       - path: ../../.env
         required: false
+      - path: ../../.env.dev
+        required: false
 
     environment:
       - IRC_DOMAIN=${IRC_DOMAIN}
@@ -126,6 +128,8 @@ services:
 
     env_file:
       - path: ../../.env
+        required: false
+      - path: ../../.env.dev
         required: false
 
     environment:
