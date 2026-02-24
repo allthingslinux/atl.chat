@@ -32,6 +32,7 @@ export default {
     "header-min-length": [2, "always", 10],
     "header-max-length": [2, "always", 120],
     "body-leading-blank": [2, "always"],
+    "body-max-length": [2, "always", 120],
     "footer-leading-blank": [2, "always"],
     "footer-min-length": [2, "always", 0],
     "footer-max-line-length": [2, "always", 120],
