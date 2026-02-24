@@ -110,3 +110,5 @@ webpanel_config/
 .turbo
 apps/atheme/config/atheme.conf
 apps/unrealircd/config/unrealircd.conf
+.hypothesis/constants/15a507188a0b8d46
+.hypothesis/constants/41d4ff5b8df52237
