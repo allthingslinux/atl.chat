@@ -684,6 +684,11 @@ ssl = {
         ("certs/live/" .. domain .. "/fullchain.pem")
 }
 
+-- VirtualHost-scoped modules (not loaded globally)
+modules_enabled = {
+    "http_admin_api", -- REST API for user account management (mod_http_admin_api)
+}
+
 Component("muc." .. domain) "muc"
 
 ssl = {
@@ -783,6 +788,11 @@ ssl = {
 }
 name = "proxy." .. domain
 proxy65_address = Lua.os.getenv("PROSODY_PROXY_ADDRESS") or ("proxy." .. domain)
+
+-- Bridge XMPP component (XEP-0114)
+-- Allows the atl-bridge service to connect as an external component
+Component("bridge." .. domain) "component"
+component_secret = Lua.os.getenv("XMPP_COMPONENT_SECRET") or "change_me_xmpp_component_secret"
 
 -- ===============================================
 -- CONTACT INFO, ROLES, ACCOUNT CLEANUP
