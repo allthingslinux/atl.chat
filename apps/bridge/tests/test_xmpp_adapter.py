@@ -47,6 +47,7 @@ def _mock_component(xmpp_id_for: str | None = "xmpp-msg-1") -> MagicMock:
     comp = MagicMock()
     comp._msgid_tracker = MagicMock()
     comp._msgid_tracker.get_xmpp_id.return_value = xmpp_id_for
+    comp._msgid_tracker.get_xmpp_id_for_reaction.return_value = xmpp_id_for
     comp.send_message_as_user = AsyncMock(return_value="xmpp-new-id")
     comp.send_correction_as_user = AsyncMock()
     comp.send_retraction_as_user = AsyncMock()
@@ -333,11 +334,12 @@ class TestHandleReactionOut:
         )
         await adapter._handle_reaction_out(evt)
         comp.send_reaction_as_user.assert_awaited_once_with(
-            "u1", "room@conf.example.com", "xmpp-msg-1", "👍", "xmpp_nick"
+            "u1", "room@conf.example.com", "xmpp-msg-1", "👍", "xmpp_nick", is_remove=False
         )
 
     @pytest.mark.asyncio
     async def test_sends_reaction_with_display_fallback(self):
+        """When identity returns None, use author_id then author_display as nick."""
         adapter, _, router = _make_adapter(identity_nick=None)
         comp = _mock_component()
         adapter._component = comp
@@ -352,7 +354,7 @@ class TestHandleReactionOut:
         )
         await adapter._handle_reaction_out(evt)
         comp.send_reaction_as_user.assert_awaited_once_with(
-            "u1", "room@conf.example.com", "xmpp-msg-1", "👍", "DisplayUser"
+            "u1", "room@conf.example.com", "xmpp-msg-1", "👍", "u1", is_remove=False
         )
 
     @pytest.mark.asyncio
@@ -371,7 +373,7 @@ class TestHandleReactionOut:
         )
         await adapter._handle_reaction_out(evt)
         comp.send_reaction_as_user.assert_awaited_once_with(
-            "unknown", "room@conf.example.com", "xmpp-msg-1", "👍", "bridge"
+            "unknown", "room@conf.example.com", "xmpp-msg-1", "👍", "bridge", is_remove=False
         )
 
 
@@ -417,10 +419,12 @@ class TestOutboundConsumer:
         await _run_consumer_once(adapter, evt)
 
         comp.send_message_as_user.assert_awaited_once_with(
-            "u1", "room@conf.example.com", "hello", "xmpp_nick", reply_to_id=None
-        )
-        comp._msgid_tracker.store.assert_called_once_with(
-            "xmpp-new-id", "m1", "room@conf.example.com"
+            "u1",
+            "room@conf.example.com",
+            "hello",
+            "xmpp_nick",
+            reply_to_id=None,
+            discord_message_id="m1",
         )
 
     @pytest.mark.asyncio
@@ -463,7 +467,12 @@ class TestOutboundConsumer:
         await _run_consumer_once(adapter, evt)
 
         comp.send_message_as_user.assert_awaited_once_with(
-            "u1", "room@conf.example.com", "hi", "u1", reply_to_id=None
+            "u1",
+            "room@conf.example.com",
+            "hi",
+            "u1",
+            reply_to_id=None,
+            discord_message_id="m1",
         )
 
     @pytest.mark.asyncio
@@ -529,7 +538,12 @@ class TestOutboundConsumer:
         await _run_consumer_once(adapter, evt)
 
         comp.send_message_as_user.assert_awaited_once_with(
-            "u1", "room@conf.example.com", "reply", "xmpp_nick", reply_to_id="xmpp-reply-target"
+            "u1",
+            "room@conf.example.com",
+            "reply",
+            "xmpp_nick",
+            reply_to_id="xmpp-reply-target",
+            discord_message_id="m2",
         )
 
     @pytest.mark.asyncio
@@ -619,19 +633,31 @@ class TestStart:
         bus.register.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_start_no_identity_returns_early(self):
+    async def test_start_without_identity_succeeds_dev_mode(self):
+        """XMPP adapter starts without Portal (dev mode); uses fallback nicks."""
         bus = MagicMock(spec=Bus)
         router = MagicMock(spec=ChannelRouter)
         router.all_mappings.return_value = [_xmpp_mapping()]
         adapter = XMPPAdapter(bus, router, identity_resolver=None)
+        mock_comp = MagicMock()
+        mock_comp.connect = MagicMock(return_value=asyncio.Future())
         env = {
             "BRIDGE_XMPP_COMPONENT_JID": "bridge.example.com",
             "BRIDGE_XMPP_COMPONENT_SECRET": "s3cr3t",
             "BRIDGE_XMPP_COMPONENT_SERVER": "localhost",
         }
-        with patch.dict("os.environ", env, clear=True):
+        with (
+            patch.dict("os.environ", env, clear=True),
+            patch("bridge.adapters.xmpp.XMPPComponent", return_value=mock_comp),
+        ):
             await adapter.start()
-        bus.register.assert_not_called()
+        bus.register.assert_called_once_with(adapter)
+        assert adapter._component is mock_comp
+        # Cleanup
+        if adapter._consumer_task:
+            adapter._consumer_task.cancel()
+        if adapter._component_task:
+            adapter._component_task.cancel()
 
     @pytest.mark.asyncio
     async def test_start_no_xmpp_mappings_returns_early(self):
@@ -658,7 +684,7 @@ class TestStart:
             "BRIDGE_XMPP_COMPONENT_SERVER": "localhost",
         }
         mock_comp = MagicMock()
-        mock_comp.connect = AsyncMock()
+        mock_comp.connect = MagicMock(return_value=asyncio.Future())
 
         with (
             patch.dict("os.environ", env, clear=True),
@@ -719,7 +745,8 @@ class TestEdgeCases:
     # --- XMPPAdapter: no identity resolver ---
 
     @pytest.mark.asyncio
-    async def test_handle_delete_out_no_identity_returns_early(self):
+    async def test_handle_delete_out_no_identity_uses_fallback_nick(self):
+        """Without identity resolver (dev mode), delete uses author_id as nick."""
         bus = MagicMock(spec=Bus)
         router = MagicMock(spec=ChannelRouter)
         adapter = XMPPAdapter(bus, router, identity_resolver=None)
@@ -730,10 +757,13 @@ class TestEdgeCases:
             target_origin="xmpp", channel_id="111", message_id="m1", author_id="u1"
         )
         await adapter._handle_delete_out(evt)
-        comp.send_retraction_as_user.assert_not_called()
+        comp.send_retraction_as_user.assert_awaited_once_with(
+            "u1", "room@conf.example.com", "xmpp-msg-1", "u1"
+        )
 
     @pytest.mark.asyncio
-    async def test_handle_reaction_out_no_identity_returns_early(self):
+    async def test_handle_reaction_out_no_identity_uses_fallback_nick(self):
+        """Without identity resolver (dev mode), reaction uses author_id as nick."""
         bus = MagicMock(spec=Bus)
         router = MagicMock(spec=ChannelRouter)
         adapter = XMPPAdapter(bus, router, identity_resolver=None)
@@ -749,7 +779,9 @@ class TestEdgeCases:
             author_display="U",
         )
         await adapter._handle_reaction_out(evt)
-        comp.send_reaction_as_user.assert_not_called()
+        comp.send_reaction_as_user.assert_awaited_once_with(
+            "u1", "room@conf.example.com", "xmpp-msg-1", "👍", "u1", is_remove=False
+        )
 
     # --- Consumer: exception during send doesn't crash loop ---
 
@@ -821,8 +853,8 @@ class TestEdgeCases:
             "BRIDGE_XMPP_COMPONENT_SERVER": "localhost",
         }
         comp1, comp2 = MagicMock(), MagicMock()
-        comp1.connect = AsyncMock()
-        comp2.connect = AsyncMock()
+        comp1.connect = MagicMock(return_value=asyncio.Future())
+        comp2.connect = MagicMock(return_value=asyncio.Future())
         components = [comp1, comp2]
 
         with (
@@ -921,8 +953,8 @@ class TestConsumerGuardConditions:
         comp.send_message_as_user.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_consumer_skips_when_no_identity(self):
-        """_identity is None → guard on line 63 fails."""
+    async def test_consumer_uses_fallback_nick_when_no_identity(self):
+        """_identity is None (dev mode) → use author_id as fallback nick."""
         adapter = XMPPAdapter(MagicMock(spec=Bus), MagicMock(spec=ChannelRouter), None)
         comp = _mock_component()
         adapter._component = comp
@@ -938,4 +970,11 @@ class TestConsumerGuardConditions:
             message_id="m1",
         )
         await _run_consumer_once(adapter, evt)
-        comp.send_message_as_user.assert_not_called()
+        comp.send_message_as_user.assert_awaited_once_with(
+            "u1",
+            "room@conf.example.com",
+            "hi",
+            "u1",
+            reply_to_id=None,
+            discord_message_id="m1",
+        )
