@@ -547,7 +547,7 @@ async def test_webhook_edit_succeeds(bus: Bus, router: ChannelRouter) -> None:
     mock_webhook.edit_message = AsyncMock()
     adapter._get_or_create_webhook = AsyncMock(return_value=mock_webhook)
 
-    result = await adapter._webhook_edit("123", "Alice", 88888, "edited")
+    result = await adapter._webhook_edit("123", 88888, "edited")
     assert result is True
     mock_webhook.edit_message.assert_called_once()
     call_args = mock_webhook.edit_message.call_args
