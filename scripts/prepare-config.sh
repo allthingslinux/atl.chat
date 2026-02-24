@@ -46,14 +46,22 @@ prepare_config() {
     exit 1
   fi
 
-  # Load environment variables from .env if it exists
+  # Load .env (base) then .env.dev (overrides for just dev)
   if [ -f "$PROJECT_ROOT/.env" ]; then
     log_info "Loading environment variables from .env"
-    # Use set -a to automatically export all variables
     set -a
     # shellcheck disable=SC1091
     source "$PROJECT_ROOT/.env"
     set +a
+  fi
+  if [ -f "$PROJECT_ROOT/.env.dev" ]; then
+    log_info "Loading .env.dev overrides"
+    set -a
+    # shellcheck disable=SC1091
+    source "$PROJECT_ROOT/.env.dev"
+    set +a
+  fi
+  if [ -f "$PROJECT_ROOT/.env" ] || [ -f "$PROJECT_ROOT/.env.dev" ]; then
     log_info "Environment variables loaded"
   fi
 
@@ -62,7 +70,10 @@ prepare_config() {
 
   # Bridge: IRC server hostname inside Docker network; Prosody domain for MUC JID
   export IRC_BRIDGE_SERVER="${IRC_BRIDGE_SERVER:-atl-irc-server}"
+  export BRIDGE_IRC_OPER_PASSWORD="${BRIDGE_IRC_OPER_PASSWORD:-change_me_bridge_oper}"
   export PROSODY_DOMAIN="${PROSODY_DOMAIN:-${XMPP_DOMAIN:-xmpp.localhost}}"
+  # Discord channel ID for bridge mappings (set in .env to survive prepare-config runs)
+  export BRIDGE_DISCORD_CHANNEL_ID="${BRIDGE_DISCORD_CHANNEL_ID:-REPLACE_WITH_DISCORD_CHANNEL_ID}"
   # IRC TLS verify: false for dev (self-signed certs), true for prod
   export IRC_TLS_VERIFY="${BRIDGE_IRC_TLS_VERIFY:-${IRC_TLS_VERIFY:-$([ "${ATL_ENVIRONMENT:-}" = "dev" ] && echo "false" || echo "true")}}"
 
