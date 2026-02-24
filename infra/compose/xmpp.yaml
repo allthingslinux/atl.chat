@@ -23,6 +23,8 @@ services:
     env_file:
       - path: ../../.env
         required: false
+      - path: ../../.env.dev
+        required: false
 
     environment:
       - PROSODY_DOMAIN=${XMPP_DOMAIN}
@@ -56,6 +58,7 @@ services:
       - ../../apps/prosody/scripts:/opt/prosody/scripts:ro
       - ../../apps/prosody/www:/usr/share/prosody/www:ro
       - ../../data/xmpp/data:/var/lib/prosody/data
+      - ../../data/xmpp/logs:/var/lib/prosody/logs
       - ../../data/xmpp/uploads:/var/lib/prosody/uploads
       - ../../data/certs:/etc/prosody/certs
 
