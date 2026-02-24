@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from bridge.adapters.irc import IRCClient
-from bridge.adapters.irc_msgid import MessageIDTracker
+from bridge.adapters.irc_msgid import MessageIDTracker, ReactionTracker
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -25,6 +25,7 @@ def _make_client(
     bus = MagicMock()
     router = MagicMock()
     tracker = MessageIDTracker()
+    reaction_tracker = ReactionTracker()
     client = IRCClient(
         bus=bus,
         router=router,
@@ -32,6 +33,7 @@ def _make_client(
         nick=nick,
         channels=channels or ["#test"],
         msgid_tracker=tracker,
+        reaction_tracker=reaction_tracker,
         auto_rejoin=auto_rejoin,
         rejoin_delay=rejoin_delay,
     )
@@ -514,6 +516,7 @@ class TestConnectWithBackoff:
         from bridge.adapters.irc import _connect_with_backoff
 
         mock_client = AsyncMock()
+        mock_client.connected = False  # pydle returns immediately; we wait for disconnect
         call_count = 0
 
         async def fake_connect(**kwargs):
@@ -532,6 +535,7 @@ class TestConnectWithBackoff:
         from bridge.adapters.irc import _connect_with_backoff
 
         mock_client = AsyncMock()
+        mock_client.connected = False  # simulate disconnect so we don't wait forever
         call_count = 0
 
         async def fake_connect(**kwargs):
