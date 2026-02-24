@@ -10,3 +10,4 @@
 !.env.staging
 !.env.production
 !.env.*
+!.env.dev.example
