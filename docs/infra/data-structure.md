@@ -50,3 +50,4 @@ data/
 | `data/xmpp/uploads`       | `/var/lib/prosody/uploads`               | Prosody   |
 | `data/certs`             | `/home/unrealircd/unrealircd/certs` (ro) | UnrealIRCd|
 | `data/certs`             | `/etc/prosody/certs`                     | Prosody   |
+| `apps/bridge/config.yaml`| `/app/config.yaml` (ro)                  | Bridge    |
