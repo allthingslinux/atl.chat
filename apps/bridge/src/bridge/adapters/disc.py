@@ -32,6 +32,10 @@ if TYPE_CHECKING:
 MIN_USERNAME_LEN = 2
 MAX_USERNAME_LEN = 32
 
+# One webhook per channel (matterbridge pattern); username/avatar per message
+WEBHOOK_NAME = "ATL Bridge"
+DISCORD_WEBHOOKS_PER_CHANNEL = 10
+
 
 def _ensure_valid_username(name: str) -> str:
     """Truncate or pad username to fit Discord webhook limits."""
@@ -58,7 +62,7 @@ class DiscordAdapter:
         self._router = router
         self._identity = identity_resolver
         self._queue: asyncio.Queue[MessageOut] = asyncio.Queue()
-        self._webhook_cache: TTLCache[tuple[str, str], Webhook] = TTLCache(maxsize=500, ttl=86400)
+        self._webhook_cache: TTLCache[str, Webhook] = TTLCache(maxsize=100, ttl=86400)
         self._send_lock = asyncio.Lock()
         self._bot: commands.Bot | None = None
         self._session: aiohttp.ClientSession | None = None
@@ -95,8 +99,8 @@ class DiscordAdapter:
         if isinstance(evt, MessageOut):
             self._queue.put_nowait(evt)
 
-    async def _get_or_create_webhook(self, channel_id: str, author_display: str) -> Webhook | None:
-        """Get or create webhook for (channel_id, author_display). Caller must hold _send_lock."""
+    async def _get_or_create_webhook(self, channel_id: str) -> Webhook | None:
+        """Get or create one webhook per channel (matterbridge pattern). Caller must hold _send_lock."""
         bot = self._bot
         if not bot:
             return None
@@ -106,29 +110,51 @@ class DiscordAdapter:
             logger.warning("Discord channel {} not found or not a text channel", channel_id)
             return None
 
-        cache_key = (channel_id, author_display)
-        webhook = self._webhook_cache.get(cache_key)
+        webhook = self._webhook_cache.get(channel_id)
 
         if not webhook:
             try:
                 webhooks = await channel.webhooks()
+                app_id = str(bot.application_id) if getattr(bot, "application_id", None) else None
+
+                # 1) Reuse existing webhook with our name (from previous runs)
                 for wh in webhooks:
-                    if wh.name == author_display[:80]:  # Webhook name limit
+                    if wh.name == WEBHOOK_NAME:
                         webhook = wh
+                        logger.debug("Reusing webhook '{}' for channel {}", wh.name, channel_id)
                         break
-                if not webhook and len(webhooks) < 15:
+
+                # 2) Fallback: use any webhook owned by our app when at limit
+                if not webhook and app_id and len(webhooks) >= DISCORD_WEBHOOKS_PER_CHANNEL:
+                    for wh in webhooks:
+                        if str(getattr(wh, "application_id", None) or "") == app_id:
+                            webhook = wh
+                            logger.info(
+                                "Reusing app-owned webhook '{}' for channel {} (limit reached)",
+                                wh.name,
+                                channel_id,
+                            )
+                            break
+
+                # 3) Create only if no reusable webhook found
+                if not webhook and len(webhooks) < DISCORD_WEBHOOKS_PER_CHANNEL:
                     webhook = await channel.create_webhook(
-                        name=_ensure_valid_username(author_display)[:32],
+                        name=WEBHOOK_NAME,
                         reason="ATL Bridge relay",
                     )
                 if webhook:
-                    self._webhook_cache[cache_key] = webhook
+                    self._webhook_cache[channel_id] = webhook
             except Exception as exc:
-                logger.exception("Failed to get/create webhook for {}: {}", cache_key, exc)
+                logger.exception("Failed to get/create webhook for channel {}: {}", channel_id, exc)
                 return None
 
         if not webhook:
-            logger.warning("No webhook available for {} (limit 15/channel?)", cache_key)
+            logger.warning(
+                "No webhook available for channel {}: Discord allows {} webhooks/channel. "
+                "Remove unused webhooks in Server Settings → Integrations, or use one owned by this bot.",
+                channel_id,
+                DISCORD_WEBHOOKS_PER_CHANNEL,
+            )
             return None
 
         return webhook
@@ -141,8 +167,8 @@ class DiscordAdapter:
         *,
         avatar_url: str | None = None,
     ) -> int | None:
-        """Send message via webhook. Creates or reuses webhook per identity."""
-        webhook = await self._get_or_create_webhook(channel_id, author_display)
+        """Send message via webhook. One webhook per channel; username/avatar per message."""
+        webhook = await self._get_or_create_webhook(channel_id)
         if not webhook:
             return None
 
@@ -158,12 +184,11 @@ class DiscordAdapter:
     async def _webhook_edit(
         self,
         channel_id: str,
-        author_display: str,
         discord_message_id: int,
         content: str,
     ) -> bool:
-        """Edit webhook message by ID. Returns True if edit succeeded."""
-        webhook = await self._get_or_create_webhook(channel_id, author_display)
+        """Edit webhook message by ID. Same webhook that created it can edit it."""
+        webhook = await self._get_or_create_webhook(channel_id)
         if not webhook:
             return False
 
@@ -213,18 +238,30 @@ class DiscordAdapter:
             logger.debug("Could not delete Discord message {}: {}", evt.message_id, exc)
 
     async def _handle_reaction_out(self, evt: ReactionOut) -> None:
-        """Add reaction to Discord message when IRC TAGMSG +draft/react received."""
+        """Add or remove reaction on Discord message when IRC/XMPP reaction received."""
         if not self._bot:
             return
         channel = self._bot.get_channel(int(evt.channel_id))
         if not channel or not isinstance(channel, TextChannel):
             return
+        is_remove = evt.raw.get("is_remove", False)
         try:
             msg = await channel.fetch_message(int(evt.message_id))
-            await msg.add_reaction(evt.emoji)
-            logger.debug("Added reaction {} to Discord message {}", evt.emoji, evt.message_id)
+            if is_remove:
+                await msg.remove_reaction(evt.emoji, self._bot.user)
+                logger.debug(
+                    "Removed reaction {} from Discord message {}", evt.emoji, evt.message_id
+                )
+            else:
+                await msg.add_reaction(evt.emoji)
+                logger.debug("Added reaction {} to Discord message {}", evt.emoji, evt.message_id)
         except Exception as exc:
-            logger.debug("Could not add reaction to {}: {}", evt.message_id, exc)
+            logger.debug(
+                "Could not {} reaction on {}: {}",
+                "remove" if is_remove else "add",
+                evt.message_id,
+                exc,
+            )
 
     async def _handle_typing_out(self, evt: TypingOut) -> None:
         """Trigger Discord typing indicator when IRC typing received (throttled 3s)."""
@@ -265,7 +302,6 @@ class DiscordAdapter:
                         async with self._send_lock:
                             edited = await self._webhook_edit(
                                 evt.channel_id,
-                                evt.author_display,
                                 int(resolved),
                                 evt.content,
                             )
@@ -286,20 +322,37 @@ class DiscordAdapter:
                             evt.content,
                             avatar_url=evt.raw.get("avatar_url"),
                         )
-                # Store XMPP->Discord mapping for retraction routing
-                if discord_msg_id and evt.raw.get("origin") == "xmpp":
+                # Store XMPP->Discord mapping for retraction, reaction, and edit routing
+                origin = (evt.raw or {}).get("origin")
+                if discord_msg_id and origin == "xmpp":
                     mapping = self._router.get_mapping_for_discord(evt.channel_id)
                     if mapping and mapping.xmpp:
                         from bridge.adapters.xmpp import XMPPAdapter
 
+                        stored = False
                         for adapter in self._bus._adapters:
                             if isinstance(adapter, XMPPAdapter) and adapter._component:
-                                adapter._component._msgid_tracker.store(
+                                tracker = adapter._component._msgid_tracker
+                                tracker.store(
                                     evt.message_id,
                                     str(discord_msg_id),
                                     mapping.xmpp.muc_jid,
                                 )
+                                for alias in (evt.raw or {}).get("xmpp_id_aliases", []):
+                                    if alias and alias != evt.message_id:
+                                        tracker.add_alias(alias, evt.message_id)
+                                stored = True
+                                logger.debug(
+                                    "Stored XMPP->Discord mapping: xmpp_id={} -> discord_id={} (for reactions/edits)",
+                                    evt.message_id,
+                                    discord_msg_id,
+                                )
                                 break
+                        if not stored:
+                            logger.warning(
+                                "XMPP->Discord: no XMPP adapter with component; reaction lookup will fail for msg {}",
+                                discord_msg_id,
+                            )
                 # Store IRC->Discord mapping for REDACT routing
                 if discord_msg_id and evt.raw.get("origin") == "irc":
                     from bridge.adapters.irc import IRCAdapter
@@ -401,10 +454,10 @@ class DiscordAdapter:
 
     async def _on_message(self, message: Message) -> None:
         """Handle incoming Discord message; emit MessageIn to bus."""
-        if message.author.bot:
-            return
-        # Skip webhook-originated messages (our own bridge output) to prevent echo loops
+        # Skip webhook-originated messages first (our own bridge output) — most definitive
         if getattr(message, "webhook_id", None):
+            return
+        if message.author.bot:
             return
 
         channel_id = str(message.channel.id)
@@ -455,6 +508,16 @@ class DiscordAdapter:
             return
 
         content = message.content or ""
+        if not content.strip() and self._bot:
+            # Uncached: fetch message for content (MESSAGE_CONTENT intent may still not include it)
+            try:
+                channel = self._bot.get_channel(payload.channel_id)
+                if isinstance(channel, TextChannel):
+                    fetched = await channel.fetch_message(payload.message_id)
+                    content = fetched.content or ""
+                    message = fetched
+            except Exception:
+                pass
         if not content.strip():
             return
 
@@ -462,18 +525,20 @@ class DiscordAdapter:
             str(message.author.display_avatar.url) if message.author.display_avatar else None
         )
 
+        msg_id = str(getattr(message, "id", None) or payload.message_id)
+        logger.debug("Discord edit received: channel={} msg_id={}", channel_id, msg_id)
         _, evt = message_in(
             origin="discord",
             channel_id=channel_id,
             author_id=str(message.author.id),
             author_display=message.author.display_name or message.author.name,
             content=content,
-            message_id=str(message.id),
+            message_id=msg_id,
             reply_to_id=str(message.reference.message_id) if message.reference else None,
             is_edit=True,
             is_action=False,
             avatar_url=avatar_url,
-            raw={},
+            raw={"replace_id": msg_id},
         )
         self._bus.publish("discord", evt)
 
@@ -481,6 +546,9 @@ class DiscordAdapter:
         """Handle Discord reaction add; publish for Relay to route to IRC/XMPP."""
         if not payload.emoji.is_unicode_emoji():
             logger.debug("Skipping custom Discord emoji: {}", payload.emoji.name)
+            return
+        # Skip our own reactions (from bridge relaying XMPP/IRC) to prevent echo
+        if self._bot and payload.user_id == self._bot.user.id:
             return
 
         channel_id = str(payload.channel_id)
@@ -517,6 +585,9 @@ class DiscordAdapter:
     async def _on_reaction_remove(self, payload) -> None:
         """Handle Discord reaction remove; emit ReactionIn with is_remove=True for relay."""
         if not payload.emoji.is_unicode_emoji():
+            return
+        # Skip our own reaction removals (from bridge relaying) to prevent echo
+        if self._bot and payload.user_id == self._bot.user.id:
             return
 
         channel_id = str(payload.channel_id)
