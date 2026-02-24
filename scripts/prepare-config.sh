@@ -60,6 +60,10 @@ prepare_config() {
   # Ensure Atheme JSON-RPC port has a default (for existing .env without it)
   export ATHEME_HTTPD_PORT="${ATHEME_HTTPD_PORT:-8081}"
 
+  # Bridge: IRC server hostname inside Docker network; Prosody domain for MUC JID
+  export IRC_BRIDGE_SERVER="${IRC_BRIDGE_SERVER:-atl-irc-server}"
+  export PROSODY_DOMAIN="${PROSODY_DOMAIN:-${XMPP_DOMAIN:-xmpp.localhost}}"
+
   # IRC cert paths: use shared data/certs (Let's Encrypt layout), matching Prosody
   export IRC_SSL_CERT_PATH="${IRC_SSL_CERT_PATH:-/home/unrealircd/unrealircd/certs/live/${IRC_DOMAIN:-irc.localhost}/fullchain.pem}"
   export IRC_SSL_KEY_PATH="${IRC_SSL_KEY_PATH:-/home/unrealircd/unrealircd/certs/live/${IRC_DOMAIN:-irc.localhost}/privkey.pem}"
@@ -146,6 +150,27 @@ prepare_config() {
     log_warning "Template file not found: $atheme_template"
   fi
 
+  # Prepare bridge configuration
+  local bridge_config="$PROJECT_ROOT/apps/bridge/config.yaml"
+  local bridge_template="$PROJECT_ROOT/apps/bridge/config.template.yaml"
+  if [ -f "$bridge_template" ]; then
+    log_info "Preparing bridge configuration from template..."
+    local temp_file="/tmp/bridge-config.yaml.tmp"
+    envsubst < "$bridge_template" > "$temp_file"
+    if cp "$temp_file" "$bridge_config" 2>/dev/null || sudo cp "$temp_file" "$bridge_config" 2>/dev/null; then
+      log_success "Bridge configuration prepared"
+    else
+      log_warning "Could not write bridge config to $bridge_config"
+    fi
+    rm -f "$temp_file"
+  elif [ ! -f "$bridge_config" ]; then
+    log_warning "Bridge config not found. Copy apps/bridge/config.example.yaml to apps/bridge/config.yaml and customize."
+    if [ -f "$PROJECT_ROOT/apps/bridge/config.example.yaml" ]; then
+      cp "$PROJECT_ROOT/apps/bridge/config.example.yaml" "$bridge_config" 2>/dev/null || true
+      log_info "Copied config.example.yaml to apps/bridge/config.yaml - edit with your Discord channel ID"
+    fi
+  fi
+
   log_success "All configuration files prepared successfully"
 
   # Show substituted values for verification
@@ -164,6 +189,9 @@ prepare_config() {
   echo "  ATHEME_UPLINK_PORT: ${ATHEME_UPLINK_PORT:-'not set'}"
   echo "  ATHEME_HTTPD_PORT: ${ATHEME_HTTPD_PORT:-8081}"
   echo "  ATHEME_SEND_PASSWORD: ${ATHEME_SEND_PASSWORD:-'not set'}"
+  echo "  XMPP_COMPONENT_JID: ${XMPP_COMPONENT_JID:-'not set'}"
+  echo "  XMPP_COMPONENT_SERVER: ${XMPP_COMPONENT_SERVER:-'not set'}"
+  echo "  PROSODY_DOMAIN: ${PROSODY_DOMAIN:-'not set'}"
 }
 
 # Main function
