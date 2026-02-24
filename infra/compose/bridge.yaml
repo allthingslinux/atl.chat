@@ -10,5 +10,35 @@ name: atl-bridge
 include:
   - networks.yaml
 
-services: {}
-# Placeholder - bridge services to be added when implemented
+services:
+  atl-bridge:
+    image: ghcr.io/allthingslinux/bridge:latest
+    container_name: atl-bridge
+    restart: unless-stopped
+    depends_on:
+      atl-irc-server:
+        condition: service_healthy
+      atl-xmpp-server:
+        condition: service_healthy
+    env_file:
+      - path: ../../.env
+        required: false
+    environment:
+      - DISCORD_TOKEN
+      - PORTAL_BASE_URL
+      - PORTAL_TOKEN
+      - XMPP_COMPONENT_JID
+      - XMPP_COMPONENT_SECRET
+      - XMPP_COMPONENT_SERVER
+      - XMPP_COMPONENT_PORT
+      - IRC_NICK
+    volumes:
+      - ../../data/bridge/config.yaml:/app/config.yaml:ro
+    networks:
+      - atl-chat
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
