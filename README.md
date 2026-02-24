@@ -13,7 +13,7 @@ apps/
 ├── webpanel/       # UnrealIRCd web admin
 ├── prosody/        # XMPP server
 ├── web/            # Next.js web application
-├── bridge/         # Discord↔IRC↔XMPP bridge (submodule)
+├── bridge/         # Discord↔IRC↔XMPP bridge (in-repo)
 └── gamja/          # IRC web client (planned)
 ```
 
@@ -114,6 +114,13 @@ just web dev
 ### Bridges
 
 Discord↔IRC↔XMPP bridge (in-repo). See [apps/bridge/](apps/bridge/) and `infra/compose/bridge.yaml`.
+
+```bash
+just bridge test     # Run bridge tests
+just bridge lint     # Ruff check
+just bridge format   # Ruff format
+just bridge check    # Full check (lint + typecheck + test)
+```
 
 ## Task Running
 

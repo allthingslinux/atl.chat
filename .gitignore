@@ -4,6 +4,7 @@
 # Global / OS / Editor
 # ------------------------------------------------------------------------------
 .DS_Store
+Thumbs.db
 .vscode
 .idea
 *.swp
@@ -52,10 +53,29 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+*$py.class
+*.so
+.Python
+*.egg
+*.egg-info/
+.eggs/
+build/
+dist/
+wheels/
 .venv
 venv
+env/
 .pytest_cache/
+.coverage
+coverage.xml
+coverage.json
+htmlcov/
+lcov.info
+.tox/
+.nox/
 .ruff_cache/
+.mypy_cache/
+.pyrightcache/
 .uv_cache/
 
 # ------------------------------------------------------------------------------
@@ -86,6 +106,13 @@ certs/
 !runtime/
 runtime/*/
 !runtime/.gitkeep
+
+# ------------------------------------------------------------------------------
+# App-Specific: Bridge (Discord↔IRC↔XMPP)
+# ------------------------------------------------------------------------------
+apps/bridge/config.yaml
+apps/bridge/references
+apps/bridge/audit/
 
 # ------------------------------------------------------------------------------
 # App-Specific: IRC (UnrealIRCd / Atheme)

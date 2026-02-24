@@ -11,6 +11,7 @@
 docs/
 *.md
 README*
+!apps/bridge/README.md
 LICENSE
 CHANGELOG*
 CONTRIBUTING*
@@ -82,6 +83,11 @@ webpanel_data/
 # 🧪 Tests
 tests/
 test/
+
+# Bridge-specific (runtime config, audit, refs)
+apps/bridge/audit/
+apps/bridge/references/
+apps/bridge/config.yaml
 
 # 🛠️ CI/CD & Configs
 .circleci/
