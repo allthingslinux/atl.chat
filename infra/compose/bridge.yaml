@@ -30,7 +30,7 @@ services:
       - XMPP_COMPONENT_PORT
       - IRC_NICK
     volumes:
-      - ../../data/bridge/config.yaml:/app/config.yaml:ro
+      - ../../apps/bridge/config.yaml:/app/config.yaml:ro
     networks:
       - atl-chat
     healthcheck:
