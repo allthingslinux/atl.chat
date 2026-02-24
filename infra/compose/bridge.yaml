@@ -21,14 +21,14 @@ services:
       - path: ../../.env
         required: false
     environment:
-      - DISCORD_TOKEN
-      - PORTAL_BASE_URL
-      - PORTAL_TOKEN
-      - XMPP_COMPONENT_JID
-      - XMPP_COMPONENT_SECRET
-      - XMPP_COMPONENT_SERVER
-      - XMPP_COMPONENT_PORT
-      - IRC_NICK
+      - BRIDGE_DISCORD_TOKEN
+      - BRIDGE_PORTAL_BASE_URL
+      - BRIDGE_PORTAL_TOKEN
+      - BRIDGE_XMPP_COMPONENT_JID
+      - BRIDGE_XMPP_COMPONENT_SECRET
+      - BRIDGE_XMPP_COMPONENT_SERVER
+      - BRIDGE_XMPP_COMPONENT_PORT
+      - BRIDGE_IRC_NICK
       - ATL_ENVIRONMENT
       - BRIDGE_IRC_TLS_VERIFY
     volumes:
