@@ -8,5 +8,4 @@ Disallow:
 # Allow access to security.txt
 Allow: /.well-known/security.txt
 
-# Sitemap location
-Sitemap: https://xmpp.atl.chat/sitemap.xml
+# Sitemap: add if you deploy one (e.g. Sitemap: https://xmpp.atl.chat/sitemap.xml)
