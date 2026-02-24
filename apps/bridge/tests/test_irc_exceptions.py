@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 
 from bridge.adapters.irc import IRCAdapter, IRCClient
-from bridge.adapters.irc_msgid import MessageIDTracker
+from bridge.adapters.irc_msgid import MessageIDTracker, ReactionTracker
 from bridge.adapters.irc_puppet import IRCPuppet, IRCPuppetManager
 
 
@@ -17,6 +17,7 @@ class TestIRCClient:
         bus = Mock()
         router = Mock()
         tracker = MessageIDTracker()
+        reaction_tracker = ReactionTracker()
 
         client = IRCClient(
             bus=bus,
@@ -25,6 +26,7 @@ class TestIRCClient:
             nick="test-bot",
             channels=["#test"],
             msgid_tracker=tracker,
+            reaction_tracker=reaction_tracker,
         )
 
         # Nickname is set during connection, not init
@@ -37,6 +39,7 @@ class TestIRCClient:
         router = Mock()
         router.get_mapping_for_irc = Mock(return_value=Mock(discord_channel_id="123"))
         tracker = MessageIDTracker()
+        reaction_tracker = ReactionTracker()
 
         client = IRCClient(
             bus=bus,
@@ -45,6 +48,7 @@ class TestIRCClient:
             nick="test-bot",
             channels=["#test"],
             msgid_tracker=tracker,
+            reaction_tracker=reaction_tracker,
         )
 
         client._message_tags = {"msgid": "abc123", "+draft/reply": "xyz789"}
