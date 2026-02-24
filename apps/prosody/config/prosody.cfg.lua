@@ -792,7 +792,7 @@ proxy65_address = Lua.os.getenv("PROSODY_PROXY_ADDRESS") or ("proxy." .. domain)
 -- Bridge XMPP component (XEP-0114)
 -- Allows the atl-bridge service to connect as an external component
 Component("bridge." .. domain) "component"
-component_secret = Lua.os.getenv("XMPP_COMPONENT_SECRET") or "change_me_xmpp_component_secret"
+component_secret = Lua.os.getenv("BRIDGE_XMPP_COMPONENT_SECRET") or Lua.os.getenv("XMPP_COMPONENT_SECRET") or "change_me_xmpp_component_secret"
 
 -- ===============================================
 -- CONTACT INFO, ROLES, ACCOUNT CLEANUP
