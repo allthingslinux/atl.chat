@@ -13,6 +13,7 @@ jobs:
       irc: ${{ steps.filter.outputs.irc }}
       xmpp: ${{ steps.filter.outputs.xmpp }}
       web: ${{ steps.filter.outputs.web }}
+      bridge: ${{ steps.filter.outputs.bridge }}
       infra: ${{ steps.filter.outputs.infra }}
     steps:
       - uses: actions/checkout@v5
@@ -31,6 +32,8 @@ jobs:
               - 'apps/prosody/**'
             web:
               - 'apps/web/**'
+            bridge:
+              - 'apps/bridge/**'
             infra:
               - 'compose.yaml'
               - '.github/workflows/**'
@@ -76,6 +79,39 @@ jobs:
       working-directory: apps/prosody
       image-name: atl-xmpp
 
+  lint-bridge:
+    needs: changes
+    if: needs.changes.outputs.bridge == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/bridge
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv python install 3.12
+      - run: uv sync --frozen --all-extras
+      - run: uv run ruff check src tests
+      - run: uv run ruff format --check src tests
+
+  test-bridge:
+    needs: changes
+    if: needs.changes.outputs.bridge == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/bridge
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv python install 3.12
+      - run: uv sync --frozen --all-extras
+      - run: uv run pytest tests -v --tb=short
+
   lint-web:
     needs: changes
     if: needs.changes.outputs.web == 'true'
@@ -107,3 +143,32 @@ jobs:
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter atl.chat run build
+
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && !contains(github.event.head_commit.message, 'skip ci')
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

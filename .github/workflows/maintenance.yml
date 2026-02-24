@@ -1,0 +1,51 @@
+# Convert TODOs/FIXMEs to GitHub issues
+
+name: Maintenance
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      manual_commit_ref:
+        description: SHA to compare for TODOs (optional)
+        required: false
+      manual_base_ref:
+        description: Base SHA for TODO comparison (optional)
+        required: false
+
+concurrency:
+  group: maintenance-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  todos:
+    name: TODOs
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: alstr/todo-to-issue-action@v5.1.14
+        with:
+          CLOSE_ISSUES: true
+          INSERT_ISSUE_URLS: true
+          AUTO_ASSIGN: true
+          IDENTIFIERS: |
+            [
+              {"name": "TODO", "labels": ["todo-to-issue"]},
+              {"name": "FIXME", "labels": ["todo-to-issue"]},
+              {"name": "XXX", "labels": ["todo-to-issue"]},
+              {"name": "HACK", "labels": ["todo-to-issue"]}
+            ]
+          IGNORE: |
+            .github/,.venv/,__pycache__/,.pytest_cache/,.ruff_cache/,node_modules/,.next/
+            audit/,references/,apps/bridge/audit/,apps/bridge/references/
+          ESCAPE: true
+        env:
+          MANUAL_COMMIT_REF: ${{ github.event.inputs.manual_commit_ref }}
+          MANUAL_BASE_REF: ${{ github.event.inputs.manual_base_ref }}

@@ -1,0 +1,46 @@
+# Validate PR titles follow Conventional Commits
+
+name: PR Title Validation
+
+on:
+  pull_request_target:
+    types: [opened, reopened, edited, synchronize]
+
+concurrency:
+  group: pr-title-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  pull-requests: write
+
+jobs:
+  validate-pr-title:
+    name: Validate PR Title
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: read
+      statuses: write
+    steps:
+      - uses: amannn/action-semantic-pull-request@v6.1.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            feat
+            fix
+            docs
+            style
+            refactor
+            perf
+            test
+            build
+            ci
+            chore
+            revert
+          requireScope: false
+          subjectPattern: ^(?![A-Z]).+$
+          subjectPatternError: |
+            The subject "{subject}" found in the pull request title "{title}" didn't match the required pattern: {pattern}
+            The subject must not start with an uppercase letter.
+          wip: true
