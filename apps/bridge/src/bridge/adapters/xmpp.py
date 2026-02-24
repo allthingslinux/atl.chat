@@ -52,6 +52,20 @@ class XMPPAdapter:
         if isinstance(evt, (MessageOut, MessageDeleteOut, ReactionOut)):
             self._outbound.put_nowait(evt)
 
+    def _resolve_nick(self, evt: MessageOut | MessageDeleteOut | ReactionOut) -> str:
+        """Fallback nick when identity resolver unavailable (dev without Portal)."""
+        author = getattr(evt, "author_id", None) or ""
+        display = getattr(evt, "author_display", None) or ""
+        return (author or display)[:20] or "bridge"
+
+    async def _resolve_nick_async(self, evt: MessageOut | MessageDeleteOut | ReactionOut) -> str:
+        """Resolve XMPP nick from identity or fallback (dev mode without Portal)."""
+        if self._identity and getattr(evt, "author_id", None):
+            nick = await self._identity.discord_to_xmpp(evt.author_id)
+            if nick:
+                return nick
+        return self._resolve_nick(evt)
+
     async def _outbound_consumer(self) -> None:
         """Drain outbound queue and send to MUC via component."""
         while True:
@@ -66,15 +80,12 @@ class XMPPAdapter:
                     await asyncio.sleep(0.25)
                     continue
                 mapping = self._router.get_mapping_for_discord(evt.channel_id)
-                if mapping and mapping.xmpp and self._component and self._identity:
+                if mapping and mapping.xmpp and self._component:
                     async with self._send_lock:
                         muc_jid = mapping.xmpp.muc_jid
 
-                        # Get Discord user's XMPP nick from identity
-                        nick = await self._identity.discord_to_xmpp(evt.author_id)
-                        if not nick:
-                            # Fallback to Discord display name
-                            nick = evt.author_id[:20]  # Truncate for safety
+                        # Resolve XMPP nick (identity or fallback for dev without Portal)
+                        nick = await self._resolve_nick_async(evt)
 
                         # Set avatar if provided
                         if evt.avatar_url:
@@ -85,17 +96,32 @@ class XMPPAdapter:
                         # Check if this is an edit
                         is_edit = evt.raw.get("is_edit", False)
                         if is_edit:
-                            # Look up original XMPP message ID
-                            original_xmpp_id = self._component._msgid_tracker.get_xmpp_id(
-                                evt.message_id
+                            # Look up original XMPP message ID (stored when we sent Discord→XMPP)
+                            lookup_id = evt.message_id or evt.raw.get("replace_id")
+                            original_xmpp_id = (
+                                self._component._msgid_tracker.get_xmpp_id(lookup_id)
+                                if lookup_id
+                                else None
+                            )
+                            logger.debug(
+                                "Discord edit lookup: discord_msg_id={} lookup_id={} -> xmpp_id={}",
+                                evt.message_id,
+                                lookup_id,
+                                original_xmpp_id,
                             )
                             if original_xmpp_id:
                                 await self._component.send_correction_as_user(
                                     evt.author_id, muc_jid, evt.content, nick, original_xmpp_id
                                 )
+                                logger.info(
+                                    "Sent XMPP correction for Discord msg {} -> xmpp id {}",
+                                    evt.message_id,
+                                    original_xmpp_id,
+                                )
                             else:
                                 logger.warning(
-                                    "Cannot send XMPP correction: original message ID not found for {}",
+                                    "Cannot send XMPP correction: Discord message {} not in tracker "
+                                    "(original may have been sent before bridge started or mapping expired)",
                                     evt.message_id,
                                 )
                         else:
@@ -106,17 +132,21 @@ class XMPPAdapter:
                                     evt.reply_to_id
                                 )
 
-                            # Send new message and track ID
+                            # Send new message; store mapping before send so stanza-id from
+                            # MUC echo can update it (required for Discord→XMPP edits)
                             xmpp_msg_id = await self._component.send_message_as_user(
                                 evt.author_id,
                                 muc_jid,
                                 evt.content,
                                 nick,
                                 reply_to_id=reply_to_xmpp_id,
+                                discord_message_id=evt.message_id,
                             )
                             if xmpp_msg_id:
-                                self._component._msgid_tracker.store(
-                                    xmpp_msg_id, evt.message_id, muc_jid
+                                logger.debug(
+                                    "Stored Discord→XMPP mapping: discord_id={} -> xmpp_id={}",
+                                    evt.message_id,
+                                    xmpp_msg_id,
                                 )
 
                 await asyncio.sleep(0.25)
@@ -127,7 +157,7 @@ class XMPPAdapter:
 
     async def _handle_delete_out(self, evt: MessageDeleteOut) -> None:
         """Send XMPP retraction for deleted message."""
-        if not self._component or not self._identity:
+        if not self._component:
             return
         mapping = self._router.get_mapping_for_discord(evt.channel_id)
         if not mapping or not mapping.xmpp:
@@ -136,9 +166,7 @@ class XMPPAdapter:
         if not target_xmpp_id:
             logger.debug("No XMPP msgid for Discord message {}; skip retraction", evt.message_id)
             return
-        nick = await self._identity.discord_to_xmpp(evt.author_id) if evt.author_id else None
-        if not nick:
-            nick = evt.author_id[:20] if evt.author_id else "bridge"
+        nick = await self._resolve_nick_async(evt)
         await self._component.send_retraction_as_user(
             evt.author_id or "unknown",
             mapping.xmpp.muc_jid,
@@ -148,24 +176,34 @@ class XMPPAdapter:
 
     async def _handle_reaction_out(self, evt: ReactionOut) -> None:
         """Send XMPP reaction for ReactionOut."""
-        if not self._component or not self._identity:
+        if not self._component:
             return
         mapping = self._router.get_mapping_for_discord(evt.channel_id)
         if not mapping or not mapping.xmpp:
             return
-        target_xmpp_id = self._component._msgid_tracker.get_xmpp_id(evt.message_id)
+        target_xmpp_id = self._component._msgid_tracker.get_xmpp_id_for_reaction(evt.message_id)
         if not target_xmpp_id:
-            logger.debug("No XMPP msgid for reaction on {}; skip", evt.message_id)
+            logger.warning(
+                "No XMPP msgid for reaction on Discord msg {}; "
+                "original may be from XMPP (ensure store) or mapping expired",
+                evt.message_id,
+            )
             return
-        nick = await self._identity.discord_to_xmpp(evt.author_id) if evt.author_id else None
-        if not nick:
-            nick = evt.author_display[:20] if evt.author_display else "bridge"
+        is_remove = evt.raw.get("is_remove", False)
+        logger.info(
+            "Sending XMPP reaction %s to msg %s (discord_id=%s)",
+            "removal" if is_remove else evt.emoji,
+            target_xmpp_id,
+            evt.message_id,
+        )
+        nick = await self._resolve_nick_async(evt)
         await self._component.send_reaction_as_user(
             evt.author_id or "unknown",
             mapping.xmpp.muc_jid,
             target_xmpp_id,
             evt.emoji,
             nick,
+            is_remove=is_remove,
         )
 
     async def start(self) -> None:
@@ -180,8 +218,7 @@ class XMPPAdapter:
             return
 
         if not self._identity:
-            logger.warning("No identity resolver; XMPP adapter disabled")
-            return
+            logger.info("XMPP adapter running without Portal (dev mode): using fallback nicks")
 
         mappings = self._router.all_mappings()
         xmpp_mappings = [m for m in mappings if m.xmpp]
@@ -200,7 +237,8 @@ class XMPPAdapter:
         )
         self._bus.register(self)
         self._consumer_task = asyncio.create_task(self._outbound_consumer())
-        self._component_task = asyncio.create_task(self._component.connect())  # type: ignore[attr-defined]
+        # slixmpp connect() returns a Future/Task, not a coroutine
+        self._component_task = self._component.connect()
         logger.info("XMPP component started: {}", component_jid)
 
     async def stop(self) -> None:
