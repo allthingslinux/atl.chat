@@ -31,7 +31,15 @@ modules.list
 | `just xmpp adduser [user]` | Add XMPP user |
 | `just xmpp deluser [user]` | Delete XMPP user |
 | `just xmpp db-backup` | Backup database |
-| `just xmpp check-cert [domain]` | Check certificate |
+| `just xmpp check` | Run all Prosody sanity checks (prosodyctl check) |
+| `just xmpp check-config` | Sanity checks on config file |
+| `just xmpp check-certs` | Verify certificate config (prosodyctl check certs) |
+| `just xmpp check-cert [domain]` | Check certificate for domain |
+| `just xmpp check-connectivity` | Test external connectivity (observe.jabber.network) |
+| `just xmpp check-disabled` | Report disabled VirtualHosts/Components |
+| `just xmpp check-dns` | Verify DNS records (SRV, etc.) |
+| `just xmpp check-features` | Check for missing/unconfigured features |
+| `just xmpp check-turn [stun_server]` | Test TURN/mod_turn_external config |
 
 ## Related
 
