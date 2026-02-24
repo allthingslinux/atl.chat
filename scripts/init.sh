@@ -9,14 +9,18 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
-# Load environment variables from .env file if it exists
+# Load environment variables: .env (base) then .env.dev (overrides for just dev)
 if [ -f "$PROJECT_ROOT/.env" ]; then
-    set -a # automatically export all variables
-
+    set -a
     # shellcheck disable=SC1091
     source "$PROJECT_ROOT/.env"
-
-    set +a # stop automatically exporting
+    set +a
+fi
+if [ -f "$PROJECT_ROOT/.env.dev" ]; then
+    set -a
+    # shellcheck disable=SC1091
+    source "$PROJECT_ROOT/.env.dev"
+    set +a
 fi
 
 # Ensure Atheme JSON-RPC port has a default (for existing .env without it)
@@ -58,6 +62,7 @@ create_directories() {
         "$PROJECT_ROOT/data/atheme/data"
         "$PROJECT_ROOT/data/atheme/logs"
         "$PROJECT_ROOT/data/xmpp/data"
+        "$PROJECT_ROOT/data/xmpp/logs"
         "$PROJECT_ROOT/data/xmpp/uploads"
         "$PROJECT_ROOT/data/certs"
     )
@@ -222,12 +227,12 @@ generate_cert() {
     # Generate self-signed cert if it doesn't exist
     if [ ! -f "$live_dir/fullchain.pem" ] || [ ! -f "$live_dir/privkey.pem" ]; then
         log_info "Generating self-signed certificate for $domain..."
-        # SANs: main, wildcard, Prosody components (muc/upload/proxy), localhost
+        # SANs: main, wildcard, Prosody components (muc/upload/proxy/pubsub/bridge), localhost
         openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
             -keyout "$live_dir/privkey.pem" \
             -out "$live_dir/fullchain.pem" \
             -subj "/CN=$domain" \
-            -addext "subjectAltName=DNS:$domain,DNS:*.$domain,DNS:muc.$domain,DNS:upload.$domain,DNS:proxy.$domain,DNS:localhost,IP:127.0.0.1" 2>/dev/null
+            -addext "subjectAltName=DNS:$domain,DNS:*.$domain,DNS:muc.$domain,DNS:upload.$domain,DNS:proxy.$domain,DNS:pubsub.$domain,DNS:bridge.$domain,DNS:localhost,IP:127.0.0.1" 2>/dev/null
 
         log_success "Generated self-signed certificate for $domain"
     else
@@ -308,6 +313,13 @@ prepare_config_files() {
   else
         log_warning "No Atheme configuration template found"
   fi
+
+    # Run prepare-config.sh (UnrealIRCd, Atheme, Bridge config from templates)
+    if [ -f "$SCRIPT_DIR/prepare-config.sh" ]; then
+        log_info "Running prepare-config.sh (bridge config, etc.)..."
+        # shellcheck source=prepare-config.sh
+        "$SCRIPT_DIR/prepare-config.sh" || log_warning "prepare-config.sh reported issues"
+    fi
 
     # Show substituted values for verification
     log_info "Configuration values:"
