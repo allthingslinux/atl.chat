@@ -137,11 +137,7 @@ ssl-clean:
 
 [group('Utilities')]
 gencloak:
-    @echo "Generating cloak keys - add these to .env (replace IRC_CLOAK_KEY_1, _2, _3)"
-    @echo ""
-    docker compose -f ../../compose.yaml -p atl-chat run --rm atl-irc-server gencloak
-    @echo ""
-    @echo "Extract the 3 quoted strings and set IRC_CLOAK_KEY_1/2/3 in .env, then run: ./scripts/prepare-config.sh"
+    @../../scripts/gencloak-update-env.sh
 
 [group('Utilities')]
 generate-password:
