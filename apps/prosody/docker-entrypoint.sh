@@ -165,7 +165,7 @@ setup_certificates() {
         -keyout "$key_file" \
         -out "$cert_file" \
         -subj "/CN=${PROSODY_DOMAIN}" \
-        -addext "subjectAltName=DNS:${PROSODY_DOMAIN},DNS:*.${PROSODY_DOMAIN},DNS:muc.${PROSODY_DOMAIN},DNS:upload.${PROSODY_DOMAIN},DNS:proxy.${PROSODY_DOMAIN},DNS:localhost,IP:127.0.0.1" 2>/dev/null
+        -addext "subjectAltName=DNS:${PROSODY_DOMAIN},DNS:*.${PROSODY_DOMAIN},DNS:muc.${PROSODY_DOMAIN},DNS:upload.${PROSODY_DOMAIN},DNS:proxy.${PROSODY_DOMAIN},DNS:pubsub.${PROSODY_DOMAIN},DNS:bridge.${PROSODY_DOMAIN},DNS:localhost,IP:127.0.0.1" 2>/dev/null
 
     if [[ $EUID -eq 0 ]]; then
         chown -R "$PROSODY_USER:$PROSODY_USER" "$live_dir" || true
@@ -333,7 +333,7 @@ main() {
     log_info "  Admins: ${PROSODY_ADMIN_JID}"
     log_info "  Storage: ${PROSODY_STORAGE:-sql}"
     log_info "  Log level: ${PROSODY_LOG_LEVEL:-info}"
-    log_info "  Allow registration: ${PROSODY_ALLOW_REGISTRATION:-false}"
+    log_info "  Allow registration: ${PROSODY_ALLOW_REGISTRATION:-false} (Portal provisions via mod_http_admin_api when false)"
 
     if [[ "${PROSODY_STORAGE:-sql}" == "sql" ]]; then
         log_info "  Database: ${PROSODY_DB_DRIVER} on ${PROSODY_DB_HOST}:${PROSODY_DB_PORT:-5432}"
