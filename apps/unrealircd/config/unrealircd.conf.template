@@ -731,6 +731,22 @@ oper admin {
 	require-modes "";
 }
 
+/* Bridge oper: creates channels and sets +P (permanent) so they persist when empty.
+ * Needs channel override so IRCOp can set +P without being chanop. */
+operclass bridge-oper {
+	parent locop;
+	permissions {
+		channel { operonly; override; }
+	}
+}
+
+oper atl-bridge {
+	class opers;
+	mask *@*atl-bridge*;
+	password "${BRIDGE_IRC_OPER_PASSWORD}";
+	operclass bridge-oper;
+}
+
 /* RPC Configuration for Webpanel */
 rpc-user "${WEBPANEL_RPC_USER}" {
 	match { ip *; }
