@@ -23,7 +23,7 @@ globals = {
    "http_default_host", "http_external_url", "http_interfaces", "https_interfaces",
    "http_files_dir", "trusted_proxies", "http_cors_override", "http_headers",
    "http_file_share_size_limit", "http_file_share_daily_quota",
-   "http_file_share_expire_after", "http_file_share_path", "http_file_share_global_quota",
+   "http_file_share_expire_after", "http_file_share_global_quota",
    "http_paths", "http_status_allow_cidr",
    -- BOSH/WebSocket
    "bosh_max_inactivity", "bosh_max_polling", "bosh_max_requests",
@@ -62,6 +62,23 @@ globals = {
    "muc_room_default_public_jids", "muc_log_by_default", "muc_log_presences",
    "log_all_rooms", "muc_log_expires_after", "muc_log_cleanup_interval",
    "muc_max_archive_query_results", "muc_log_store", "muc_log_compression", "muc_mam_smart_enable",
+   "muc_event_rate", "muc_burst_factor", "muc_max_nick_length", "muc_max_char_count",
+   "muc_max_line_count", "muc_limit_base_cost", "muc_line_count_multiplier",
+   "default_mucs",
+  "default_bookmarks",
    -- Misc
    "name", "domain", "contact_info", "server_info", "account_cleanup", "component_secret",
+   "component_interfaces", "http_host", "pastebin_threshold", "pastebin_line_threshold",
+   "support_contact", "support_contact_nick", "support_contact_group",
+   "report_forward_to", "report_forward_to_origin", "report_forward_to_origin_fallback",
+   "anti_spam_services", "anti_spam_block_strings", "anti_spam_block_patterns",
+   -- PubSub
+   "feeds", "add_permissions",
+}
+
+-- Per-file overrides
+files = {
+   ["apps/prosody/config/prosody.cfg.lua"] = {
+      unused = false,  -- Prosody config uses env vars; some locals reserved for future use
+   },
 }
