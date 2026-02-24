@@ -1,15 +1,21 @@
 {
   "name": "atl.chat-monorepo",
+  "version": "0.1.0",
   "private": true,
   "packageManager": "pnpm@9.15.0",
   "scripts": {
     "dev": "just dev",
     "build": "just build",
     "lint": "just lint",
-    "test": "just test"
+    "test": "just test",
+    "release": "semantic-release"
   },
-  "workspaces": [
-    "apps/*"
-  ],
-  "devDependencies": {}
+  "workspaces": ["apps/*"],
+  "devDependencies": {
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/exec": "^7.0.0",
+    "@semantic-release/git": "^10.0.1",
+    "semantic-release": "^25.0.2",
+    "semantic-release-major-tag": "^0.3.2"
+  }
 }
