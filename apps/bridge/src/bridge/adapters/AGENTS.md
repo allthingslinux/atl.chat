@@ -31,7 +31,7 @@ Protocol-specific adapters. Each registers with the Bus, filters events via `acc
 Env: `BRIDGE_DISCORD_TOKEN`.
 
 - Outbound events (`MessageOut`, `MessageDeleteOut`, `ReactionOut`, `TypingOut`) are queued (`asyncio.Queue`) and consumed with a 250ms delay to avoid rate limits.
-- Webhook cache key is `(channel_id, author_display)` — one webhook per identity per channel.
+- One webhook per channel (matterbridge pattern); username/avatar per message in `webhook.send()`.
 - Edit flow: `MessageOut.raw["is_edit"]` → resolve Discord message ID via IRC/XMPP msgid tracker → `webhook.edit_message`.
 - Delete flow: `MessageDeleteOut` → resolve Discord message ID → `webhook.delete_message`.
 - Reaction removes carry `raw={"is_remove": True}` through the relay to target adapters.
@@ -96,12 +96,12 @@ Two classes:
 
 Env: `BRIDGE_XMPP_COMPONENT_JID`, `BRIDGE_XMPP_COMPONENT_SECRET`, `BRIDGE_XMPP_COMPONENT_SERVER`, `BRIDGE_XMPP_COMPONENT_PORT` (default: 5347).
 
-- Disabled at startup if any of JID/secret/server are missing, no identity resolver, or no XMPP mappings.
+- Disabled at startup if any of JID/secret/server are missing, or no XMPP mappings. Runs without Portal (identity resolver) for dev: uses fallback nicks (author_id, then author_display).
 - Outbound queue (250ms delay) drains `MessageOut`, `MessageDeleteOut`, `ReactionOut`.
 - Edit flow: looks up original XMPP message ID via `_msgid_tracker.get_xmpp_id(discord_id)` → `send_correction_as_user`.
 - Delete flow: looks up XMPP ID → `send_retraction_as_user`.
 - Reaction flow: looks up XMPP ID → `send_reaction_as_user`.
-- Nick resolution: `identity.discord_to_xmpp(author_id)`, falls back to truncated `author_id`.
+- Nick resolution: `identity.discord_to_xmpp(author_id)` when Portal present; otherwise `author_id` or `author_display` (dev mode).
 - Avatar sync: calls `set_avatar_for_user` before sending if `evt.avatar_url` is set.
 
 ## XMPP Component (`xmpp_component.py`)
