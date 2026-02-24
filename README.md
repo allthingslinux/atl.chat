@@ -113,7 +113,7 @@ just web dev
 
 ### Bridges
 
-Discord↔IRC↔XMPP bridge (submodule). See [apps/bridge/](apps/bridge/) and `infra/compose/bridge.yaml`.
+Discord↔IRC↔XMPP bridge (in-repo). See [apps/bridge/](apps/bridge/) and `infra/compose/bridge.yaml`.
 
 ## Task Running
 

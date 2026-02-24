@@ -1,0 +1,48 @@
+name: Bridge CI
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'apps/bridge/**'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'apps/bridge/**'
+  workflow_dispatch:
+
+concurrency:
+  group: bridge-ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/bridge
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv python install 3.12
+      - run: uv sync --frozen --all-extras
+      - run: uv run ruff check src tests
+      - run: uv run ruff format --check src tests
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/bridge
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv python install 3.12
+      - run: uv sync --frozen --all-extras
+      - run: uv run pytest tests -v --tb=short

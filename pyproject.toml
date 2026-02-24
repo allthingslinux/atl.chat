@@ -28,7 +28,7 @@ homepage = "https://atl.chat"
 
 # WORKSPACE DEFINITION
 [tool.uv.workspace]
-members = []
+members = ["apps/bridge"]
 
 [dependency-groups]
 dev = [

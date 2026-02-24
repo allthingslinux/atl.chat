@@ -4,7 +4,7 @@ Overview of protocol bridging in atl.chat.
 
 ## Bridge
 
-The [apps/bridge/](../../apps/bridge/) submodule provides Discord↔IRC↔XMPP bridging. It connects to UnrealIRCd, Prosody, and Discord to relay messages across protocols.
+The [apps/bridge/](../../apps/bridge/) in-repo package provides Discord↔IRC↔XMPP bridging. It connects to UnrealIRCd, Prosody, and Discord to relay messages across protocols.
 
 ## Compose
 
