@@ -10,10 +10,28 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from cachetools import TTLCache
 
-from bridge.adapters.xmpp_component import XMPPComponent
+from bridge.adapters.xmpp_component import XMPPComponent, _escape_jid_node
 from bridge.adapters.xmpp_msgid import XMPPMessageIDTracker
 
 pytestmark = pytest.mark.filterwarnings("ignore::pytest.PytestUnraisableExceptionWarning")
+
+
+# ---------------------------------------------------------------------------
+# _escape_jid_node (XEP-0106)
+# ---------------------------------------------------------------------------
+
+
+class TestEscapeJidNode:
+    """XEP-0106 JID node escaping."""
+
+    def test_passes_through_safe_chars(self):
+        assert _escape_jid_node("Nick") == "Nick"
+        assert _escape_jid_node("1046905234200469504") == "1046905234200469504"
+
+    def test_escapes_disallowed_chars(self):
+        assert _escape_jid_node("a b") == "a\\20b"
+        assert _escape_jid_node("user@host") == "user\\40host"
+        assert _escape_jid_node("a\\b") == "a\\5cb"
 
 
 # ---------------------------------------------------------------------------
@@ -35,9 +53,13 @@ def make_component(router=None, bus=None) -> Any:
     comp._avatar_cache = TTLCache(maxsize=100, ttl=86400)
     comp._ibb_streams = {}
     comp._msgid_tracker = XMPPMessageIDTracker()
+    comp._puppets_joined = set()
     # Mock plugin() lookup and message creation
     comp.plugin = MagicMock()
     comp.make_message = MagicMock()
+    # Router.all_mappings() returns [] so _on_session_start MUC join loop is empty
+    if isinstance(comp._router, MagicMock):
+        comp._router.all_mappings.return_value = []
     return comp
 
 
@@ -60,20 +82,22 @@ def _make_plugin_registry(**plugins):
 
 
 class TestSessionLifecycle:
-    def test_on_session_start_creates_session_when_none(self):
+    @pytest.mark.asyncio
+    async def test_on_session_start_creates_session_when_none(self):
         # Arrange
         comp = make_component()
         comp._session = None
 
         # Act
         with patch("aiohttp.ClientSession") as mock_session_cls:
-            comp._on_session_start(None)
+            await comp._on_session_start(None)
 
         # Assert
         mock_session_cls.assert_called_once()
         assert comp._session is not None
 
-    def test_on_session_start_does_not_replace_existing_session(self):
+    @pytest.mark.asyncio
+    async def test_on_session_start_does_not_replace_existing_session(self):
         # Arrange
         comp = make_component()
         existing = MagicMock()
@@ -81,7 +105,7 @@ class TestSessionLifecycle:
 
         # Act
         with patch("aiohttp.ClientSession") as mock_session_cls:
-            comp._on_session_start(None)
+            await comp._on_session_start(None)
 
         # Assert
         mock_session_cls.assert_not_called()
@@ -118,18 +142,6 @@ class TestSessionLifecycle:
 
 class TestSendMessageAsUser:
     @pytest.mark.asyncio
-    async def test_no_jid_escape_plugin_returns_empty(self):
-        # Arrange — no plugins registered
-        comp = make_component()
-        comp.plugin = _make_plugin_registry()
-
-        # Act
-        result = await comp.send_message_as_user("d1", "room@conf.example.com", "hello", "Nick")
-
-        # Assert
-        assert result == ""
-
-    @pytest.mark.asyncio
     async def test_sends_message_and_returns_id(self):
         # Arrange
         comp = make_component()
@@ -161,7 +173,7 @@ class TestSendMessageAsUser:
         # Assert — body sent to make_message has spoiler markers stripped
         call_kwargs = comp.make_message.call_args[1]
         assert "||" not in call_kwargs["mbody"]
-        mock_msg.enable.assert_called_with("spoiler")
+        mock_msg.enable.assert_any_call("spoiler")
 
     @pytest.mark.asyncio
     async def test_with_explicit_msg_id(self):
@@ -224,7 +236,10 @@ class TestSendReactionAsUser:
     async def test_sends_reaction_via_plugin(self):
         # Arrange
         comp = make_component()
-        reactions_plugin = AsyncMock()
+        reactions_plugin = MagicMock()
+        reactions_plugin.set_reactions = MagicMock()
+        mock_msg = MagicMock()
+        comp.make_message.return_value = mock_msg
         comp.plugin = _make_plugin_registry(
             xep_0106=_mock_jid_escape_plugin(),
             xep_0444=reactions_plugin,
@@ -233,15 +248,18 @@ class TestSendReactionAsUser:
         # Act
         await comp.send_reaction_as_user("d1", "room@conf.example.com", "msg-1", "👍", "Nick")
 
-        # Assert
-        reactions_plugin.send_reactions.assert_awaited_once()
+        # Assert — we use set_reactions + make_message (send_reactions has no ifrom for components)
+        reactions_plugin.set_reactions.assert_called_once()
+        mock_msg.enable.assert_called_once_with("store")
+        mock_msg.send.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_exception_during_reaction_send_is_swallowed(self):
         # Arrange
         comp = make_component()
-        reactions_plugin = AsyncMock()
-        reactions_plugin.send_reactions.side_effect = RuntimeError("network error")
+        reactions_plugin = MagicMock()
+        reactions_plugin.set_reactions.side_effect = RuntimeError("network error")
+        comp.make_message.return_value = MagicMock()
         comp.plugin = _make_plugin_registry(
             xep_0106=_mock_jid_escape_plugin(),
             xep_0444=reactions_plugin,
@@ -312,20 +330,6 @@ class TestSendRetractionAsUser:
 
 
 class TestSendCorrectionAsUser:
-    @pytest.mark.asyncio
-    async def test_no_jid_escape_plugin_returns_early(self):
-        # Arrange
-        comp = make_component()
-        comp.plugin = _make_plugin_registry()
-
-        # Act
-        await comp.send_correction_as_user(
-            "d1", "room@conf.example.com", "new text", "Nick", "orig-1"
-        )
-
-        # Assert — make_message was not reached
-        comp.make_message.assert_not_called()
-
     @pytest.mark.asyncio
     async def test_sends_correction_with_replace_id(self):
         # Arrange
