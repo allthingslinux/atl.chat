@@ -19,7 +19,7 @@ src/bridge/          # The bridge package (entry point: __main__.py)
 
 ## Related
 
+- [Bridge AGENTS.md](../AGENTS.md)
 - [bridge/gateway/AGENTS.md](bridge/gateway/AGENTS.md)
 - [bridge/adapters/AGENTS.md](bridge/adapters/AGENTS.md)
 - [bridge/formatting/AGENTS.md](bridge/formatting/AGENTS.md)
-- [Root AGENTS.md](../AGENTS.md)

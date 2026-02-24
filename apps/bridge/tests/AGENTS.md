@@ -2,7 +2,7 @@
 
 > Scope: `tests/` directory. Inherits root [AGENTS.md](../AGENTS.md).
 
-654-test pytest suite covering all bridge components.
+765-test pytest suite covering all bridge components.
 
 ## Quick Facts
 
@@ -33,15 +33,19 @@ Use `BridgeTestHarness` for any test that needs a real Bus + Relay wired togethe
 | `test_events.py` | Event dataclasses, factory functions, `Dispatcher` |
 | `test_config.py` | Config loading, dotenv overlay, all `Config` properties |
 | `test_identity.py` | `PortalClient` HTTP calls, `IdentityResolver` TTL cache |
+| `test_identity_extended.py` | Extended identity resolution scenarios |
 | `test_discord_adapter.py` | Discord adapter: webhooks, raw events, reactions, typing, outbound queue |
 | `test_irc_adapter.py` | `IRCAdapter`: connect, send, edit, delete, reactions, typing, puppet routing |
+| `test_irc_adapter_extended.py` | Extended IRC adapter scenarios |
 | `test_irc_client.py` | `IRCClient`: `on_connect`, `on_message`, IRCv3 caps, REDACT, TAGMSG |
 | `test_irc_puppet.py` | `IRCPuppetManager`: create, idle timeout, keep-alive pinger, pre-join commands |
 | `test_irc_msgid.py` | `MessageIDTracker`: store, bidirectional lookup, TTL expiry |
+| `test_irc_message_split_utf8.py` | UTF-8 message splitting edge cases |
 | `test_irc_threading.py` | IRC reply threading via `+draft/reply` |
 | `test_irc_exceptions.py` | IRC error handling and reconnect backoff |
 | `test_xmpp_adapter.py` | `XMPPAdapter`: inbound/outbound, reactions, typing, delete |
 | `test_xmpp_component.py` | `XMPPComponent`: XEPs, corrections, retractions, avatar sync |
+| `test_xmpp_component_outbound.py` | XMPP outbound message flow |
 | `test_xmpp_features.py` | XMPP XEP features (0308, 0424, 0444, 0461, 0382) |
 | `test_xmpp_msgid.py` | `XMPPMessageIDTracker`: store, bidirectional lookup, room JID, TTL expiry |
 | `test_formatting.py` | `discord_to_irc`, `irc_to_discord`, `split_irc_message` |
@@ -58,6 +62,7 @@ Use `BridgeTestHarness` for any test that needs a real Bus + Relay wired togethe
 | `test_retry_logic.py` | Tenacity retry/backoff behaviour |
 | `test_performance.py` | Throughput and latency benchmarks |
 | `test_property_based.py` | Hypothesis property-based tests |
+| `test_main.py` | Entry point, signal handling, config reload |
 
 ## Conventions
 
@@ -75,6 +80,7 @@ Use `BridgeTestHarness` for any test that needs a real Bus + Relay wired togethe
 
 ## Related
 
-- [Root AGENTS.md](../AGENTS.md)
+- [Bridge AGENTS.md](../AGENTS.md)
 - [src/bridge/adapters/AGENTS.md](../src/bridge/adapters/AGENTS.md)
 - [src/bridge/gateway/AGENTS.md](../src/bridge/gateway/AGENTS.md)
+- [src/bridge/formatting/AGENTS.md](../src/bridge/formatting/AGENTS.md)

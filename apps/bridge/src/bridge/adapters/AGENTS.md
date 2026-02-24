@@ -1,6 +1,6 @@
 # Adapters
 
-> Scope: `src/bridge/adapters/` — inherits root [AGENTS.md](../../../AGENTS.md).
+> Scope: `src/bridge/adapters/` — inherits [Bridge AGENTS.md](../../../AGENTS.md).
 
 Protocol-specific adapters. Each registers with the Bus, filters events via `accept_event`, and handles them via `push_event`.
 
@@ -154,7 +154,7 @@ Inbound handlers:
 
 ## Related
 
-- [Root AGENTS.md](../../../AGENTS.md)
+- [Bridge AGENTS.md](../../../AGENTS.md)
 - [gateway/AGENTS.md](../gateway/AGENTS.md)
 - [bridge/AGENTS.md](../AGENTS.md)
 - [tests/AGENTS.md](../../../tests/AGENTS.md)

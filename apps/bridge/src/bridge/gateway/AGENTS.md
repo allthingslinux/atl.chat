@@ -1,6 +1,6 @@
 # Gateway
 
-> Scope: `src/bridge/gateway/` — inherits root [AGENTS.md](../../../AGENTS.md).
+> Scope: `src/bridge/gateway/` — inherits [Bridge AGENTS.md](../../../AGENTS.md).
 
 Central event routing layer. No protocol-specific logic lives here.
 
@@ -58,7 +58,7 @@ Lookup methods (all return `None` if not found — callers must handle):
 
 ## Related
 
-- [Root AGENTS.md](../../../AGENTS.md)
+- [Bridge AGENTS.md](../../../AGENTS.md)
 - [adapters/AGENTS.md](../adapters/AGENTS.md)
 - [formatting/AGENTS.md](../formatting/AGENTS.md)
 - [bridge/AGENTS.md](../AGENTS.md)

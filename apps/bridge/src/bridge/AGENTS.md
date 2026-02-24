@@ -1,6 +1,6 @@
 # bridge
 
-> Scope: `src/bridge/` — inherits root [AGENTS.md](../../AGENTS.md).
+> Scope: `src/bridge/` — inherits [Bridge AGENTS.md](../../AGENTS.md).
 
 The `bridge` Python package. Entry point, config, events, and identity live here. Protocol logic lives in subdirs.
 
@@ -98,4 +98,4 @@ Full property reference (see root AGENTS.md for the table). Additional propertie
 - [gateway/AGENTS.md](gateway/AGENTS.md) — Bus, Relay, Router
 - [adapters/AGENTS.md](adapters/AGENTS.md) — Discord, IRC, XMPP adapters
 - [formatting/AGENTS.md](formatting/AGENTS.md) — Format converters
-- [Root AGENTS.md](../../AGENTS.md)
+- [Bridge AGENTS.md](../../AGENTS.md)

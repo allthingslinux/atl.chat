@@ -1,6 +1,6 @@
 # Formatting
 
-> Scope: `src/bridge/formatting/` — inherits root [AGENTS.md](../../../AGENTS.md).
+> Scope: `src/bridge/formatting/` — inherits [Bridge AGENTS.md](../../../AGENTS.md).
 
 Stateless format converters between Discord markdown and IRC control codes, plus IRC message splitting.
 
@@ -50,4 +50,4 @@ Escapes Discord markdown special chars (`* _ \` ~ |`) outside URLs. Closes any u
 
 - [gateway/AGENTS.md](../gateway/AGENTS.md)
 - [bridge/AGENTS.md](../AGENTS.md)
-- [Root AGENTS.md](../../../AGENTS.md)
+- [Bridge AGENTS.md](../../../AGENTS.md)
