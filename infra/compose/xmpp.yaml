@@ -25,7 +25,7 @@ services:
         required: false
 
     environment:
-      - PROSODY_DOMAIN=${PROSODY_DOMAIN}
+      - PROSODY_DOMAIN=${XMPP_DOMAIN}
       - PROSODY_UPLOAD_EXTERNAL_URL=${PROSODY_UPLOAD_EXTERNAL_URL}
       - PROSODY_PROXY_ADDRESS=${PROSODY_PROXY_ADDRESS}
       - PROSODY_SSL_KEY=${PROSODY_SSL_KEY}
@@ -60,7 +60,7 @@ services:
       - ../../data/certs:/etc/prosody/certs
 
     healthcheck:
-      test: [ "CMD", "curl", "-sf", "http://localhost:5280/status" ]
+      test: ["CMD", "curl", "-sf", "http://localhost:5280/status"]
       interval: 30s
       timeout: 10s
       retries: 3
