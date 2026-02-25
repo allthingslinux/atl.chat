@@ -43,6 +43,9 @@ cd atl.chat
 cp .env.example .env
 # Edit .env with your domains, passwords, and TLS paths
 
+# For dev (localhost domains): create overlay from .env.dev.example
+cp .env.dev.example .env.dev
+
 just init      # Creates data/ dirs, generates config, dev certs
 just dev       # Starts stack with dev profile (Dozzle, localhost domains)
 ```
@@ -52,6 +55,8 @@ just dev       # Starts stack with dev profile (Dozzle, localhost domains)
 - Create `data/irc/`, `data/atheme/`, `data/xmpp/`, `data/certs/`
 - Substitute `.env` into UnrealIRCd and Atheme config templates
 - Generate dev certs for `irc.localhost` (if missing)
+
+`just dev` requires `.env.dev` (copy from `.env.dev.example`); it overrides domains for localhost.
 
 ### First Run
 
@@ -116,10 +121,11 @@ just web dev
 Discord↔IRC↔XMPP bridge (in-repo). See [apps/bridge/](apps/bridge/) and `infra/compose/bridge.yaml`.
 
 ```bash
-just bridge test     # Run bridge tests
-just bridge lint     # Ruff check
-just bridge format   # Ruff format
-just bridge check    # Full check (lint + typecheck + test)
+just bridge test      # Run bridge tests
+just bridge lint      # Ruff check
+just bridge format    # Ruff format
+just bridge typecheck # Basedpyright
+just bridge check     # Full check (lint + format + typecheck + test)
 ```
 
 ## Task Running
@@ -130,14 +136,18 @@ just --list        # All tasks
 # Orchestration
 just init          # One-time setup
 just dev           # Start dev stack
+just staging       # Start staging stack
 just prod          # Start prod stack
-just down          # Stop stack
-just logs          # Follow all logs
+just down          # Stop dev stack
+just down-staging  # Stop staging stack
+just down-prod     # Stop prod stack
+just logs [svc]    # Follow logs (optionally for a service)
 just status        # Container status
 
 # Build & test
 just build         # Build images
-just test          # Run pytest
+just test          # Run root pytest
+just test-all      # Root tests + bridge tests
 just lint          # pre-commit run --all-files
 ```
 
@@ -165,7 +175,7 @@ See [docs/infra/data-structure.md](docs/infra/data-structure.md).
 
 ## Environment
 
-Single `.env` at repo root. Copy from `.env.example` and customize:
+Single `.env` at repo root. Copy from `.env.example` and customize. For dev, also create `.env.dev` from `.env.dev.example`.
 
 ```bash
 cp .env.example .env
@@ -216,7 +226,7 @@ just dev    # Uses .env.dev + dev profile
 1. Fork and branch: `git checkout -b feat/my-feature`
 2. Run `just init` and `just dev`
 3. Make changes
-4. Run `just test` and `just lint`
+4. Run `just test-all` and `just lint`
 5. Commit: `git commit -m "feat: add feature"` (conventional commits)
 6. Open a pull request
 

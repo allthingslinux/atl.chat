@@ -2,7 +2,7 @@
 
 **Production-ready Discord–IRC–XMPP bridge with multi-presence and modern protocol support.**
 
-[![Tests](https://img.shields.io/badge/tests-654%20passing-brightgreen)]() [![Python](https://img.shields.io/badge/python-3.10+-blue)]() [![License](https://img.shields.io/badge/license-MIT-blue)]()
+[![Tests](https://img.shields.io/badge/tests-769%20passing-brightgreen)]() [![Python](https://img.shields.io/badge/python-3.10+-blue)]() [![License](https://img.shields.io/badge/license-MIT-blue)]()
 
 ## Why ATL Bridge?
 
@@ -81,7 +81,7 @@ bridge --config config.yaml
 - **Retry logic**: Exponential backoff for transient errors (5 attempts, 2-30s)
 - **Error recovery**: Graceful handling of network failures
 - **Event loop**: uvloop for 2-4x faster async I/O (Linux/macOS; falls back to asyncio on Windows)
-- **Comprehensive tests**: 654 tests covering core, adapters, formatting, and edge cases
+- **Comprehensive tests**: 769 tests covering core, adapters, formatting, and edge cases
 
 ## Configuration
 
@@ -265,7 +265,7 @@ uv run pytest tests/test_xmpp_features.py -v
 uv run pytest tests --cov --cov-report=html
 ```
 
-**Test Coverage**: 654 tests covering:
+**Test Coverage**: 769 tests covering:
 
 - Core bridging logic and relay
 - Discord adapter (webhooks, edits, reactions, typing)
@@ -346,4 +346,4 @@ GPL3 License - see [LICENSE](LICENSE) file for details.
 
 ---
 
-**Status**: Production-ready • **Maintained**: Yes • **Tests**: 654 passing
+**Status**: Production-ready • **Maintained**: Yes • **Tests**: 769 passing
