@@ -15,14 +15,15 @@ config/
 ├── unrealircd.conf.template   # Main config (env vars substituted at init)
 ├── badwords.conf, spamfilter.conf, dccallow.conf, etc.
 ├── aliases/, examples/, help/, tls/
-├── modules.sources.list
-└── third-party-modules.list   # third/showwebirc, third/relaymsg-atl (atl.chat fork), etc.
+└── modules.sources.list
 
-scripts/           # Docker entrypoint helpers
-config.settings   # UnrealIRCd build settings
-Containerfile     # Docker image
+contrib/relaymsg/   # relaymsg-atl.c (atl.chat fork, built as third/relaymsg-atl)
+scripts/            # Docker entrypoint helpers
+config.settings    # UnrealIRCd build settings
+third-party-modules.list   # third/showwebirc, third/relaymsg-atl, etc.
+Containerfile      # Docker image
 docker-entrypoint.sh
-justfile          # Loaded via: mod irc './apps/unrealircd'
+justfile           # Loaded via: mod irc './apps/unrealircd'
 ```
 
 ## Key Commands

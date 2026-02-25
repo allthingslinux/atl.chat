@@ -56,7 +56,7 @@ src/bridge/
     ├── xmpp.py          # XMPP adapter
     ├── xmpp_component.py # slixmpp component + XEPs
     └── xmpp_msgid.py    # XMPP stanza-id ↔ Discord ID tracker
-tests/                   # pytest suite (769 tests)
+tests/                   # pytest suite (778 tests)
 references/              # Upstream source for discord.py, slixmpp, unrealircd, IRCv3 specs
 ```
 

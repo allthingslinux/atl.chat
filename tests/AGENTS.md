@@ -13,6 +13,7 @@ IRC, integration, e2e, and protocol tests. Run via `just test` or `uv run pytest
 | `e2e/` | End-to-end workflow tests |
 | `protocol/` | IRC message protocol tests |
 | `legacy/` | Deprecated integration tests (kept for reference) |
+| `irc_utils/` | IRC test utilities |
 | `controllers/` | IRC server controller classes |
 | `fixtures/` | Test fixtures and sample data |
 | `utils/` | Test helpers, base cases, IRC test client |

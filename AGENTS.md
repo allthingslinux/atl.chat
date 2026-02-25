@@ -75,6 +75,7 @@ docs/               # Architecture, services, onboarding, bridges
 - [apps/thelounge/AGENTS.md](apps/thelounge/AGENTS.md)
 - [apps/unrealircd/AGENTS.md](apps/unrealircd/AGENTS.md)
 - [apps/web/AGENTS.md](apps/web/AGENTS.md)
+- [apps/webpanel/AGENTS.md](apps/webpanel/AGENTS.md)
 - [docs/AGENTS.md](docs/AGENTS.md)
 - [infra/AGENTS.md](infra/AGENTS.md)
 - [scripts/AGENTS.md](scripts/AGENTS.md)
