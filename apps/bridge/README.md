@@ -1,115 +1,115 @@
 # ATL Bridge
 
-**Production-ready Discord–IRC–XMPP bridge with multi-presence and modern protocol support.**
+**Production-ready Discord–IRC–XMPP bridge with multi-presence and Portal identity.**
 
 [![Tests](https://img.shields.io/badge/tests-819%20passing-brightgreen)]() [![Python](https://img.shields.io/badge/python-3.10+-blue)]() [![License](https://img.shields.io/badge/license-MIT-blue)]()
 
-## Why ATL Bridge?
+## Overview
 
 - **Multi-presence**: Each Discord user gets their own IRC connection and XMPP JID (puppets)
-- **Modern protocols**: IRCv3 capabilities, XMPP XEPs for edits/reactions/replies
-- **Identity-first**: Portal is the source of truth—no account provisioning on the bridge
-- **Production-ready**: Comprehensive test suite, retry logic, error recovery
+- **Identity-first**: Portal API is the source of truth—no account provisioning on the bridge
+- **Event-driven**: All adapters communicate via a central Bus; no direct adapter-to-adapter calls
+- **Modern protocols**: IRCv3 capabilities, XMPP XEPs for edits, reactions, replies, file transfers
 
 ## Quick Start
 
 ```bash
-# Install
+# From monorepo root
+cd apps/bridge
 uv sync
 
 # Configure
 cp config.example.yaml config.yaml
-# Edit config.yaml with your channels and credentials
+# Edit config.yaml with channel mappings
 
-# Run
+# Required env vars
 export BRIDGE_DISCORD_TOKEN="your-token"
 export BRIDGE_PORTAL_BASE_URL="https://portal.example.com"
 export BRIDGE_PORTAL_TOKEN="your-portal-token"
 export BRIDGE_XMPP_COMPONENT_JID="bridge.atl.chat"
 export BRIDGE_XMPP_COMPONENT_SECRET="your-secret"
 
-bridge --config config.yaml
+# Run
+uv run bridge --config config.yaml
 ```
+
+From monorepo root with `just`: `just bridge test`, `just bridge check`, etc. (see root [AGENTS.md](../../AGENTS.md)).
 
 ## Features
 
-### Core Bridging
+### Core
 
-- **Event-driven architecture**: Central event bus with typed events (MessageIn/Out, Join, Part, Delete, Reaction, Typing)
-- **Channel mappings**: Config-based Discord ↔ IRC ↔ XMPP routing
-- **Identity resolution**: Portal API integration with configurable TTL caching
-- **Message relay**: Bidirectional with edit/delete support; content filtering (regex)
+- **Channel mappings**: Config-based Discord channel ID ↔ IRC server/channel ↔ XMPP MUC JID
+- **Message relay**: Bidirectional with edits, deletes, reactions, typing indicators
+- **Content filtering**: Regex list; matching messages are not bridged
+- **Identity resolution**: Portal API with configurable TTL cache
+- **Message ID tracking**: IRC/XMPP msgid correlation for edit/delete (1h TTL)
 
-### IRC Support
+### Discord
 
-- **IRCv3 capabilities**: message-tags, msgid, draft/reply, echo-message, labeled-response
+- **Webhooks**: Per-identity webhooks for native nick/avatar display
+- **Raw events**: Edits and deletes fire for all messages (no cache dependency)
+- **Bulk delete**: Moderator purges relay each deleted message
+- **Mention safety**: `@everyone` and role pings suppressed
+- **Mention resolution**: `@nick` in IRC/XMPP content resolved to `<@userId>` via guild member lookup
+- **Media embedding**: Fetch image/video URLs from IRC/XMPP, send as Discord File
+- **IRC formatting**: Bold, italic, underline, strikethrough (`\x1e` → `~~`) mapped to Discord markdown
+
+### IRC
+
+- **IRCv3**: message-tags, msgid, draft/reply, echo-message, labeled-response
 - **Reply threading**: Discord replies ↔ IRC `+draft/reply` tags
-- **Typing indicators**: Discord typing → IRC `TAGMSG` with `+typing=active`
-- **Puppet management**: Per-user connections with idle timeout (24h default)
-- **Puppet keep-alive**: Configurable PING interval to prevent silent server-side drops
-- **Pre-join commands**: Send NickServ IDENTIFY, MODE, etc. immediately after puppet connects
-- **Message ID tracking**: 1-hour TTL cache for edit/delete correlation
-- **Flood control**: Token bucket rate limiting and configurable throttle
+- **Puppets**: Per-user connections with idle timeout (24h default), keep-alive PING, pre-join commands
+- **Flood control**: Token bucket rate limiting, configurable throttle and queue size
+- **SASL**: Optional PLAIN auth
+- **RELAYMSG / REDACT**: UnrealIRCd relaymsg clean nicks; redact support (configurable)
 
-### XMPP Support
+### XMPP
 
 - **Component protocol**: Single connection, multiple JIDs (XEP-0114)
 - **Stream Management**: Reliable delivery with resumption (XEP-0198)
-- **Message features**:
-  - Corrections (XEP-0308) - Edit messages
-  - Retractions (XEP-0424) - Delete messages
-  - Reactions (XEP-0444) - Emoji reactions
-  - Replies (XEP-0461) - Reply threading
-  - Spoilers (XEP-0382) - Content warnings
+- **Corrections** (XEP-0308), **Retractions** (XEP-0424), **Reactions** (XEP-0444), **Replies** (XEP-0461), **Spoilers** (XEP-0382)
 - **File transfers**: HTTP Upload (XEP-0363) with IBB fallback
-- **OOB file URLs**: XEP-0066 Out of Band Data—extract file URLs from messages
+- **OOB**: XEP-0066 Out of Band Data—extract file URLs from messages
 - **JID escaping**: XEP-0106 for special characters in usernames
-- **History filtering**: XEP-0203 delayed delivery detection
-
-### Discord Support
-
-- **Webhooks**: Per-identity webhooks for native nick/avatar display
-- **Raw event handling**: Edits and deletes fire for all messages, not just cached ones
-- **Bulk delete**: Moderator purges relay each deleted message to IRC/XMPP
-- **Message edits**: XMPP corrections and IRC edits → Discord `edit_message`
-- **Reactions**: Add and remove reactions bridged to/from IRC/XMPP
-- **Typing indicators**: IRC typing → Discord `channel.typing()`
-- **Mention safety**: `@everyone` and role pings suppressed on bridged content
-- **Mention resolution**: `@nick` in IRC/XMPP content resolved to `<@userId>` for cross-protocol pings
-- **Media embedding**: Fetch image/video URLs from IRC/XMPP, send as Discord File for reliable display
-- **IRC formatting**: Bold, italic, underline, strikethrough (`\x1e` → `~~`) mapped to Discord markdown
-- **!bridge status**: Show linked IRC/XMPP accounts (requires Portal identity)
-
-### Reliability
-
-- **Retry logic**: Exponential backoff for transient errors (5 attempts, 2-30s)
-- **Error recovery**: Graceful handling of network failures
-- **Event loop**: uvloop for 2-4x faster async I/O (Linux/macOS; falls back to asyncio on Windows)
-- **Comprehensive tests**: 819 tests covering core, adapters, formatting, and edge cases
 
 ## Configuration
 
-### Minimal Example
+### Mappings
 
 ```yaml
 mappings:
   - discord_channel_id: "123456789012345678"
     irc:
-      server: "irc.libera.chat"
+      server: irc.atl.chat
       port: 6697
       tls: true
-      channel: "#atl"
+      channel: "#bridge"
     xmpp:
-      muc_jid: "atl@conference.example.com"
-
-announce_joins_and_quits: true
-irc_puppet_idle_timeout_hours: 24
-irc_puppet_ping_interval: 120        # keep-alive PING every 2 minutes
-irc_puppet_prejoin_commands:         # sent immediately after puppet connects
-  - "MODE {nick} +D"
+      muc_jid: bridge@muc.atl.chat
 ```
 
-See `config.example.yaml` for all options (throttling, SASL, content filtering, etc.).
+### Key Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `announce_joins_and_quits` | `true` | Relay join/part/quit to other protocols |
+| `announce_extras` | `false` | Relay topic/mode changes |
+| `content_filter_regex` | `[]` | Messages matching any pattern are not bridged |
+| `identity_cache_ttl_seconds` | 3600 | Portal identity cache TTL |
+| `avatar_cache_ttl_seconds` | 86400 | Avatar URL cache TTL |
+| `irc_puppet_idle_timeout_hours` | 24 | Disconnect idle puppets after N hours |
+| `irc_puppet_ping_interval` | 120 | Keep-alive PING interval (seconds) |
+| `irc_puppet_prejoin_commands` | `[]` | Commands after connect (supports `{nick}`) |
+| `irc_puppet_postfix` | `""` | Suffix for puppet nicks (e.g. `\|d`) |
+| `irc_throttle_limit` | 10 | IRC messages per second |
+| `irc_message_queue` | 30 | Max IRC outbound queue size |
+| `irc_rejoin_delay` | 5 | Seconds before rejoin after KICK/disconnect |
+| `irc_auto_rejoin` | `true` | Auto-rejoin after KICK/disconnect |
+| `irc_use_sasl` | `false` | SASL PLAIN auth |
+| `irc_tls_verify` | `true` | Verify IRC TLS (false for dev self-signed) |
+
+See `config.example.yaml` for the full schema.
 
 ### Environment Variables
 
@@ -118,177 +118,83 @@ See `config.example.yaml` for all options (throttling, SASL, content filtering, 
 | `BRIDGE_DISCORD_TOKEN` | Yes | Discord bot token |
 | `BRIDGE_PORTAL_BASE_URL` | Yes | Portal API URL |
 | `BRIDGE_PORTAL_TOKEN` | Yes | Portal service token |
-| `BRIDGE_XMPP_COMPONENT_JID` | Yes | Component JID (e.g., `bridge.atl.chat`) |
+| `BRIDGE_XMPP_COMPONENT_JID` | Yes | Component JID (e.g. `bridge.atl.chat`) |
 | `BRIDGE_XMPP_COMPONENT_SECRET` | Yes | Prosody component secret |
-| `BRIDGE_XMPP_COMPONENT_SERVER` | No | Server hostname (default: `localhost`) |
+| `BRIDGE_XMPP_COMPONENT_SERVER` | No | Component host (default: `localhost`) |
 | `BRIDGE_XMPP_COMPONENT_PORT` | No | Component port (default: `5347`) |
 | `BRIDGE_IRC_NICK` | No | Main IRC nick (default: `atl-bridge`) |
 
 ## Architecture
 
 ```
-                    ┌─────────────────────────────────────┐
-                    │         Discord Bot                 │
-                    │   Webhooks + Message Events         │
-                    └──────────────┬──────────────────────┘
-                                   │
-                                   │ MessageIn/MessageOut
-                                   │ Join/Part/Quit
-                                   ▼
-                    ┌─────────────────────────────────────┐
-                    │         Event Bus                   │
-                    │   Async dispatch + Error isolation  │
-                    └──────────────┬──────────────────────┘
-                                   │
-                    ┌──────────────┼──────────────┐
-                    │              │              │
-                    ▼              ▼              ▼
-         ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
-         │   Channel    │  │   Identity   │  │  Message ID  │
-         │   Router     │  │   Resolver   │  │   Trackers   │
-         │              │  │              │  │              │
-         │  Discord ↔   │  │ Portal API + │  │ IRC + XMPP   │
-         │  IRC ↔ XMPP  │  │  TTL cache   │  │   1hr TTL    │
-         └──────────────┘  └──────────────┘  └──────────────┘
-                    │              │              │
-                    └──────────────┼──────────────┘
-                                   │
-                    ┌──────────────┴──────────────┐
-                    │                             │
-                    ▼                             ▼
-         ┌─────────────────────┐      ┌─────────────────────┐
-         │   IRC Adapter       │      │   XMPP Component    │
-         │                     │      │                     │
-         │ • Main connection   │      │ • ComponentXMPP     │
-         │ • Puppet manager    │      │ • Multi-presence    │
-         │ • IRCv3 caps        │      │ • 8 XEPs            │
-         │ • 24h idle timeout  │      │ • Stream mgmt       │
-         └─────────────────────┘      └─────────────────────┘
-                    │                             │
-                    ▼                             ▼
-         ┌─────────────────────┐      ┌─────────────────────┐
-         │  IRC Server         │      │  XMPP Server        │
-         │  (unrealircd)       │      │  (prosody)          │
-         └─────────────────────┘      └─────────────────────┘
+Discord Adapter  ──┐
+IRC Adapter      ──→  Bus → Relay → Router → target adapters
+XMPP Adapter     ──┘
 ```
 
-### Data Flow
-
-**Discord → IRC/XMPP:**
-
-1. Discord user sends message
-2. Discord adapter creates `MessageIn` event
-3. Event bus dispatches to all adapters
-4. Identity resolver checks Portal for IRC/XMPP links
-5. Channel router finds target IRC channel + XMPP MUC
-6. IRC adapter sends via puppet (if linked) or main connection
-7. XMPP component sends from user's JID (e.g., `user@bridge.atl.chat`)
-
-**IRC → Discord/XMPP:**
-
-1. IRC puppet receives message with `msgid` tag
-2. IRC adapter creates `MessageIn` event, stores msgid mapping
-3. Event bus dispatches to Discord + XMPP adapters
-4. Discord adapter sends via webhook (shows IRC nick)
-5. XMPP component relays to MUC from bridge JID
-
-**Edit/Delete Flow:**
-
-1. Discord edit event received → Relay emits MessageOut with `is_edit`
-2. IRC/XMPP adapters look up stored msgid; Discord adapter resolves via trackers
-3. IRC: `TAGMSG` with edit; XMPP: correction (XEP-0308); Discord: `webhook.edit_message`
-4. IRC REDACT / XMPP retraction → Discord `message.delete`
-
-**Reactions & Typing:**
-
-- Discord reactions → Relay → IRC/XMPP; IRC/XMPP reactions → Relay → Discord
-- Typing indicators bridged both directions (Discord ↔ IRC; throttled)
-
-### Key Components
-
-- **Event Bus**: Central dispatcher for typed events (MessageIn, MessageOut, Join, Part, Quit, MessageDelete, ReactionIn/Out, TypingIn/Out)
-- **Relay**: Transforms MessageIn → MessageOut for target protocols; applies content filtering and formatting
-- **Channel Router**: Maps Discord channels ↔ IRC channels ↔ XMPP MUCs
-- **Identity Resolver**: Portal API client with configurable TTL caching
-- **Adapters**: Protocol-specific handlers (Discord, IRC, XMPP)
-
-## Development
-
-### Setup
-
-```bash
-# Install with dev dependencies
-uv sync
-
-# Run tests
-uv run pytest tests -v
-
-# Linting
-uv run ruff check src tests
-uv run basedpyright
-```
+- **Bus** (`gateway/bus.py`): Dispatches typed events to registered adapters
+- **Relay** (`gateway/relay.py`): Transforms `MessageIn` → `MessageOut`; applies content filtering
+- **Router** (`gateway/router.py`): Maps Discord channel IDs ↔ IRC channels ↔ XMPP MUCs
+- **Identity** (`identity/`): Portal API client with TTL cache; resolves Discord ID → IRC nick / XMPP JID
 
 ### Project Structure
 
 ```
 src/bridge/
-├── __main__.py          # Entry point
-├── config.py            # YAML config loading
-├── events.py            # Event types
-├── identity.py          # Portal client + cache
+├── __main__.py          # Entry point, signal handling
+├── events.py            # Re-export from core.events
+├── errors.py            # Re-export from core.errors
+├── config/              # YAML + env overlay
+│   ├── loader.py
+│   └── schema.py
+├── core/                # Domain primitives
+│   ├── constants.py
+│   ├── events.py
+│   └── errors.py
+├── identity/
+│   ├── portal.py       # PortalClient, IdentityResolver
+│   └── dev.py          # DevIdentityResolver
 ├── gateway/
-│   ├── bus.py          # Event dispatcher
-│   ├── relay.py        # MessageIn → MessageOut routing
-│   └── router.py       # Channel mapping
+│   ├── bus.py
+│   ├── relay.py
+│   ├── router.py
+│   └── msgid_resolver.py
 ├── formatting/
-│   ├── discord_to_irc.py   # Discord markdown → IRC
-│   ├── irc_to_discord.py   # IRC control codes → Discord (bold, italic, strikethrough)
-│   ├── irc_message_split.py  # Long message splitting
-│   └── mention_resolution.py # @nick → Discord <@userId> for cross-protocol pings
+│   ├── discord_to_irc.py
+│   ├── irc_to_discord.py
+│   ├── irc_message_split.py
+│   ├── reply_fallback.py
+│   └── mention_resolution.py
 └── adapters/
-    ├── base.py         # Adapter interface
-    ├── disc.py         # Discord adapter
-    ├── irc.py          # IRC client
-    ├── irc_puppet.py   # IRC puppet manager
-    ├── irc_throttle.py # IRC flood control
-    ├── irc_msgid.py    # IRC message ID tracker
-    ├── xmpp.py         # XMPP adapter
-    ├── xmpp_component.py   # XMPP component
-    └── xmpp_msgid.py   # XMPP message ID tracker
+    ├── base.py
+    ├── discord/         # adapter, handlers, webhook
+    ├── irc/              # adapter, client, puppet, msgid, throttle
+    └── xmpp/             # adapter, component, msgid
 ```
 
-### Testing
+## Development
 
 ```bash
-# All tests
+uv sync
 uv run pytest tests -v
-
-# Specific feature
-uv run pytest tests/test_xmpp_features.py -v
-
-# With coverage
-uv run pytest tests --cov --cov-report=html
+uv run ruff check src tests
+uv run basedpyright
 ```
 
-**Test Coverage**: 819 tests covering:
-
-- Core bridging logic and relay
-- Discord adapter (webhooks, edits, reactions, typing)
-- IRC reply threading, puppets, message ID tracking
-- XMPP XEPs (8 extensions), message ID tracking
-- Formatting (Discord↔IRC, message splitting)
-- File transfers
-- Error handling
-- Concurrency and ordering
+Or from monorepo root: `just bridge test`, `just bridge check`, `just bridge lint`, `just bridge format`, `just bridge typecheck`.
 
 ## Docker
 
-```bash
-# Build
-docker build -f Containerfile -t atl-bridge .
+Build from **monorepo root** (context must include `pyproject.toml`, `uv.lock`, `apps/bridge/`):
 
-# Run
-docker run -v $(pwd)/config.yaml:/app/config.yaml \
+```bash
+docker build -f apps/bridge/Containerfile -t atl-bridge .
+```
+
+Run:
+
+```bash
+docker run -v /path/to/config.yaml:/app/config.yaml \
   -e BRIDGE_DISCORD_TOKEN="..." \
   -e BRIDGE_PORTAL_BASE_URL="..." \
   -e BRIDGE_PORTAL_TOKEN="..." \
@@ -297,58 +203,17 @@ docker run -v $(pwd)/config.yaml:/app/config.yaml \
   atl-bridge
 ```
 
-## XMPP Server Setup
+## XMPP Setup
 
-The bridge requires Prosody (or compatible XMPP server) with component configuration. Configure a component for the `BRIDGE_XMPP_COMPONENT_JID` and set the component secret to match `BRIDGE_XMPP_COMPONENT_SECRET`.
+Prosody (or compatible server) must have a component configured for `BRIDGE_XMPP_COMPONENT_JID` with the component secret matching `BRIDGE_XMPP_COMPONENT_SECRET`.
 
 ## Limitations
 
 - **Single guild**: One bridge instance per Discord guild
 - **No DMs**: Only channels/MUCs, no private messages
 - **File size**: 10MB limit for XMPP file transfers
-- **IRC puppet timeout**: Idle puppets disconnect after 24 hours (configurable)
-
-## Troubleshooting
-
-### Bridge not connecting to IRC
-
-- Check firewall rules for IRC ports (6667, 6697)
-- Verify IRC server allows multiple connections from same IP
-- Check IRC nick is not already in use
-
-### XMPP messages not bridging
-
-- Verify Prosody component configuration
-- Check component secret matches
-- Ensure MUC exists and bridge has joined
-- Review Prosody logs: `/var/log/prosody/prosody.log`
-
-### Discord messages delayed
-
-- Check Portal API is responding (< 100ms)
-- Verify identity cache is working (check logs)
-- Monitor event bus queue depth
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Add tests for new features
-4. Ensure all tests pass: `uv run pytest tests -v`
-5. Run linters: `uv run ruff check src tests`
-6. Submit a pull request
+- **IRC puppet timeout**: Idle puppets disconnect after 24h (configurable)
 
 ## License
 
-GPL3 License - see [LICENSE](LICENSE) file for details.
-
-## Acknowledgments
-
-- Built for [All Things Linux](https://discord.gg/linux)
-- Uses [discord.py](https://github.com/Rapptz/discord.py) for Discord
-- Uses [pydle](https://github.com/Shizmob/pydle) for IRC
-- Uses [slixmpp](https://github.com/poezio/slixmpp) for XMPP
-
----
-
-**Status**: Production-ready • **Maintained**: Yes • **Tests**: 819 passing
+MIT (see `pyproject.toml`).
