@@ -1,9 +1,10 @@
 """Test identity resolver functionality."""
 
+import os
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from bridge.identity import IdentityResolver, PortalClient
+from bridge.identity import DevIdentityResolver, IdentityResolver, PortalClient
 
 
 def make_resolver(return_value=None, *, method="get_identity_by_discord", ttl=3600):
@@ -238,3 +239,55 @@ class TestPortalClient:
             mock_cls.return_value.__aenter__.return_value.get = AsyncMock(return_value=resp)
             result = await client.get_identity_by_xmpp_jid("user@xmpp.example.com")
         assert result == {"xmpp_jid": "user@xmpp.example.com"}
+
+
+class TestDevIdentityResolver:
+    """Test DevIdentityResolver for IRC puppets without Portal."""
+
+    @pytest.mark.asyncio
+    async def test_discord_to_irc_fallback_nick(self):
+        with patch.dict(os.environ, {"BRIDGE_DEV_IRC_NICK_MAP": ""}, clear=False):
+            resolver = DevIdentityResolver()
+        assert await resolver.discord_to_irc("123456789012345678") == "atl_dev_12345678"
+        assert await resolver.discord_to_irc("123") == "atl_dev_123"
+
+    @pytest.mark.asyncio
+    async def test_discord_to_irc_from_nick_map(self):
+        with patch.dict(
+            os.environ,
+            {"BRIDGE_DEV_IRC_NICK_MAP": "123456789012345678:atl-o,987654321098765432:atl-user"},
+            clear=False,
+        ):
+            resolver = DevIdentityResolver()
+        assert await resolver.discord_to_irc("123456789012345678") == "atl-o"
+        assert await resolver.discord_to_irc("987654321098765432") == "atl-user"
+        assert await resolver.discord_to_irc("111111111111111111") == "atl_dev_11111111"
+
+    @pytest.mark.asyncio
+    async def test_has_irc_always_true(self):
+        with patch.dict(os.environ, {}, clear=False):
+            resolver = DevIdentityResolver()
+        assert await resolver.has_irc("any") is True
+
+    @pytest.mark.asyncio
+    async def test_irc_to_discord_from_nick_map(self):
+        with patch.dict(
+            os.environ,
+            {"BRIDGE_DEV_IRC_NICK_MAP": "123456789012345678:atl-o"},
+            clear=False,
+        ):
+            resolver = DevIdentityResolver()
+        assert await resolver.irc_to_discord("atl-o") == "123456789012345678"
+        assert await resolver.irc_to_discord("unknown") is None
+
+    @pytest.mark.asyncio
+    async def test_discord_to_xmpp_returns_none(self):
+        with patch.dict(os.environ, {}, clear=False):
+            resolver = DevIdentityResolver()
+        assert await resolver.discord_to_xmpp("any") is None
+
+    @pytest.mark.asyncio
+    async def test_has_xmpp_returns_false(self):
+        with patch.dict(os.environ, {}, clear=False):
+            resolver = DevIdentityResolver()
+        assert await resolver.has_xmpp("any") is False
