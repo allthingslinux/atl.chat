@@ -68,6 +68,12 @@ prepare_config() {
   # Ensure Atheme JSON-RPC port has a default (for existing .env without it)
   export ATHEME_HTTPD_PORT="${ATHEME_HTTPD_PORT:-8081}"
 
+  # The Lounge: WebIRC password (must match UnrealIRCd proxy block); TLS verify; janitor retention
+  export THELOUNGE_WEBIRC_PASSWORD="${THELOUNGE_WEBIRC_PASSWORD:-change_me_thelounge_webirc}"
+  export THELOUNGE_DELETE_UPLOADS_AFTER_MINUTES="${THELOUNGE_DELETE_UPLOADS_AFTER_MINUTES:-1440}"
+  IRC_LOUNGE_REJECT_UNAUTHORIZED="$([ "${ATL_ENVIRONMENT:-}" = "dev" ] && echo "false" || echo "true")"
+  export IRC_LOUNGE_REJECT_UNAUTHORIZED
+
   # Bridge: IRC server hostname inside Docker network; Prosody domain for MUC JID
   export IRC_BRIDGE_SERVER="${IRC_BRIDGE_SERVER:-atl-irc-server}"
   export BRIDGE_IRC_OPER_PASSWORD="${BRIDGE_IRC_OPER_PASSWORD:-change_me_bridge_oper}"
@@ -182,6 +188,22 @@ prepare_config() {
       cp "$PROJECT_ROOT/apps/bridge/config.example.yaml" "$bridge_config" 2>/dev/null || true
       log_info "Copied config.example.yaml to apps/bridge/config.yaml - edit with your Discord channel ID"
     fi
+  fi
+
+  # Prepare The Lounge configuration
+  local lounge_template="$PROJECT_ROOT/apps/thelounge/config.js.template"
+  local lounge_config="$PROJECT_ROOT/data/thelounge/config.js"
+  if [ -f "$lounge_template" ]; then
+    log_info "Preparing The Lounge configuration from template..."
+    mkdir -p "$(dirname "$lounge_config")"
+    local temp_file="/tmp/thelounge-config.js.tmp"
+    envsubst < "$lounge_template" > "$temp_file"
+    if cp "$temp_file" "$lounge_config" 2>/dev/null || sudo cp "$temp_file" "$lounge_config" 2>/dev/null; then
+      log_success "The Lounge configuration prepared"
+    else
+      log_warning "Could not write The Lounge config to $lounge_config"
+    fi
+    rm -f "$temp_file"
   fi
 
   log_success "All configuration files prepared successfully"
