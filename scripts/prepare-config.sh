@@ -82,7 +82,6 @@ prepare_config() {
   export BRIDGE_DISCORD_CHANNEL_ID="${BRIDGE_DISCORD_CHANNEL_ID:-REPLACE_WITH_DISCORD_CHANNEL_ID}"
   # IRC TLS verify: false for dev (self-signed certs), true for prod
   export IRC_TLS_VERIFY="${BRIDGE_IRC_TLS_VERIFY:-${IRC_TLS_VERIFY:-$([ "${ATL_ENVIRONMENT:-}" = "dev" ] && echo "false" || echo "true")}}"
-
   # IRC cert paths: use shared data/certs (Let's Encrypt layout), matching Prosody
   export IRC_SSL_CERT_PATH="${IRC_SSL_CERT_PATH:-/home/unrealircd/unrealircd/certs/live/${IRC_DOMAIN:-irc.localhost}/fullchain.pem}"
   export IRC_SSL_KEY_PATH="${IRC_SSL_KEY_PATH:-/home/unrealircd/unrealircd/certs/live/${IRC_DOMAIN:-irc.localhost}/privkey.pem}"

@@ -326,6 +326,16 @@ class XMPPComponent(ComponentXMPP):
         if aliases:
             raw_data["xmpp_id_aliases"] = aliases
 
+        # Build avatar URL from mod_http_avatar (derived from room domain)
+        avatar_url: str | None = None
+        if muc and nick:
+            real_jid = muc.get_jid_property(room_jid, nick, "jid")
+            if real_jid:
+                room_domain = JID(room_jid).domain
+                base_domain = room_domain[4:] if room_domain.startswith("muc.") else room_domain
+                node = JID(str(real_jid)).local
+                avatar_url = f"https://{base_domain}/avatar/{node}"
+
         _, evt = message_in(
             origin="xmpp",
             channel_id=room_jid,
@@ -335,6 +345,7 @@ class XMPPComponent(ComponentXMPP):
             message_id=xmpp_msg_id,
             is_edit=is_edit,
             is_action=False,
+            avatar_url=avatar_url,
             raw=raw_data if raw_data else {},
         )
         logger.info("XMPP message bridged: room={} author={}", room_jid, nick)

@@ -70,6 +70,7 @@ Two classes:
 ## IRC Puppet Manager (`irc_puppet.py`)
 
 - `IRCPuppet` extends `pydle.Client`; tracks `last_activity` for idle timeout.
+- **METADATA avatar sync**: When `avatar_url` is provided and server supports `draft/metadata`, puppets set `METADATA * SET avatar :url` before sending. Cached by hash to avoid redundant updates.
 - On connect: sends `irc_puppet_prejoin_commands` (supports `{nick}` substitution), starts `_pinger` task.
 - `_pinger` sends `PING keep-alive` every `irc_puppet_ping_interval` seconds.
 - `IRCPuppetManager.get_or_create_puppet(discord_id)` — resolves IRC nick via `IdentityResolver`, connects if new.
@@ -142,7 +143,7 @@ Key methods:
 
 Inbound handlers:
 
-- `_on_groupchat_message` — emits `MessageIn` to Bus; skips delayed delivery (XEP-0203).
+- `_on_groupchat_message` — emits `MessageIn` to Bus; skips delayed delivery (XEP-0203). Builds `avatar_url` from MUC real JID via `https://{domain}/avatar/{node}` (mod_http_avatar), deriving domain from room JID (e.g. `muc.atl.chat` → `atl.chat`).
 - `_on_reactions` — emits `ReactionIn` to Bus.
 - `_on_retraction` — emits `MessageDelete` to Bus.
 

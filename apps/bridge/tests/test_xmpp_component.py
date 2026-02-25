@@ -208,6 +208,60 @@ class TestOnGroupchatMessage:
 
         router.get_mapping_for_xmpp.assert_called_once_with("room@conf.example.com")
 
+    def test_avatar_url_built_from_room_domain_when_real_jid_set(self):
+        """When MUC exposes real JID, avatar_url is derived from room domain."""
+        router = self._make_router()
+        bus = MagicMock()
+        comp = make_component(router=router, bus=bus)
+        muc = MagicMock()
+        muc.get_jid_property.return_value = "alice@xmpp.example.com"
+        comp.plugin = {"xep_0045": muc}  # type: ignore[attr-defined]
+
+        msg = MockMsg(
+            from_jid="room@conf.example.com/nick",
+            body="hello",
+            mucnick="nick",
+            msg_id="xmpp-1",
+        )
+        comp._on_groupchat_message(msg)
+
+        _, evt = bus.publish.call_args[0]
+        assert evt.avatar_url == "https://conf.example.com/avatar/alice"
+        muc.get_jid_property.assert_called_with("room@conf.example.com", "nick", "jid")
+
+    def test_avatar_url_strips_muc_prefix_from_domain(self):
+        """Room JID muc.atl.chat yields base domain atl.chat."""
+        router = self._make_router()
+        bus = MagicMock()
+        comp = make_component(router=router, bus=bus)
+        muc = MagicMock()
+        muc.get_jid_property.return_value = "bob@atl.chat"
+        comp.plugin = {"xep_0045": muc}  # type: ignore[attr-defined]
+
+        msg = MockMsg(
+            from_jid="room@muc.atl.chat/nick",
+            msg_id="xmpp-1",
+        )
+        comp._on_groupchat_message(msg)
+
+        _, evt = bus.publish.call_args[0]
+        assert evt.avatar_url == "https://atl.chat/avatar/bob"
+
+    def test_avatar_url_none_when_real_jid_none(self):
+        """When MUC does not expose real JID, avatar_url is None."""
+        router = self._make_router()
+        bus = MagicMock()
+        comp = make_component(router=router, bus=bus)
+        muc = MagicMock()
+        muc.get_jid_property.return_value = None
+        comp.plugin = {"xep_0045": muc}  # type: ignore[attr-defined]
+
+        msg = MockMsg("room@conf.example.com/nick", msg_id="xmpp-1")
+        comp._on_groupchat_message(msg)
+
+        _, evt = bus.publish.call_args[0]
+        assert evt.avatar_url is None
+
 
 # ---------------------------------------------------------------------------
 # _on_reactions
