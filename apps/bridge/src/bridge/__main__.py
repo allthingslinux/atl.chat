@@ -18,7 +18,7 @@ from bridge.adapters.xmpp import XMPPAdapter
 from bridge.config import Config, cfg, load_config_with_env
 from bridge.events import config_reload, dispatcher
 from bridge.gateway import Bus, ChannelRouter, Relay
-from bridge.identity import IdentityResolver, PortalClient
+from bridge.identity import DevIdentityResolver, IdentityResolver, PortalClient
 
 
 class Adapter(Protocol):
@@ -98,7 +98,7 @@ def main() -> None:
 
     # Portal client + identity resolver (when Portal URL available)
     portal_url = _get_portal_url()
-    identity_resolver: IdentityResolver | None = None
+    identity_resolver: IdentityResolver | DevIdentityResolver | None = None
     if portal_url:
         client = PortalClient(portal_url, token=_get_portal_token())
         identity_resolver = IdentityResolver(
@@ -106,6 +106,9 @@ def main() -> None:
             ttl=config.identity_cache_ttl_seconds,
         )
         logger.info("Portal identity client configured: {}", portal_url)
+    elif _dev_irc_puppets_enabled():
+        identity_resolver = DevIdentityResolver()
+        logger.info("Dev IRC puppets enabled (no Portal); nicks from BRIDGE_DEV_IRC_NICK_MAP or atl_dev_*")
     else:
         logger.warning("BRIDGE_PORTAL_BASE_URL not set; identity resolution disabled")
 
@@ -128,6 +131,13 @@ def _get_portal_url() -> str | None:
     import os
 
     return os.environ.get("BRIDGE_PORTAL_BASE_URL") or os.environ.get("BRIDGE_PORTAL_URL")
+
+
+def _dev_irc_puppets_enabled() -> bool:
+    """True when BRIDGE_DEV_IRC_PUPPETS is truthy (for local dev without Portal)."""
+    import os
+
+    return os.environ.get("BRIDGE_DEV_IRC_PUPPETS", "").lower() in ("1", "true", "yes")
 
 
 def _get_portal_token() -> str | None:
