@@ -131,6 +131,17 @@ class Config:
         return bool(self._data.get("irc_auto_rejoin", True))
 
     @property
+    def irc_relaymsg_clean_nicks(self) -> bool:
+        """When true, RELAYMSG nicks are not forced to contain '/' (no /d suffix).
+        Requires UnrealIRCd relaymsg with require-separator no."""
+        import os
+
+        env_val = os.environ.get("BRIDGE_RELAYMSG_CLEAN_NICKS", "").lower()
+        if env_val in ("1", "true", "yes"):
+            return True
+        return bool(self._data.get("irc_relaymsg_clean_nicks", False))
+
+    @property
     def irc_tls_verify(self) -> bool:
         """Verify IRC TLS certificates. Set false for dev with self-signed certs."""
         import os
