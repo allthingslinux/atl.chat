@@ -56,7 +56,7 @@ src/bridge/
     ├── xmpp.py          # XMPP adapter
     ├── xmpp_component.py # slixmpp component + XEPs
     └── xmpp_msgid.py    # XMPP stanza-id ↔ Discord ID tracker
-tests/                   # pytest suite (765 tests)
+tests/                   # pytest suite (769 tests)
 references/              # Upstream source for discord.py, slixmpp, unrealircd, IRCv3 specs
 ```
 
@@ -72,7 +72,7 @@ references/              # Upstream source for discord.py, slixmpp, unrealircd, 
 - `just lint` — ruff check
 - `just format` — ruff format
 - `just typecheck` — basedpyright
-- `just test` — pytest (all 765 tests)
+- `just test` — pytest (all 769 tests)
 - `just test -k foo` — run matching tests
 - `just check` — all of the above in sequence
 

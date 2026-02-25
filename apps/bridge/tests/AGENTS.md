@@ -2,7 +2,7 @@
 
 > Scope: `tests/` directory. Inherits root [AGENTS.md](../AGENTS.md).
 
-765-test pytest suite covering all bridge components.
+769-test pytest suite covering all bridge components.
 
 ## Quick Facts
 
@@ -39,7 +39,7 @@ Use `BridgeTestHarness` for any test that needs a real Bus + Relay wired togethe
 | `test_irc_adapter_extended.py` | Extended IRC adapter scenarios |
 | `test_irc_client.py` | `IRCClient`: `on_connect`, `on_message`, IRCv3 caps, REDACT, TAGMSG |
 | `test_irc_puppet.py` | `IRCPuppetManager`: create, idle timeout, keep-alive pinger, pre-join commands |
-| `test_irc_msgid.py` | `MessageIDTracker`: store, bidirectional lookup, TTL expiry |
+| `test_irc_msgid.py` | `MessageIDTracker`, `ReactionTracker`: store, bidirectional lookup, TTL expiry, reaction removal |
 | `test_irc_message_split_utf8.py` | UTF-8 message splitting edge cases |
 | `test_irc_threading.py` | IRC reply threading via `+draft/reply` |
 | `test_irc_exceptions.py` | IRC error handling and reconnect backoff |

@@ -13,8 +13,7 @@ Next.js 14 · React 18 · TypeScript · Tailwind CSS · shadcn/ui · Cloudflare 
 ```
 app/
 ├── layout.tsx, page.tsx
-├── globals.css
-└── fonts/
+└── globals.css
 
 components/
 └── ui/               # button, card, badge (shadcn)

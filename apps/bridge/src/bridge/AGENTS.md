@@ -47,7 +47,7 @@ All events are dataclasses. Factory functions (decorated with `@event`) return `
 `Dispatcher` (and the `dispatcher` singleton) calls `accept_event` then `push_event` on each registered `EventTarget`. Exceptions per-target are caught and logged — one bad adapter can't block others.
 
 `MessageIn` notable fields: `is_edit`, `is_action`, `reply_to_id`, `avatar_url`, `raw`.
-`MessageOut` notable fields: `reply_to_id`, `avatar_url`, `raw` (carries `is_edit`, `replace_id`, `origin`).
+`MessageOut` notable fields: `reply_to_id`, `avatar_url`, `raw` (carries `is_edit`, `replace_id`, `origin`, `xmpp_id_aliases`).
 
 ## Config (`config.py`)
 

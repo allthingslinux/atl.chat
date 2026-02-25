@@ -13,10 +13,10 @@ Protocol-specific adapters. Each registers with the Bus, filters events via `acc
 | `irc.py` | IRC adapter: `IRCClient` (pydle) + `IRCAdapter`; IRCv3 caps, puppet routing |
 | `irc_puppet.py` | `IRCPuppet` (pydle.Client) + `IRCPuppetManager`: per-user connections, idle timeout, keep-alive |
 | `irc_throttle.py` | `TokenBucket`: token bucket flood control for IRC sends |
-| `irc_msgid.py` | `MessageIDTracker`: IRC msgid ↔ Discord ID bidirectional map (1h TTL) |
+| `irc_msgid.py` | `MessageIDTracker`, `ReactionTracker`, `ReactionMapping`: IRC msgid ↔ Discord ID map; reaction removal (REDACT) |
 | `xmpp.py` | `XMPPAdapter`: outbound queue, routes to `XMPPComponent` |
 | `xmpp_component.py` | `XMPPComponent` (slixmpp `ComponentXMPP`): XEPs, MUC presence, file upload, avatar sync |
-| `xmpp_msgid.py` | `XMPPMessageIDTracker`: XMPP stanza-id ↔ Discord ID bidirectional map (1h TTL) |
+| `xmpp_msgid.py` | `XMPPMessageIDTracker`: XMPP stanza-id ↔ Discord ID map; `add_alias`, `add_stanza_id_alias` for edit/reaction lookup |
 
 ## Critical Rules
 
@@ -77,12 +77,14 @@ Two classes:
 
 ## IRC Message ID Tracker (`irc_msgid.py`)
 
-`MessageIDTracker` — bidirectional `irc_msgid ↔ discord_id` map with manual TTL cleanup (1h default).
+**`MessageIDTracker`** — bidirectional `irc_msgid ↔ discord_id` map with manual TTL cleanup (1h default).
 
 - `store(irc_msgid, discord_id)` — stores both directions.
 - `get_discord_id(irc_msgid)` → Discord ID or `None`.
 - `get_irc_msgid(discord_id)` → IRC msgid or `None`.
 - `_cleanup()` called on every read; removes entries older than TTL.
+
+**`ReactionTracker`** + **`ReactionMapping`** — IRC reaction removal (REDACT): maps `(irc_msgid, emoji)` → Discord message ID for targeted reaction removal.
 
 ## IRC Throttle (`irc_throttle.py`)
 
@@ -148,8 +150,11 @@ Inbound handlers:
 `XMPPMessageIDTracker` — bidirectional `xmpp_id ↔ discord_id` map with `room_jid`, manual TTL cleanup (1h default).
 
 - `store(xmpp_id, discord_id, room_jid)` — stores both directions.
+- `add_alias(alias_id, primary_xmpp_id)` — add alias for `get_discord_id` (e.g. origin-id when primary is stanza-id).
+- `add_stanza_id_alias(our_id, stanza_id)` — add stanza-id alias (reactions use stanza-id; corrections use our_id).
 - `get_discord_id(xmpp_id)` → Discord ID or `None`.
 - `get_xmpp_id(discord_id)` → XMPP message ID or `None`.
+- `get_xmpp_id_for_reaction(discord_id)` → prefers stanza-id when available.
 - `get_room_jid(discord_id)` → room JID or `None`.
 
 ## Related

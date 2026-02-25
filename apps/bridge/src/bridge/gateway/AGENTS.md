@@ -36,7 +36,7 @@ Format conversion applied by `_transform_content`:
 - `irc` → `discord`: `irc_to_discord()`
 - All other pairs: content passed through unchanged
 
-`MessageOut.raw` carries `{"is_edit": bool, "replace_id": str|None, "origin": str}` for downstream adapters.
+`MessageOut.raw` carries `{"is_edit": bool, "replace_id": str|None, "origin": str, "xmpp_id_aliases": list[str]}` for downstream adapters (XMPP edit lookup).
 `ReactionOut.raw` is forwarded verbatim from `ReactionIn.raw` (preserves `is_remove` flag).
 
 ## Router (`router.py`)
