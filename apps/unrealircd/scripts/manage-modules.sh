@@ -288,7 +288,7 @@ show_installed() {
     local count=0
     for module in *.so; do
         if [ -f "$module" ]; then
-            echo "  - ${module%.so}"
+            echo "  - third/${module%.so}"
             ((count++))
         fi
     done
@@ -335,6 +335,7 @@ Environment Variables:
 Notes:
   - Some operations may require UnrealIRCd to be restarted
   - After installing modules, add 'loadmodule "third/modulename";' to unrealircd.conf
+  - third/relaymsg is built from contrib/ during image build (atl.chat fork), not via this script
   - Use REHASH command in IRC or restart UnrealIRCd after configuration changes
   - Contrib modules are not officially supported by the UnrealIRCd team
 
