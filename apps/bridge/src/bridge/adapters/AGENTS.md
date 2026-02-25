@@ -50,14 +50,14 @@ Two classes:
 
 - IRCv3 capability negotiation on connect; `_ready_fallback` joins channels if `RPL_005` not received.
 - `on_message` / `on_ctcp_action` — emit `MessageIn` to Bus.
-- `on_raw_tagmsg` — handles `+draft/reply` (threading) and `+draft/react` (reactions).
+- `on_raw_tagmsg` — handles `+draft/reply` (threading), `+draft/react` (add), `+draft/unreact` (remove).
 - `on_raw_redact` — handles IRCv3 REDACT; emits `MessageDelete`.
 - `on_kick` — emits `Part`; auto-rejoins after `irc_rejoin_delay` if `irc_auto_rejoin` is set.
 - `on_disconnect` — reconnects with exponential backoff via `_connect_with_backoff`.
 - Outbound queue consumed by `_consume_outbound`; uses `TokenBucket` for flood control.
 - **RELAYMSG**: When server advertises `draft/relaymsg` or `overdrivenetworks.com/relaymsg`, main-connection sends use `RELAYMSG #channel nick/d :message` (stateless bridging) instead of `PRIVMSG`. Spoofed nick format: `author_display/discord` (Valware requires `/` in nick). Echo detection: skip messages with `draft/relaymsg` or `relaymsg` tag matching our nick.
 - Typing: `TAGMSG` with `typing=active`, throttled to once per 3 seconds.
-- Reactions: `TAGMSG` with `+draft/reply` + `+draft/react`.
+- Reactions: add via `TAGMSG` with `+draft/reply` + `+draft/react`; remove via `TAGMSG` with `+draft/reply` + `+draft/unreact` (IRCv3 spec).
 - Deletes: `REDACT` command with original IRC msgid.
 
 **`IRCAdapter`** — Bus-facing wrapper:
@@ -86,7 +86,7 @@ Two classes:
 - `get_irc_msgid(discord_id)` → IRC msgid or `None`.
 - `_cleanup()` called on every read; removes entries older than TTL.
 
-**`ReactionTracker`** + **`ReactionMapping`** — IRC reaction removal (REDACT): maps `(irc_msgid, emoji)` → Discord message ID for targeted reaction removal.
+**`ReactionTracker`** + **`ReactionMapping`** — Inbound IRC reaction REDACT fallback: when a client REDACTs a reaction TAGMSG, maps irc_msgid → Discord message ID. Outbound removal uses `+draft/unreact` (no tracker needed).
 
 ## IRC Throttle (`irc_throttle.py`)
 

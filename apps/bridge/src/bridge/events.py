@@ -88,6 +88,7 @@ class MessageDelete:
     channel_id: str
     message_id: str
     author_id: str = ""  # For XMPP retraction (send as user)
+    author_display: str = ""  # Display name for XMPP retraction JID (must match sender)
     raw: dict[str, Any] = field(default_factory=dict)
 
 
@@ -99,6 +100,7 @@ class MessageDeleteOut:
     channel_id: str
     message_id: str
     author_id: str = ""  # For XMPP retraction (send as user)
+    author_display: str = ""  # Display name for XMPP retraction JID (must match sender)
     raw: dict[str, Any] = field(default_factory=dict)
 
 
@@ -219,12 +221,20 @@ def config_reload() -> ConfigReload:
 
 
 @event("message_delete")
-def message_delete(origin: str, channel_id: str, message_id: str, *, author_id: str = "") -> MessageDelete:
+def message_delete(
+    origin: str,
+    channel_id: str,
+    message_id: str,
+    *,
+    author_id: str = "",
+    author_display: str = "",
+) -> MessageDelete:
     return MessageDelete(
         origin=origin,
         channel_id=channel_id,
         message_id=message_id,
         author_id=author_id,
+        author_display=author_display,
     )
 
 
@@ -280,12 +290,14 @@ def message_delete_out(
     message_id: str,
     *,
     author_id: str = "",
+    author_display: str = "",
 ) -> MessageDeleteOut:
     return MessageDeleteOut(
         target_origin=target_origin,
         channel_id=channel_id,
         message_id=message_id,
         author_id=author_id,
+        author_display=author_display,
     )
 
 

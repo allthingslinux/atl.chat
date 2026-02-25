@@ -217,5 +217,6 @@ class Relay:
                 channel_id=channel_id,
                 message_id=evt.message_id,
                 author_id=evt.author_id,
+                author_display=evt.author_display,
             )
             self._bus.publish("relay", out_evt)
