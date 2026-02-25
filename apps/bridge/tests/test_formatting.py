@@ -128,6 +128,18 @@ class TestIrcToDiscord:
         result = irc_to_discord("\x1funder\x0fafter")
         assert result == "__under__after"
 
+    def test_strikethrough(self):
+        """IRC \\x1e (STRIKETHROUGH) maps to Discord ~~."""
+        assert irc_to_discord("\x1estrikethrough\x1e") == "~~strikethrough~~"
+
+    def test_strikethrough_reset_closes(self):
+        """RESET closes strikethrough."""
+        assert irc_to_discord("\x1estrike\x0fafter") == "~~strike~~after"
+
+    def test_strikethrough_unclosed_closed_at_end(self):
+        """Unclosed strikethrough is closed at end of text."""
+        assert irc_to_discord("\x1eno close") == "~~no close~~"
+
     def test_url_at_end_of_string_no_trailing_text(self):
         # URL at end: last_end == len(content), trailing branch not taken (line 36)
         text = "see https://example.com"

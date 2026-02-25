@@ -6,6 +6,8 @@ import asyncio
 import contextlib
 import io
 import os
+import re
+import tempfile
 import time
 from typing import TYPE_CHECKING
 
@@ -27,11 +29,20 @@ from bridge.events import (
     message_delete,
     message_in,
 )
+from bridge.formatting.mention_resolution import resolve_mentions
 from bridge.gateway import Bus, ChannelRouter
 
 if TYPE_CHECKING:
     from bridge.gateway.msgid_resolver import MessageIDResolver
     from bridge.identity import IdentityResolver
+
+# Media URL pattern: single URL, no surrounding text (discord-ircv3 style)
+_MEDIA_URL_PATTERN = re.compile(
+    r"^https?://[^\s\x01-\x16]+\.(?:jpg|jpeg|png|gif|mp4|webm)$",
+    re.IGNORECASE,
+)
+_MEDIA_FETCH_TIMEOUT = 10
+_MEDIA_SIZE_LIMIT = 10 * 1024 * 1024  # 10 MB, same as XMPP
 
 
 class DiscordAdapter(AdapterBase):
@@ -86,6 +97,46 @@ class DiscordAdapter(AdapterBase):
         if isinstance(evt, MessageOut):
             self._queue.put_nowait(evt)
 
+    def _extract_filename_from_url(self, url: str) -> str:
+        """Extract filename from URL path or return fallback."""
+        try:
+            path = url.split("?", maxsplit=1)[0].rstrip("/")
+            name = path.split("/")[-1]
+            if name and "." in name:
+                return name
+        except Exception:
+            pass
+        return "image.png"
+
+    async def _fetch_media_to_temp(self, url: str) -> str | None:
+        """Fetch media URL to temp file. Returns path or None on failure. Caller must unlink."""
+        if not self._session:
+            return None
+        path: str | None = None
+        try:
+            fd, path = tempfile.mkstemp(suffix=".media")
+            os.close(fd)
+            total = 0
+            async with self._session.get(url, timeout=aiohttp.ClientTimeout(total=_MEDIA_FETCH_TIMEOUT)) as resp:
+                if resp.status != 200:
+                    os.unlink(path)
+                    return None
+                with open(path, "wb") as f:
+                    async for chunk in resp.content.iter_chunked(8192):
+                        total += len(chunk)
+                        if total > _MEDIA_SIZE_LIMIT:
+                            f.close()
+                            os.unlink(path)
+                            return None
+                        f.write(chunk)
+            return path
+        except Exception as exc:
+            logger.debug("Failed to fetch media from {}: {}", url, exc)
+            if path and os.path.exists(path):
+                with contextlib.suppress(OSError):
+                    os.unlink(path)
+            return None
+
     async def _get_or_create_webhook(self, channel_id: str) -> Webhook | None:
         """Get or create one webhook per channel (matterbridge pattern). Caller must hold _send_lock."""
         if not self._bot:
@@ -102,8 +153,9 @@ class DiscordAdapter(AdapterBase):
         reply_to_id: str | None = None,
         reply_author: str | None = None,
         reply_content: str | None = None,
+        file: File | None = None,
     ) -> int | None:
-        """Send message via webhook. Optional Unifier/lightning style link button for replies."""
+        """Send message via webhook. Optional file attachment, Unifier/lightning style link button for replies."""
         webhook = await self._get_or_create_webhook(channel_id)
         if not webhook:
             return None
@@ -117,6 +169,7 @@ class DiscordAdapter(AdapterBase):
             reply_to_id=reply_to_id,
             reply_author=reply_author,
             reply_content=reply_content,
+            file=file,
         )
 
     async def _fetch_reply_context(self, channel_id: str, reply_to_id: str) -> tuple[str, str | None]:
@@ -180,11 +233,17 @@ class DiscordAdapter(AdapterBase):
                 if is_edit and replace_id and self._bot:
                     resolved = self._resolve_discord_message_id(replace_id, origin)
                     if resolved:
+                        edit_content = evt.content
+                        if edit_content:
+                            channel = self._bot.get_channel(int(evt.channel_id))
+                            guild = getattr(channel, "guild", None) if channel else None
+                            if guild:
+                                edit_content = resolve_mentions(edit_content, guild)
                         async with self._send_lock:
                             edited = await self._webhook_edit(
                                 evt.channel_id,
                                 int(resolved),
-                                evt.content,
+                                edit_content,
                             )
                         if edited:
                             discord_msg_id = int(resolved)
@@ -197,6 +256,22 @@ class DiscordAdapter(AdapterBase):
                 # Send as new message if not edited
                 if discord_msg_id is None:
                     content = evt.content  # Relay already strips reply fallback for discord target
+                    # Resolve @nick to Discord mention before send
+                    if self._bot and content:
+                        channel = self._bot.get_channel(int(evt.channel_id))
+                        guild = getattr(channel, "guild", None) if channel else None
+                        if guild:
+                            content = resolve_mentions(content, guild)
+                    content_trimmed = (content or "").strip()
+                    file_obj: File | None = None
+                    temp_path: str | None = None
+                    # Media-only URL: fetch and send as File for reliable Discord embed
+                    if _MEDIA_URL_PATTERN.match(content_trimmed):
+                        temp_path = await self._fetch_media_to_temp(content_trimmed)
+                        if temp_path:
+                            filename = self._extract_filename_from_url(content_trimmed)
+                            file_obj = File(temp_path, filename=filename)
+                            content = ""  # Send file alone for embed
                     # Resolve reply_to_id: XMPP tracker may have IRC msgid when original was from IRC
                     reply_to_discord_id = evt.reply_to_id
                     if reply_to_discord_id and not reply_to_discord_id.isdigit():
@@ -218,7 +293,12 @@ class DiscordAdapter(AdapterBase):
                             reply_to_id=reply_to_discord_id,
                             reply_author=reply_author,
                             reply_content=reply_content,
+                            file=file_obj,
                         )
+                    # Clean up temp file after send (File reads during send)
+                    if temp_path and os.path.exists(temp_path):
+                        with contextlib.suppress(OSError):
+                            os.unlink(temp_path)
                 # Store XMPP->Discord mapping for retraction, reaction, and edit routing
                 origin = (evt.raw or {}).get("origin")
                 if discord_msg_id and origin == "xmpp" and self._msgid_resolver:

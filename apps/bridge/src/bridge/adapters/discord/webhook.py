@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from discord import AllowedMentions, ButtonStyle, TextChannel
+from discord import AllowedMentions, ButtonStyle, File, TextChannel
 from discord.ext import commands
 from discord.ui import Button, View
 from discord.webhook import Webhook
@@ -98,16 +98,19 @@ async def webhook_send(
     reply_to_id: str | None = None,
     reply_author: str | None = None,
     reply_content: str | None = None,
+    file: File | None = None,
 ) -> int | None:
-    """Send message via webhook. Optional Unifier/lightning style link button for replies."""
+    """Send message via webhook. Optional file attachment, Unifier/lightning style link button for replies."""
     send_avatar_url = avatar_url if _avatar_url_ok_for_discord(avatar_url) else None
     send_kw: dict = {
-        "content": content[:2000],
+        "content": content[:2000] if content else None,
         "username": _ensure_valid_username(author_display),
         "avatar_url": send_avatar_url,
         "allowed_mentions": _ALLOWED_MENTIONS,
         "wait": True,
     }
+    if file is not None:
+        send_kw["file"] = file
     if reply_to_id and bot:
         channel = bot.get_channel(int(channel_id))
         if channel and isinstance(channel, TextChannel) and channel.guild:

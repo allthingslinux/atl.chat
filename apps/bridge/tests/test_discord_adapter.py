@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import tempfile
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -320,6 +321,117 @@ async def test_queue_consumer_edits_when_resolve_succeeds(bus: Bus, router: Chan
     assert mock_webhook.edit_message.call_args[0][0] == 55555
     assert mock_webhook.edit_message.call_args[1]["content"] == "edited content"
     mock_webhook.send.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_queue_consumer_fetches_media_url_and_sends_file(bus: Bus, router: ChannelRouter) -> None:
+    """When content is media-only URL, fetch to temp file and send as discord.File."""
+    from bridge.adapters.discord import DiscordAdapter
+
+    adapter = DiscordAdapter(bus, router, identity_resolver=None)
+    adapter._bot = MagicMock()
+    mock_webhook = MagicMock()
+    mock_webhook.send = AsyncMock(return_value=MagicMock(id=11111))
+    adapter._get_or_create_webhook = AsyncMock(return_value=mock_webhook)
+
+    with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tf:
+        tf.write(b"fake image bytes")
+        temp_path = tf.name
+
+    async def mock_fetch(url: str) -> str | None:
+        return temp_path
+
+    adapter._fetch_media_to_temp = mock_fetch
+
+    evt = MessageOut(
+        "discord",
+        "123",
+        "u1",
+        "Alice",
+        "https://example.com/image.png",
+        "m1",
+    )
+    adapter._queue.put_nowait(evt)
+    consumer = asyncio.create_task(adapter._queue_consumer(delay=0.01))
+    await asyncio.sleep(0.05)
+    consumer.cancel()
+    with contextlib.suppress(asyncio.CancelledError):
+        await consumer
+
+    mock_webhook.send.assert_called_once()
+    call_kw = mock_webhook.send.call_args[1]
+    assert call_kw.get("content") in (None, "")  # webhook sends None when content empty
+    assert "file" in call_kw
+    file_obj = call_kw["file"]
+    assert file_obj.filename == "image.png"
+
+    import os
+
+    if os.path.exists(temp_path):
+        os.unlink(temp_path)
+
+
+@pytest.mark.asyncio
+async def test_queue_consumer_resolves_mentions_before_send(bus: Bus, router: ChannelRouter) -> None:
+    """@nick in content is resolved to <@userId> when guild has matching member."""
+    from bridge.adapters.discord import DiscordAdapter
+
+    adapter = DiscordAdapter(bus, router, identity_resolver=None)
+    adapter._bot = MagicMock()
+    mock_webhook = MagicMock()
+    mock_webhook.send = AsyncMock(return_value=MagicMock(id=33333))
+    adapter._get_or_create_webhook = AsyncMock(return_value=mock_webhook)
+
+    member = MagicMock()
+    member.id = 98765
+    member.nick = "ircuser"
+    member.display_name = "IRCUser"
+    member.name = "ircuser"
+
+    mock_channel = MagicMock()
+    mock_channel.guild = MagicMock()
+    mock_channel.guild.members = [member]
+    adapter._bot.get_channel.return_value = mock_channel
+
+    evt = MessageOut("discord", "123", "u1", "Alice", "Hey @ircuser check this", "m1")
+    adapter._queue.put_nowait(evt)
+    consumer = asyncio.create_task(adapter._queue_consumer(delay=0.01))
+    await asyncio.sleep(0.05)
+    consumer.cancel()
+    with contextlib.suppress(asyncio.CancelledError):
+        await consumer
+
+    mock_webhook.send.assert_called_once()
+    call_kw = mock_webhook.send.call_args[1]
+    assert call_kw["content"] == "Hey <@98765> check this"
+
+
+@pytest.mark.asyncio
+async def test_queue_consumer_media_fetch_failure_falls_back_to_url(bus: Bus, router: ChannelRouter) -> None:
+    """When media fetch fails, send URL as content (fallback)."""
+    from bridge.adapters.discord import DiscordAdapter
+
+    adapter = DiscordAdapter(bus, router, identity_resolver=None)
+    adapter._bot = MagicMock()
+    mock_webhook = MagicMock()
+    mock_webhook.send = AsyncMock(return_value=MagicMock(id=22222))
+    adapter._get_or_create_webhook = AsyncMock(return_value=mock_webhook)
+
+    adapter._fetch_media_to_temp = AsyncMock(return_value=None)
+
+    url = "https://example.com/broken.png"
+    evt = MessageOut("discord", "123", "u1", "Alice", url, "m1")
+    adapter._queue.put_nowait(evt)
+    consumer = asyncio.create_task(adapter._queue_consumer(delay=0.01))
+    await asyncio.sleep(0.05)
+    consumer.cancel()
+    with contextlib.suppress(asyncio.CancelledError):
+        await consumer
+
+    mock_webhook.send.assert_called_once()
+    call_kw = mock_webhook.send.call_args[1]
+    assert call_kw["content"] == url
+    assert call_kw.get("file") is None
 
 
 @pytest.mark.asyncio

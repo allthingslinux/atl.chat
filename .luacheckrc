@@ -68,6 +68,7 @@ globals = {
   "default_bookmarks",
    -- Misc
    "name", "domain", "contact_info", "server_info", "account_cleanup", "component_secret",
+   "conversejs_options",  -- mod_conversejs
    "component_interfaces", "http_host", "pastebin_threshold", "pastebin_line_threshold",
    "support_contact", "support_contact_nick", "support_contact_group",
    "report_forward_to", "report_forward_to_origin", "report_forward_to_origin_fallback",

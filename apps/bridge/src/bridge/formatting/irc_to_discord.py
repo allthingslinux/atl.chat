@@ -8,6 +8,7 @@ import re
 BOLD = "\x02"
 COLOR = "\x03"
 ITALIC = "\x1d"
+STRIKETHROUGH = "\x1e"
 UNDERLINE = "\x1f"
 RESET = "\x0f"
 
@@ -42,12 +43,13 @@ def irc_to_discord(content: str) -> str:
 
 
 def _convert_irc_codes(text: str) -> str:
-    """Convert IRC bold/italic/underline to Discord markdown."""
+    """Convert IRC bold/italic/underline/strikethrough to Discord markdown."""
     result: list[str] = []
     i = 0
     bold = False
     italic = False
     underline = False
+    strikethrough = False
 
     while i < len(text):
         if text[i : i + 1] == BOLD:
@@ -72,6 +74,13 @@ def _convert_irc_codes(text: str) -> str:
             else:
                 result.append("__")
             i += 1
+        elif text[i : i + 1] == STRIKETHROUGH:
+            if strikethrough:
+                result.append("~~")
+            strikethrough = not strikethrough
+            if strikethrough:
+                result.append("~~")
+            i += 1
         elif text[i : i + 1] == RESET:
             if bold:
                 result.append("**")
@@ -82,6 +91,9 @@ def _convert_irc_codes(text: str) -> str:
             if underline:
                 result.append("__")
                 underline = False
+            if strikethrough:
+                result.append("~~")
+                strikethrough = False
             i += 1
         else:
             c = text[i]
@@ -98,4 +110,6 @@ def _convert_irc_codes(text: str) -> str:
         result.append("*")
     if underline:
         result.append("__")
+    if strikethrough:
+        result.append("~~")
     return "".join(result)

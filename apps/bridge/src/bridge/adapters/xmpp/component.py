@@ -145,6 +145,7 @@ class XMPPComponent(ComponentXMPP):
         self.register_plugin("xep_0359")  # Unique Stanza IDs (origin-id for echo capture)
         self.register_plugin("xep_0054")  # vCard-temp
         self.register_plugin("xep_0047")  # In-Band Bytestreams
+        self.register_plugin("xep_0066")  # Out of Band Data (file URLs in messages)
         self.register_plugin("xep_0363")  # HTTP File Upload
         self.register_plugin("xep_0372")  # References
         self.register_plugin("xep_0382")  # Spoiler Messages
@@ -245,6 +246,11 @@ class XMPPComponent(ComponentXMPP):
         # Convert XMPP spoilers to Discord format
         if msg.get_plugin("spoiler", check=True):
             body = f"||{body}||"
+
+        # XEP-0066 OOB: extract file URL from <x xmlns="jabber:x:oob"><url/></x>
+        if msg.get_plugin("oob", check=True) and msg["oob"]["url"]:
+            oob_url = msg["oob"]["url"]
+            body = body + " " + oob_url if body.strip() else oob_url
 
         if "/" in from_jid:
             room_jid = from_jid.split("/")[0]

@@ -51,12 +51,21 @@ class MockPlugin:
 class MockMsg:
     """Minimal slixmpp message stanza stub."""
 
-    def __init__(self, from_jid, body="hello", mucnick="nick", msg_id="msg-1", plugins=None):
+    def __init__(
+        self,
+        from_jid,
+        body="hello",
+        mucnick="nick",
+        msg_id="msg-1",
+        plugins=None,
+        oob_url=None,
+    ):
         self._from = from_jid
         self._body = body
         self._mucnick = mucnick
         self._id = msg_id
         self._plugins: dict[str, object] = plugins or {}
+        self._oob_url = oob_url
 
     def __getitem__(self, key):
         if key == "from":
@@ -65,6 +74,8 @@ class MockMsg:
             return self._body
         if key == "mucnick":
             return self._mucnick
+        if key == "oob" and self._oob_url is not None:
+            return {"url": self._oob_url, "desc": ""}
         # For nested access like msg["replace"]["id"] return a dict-like mock
         return MagicMock()
 
@@ -139,6 +150,40 @@ class TestOnGroupchatMessage:
 
         _, evt = bus.publish.call_args[0]
         assert evt.content == "||secret||"
+
+    def test_oob_url_used_as_content_when_body_empty(self):
+        """XEP-0066 OOB: when body is empty, OOB URL becomes content."""
+        router = self._make_router()
+        bus = MagicMock()
+        comp = make_component(router=router, bus=bus)
+
+        msg = MockMsg(
+            "room@conf.example.com/nick",
+            body="",
+            plugins={"oob": MockPlugin()},
+            oob_url="https://upload.example.com/image.png",
+        )
+        comp._on_groupchat_message(msg)
+
+        _, evt = bus.publish.call_args[0]
+        assert evt.content == "https://upload.example.com/image.png"
+
+    def test_oob_url_appended_when_body_has_caption(self):
+        """XEP-0066 OOB: when body has text, OOB URL is appended."""
+        router = self._make_router()
+        bus = MagicMock()
+        comp = make_component(router=router, bus=bus)
+
+        msg = MockMsg(
+            "room@conf.example.com/nick",
+            body="check this out",
+            plugins={"oob": MockPlugin()},
+            oob_url="https://upload.example.com/file.pdf",
+        )
+        comp._on_groupchat_message(msg)
+
+        _, evt = bus.publish.call_args[0]
+        assert evt.content == "check this out https://upload.example.com/file.pdf"
 
     def test_edit_message_sets_is_edit_and_raw(self):
         router = self._make_router()
