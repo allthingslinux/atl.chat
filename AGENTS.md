@@ -83,3 +83,51 @@ docs/               # Architecture, services, onboarding, bridges
 - [scripts/AGENTS.md](scripts/AGENTS.md)
 - [tests/AGENTS.md](tests/AGENTS.md)
 - [README.md](README.md)
+
+## Cursor Cloud specific instructions
+
+### System dependencies (pre-installed by VM snapshot)
+
+Docker, `just`, `uv`, `pnpm`, Node.js 22, Python 3.11+3.12, `envsubst` (gettext-base).
+Docker daemon must be started manually: `sudo dockerd &>/tmp/dockerd.log &` then ensure socket permissions: `sudo chmod 666 /var/run/docker.sock`.
+
+### Starting the dev environment
+
+1. **Env files**: `cp .env.example .env && cp .env.dev.example .env.dev` (idempotent; skip if files exist).
+2. **Init + Docker stack**: `just dev` — runs `scripts/init.sh` (creates `data/` dirs, generates self-signed certs, substitutes config templates) then starts all Docker Compose services with the dev profile.
+3. **Next.js web app**: `cd apps/web && NEXT_PUBLIC_IRC_WS_URL="ws://localhost:8000" NEXT_PUBLIC_XMPP_BOSH_URL="http://localhost:5280/http-bind" pnpm dev` (port 3000). This runs outside Docker as a local Node process.
+
+### Service ports (dev profile)
+
+| Service | Port | Notes |
+|---------|------|-------|
+| IRC (TLS) | 6697 | UnrealIRCd; self-signed cert for `irc.localhost` |
+| IRC WebSocket | 8000 | UnrealIRCd WS |
+| IRC RPC | 8600 | UnrealIRCd JSON-RPC |
+| Atheme HTTP | 8081 | IRC services JSON-RPC |
+| WebPanel | 8080 | UnrealIRCd admin panel |
+| XMPP C2S | 5222 | Prosody client-to-server |
+| XMPP HTTP | 5280 | Prosody BOSH/WebSocket |
+| XMPP HTTPS | 5281 | Prosody (via nginx) |
+| The Lounge | 9000 | Web IRC client (private mode; needs user created via `just lounge add`) |
+| Dozzle | 8082 | Docker log viewer (dev profile only) |
+| Next.js | 3000 | Web app (runs locally, not Docker) |
+
+### Running tests
+
+- **Unit tests** (fast, no Docker needed): `uv run pytest tests/unit/`
+- **Bridge tests** (fast, no Docker needed): `uv run pytest apps/bridge/tests/`
+- **Full root suite** (`just test`): includes integration tests that build Docker images — these may time out in constrained environments. Prefer running `tests/unit/` and `apps/bridge/tests/` for quick validation.
+- **All tests**: `just test-all` (root tests + bridge tests).
+
+### Running lint
+
+`uv run pre-commit run --all-files` (equivalent to `just lint`). Requires Python 3.11 on PATH (installed by snapshot as `/usr/local/bin/python3.11`). Pre-existing lint warnings: shellcheck SC2016 in `infra/nginx/docker-entrypoint.sh` and luacheck warning in `apps/prosody/config/prosody.cfg.lua`.
+
+### Gotchas
+
+- **`CLOUDFLARE_DNS_API_TOKEN` warning**: Docker Compose emits a warning about this unset variable — safe to ignore in dev (cert-manager is not needed locally).
+- **`pnpm install` build scripts warning**: esbuild/sharp/workerd build scripts are blocked by default. They have fallback binaries and the warning is non-blocking.
+- **`apps/web` lint (`ultracite check`)**: Currently fails due to biome config expecting a `.gitignore` in `apps/web/`. This is a pre-existing issue. `pnpm run build` (Next.js build) works fine.
+- **`pre-commit install`**: If `core.hooksPath` is set by the environment, run `git config --unset-all core.hooksPath` first.
+- **Integration tests**: `tests/integration/` and `tests/e2e/` tests attempt to build fresh Docker images and may time out. Use `tests/unit/` for quick validation.
