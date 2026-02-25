@@ -37,6 +37,7 @@ services:
       - BRIDGE_IRC_OPER_PASSWORD
       - ATL_ENVIRONMENT
       - BRIDGE_IRC_TLS_VERIFY
+      - BRIDGE_RELAYMSG_CLEAN_NICKS
     volumes:
       - ../../apps/bridge/config.yaml:/app/config.yaml:ro
     networks:

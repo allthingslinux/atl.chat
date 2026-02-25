@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+from loguru import logger
 
 
 def _deep_update(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
@@ -23,11 +24,19 @@ def load_config(path: str | Path) -> dict[str, Any]:
     """Load config from YAML file. Use SafeLoader. Returns raw dict."""
     path = Path(path)
     if not path.exists():
+        logger.warning("Config file not found: {}", path)
         return {}
 
-    with open(path) as f:
-        data = yaml.safe_load(f)
-    return data if isinstance(data, dict) else {}
+    try:
+        with open(path) as f:
+            data = yaml.safe_load(f)
+        if not isinstance(data, dict):
+            logger.warning("Config file {} has invalid structure (expected dict)", path)
+            return {}
+        return data
+    except yaml.YAMLError as exc:
+        logger.error("Failed to parse config {}: {}", path, exc)
+        raise
 
 
 def load_config_with_env(path: str | Path) -> dict[str, Any]:
@@ -51,6 +60,8 @@ class Config:
     def reload(self, data: dict[str, Any]) -> None:
         """Replace config data (e.g. on SIGHUP reload)."""
         self._data = data or {}
+        mappings_count = len(self.mappings)
+        logger.debug("Config reloaded: {} mappings", mappings_count)
 
     @property
     def raw(self) -> dict[str, Any]:

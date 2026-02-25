@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from loguru import logger
+
 
 @dataclass
 class IrcTarget:
@@ -42,15 +44,19 @@ class ChannelRouter:
         """Load mappings from config dict (from config.mappings)."""
         raw = config.get("mappings")
         if not isinstance(raw, list):
+            logger.warning("Router: no mappings list in config; using empty mappings")
             self._mappings = []
             return
 
         mappings: list[ChannelMapping] = []
+        skipped = 0
         for item in raw:
             if not isinstance(item, dict):
+                skipped += 1
                 continue
             dc_id = str(item.get("discord_channel_id", ""))
             if not dc_id:
+                skipped += 1
                 continue
 
             irc_cfg = item.get("irc")
@@ -78,6 +84,15 @@ class ChannelRouter:
                 )
             )
         self._mappings = mappings
+        irc_count = sum(1 for m in mappings if m.irc)
+        xmpp_count = sum(1 for m in mappings if m.xmpp)
+        logger.info(
+            "Router: loaded {} mappings ({} IRC, {} XMPP){}",
+            len(mappings),
+            irc_count,
+            xmpp_count,
+            f", skipped {skipped}" if skipped else "",
+        )
 
     def get_mapping_for_discord(self, discord_channel_id: str) -> ChannelMapping | None:
         """Get mapping for a Discord channel ID."""

@@ -158,6 +158,8 @@ async def _run(
     irc_adapter = IRCAdapter(bus, router, identity_resolver)
     xmpp_adapter = XMPPAdapter(bus, router, identity_resolver)
     adapters.extend([discord_adapter, irc_adapter, xmpp_adapter])
+
+    logger.info("Starting adapters")
     await discord_adapter.start()
     await irc_adapter.start()
     await xmpp_adapter.start()
@@ -168,6 +170,8 @@ async def _run(
     except asyncio.CancelledError:
         logger.info("Bridge shutting down")
         for adapter in adapters:
+            name = getattr(adapter, "name", adapter.__class__.__name__)
+            logger.info("Stopping {} adapter", name)
             await adapter.stop()
 
 

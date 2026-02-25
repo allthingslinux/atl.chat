@@ -8,6 +8,7 @@ from typing import Any
 
 import httpx
 from cachetools import TTLCache
+from loguru import logger
 from tenacity import (
     retry,
     retry_if_exception_type,
@@ -146,8 +147,11 @@ class IdentityResolver:
         try:
             return self._cache[key]
         except KeyError:
+            logger.debug("Identity cache miss: discord_id={}", discord_id)
             data = await self._client.get_identity_by_discord(discord_id)
             self._cache[key] = data
+            if data is None:
+                logger.debug("Identity not found for discord_id={}", discord_id)
             return data
 
     async def _get_irc(self, nick: str, server: str | None) -> dict[str, Any] | None:
@@ -155,8 +159,11 @@ class IdentityResolver:
         try:
             return self._cache[key]
         except KeyError:
+            logger.debug("Identity cache miss: irc nick={} server={}", nick, server)
             data = await self._client.get_identity_by_irc_nick(nick, server=server)
             self._cache[key] = data
+            if data is None:
+                logger.debug("Identity not found for irc nick={}", nick)
             return data
 
     async def _get_xmpp(self, jid: str) -> dict[str, Any] | None:
@@ -164,8 +171,11 @@ class IdentityResolver:
         try:
             return self._cache[key]
         except KeyError:
+            logger.debug("Identity cache miss: xmpp jid={}", jid)
             data = await self._client.get_identity_by_xmpp_jid(jid)
             self._cache[key] = data
+            if data is None:
+                logger.debug("Identity not found for xmpp jid={}", jid)
             return data
 
     async def discord_to_irc(self, discord_id: str) -> str | None:

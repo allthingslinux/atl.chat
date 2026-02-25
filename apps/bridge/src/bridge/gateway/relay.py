@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import re
 
+from loguru import logger
+
 from bridge.config import cfg
 from bridge.events import (
     MessageDelete,
@@ -73,19 +75,23 @@ class Relay:
         if _content_matches_filter(evt.content):
             return
 
-        # Look up mapping based on origin
+        # Look up mapping based on origin.
+        # IRC: adapter sends discord_channel_id; tests use "server/channel". Support both.
+        # XMPP uses room JID. Discord uses channel ID.
         mapping = None
         if evt.origin == "discord":
             mapping = self._router.get_mapping_for_discord(evt.channel_id)
         elif evt.origin == "irc":
-            # Parse IRC channel_id format: "server/channel"
             parts = evt.channel_id.split("/", 1)
             if len(parts) == 2:
                 mapping = self._router.get_mapping_for_irc(parts[0], parts[1])
+            if not mapping:
+                mapping = self._router.get_mapping_for_discord(evt.channel_id)
         elif evt.origin == "xmpp":
             mapping = self._router.get_mapping_for_xmpp(evt.channel_id)
 
         if not mapping:
+            logger.warning("Relay: no mapping for {} channel {}", evt.origin, evt.channel_id)
             return
 
         for target in self.TARGETS:
@@ -99,6 +105,7 @@ class Relay:
                 continue
 
             channel_id = mapping.discord_channel_id
+            logger.info("Relay: {} -> {} channel={}", evt.origin, target, channel_id)
             content = _transform_content(evt.content, evt.origin, target)
             _, out_evt = message_out(
                 target_origin=target,
@@ -130,6 +137,7 @@ class Relay:
         elif evt.origin == "xmpp":
             mapping = self._router.get_mapping_for_xmpp(evt.channel_id)
         if not mapping:
+            logger.debug("Relay: no mapping for reaction from {} channel {}", evt.origin, evt.channel_id)
             return
         channel_id = mapping.discord_channel_id
         for target in self.TARGETS:
@@ -191,6 +199,7 @@ class Relay:
             mapping = self._router.get_mapping_for_xmpp(evt.channel_id)
 
         if not mapping:
+            logger.debug("Relay: no mapping for delete from {} channel {}", evt.origin, evt.channel_id)
             return
 
         channel_id = mapping.discord_channel_id
