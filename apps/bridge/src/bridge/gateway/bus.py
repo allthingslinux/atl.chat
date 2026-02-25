@@ -1,6 +1,6 @@
 """Event bus — central dispatcher for adapter events (AUDIT §1)."""
 
-from bridge.events import Dispatcher, EventTarget
+from bridge.core.events import Dispatcher, EventTarget
 
 __all__ = ["Bus", "EventTarget"]
 
