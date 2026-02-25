@@ -53,10 +53,13 @@ USER builduser
 # Copy configuration settings
 COPY config.settings .
 
+# Add custom relaymsg module before Config (UnrealIRCd only builds src/modules/third/)
+COPY contrib/relaymsg/relaymsg.c src/modules/third/
+
 # Configure UnrealIRCd build
 RUN ./Config -quick
 
-# Compile UnrealIRCd
+# Compile UnrealIRCd (includes our relaymsg)
 RUN make -j"$(nproc)"
 
 # Install UnrealIRCd
