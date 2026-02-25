@@ -87,6 +87,9 @@ prepare_config() {
   export IRC_SSL_CERT_PATH="${IRC_SSL_CERT_PATH:-/home/unrealircd/unrealircd/certs/live/${IRC_DOMAIN:-irc.localhost}/fullchain.pem}"
   export IRC_SSL_KEY_PATH="${IRC_SSL_KEY_PATH:-/home/unrealircd/unrealircd/certs/live/${IRC_DOMAIN:-irc.localhost}/privkey.pem}"
 
+  # IRC log path: must match compose volume mount (data/irc/logs -> /home/unrealircd/unrealircd/logs)
+  export IRC_LOG_PATH="${IRC_LOG_PATH:-/home/unrealircd/unrealircd/logs}"
+
   # Cloak keys (fallback to example keys for dev if unset - regenerate for production)
   export IRC_CLOAK_KEY_1="${IRC_CLOAK_KEY_1:-daa0ad2a69ba7683a2cdb02499f2e98b0729423bb7578d1f1dfbcdfe015f1f8b554b13203289c83D}"
   export IRC_CLOAK_KEY_2="${IRC_CLOAK_KEY_2:-899874eda706ee805bd34792bfd7bd62711f1938dea920c8bdf8396fe136ab6a83785a3ce54eB298}"
