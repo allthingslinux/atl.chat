@@ -561,20 +561,27 @@ class IRCClient(pydle.Client):
             return
 
         target = mapping.irc.channel
-        chunks = split_irc_message(evt.content, max_bytes=450)
+        content = evt.content
+
+        # Add reply tag if replying and we have irc_msgid
+        reply_tags = None
+        if evt.reply_to_id:
+            irc_msgid = self._msgid_tracker.get_irc_msgid(evt.reply_to_id)
+            if irc_msgid:
+                reply_tags = {"+draft/reply": irc_msgid}
+                # Do NOT strip > quote fallback: server denies +draft/reply (CLIENTTAGDENY),
+                # so IRC clients ignore the tag. Keep the quote so users see reply context.
+
+        # IRC forbids \r, \n, \0 in message payload
+        content = content.replace("\r", " ").replace("\n", " ").replace("\x00", " ")
+
+        chunks = split_irc_message(content, max_bytes=450)
 
         # Spoofed nick for RELAYMSG: display/discord (Valware requires '/' in nick)
         display = (evt.author_display or evt.author_id or "user").strip()
         spoofed_nick = self._sanitize_relaymsg_nick(display)
 
         use_relaymsg = self._has_relaymsg()
-
-        # Add reply tag if replying to a message (only on first chunk)
-        reply_tags = None
-        if evt.reply_to_id:
-            irc_msgid = self._msgid_tracker.get_irc_msgid(evt.reply_to_id)
-            if irc_msgid:
-                reply_tags = {"+draft/reply": irc_msgid}
 
         for i, chunk in enumerate(chunks):
             if use_relaymsg:

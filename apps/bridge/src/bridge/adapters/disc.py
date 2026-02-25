@@ -12,6 +12,7 @@ import aiohttp
 from cachetools import TTLCache
 from discord import (
     AllowedMentions,
+    ButtonStyle,
     File,
     Intents,
     Message,
@@ -20,6 +21,7 @@ from discord import (
     TextChannel,
 )
 from discord.ext import commands
+from discord.ui import Button, View
 from discord.webhook import Webhook
 from loguru import logger
 
@@ -44,6 +46,9 @@ MAX_USERNAME_LEN = 32
 WEBHOOK_NAME = "ATL Bridge"
 DISCORD_WEBHOOKS_PER_CHANNEL = 10
 
+# Unifier/lightning style: link button for reply context (compact, ~80 chars)
+REPLY_BUTTON_MAX_LABEL = 77
+
 
 def _ensure_valid_username(name: str) -> str:
     """Truncate or pad username to fit Discord webhook limits."""
@@ -66,6 +71,17 @@ def _avatar_url_ok_for_discord(url: str | None) -> bool:
         return False
     url_lower = url.lower()
     return not any(h in url_lower for h in _AVATAR_INTERNAL_HOSTS)
+
+
+def _reply_button_view(author: str, content: str | None, url: str) -> View:
+    """Build Unifier/lightning style link button: ↪️ Author · content (truncated)."""
+    content_clean = (content or "").replace("\n", " ").strip()
+    label = f"{author} · {content_clean}" if content_clean else author
+    if len(label) > REPLY_BUTTON_MAX_LABEL:
+        label = label[: REPLY_BUTTON_MAX_LABEL - 3] + "..."
+    view = View()
+    view.add_item(Button(style=ButtonStyle.link, label=f"↪️ {label}", url=url))
+    return view
 
 
 class DiscordAdapter:
@@ -185,8 +201,11 @@ class DiscordAdapter:
         content: str,
         *,
         avatar_url: str | None = None,
+        reply_to_id: str | None = None,
+        reply_author: str | None = None,
+        reply_content: str | None = None,
     ) -> int | None:
-        """Send message via webhook. One webhook per channel; username/avatar per message."""
+        """Send message via webhook. Optional Unifier/lightning style link button for replies."""
         webhook = await self._get_or_create_webhook(channel_id)
         if not webhook:
             return None
@@ -194,14 +213,38 @@ class DiscordAdapter:
         # Discord cannot fetch internal URLs (atl-xmpp-server, localhost). Skip avatar for those.
         send_avatar_url = avatar_url if _avatar_url_ok_for_discord(avatar_url) else None
 
-        msg = await webhook.send(
-            content=content[:2000],
-            username=_ensure_valid_username(author_display),
-            avatar_url=send_avatar_url,
-            allowed_mentions=_ALLOWED_MENTIONS,
-            wait=True,
-        )
+        send_kw: dict = {
+            "content": content[:2000],
+            "username": _ensure_valid_username(author_display),
+            "avatar_url": send_avatar_url,
+            "allowed_mentions": _ALLOWED_MENTIONS,
+            "wait": True,
+        }
+        if reply_to_id and self._bot:
+            channel = self._bot.get_channel(int(channel_id))
+            if channel and isinstance(channel, TextChannel) and channel.guild:
+                jump_url = f"https://discord.com/channels/{channel.guild.id}/{channel_id}/{reply_to_id}"
+                author = reply_author or "Unknown"
+                send_kw["view"] = _reply_button_view(author, reply_content, jump_url)
+
+        msg = await webhook.send(**send_kw)
         return int(msg.id) if msg else None
+
+    async def _fetch_reply_context(self, channel_id: str, reply_to_id: str) -> tuple[str, str | None]:
+        """Fetch original message author and content for reply button. Returns (author, content)."""
+        if not self._bot:
+            return ("Unknown", None)
+        channel = self._bot.get_channel(int(channel_id))
+        if not channel or not isinstance(channel, TextChannel):
+            return ("Unknown", None)
+        try:
+            ref_msg = await channel.fetch_message(int(reply_to_id))
+            author = ref_msg.author.display_name or getattr(ref_msg.author, "name", "Unknown")
+            content = ref_msg.content or None
+            return (author, content)
+        except Exception as exc:
+            logger.debug("Could not fetch reply context for {}: {}", reply_to_id, exc)
+            return ("Unknown", None)
 
     async def _webhook_edit(
         self,
@@ -335,12 +378,28 @@ class DiscordAdapter:
 
                 # Send as new message if not edited
                 if discord_msg_id is None:
+                    content = evt.content  # Relay already strips reply fallback for discord target
+                    # Resolve reply_to_id: XMPP tracker may have IRC msgid when original was from IRC
+                    reply_to_discord_id = evt.reply_to_id
+                    if reply_to_discord_id and not reply_to_discord_id.isdigit():
+                        resolved = self._resolve_discord_message_id(reply_to_discord_id, "irc")
+                        if resolved:
+                            reply_to_discord_id = resolved
+                    reply_author: str | None = None
+                    reply_content: str | None = None
+                    if reply_to_discord_id:
+                        reply_author, reply_content = await self._fetch_reply_context(
+                            evt.channel_id, reply_to_discord_id
+                        )
                     async with self._send_lock:
                         discord_msg_id = await self._webhook_send(
                             evt.channel_id,
                             evt.author_display,
-                            evt.content,
+                            content,
                             avatar_url=evt.avatar_url,
+                            reply_to_id=reply_to_discord_id,
+                            reply_author=reply_author,
+                            reply_content=reply_content,
                         )
                 # Store XMPP->Discord mapping for retraction, reaction, and edit routing
                 origin = (evt.raw or {}).get("origin")
@@ -510,6 +569,35 @@ class DiscordAdapter:
         # Get avatar URL
         avatar_url = str(message.author.display_avatar.url) if message.author.display_avatar else None
 
+        # For replies: include referenced message content + author so relay can add quote for IRC
+        raw: dict[str, object] = {}
+        if message.reference:
+            ref_content: str | None = None
+            ref_author: str | None = None
+            resolved = getattr(message.reference, "resolved", None)
+            if resolved is not None:
+                ref_content = getattr(resolved, "content", None) or ""
+                ref_author = (
+                    getattr(resolved.author, "display_name", None)
+                    or getattr(resolved.author, "name", None)
+                    or str(getattr(resolved.author, "id", ""))
+                )
+            elif self._bot:
+                try:
+                    ref_msg = await message.channel.fetch_message(message.reference.message_id)
+                    ref_content = ref_msg.content or ""
+                    ref_author = (
+                        getattr(ref_msg.author, "display_name", None)
+                        or getattr(ref_msg.author, "name", None)
+                        or str(getattr(ref_msg.author, "id", ""))
+                    )
+                except Exception:
+                    pass
+            if ref_content:
+                raw["reply_quoted_content"] = ref_content
+            if ref_author:
+                raw["reply_quoted_author"] = ref_author
+
         _, evt = message_in(
             origin="discord",
             channel_id=channel_id,
@@ -521,7 +609,7 @@ class DiscordAdapter:
             is_edit=False,
             is_action=False,
             avatar_url=avatar_url,
-            raw={},
+            raw=raw,
         )
         logger.info(
             "Discord message bridged: channel={} author={}",

@@ -314,24 +314,31 @@ class XMPPComponent(ComponentXMPP):
             logger.debug("Received XMPP correction for message {}", replace_id)
 
         # Check for reply reference (XEP-0461 or XEP-0372)
-        reply_to_id = None
+        reply_to_xmpp_id: str | None = None
 
         # Try XEP-0461 first (newer)
         if msg.get_plugin("reply", check=True):
             reply_plugin = msg["reply"]
             if reply_plugin.get("id"):
-                reply_to_id = reply_plugin["id"]
-                logger.debug("Received XMPP reply (XEP-0461) to message {}", reply_to_id)
+                reply_to_xmpp_id = reply_plugin["id"]
+                logger.debug("Received XMPP reply (XEP-0461) to message {}", reply_to_xmpp_id)
 
         # Fall back to XEP-0372 if no XEP-0461 reply
-        if not reply_to_id and msg.get_plugin("reference", check=True):
+        if not reply_to_xmpp_id and msg.get_plugin("reference", check=True):
             ref = msg["reference"]
             if ref.get("type") == "reply" and ref.get("uri"):
                 # Extract message ID from URI (format: xmpp:room@server?id=msgid)
                 uri = ref["uri"]
                 if "?id=" in uri:
-                    reply_to_id = uri.split("?id=")[1]
-                    logger.debug("Received XMPP reply (XEP-0372) to message {}", reply_to_id)
+                    reply_to_xmpp_id = uri.split("?id=")[1]
+                    logger.debug("Received XMPP reply (XEP-0372) to message {}", reply_to_xmpp_id)
+
+        # Resolve XMPP stanza-id to Discord ID for relay (IRC/XMPP adapters need canonical ID)
+        reply_to_id: str | None = None
+        if reply_to_xmpp_id:
+            reply_to_id = self._msgid_tracker.get_discord_id(reply_to_xmpp_id)
+            if reply_to_id:
+                logger.debug("Resolved XMPP reply target {} -> Discord {}", reply_to_xmpp_id, reply_to_id)
 
         # Get or generate message ID. XEP-0444 §4.2: for groupchat, MUST use stanza-id, NOT
         # the top-level id. Reactions in MUC require the stanza-id from the MUC server.
@@ -350,8 +357,23 @@ class XMPPComponent(ComponentXMPP):
         raw_data = {}
         if replace_id:
             raw_data["replace_id"] = replace_id
-        if reply_to_id:
-            raw_data["reply_to_id"] = reply_to_id
+        if reply_to_xmpp_id:
+            raw_data["reply_to_id"] = reply_to_xmpp_id  # Original XMPP stanza-id (for tests/debug)
+            # Extract quoted content from XEP-0428 fallback so relay can add > quote for IRC
+            if xml is not None:
+                fb = xml.find(".//{urn:xmpp:fallback:0}fallback[@for='urn:xmpp:reply:0']")
+                if fb is not None:
+                    body_region = fb.find("{urn:xmpp:fallback:0}body")
+                    if body_region is not None:
+                        start = body_region.get("start")
+                        end = body_region.get("end")
+                        if start is not None and end is not None:
+                            try:
+                                s, e = int(start), int(end)
+                                if 0 <= s < e <= len(body):
+                                    raw_data["reply_quoted_content"] = body[s:e]
+                            except (ValueError, TypeError):
+                                pass
         aliases = []
         for aid in (origin_id_val, top_level_id):
             if aid and aid != xmpp_msg_id and aid not in aliases:
@@ -377,6 +399,7 @@ class XMPPComponent(ComponentXMPP):
             author_display=nick,
             content=body,
             message_id=xmpp_msg_id,
+            reply_to_id=reply_to_id,
             is_edit=is_edit,
             is_action=False,
             avatar_url=avatar_url,

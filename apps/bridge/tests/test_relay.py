@@ -327,6 +327,74 @@ class TestRelay:
         _, out_evt = irc_adapter.received_events[0]
         assert out_evt.content == "bold and italic"
 
+    def test_relay_adds_quote_fallback_for_discord_to_irc_reply(self):
+        """Discord -> IRC reply: add > quote when reply_quoted_content in raw."""
+        bus = Bus()
+        router = ChannelRouter()
+        config = {
+            "mappings": [
+                {
+                    "discord_channel_id": "123",
+                    "irc": {"server": "irc.test", "channel": "#test", "port": 6667, "tls": False},
+                }
+            ]
+        }
+        router.load_from_config(config)
+        relay = Relay(bus, router)
+        irc_adapter = MockAdapter("irc")
+        bus.register(relay)
+        bus.register(irc_adapter)
+
+        _, evt = message_in(
+            "discord",
+            "123",
+            "u1",
+            "User",
+            "reply from discord",
+            "msg2",
+            reply_to_id="msg1",
+            raw={"reply_quoted_content": "test from irc"},
+        )
+        bus.publish("discord", evt)
+
+        _, out_evt = irc_adapter.received_events[0]
+        assert "> test from irc" in out_evt.content
+        assert "| reply from discord" in out_evt.content
+        assert out_evt.raw.get("reply_fallback_added") is True
+
+    def test_relay_adds_quote_with_author_for_discord_to_irc_reply(self):
+        """Discord -> IRC reply: nick: > quoted | reply when reply_quoted_author in raw."""
+        bus = Bus()
+        router = ChannelRouter()
+        config = {
+            "mappings": [
+                {
+                    "discord_channel_id": "123",
+                    "irc": {"server": "irc.test", "channel": "#test", "port": 6667, "tls": False},
+                }
+            ]
+        }
+        router.load_from_config(config)
+        relay = Relay(bus, router)
+        irc_adapter = MockAdapter("irc")
+        bus.register(relay)
+        bus.register(irc_adapter)
+
+        _, evt = message_in(
+            "discord",
+            "123",
+            "u1",
+            "User",
+            "ok",
+            "msg2",
+            reply_to_id="msg1",
+            raw={"reply_quoted_content": "hi", "reply_quoted_author": "kaizen"},
+        )
+        bus.publish("discord", evt)
+
+        _, out_evt = irc_adapter.received_events[0]
+        assert out_evt.content == "kaizen: > hi | ok"
+
     def test_relay_converts_irc_codes_for_discord(self):
         """IRC -> Discord: convert IRC bold to **markdown**."""
         bus = Bus()

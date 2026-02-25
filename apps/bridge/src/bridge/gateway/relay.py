@@ -19,6 +19,7 @@ from bridge.events import (
 )
 from bridge.formatting.discord_to_irc import discord_to_irc
 from bridge.formatting.irc_to_discord import irc_to_discord
+from bridge.formatting.reply_fallback import add_reply_fallback, strip_reply_fallback
 from bridge.gateway.bus import Bus
 from bridge.gateway.router import ChannelRouter
 
@@ -107,6 +108,25 @@ class Relay:
             channel_id = mapping.discord_channel_id
             logger.info("Relay: {} -> {} channel={}", evt.origin, target, channel_id)
             content = _transform_content(evt.content, evt.origin, target)
+            # Strip XEP-0461 reply fallback for Discord (we show via link button)
+            # IRC: keep quote when client doesn't support +draft/reply; IRC adapter strips only when using tag
+            if evt.reply_to_id and evt.origin in ("xmpp", "irc") and target == "discord":
+                content = strip_reply_fallback(content)
+            # Add > quote fallback for Discord→IRC replies (Discord sends no quoted body; server denies +draft/reply)
+            out_raw = {
+                "is_edit": evt.is_edit,
+                "replace_id": evt.raw.get("replace_id"),
+                "origin": evt.origin,
+                "xmpp_id_aliases": evt.raw.get("xmpp_id_aliases", []),
+            }
+            # Add > quote for IRC when we have reply context (server denies +draft/reply)
+            reply_quoted = evt.raw.get("reply_quoted_content")
+            if evt.reply_to_id and target == "irc" and reply_quoted:
+                # Only add if content doesn't already have quote (XMPP may omit fallback in body)
+                if ">" not in (content.split("\n")[0] if content else ""):
+                    author = evt.raw.get("reply_quoted_author")
+                    content = add_reply_fallback(content, reply_quoted, author=author)
+                out_raw["reply_fallback_added"] = True
             _, out_evt = message_out(
                 target_origin=target,
                 channel_id=channel_id,
@@ -116,12 +136,7 @@ class Relay:
                 message_id=evt.message_id,
                 reply_to_id=evt.reply_to_id,
                 avatar_url=evt.avatar_url,
-                raw={
-                    "is_edit": evt.is_edit,
-                    "replace_id": evt.raw.get("replace_id"),
-                    "origin": evt.origin,
-                    "xmpp_id_aliases": evt.raw.get("xmpp_id_aliases", []),
-                },
+                raw=out_raw,
             )
             self._bus.publish("relay", out_evt)
 
