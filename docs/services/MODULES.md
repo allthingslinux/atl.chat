@@ -21,7 +21,7 @@ For more IRC-specific details (runtime commands, troubleshooting, etc.), see [IR
 ### Flow
 
 1. **Config**: `apps/unrealircd/third-party-modules.list` lists modules to install (one per line, `#` for comments).
-2. **Build**: During `docker build`, the Containerfile runs `unrealircd module install <name>` for each module.
+2. **Build**: During `docker build`, the Containerfile runs `unrealircd module install <name>` for each module. Custom modules (e.g. `third/relaymsg` atl.chat fork) are built from `contrib/` into `src/modules/third/` before `Config`.
 3. **Runtime**: Modules are compiled C code; they live in the UnrealIRCd install directory. No symlinks or separate dirs.
 
 ### Adding/Removing Modules

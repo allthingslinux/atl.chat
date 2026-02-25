@@ -20,9 +20,9 @@ Modules/
 ├── chanmodes/          # Channel mode implementations
 ├── commands/           # IRC command extensions
 ├── extensions/         # Protocol extensions (IRCv3, etc.)
-├── third/             # Third-party modules
-├── crypto/            # Cryptographic functions
-└── backend/           # Database backends
+├── third/              # Third-party modules (unrealircd-contrib + atl.chat custom forks)
+├── crypto/             # Cryptographic functions
+└── backend/            # Database backends
 ```
 
 ## Third-Party Modules Configuration
@@ -128,14 +128,16 @@ All module loading is inlined in `unrealircd.conf.template`. On UnrealIRCd upgra
 
 ```c
 // Core + optional modules are defined at the top of unrealircd.conf.template
-// Third-party modules (e.g. third/showwebirc) are loaded near the end
+// Third-party and custom modules are loaded near the end
 loadmodule "cloak_sha256";
 loadmodule "third/showwebirc";
+loadmodule "third/relaymsg";  /* atl.chat fork */
 ```
 
 ## Currently Installed Modules
 
 - **third/showwebirc**: Adds WebIRC and WebSocket information to WHOIS queries
+- **third/relaymsg**: atl.chat fork for stateless bridging (RELAYMSG); allows clean nicks via `require-separator no`
 
 ## Troubleshooting
 
@@ -144,7 +146,7 @@ loadmodule "third/showwebirc";
 #### Module Not Loading
 
 ```bash
-# Check module file exists
+# Check module files exist
 docker compose exec atl-irc-server ls -la /home/unrealircd/unrealircd/modules/third/
 
 # Check logs for errors
