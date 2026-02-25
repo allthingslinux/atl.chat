@@ -49,9 +49,9 @@ All events are dataclasses. Factory functions (decorated with `@event`) return `
 `MessageIn` notable fields: `is_edit`, `is_action`, `reply_to_id`, `avatar_url`, `raw`.
 `MessageOut` notable fields: `reply_to_id`, `avatar_url`, `raw` (carries `is_edit`, `replace_id`, `origin`, `xmpp_id_aliases`).
 
-## Config (`config.py`)
+## Config (`config/`)
 
-`Config.reload(data)` hot-swaps config on SIGHUP without restart. `cfg` is the global singleton — never instantiate a second `Config`.
+`Config.reload(data)` hot-swaps config on SIGHUP without restart. `cfg` is the global singleton — never instantiate a second `Config`. Load from YAML via `load_config` / `load_config_with_env`.
 
 Full property reference (see root AGENTS.md for the table). Additional properties not in root table:
 
@@ -68,9 +68,9 @@ Full property reference (see root AGENTS.md for the table). Additional propertie
 | `irc_sasl_user` | `""` | SASL username |
 | `irc_sasl_password` | `""` | SASL password |
 
-## Identity (`identity.py`)
+## Identity (`identity/`)
 
-`PortalClient` retries on transient HTTP errors (5 attempts, exponential backoff 2–30s via tenacity). Returns `None` on 404 — never raises for missing identity.
+`PortalClient` (httpx + tenacity) retries on transient HTTP errors (5 attempts, exponential backoff 2–30s). Returns `None` on 404 — never raises for missing identity.
 
 `IdentityResolver` wraps the client with a `TTLCache` (default 1h). Supported directions:
 
@@ -95,7 +95,10 @@ Full property reference (see root AGENTS.md for the table). Additional propertie
 
 ## Related
 
-- [gateway/AGENTS.md](gateway/AGENTS.md) — Bus, Relay, Router
+- [gateway/AGENTS.md](gateway/AGENTS.md) — Bus, Relay, Router, MessageIDResolver
 - [adapters/AGENTS.md](adapters/AGENTS.md) — Discord, IRC, XMPP adapters
 - [formatting/AGENTS.md](formatting/AGENTS.md) — Format converters
+- [config/](config/) — Config loader and schema
+- [core/](core/) — Events, constants, errors
+- [identity/](identity/) — Portal and dev identity resolvers
 - [Bridge AGENTS.md](../../AGENTS.md)
