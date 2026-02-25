@@ -13,6 +13,9 @@ mod web './apps/web'
 # Bridge (Discord↔IRC↔XMPP)
 mod bridge './apps/bridge'
 
+# The Lounge (web IRC client)
+mod lounge './apps/thelounge'
+
 set export := true
 
 
