@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import logging
+import os
 import signal
 import sys
 from pathlib import Path
-from typing import Protocol
+from typing import Any, Protocol
 
 from loguru import logger
 
@@ -28,14 +30,73 @@ class Adapter(Protocol):
     async def stop(self) -> None: ...
 
 
+# Third-party libraries to intercept and route through loguru
+_INTERCEPTED_LIBRARIES = ["pydle", "pydle.client", "pydle.connection", "pydle.features.ircv3.cap"]
+
+
+def _intercept_logging(level: str) -> None:
+    """Route third-party library logs to loguru. Sets pydle to level for protocol debugging."""
+
+    class InterceptHandler(logging.Handler):
+        def emit(self, record: logging.LogRecord) -> None:
+            level_map = {
+                "DEBUG": "DEBUG",
+                "INFO": "INFO",
+                "WARNING": "WARNING",
+                "ERROR": "ERROR",
+                "CRITICAL": "CRITICAL",
+            }
+            log_level = level_map.get(record.levelname, record.levelname)
+            try:
+                log_level = logger.level(log_level).name
+            except ValueError:
+                log_level = str(record.levelno)
+            msg = record.getMessage().replace("{", "{{").replace("}", "}}")
+            logger.patch(
+                lambda r: r.update(
+                    name=record.name,
+                    function=record.funcName,
+                    line=record.lineno,
+                ),
+            ).opt(exception=record.exc_info).log(log_level, msg)
+
+    logging.basicConfig(handlers=[InterceptHandler()], level=0, force=True)
+    for lib in _INTERCEPTED_LIBRARIES:
+        lib_logger = logging.getLogger(lib)
+        lib_logger.handlers = [InterceptHandler()]
+        lib_logger.propagate = False
+        lib_logger.setLevel(level)
+
+
+def _safe_message_filter(record: Any) -> bool:
+    """Escape braces/angles in log messages to prevent format/tag errors."""
+    if isinstance(record.get("message"), str):
+        msg = record["message"]
+        msg = msg.replace("{", "{{").replace("}", "}}").replace("<", "\\<")
+        record["message"] = msg
+    return True
+
+
 def setup_logging(verbose: bool = False) -> None:
-    """Configure loguru. Replace default logging."""
+    """Configure loguru. Replace default logging.
+    Level: verbose=True or LOG_LEVEL=DEBUG enables DEBUG; otherwise INFO.
+    Intercepts pydle logs and routes them through loguru for protocol debugging."""
+    level = "INFO"
+    if verbose:
+        level = "DEBUG"
+    else:
+        env_level = (os.environ.get("LOG_LEVEL") or "").upper()
+        if env_level in ("DEBUG", "INFO", "WARNING", "ERROR"):
+            level = env_level
+
     logger.remove()
     logger.add(
         sys.stderr,
-        level="DEBUG" if verbose else "INFO",
+        level=level,
         format=("<green>{time:HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan> | {message}"),
+        filter=_safe_message_filter,
     )
+    _intercept_logging(level)
 
 
 def reload_config(config_path: Path) -> Config:
