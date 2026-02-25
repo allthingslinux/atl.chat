@@ -95,9 +95,12 @@ See [docs/services/irc/](docs/services/irc/) for full docs.
 | Port | Purpose |
 |------|---------|
 | 5222 | C2S (client) |
+| 5223 | C2S Direct TLS |
 | 5269 | S2S |
+| 5270 | S2S Direct TLS |
 | 5280 | HTTP/BOSH |
 | 5281 | HTTPS |
+| 5000 | Proxy65 (file transfer) |
 
 **Tasks:**
 
@@ -161,6 +164,8 @@ just build         # Build images
 just test          # Run root pytest
 just test-all      # Root tests + bridge tests
 just lint          # pre-commit run --all-files
+just scan          # Security scans (Gitleaks, Trivy)
+just clean         # Prune unused Docker resources
 ```
 
 ## Data Layout
@@ -178,6 +183,7 @@ data/
 │   └── logs/          # atheme.log
 ├── xmpp/
 │   ├── data/          # Prosody SQLite
+│   ├── logs/          # Prosody logs
 │   └── uploads/       # File uploads
 ├── thelounge/         # The Lounge user data
 └── certs/             # TLS certs (Let's Encrypt layout)
