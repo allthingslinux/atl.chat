@@ -145,6 +145,12 @@ setup_certificates() {
         fi
         chmod 644 "$cert_file" 2> /dev/null || true
         chmod 600 "$key_file" 2> /dev/null || true
+        # HTTPS service automatic discovery (Prosody Certificates doc):
+        # - https/fullchain.pem + https/privkey.pem (directory symlink)
+        # - https.crt + https.key (file symlinks; alternate format Prosody may prefer)
+        ln -sfn "live/${PROSODY_DOMAIN}" "${PROSODY_CERT_DIR}/https" 2>/dev/null || true
+        ln -sfn "live/${PROSODY_DOMAIN}/fullchain.pem" "${PROSODY_CERT_DIR}/https.crt" 2>/dev/null || true
+        ln -sfn "live/${PROSODY_DOMAIN}/privkey.pem" "${PROSODY_CERT_DIR}/https.key" 2>/dev/null || true
         return 0
     fi
 
@@ -161,6 +167,9 @@ setup_certificates() {
         fi
         chmod 644 "$cert_file"
         chmod 600 "$key_file"
+        ln -sfn "live/${PROSODY_DOMAIN}" "${PROSODY_CERT_DIR}/https" 2>/dev/null || true
+        ln -sfn "live/${PROSODY_DOMAIN}/fullchain.pem" "${PROSODY_CERT_DIR}/https.crt" 2>/dev/null || true
+        ln -sfn "live/${PROSODY_DOMAIN}/privkey.pem" "${PROSODY_CERT_DIR}/https.key" 2>/dev/null || true
         return 0
     fi
 
@@ -180,6 +189,11 @@ setup_certificates() {
     fi
     chmod 644 "$cert_file"
     chmod 600 "$key_file"
+
+    # HTTPS service automatic discovery
+    ln -sfn "live/${PROSODY_DOMAIN}" "${PROSODY_CERT_DIR}/https" 2>/dev/null || true
+    ln -sfn "live/${PROSODY_DOMAIN}/fullchain.pem" "${PROSODY_CERT_DIR}/https.crt" 2>/dev/null || true
+    ln -sfn "live/${PROSODY_DOMAIN}/privkey.pem" "${PROSODY_CERT_DIR}/https.key" 2>/dev/null || true
 
     log_info "Self-signed certificate generated successfully"
 }

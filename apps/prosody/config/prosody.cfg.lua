@@ -304,8 +304,9 @@ component_interfaces = { "*" }
 
 -- HTTP/HTTPS listener (mod_http)
 -- Note: 5280 is private by default in Prosody 0.12+
+-- When PROSODY_HTTPS_VIA_PROXY=true, nginx handles HTTPS (fixes TLSV1_UNRECOGNIZED_NAME)
 http_ports = { 5280 }
-https_ports = { 5281 }
+https_ports = (Lua.os.getenv("PROSODY_HTTPS_VIA_PROXY") == "true") and {} or { 5281 }
 
 -- ===============================================
 -- Interfaces
@@ -382,8 +383,8 @@ https_interfaces = { "*" }
 -- Static file serving root (Prosody's web root; reverse proxy in front)
 http_files_dir = "/usr/share/prosody/www"
 
--- Trusted reverse proxies for X-Forwarded-* handling
-trusted_proxies = { "127.0.0.1", "172.18.0.0/16", "10.0.0.0/8" }
+-- Trusted reverse proxies for X-Forwarded-* handling (includes Docker networks 172.16-172.31)
+trusted_proxies = { "127.0.0.1", "172.16.0.0/12", "10.0.0.0/8" }
 
 -- Enable CORS for BOSH and WebSocket endpoints
 http_cors_override = {
@@ -536,6 +537,15 @@ anti_spam_services = { "xmppbl.org" }
 
 -- Let's Encrypt certificate location (mounted into the container)
 certificates = "certs"
+
+-- HTTPS service: entrypoint creates certs/https -> certs/live/<domain> for automatic discovery.
+-- Explicit https_ssl disables SNI and uses single cert (fixes TLSV1_UNRECOGNIZED_NAME).
+-- Use absolute paths so Prosody reliably finds certs regardless of config dir.
+local __https_cert_dir = "/etc/prosody/certs/live/" .. __domain
+https_ssl = {
+	key = Lua.os.getenv("PROSODY_SSL_KEY") or (__https_cert_dir .. "/privkey.pem"),
+	certificate = Lua.os.getenv("PROSODY_SSL_CERT") or (__https_cert_dir .. "/fullchain.pem"),
+}
 
 -- Require encryption and secure s2s auth
 c2s_require_encryption = Lua.os.getenv("PROSODY_C2S_REQUIRE_ENCRYPTION") ~= "false"
@@ -847,6 +857,7 @@ muc_limit_base_cost = 1        -- Base cost of sending a stanza.
 muc_line_count_multiplier = 0.1 -- Additional cost per newline in message body.
 
 -- HTTP File Upload component
+-- http_host: serve upload HTTP on main domain so xmpp.localhost:5280/upload/ works (avoids upload.xmpp.localhost DNS/cert)
 Component("upload." .. domain) "http_file_share"
 ssl = {
     key = Lua.os.getenv("PROSODY_SSL_KEY") or
@@ -855,6 +866,7 @@ ssl = {
         ("certs/live/" .. domain .. "/fullchain.pem")
 }
 name = "upload." .. domain
+http_host = __http_host
 http_external_url = Lua.os.getenv("PROSODY_UPLOAD_EXTERNAL_URL") or
                         ("https://upload." .. domain .. "/")
 

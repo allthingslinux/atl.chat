@@ -28,6 +28,7 @@ services:
 
     environment:
       - PROSODY_DOMAIN=${XMPP_DOMAIN}
+      - PROSODY_HTTPS_VIA_PROXY=${PROSODY_HTTPS_VIA_PROXY:-false}
       - PROSODY_UPLOAD_EXTERNAL_URL=${PROSODY_UPLOAD_EXTERNAL_URL}
       - PROSODY_HTTP_EXTERNAL_URL=${PROSODY_HTTP_EXTERNAL_URL:-}
       - PROSODY_PROXY_ADDRESS=${PROSODY_PROXY_ADDRESS}
@@ -51,7 +52,6 @@ services:
       - "${PROSODY_C2S_DIRECT_TLS_PORT:-5223}:5223"
       - "${PROSODY_S2S_DIRECT_TLS_PORT:-5270}:5270"
       - "${PROSODY_HTTP_PORT:-5280}:5280"
-      - "${PROSODY_HTTPS_PORT:-5281}:5281"
       - "${PROSODY_PROXY65_PORT:-5000}:5000"
 
     volumes:
@@ -69,6 +69,37 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
+
+    networks:
+      - atl-chat
+
+  atl-xmpp-nginx:
+    build:
+      context: ../nginx
+      dockerfile: Dockerfile
+    image: allthingslinux/prosody-nginx:latest
+    container_name: atl-xmpp-nginx
+    hostname: atl-xmpp-nginx
+    restart: unless-stopped
+    depends_on:
+      - atl-xmpp-server
+
+    environment:
+      - XMPP_DOMAIN=${XMPP_DOMAIN:-xmpp.localhost}
+      - CERT_DIR=/etc/nginx/certs
+
+    ports:
+      - "${PROSODY_HTTPS_PORT:-5281}:5281"
+
+    volumes:
+      - ../../data/certs:/etc/nginx/certs:ro
+
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "--no-check-certificate", "https://localhost:5281/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
     networks:
       - atl-chat

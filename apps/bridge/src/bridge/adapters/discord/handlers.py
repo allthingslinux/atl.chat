@@ -107,6 +107,9 @@ async def handle_attachments(
     # Send to XMPP via HTTP upload if configured
     if mapping.xmpp and msgid_resolver:
         nick = await identity.discord_to_xmpp(discord_id)
+        # DevIdentityResolver returns None; use display name as fallback for dev without Portal
+        if not nick:
+            nick = (message.author.display_name or message.author.name or "user")[:20]
         if nick:
             xmpp_component = msgid_resolver.get_xmpp_component()
 

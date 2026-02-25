@@ -185,6 +185,24 @@ class TestOnGroupchatMessage:
         _, evt = bus.publish.call_args[0]
         assert evt.content == "check this out https://upload.example.com/file.pdf"
 
+    def test_oob_url_not_duplicated_when_same_as_body(self):
+        """XEP-0066 OOB: when body and oob URL are identical (Gajim HTTP upload), do not duplicate."""
+        router = self._make_router()
+        bus = MagicMock()
+        comp = make_component(router=router, bus=bus)
+
+        url = "https://xmpp.localhost:5281/upload/019c96b7-dff2-771c-9cae-3e53a53b244a/help_banner.png"
+        msg = MockMsg(
+            "room@conf.example.com/nick",
+            body=url,
+            plugins={"oob": MockPlugin()},
+            oob_url=url,
+        )
+        comp._on_groupchat_message(msg)
+
+        _, evt = bus.publish.call_args[0]
+        assert evt.content == url
+
     def test_edit_message_sets_is_edit_and_raw(self):
         router = self._make_router()
         bus = MagicMock()

@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import os
+import random
 from typing import TYPE_CHECKING
 
 from loguru import logger
@@ -17,6 +18,51 @@ from bridge.gateway import Bus, ChannelRouter
 if TYPE_CHECKING:
     from bridge.gateway.msgid_resolver import MessageIDResolver
     from bridge.identity import IdentityResolver
+
+# Reconnection backoff: Prosody needs time to tear down old session before we reconnect
+# (avoids "Component already connected" when reconnecting too fast)
+_XMPP_BACKOFF_MIN = 5
+_XMPP_BACKOFF_MAX = 120
+_XMPP_MAX_ATTEMPTS = 10
+
+
+async def _connect_xmpp_with_backoff(
+    component: XMPPComponent,
+    host: str,
+    port: int,
+) -> None:
+    """Connect with exponential backoff on failure; reconnect on disconnect."""
+    attempt = 0
+    while True:
+        try:
+            await component.connect(host=host, port=port)
+            # connect() completes when connection is established; component.disconnected
+            # completes when the stream ends. Awaiting both prevents opening a second
+            # connection while the first is still active (Prosody "Component already connected").
+            await component.disconnected
+            attempt = 0
+            delay = min(_XMPP_BACKOFF_MAX, _XMPP_BACKOFF_MIN)
+            jitter = random.uniform(0.8, 1.5)
+            wait = delay * jitter
+            logger.info("XMPP component disconnected, reconnecting in {:.1f}s", wait)
+            await asyncio.sleep(wait)
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            attempt += 1
+            if attempt >= _XMPP_MAX_ATTEMPTS:
+                logger.exception("XMPP connect failed after {} attempts", _XMPP_MAX_ATTEMPTS)
+                raise
+            delay = min(_XMPP_BACKOFF_MAX, _XMPP_BACKOFF_MIN * (2 ** (attempt - 1)))
+            jitter = random.uniform(0.5, 1.5)
+            wait = delay * jitter
+            logger.warning(
+                "XMPP connect failed (attempt {}): {}, retrying in {:.1f}s",
+                attempt,
+                exc,
+                wait,
+            )
+            await asyncio.sleep(wait)
 
 
 class XMPPAdapter(AdapterBase):
@@ -143,10 +189,21 @@ class XMPPAdapter(AdapterBase):
 
                             # Send new message; store mapping before send so stanza-id from
                             # MUC echo can update it (required for Discord→XMPP edits)
+                            content = evt.content
+
+                            # Re-upload extensionless image URLs so XMPP clients
+                            # render them inline (they rely on URL file extension).
+                            if content and content.strip().startswith(("http://", "https://")):
+                                new_url = await self._component.reupload_extensionless_image(
+                                    content.strip(),
+                                )
+                                if new_url:
+                                    content = new_url
+
                             xmpp_msg_id = await self._component.send_message_as_user(
                                 evt.author_id,
                                 muc_jid,
-                                evt.content,
+                                content,
                                 nick,
                                 reply_to_id=reply_to_xmpp_id,
                                 discord_message_id=evt.message_id,
@@ -262,9 +319,9 @@ class XMPPAdapter(AdapterBase):
             self._msgid_resolver.register_xmpp(self._component)
         self._bus.register(self)
         self._consumer_task = asyncio.create_task(self._outbound_consumer())
-        # slixmpp connect() returns a Future/Task, not a coroutine
-        self._component_task = self._component.connect()
-        logger.info("XMPP component started: {}", component_jid)
+        # Reconnect loop: connect with backoff on failure, retry on disconnect
+        self._component_task = asyncio.create_task(_connect_xmpp_with_backoff(self._component, host=server, port=port))
+        logger.info("XMPP component started: {} (reconnect enabled)", component_jid)
 
     async def stop(self) -> None:
         """Stop XMPP component."""

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import re
 import time
 import uuid
 from typing import TYPE_CHECKING, Any
@@ -43,6 +44,46 @@ def _escape_jid_node(node: str) -> str:
 
 
 SID_NS = "urn:xmpp:sid:0"
+
+# Bare URL pattern: body is *only* a URL (no other text)
+_BARE_URL_RE = re.compile(r"^https?://\S+$", re.IGNORECASE)
+
+# Content-Type → file extension for image re-upload
+_CT_TO_EXT: dict[str, str] = {
+    "image/png": ".png",
+    "image/jpeg": ".jpg",
+    "image/gif": ".gif",
+    "image/webp": ".webp",
+    "image/svg+xml": ".svg",
+    "image/avif": ".avif",
+    "image/bmp": ".bmp",
+}
+
+# Extensions already recognised as media by XMPP clients
+_MEDIA_EXTENSIONS = frozenset(
+    {
+        ".jpg",
+        ".jpeg",
+        ".png",
+        ".gif",
+        ".webp",
+        ".mp4",
+        ".webm",
+        ".svg",
+        ".avif",
+        ".bmp",
+    }
+)
+
+
+def _url_has_media_extension(url: str) -> bool:
+    """Return True when the URL path (before query/fragment) ends with a known media extension."""
+    path = url.split("?", 1)[0].split("#", 1)[0]
+    dot = path.rfind(".")
+    if dot == -1:
+        return False
+    ext = path[dot:].lower()
+    return ext in _MEDIA_EXTENSIONS
 
 
 def _capture_stanza_id_from_echo(tracker: XMPPMessageIDTracker, msg: Any, room_jid: str) -> None:
@@ -116,6 +157,7 @@ class XMPPComponent(ComponentXMPP):
         self._router = router
         self._identity = identity
         self._component_jid = jid
+        self._server = server
         self._avatar_cache: TTLCache[str, str] = TTLCache(
             maxsize=1000, ttl=86400
         )  # discord_id -> avatar_hash (24h TTL)
@@ -248,9 +290,13 @@ class XMPPComponent(ComponentXMPP):
             body = f"||{body}||"
 
         # XEP-0066 OOB: extract file URL from <x xmlns="jabber:x:oob"><url/></x>
+        # Clients often put the same URL in both body and oob; avoid duplicating
         if msg.get_plugin("oob", check=True) and msg["oob"]["url"]:
             oob_url = msg["oob"]["url"]
-            body = body + " " + oob_url if body.strip() else oob_url
+            if body.strip() and oob_url not in body:
+                body = body + " " + oob_url
+            elif not body.strip():
+                body = oob_url
 
         if "/" in from_jid:
             room_jid = from_jid.split("/")[0]
@@ -661,6 +707,7 @@ class XMPPComponent(ComponentXMPP):
                 filename=Path(filename),
                 size=len(data),
                 input_file=io.BytesIO(data),
+                domain=self._server,
             )
             logger.info("Uploaded {} bytes to {}", len(data), url)
 
@@ -678,6 +725,81 @@ class XMPPComponent(ComponentXMPP):
         except Exception as exc:
             logger.warning("HTTP upload failed, falling back to IBB: {}", exc)
             await self.send_file_as_user(discord_id, muc_jid, data, nick)
+
+    async def reupload_extensionless_image(self, url: str) -> str | None:
+        """Re-upload an image URL that lacks a file extension.
+
+        XMPP clients (Gajim, Dino) determine file type from the URL path.
+        URLs like ``https://avatars.githubusercontent.com/u/123?s=200``
+        have no extension, so they render as generic files.
+
+        This method:
+        1. Checks the URL path for an existing media extension (skip if found).
+        2. HEAD-probes to check Content-Type.
+        3. Downloads the image data (max 10 MB).
+        4. Re-uploads via XEP-0363 HTTP Upload.
+
+        Returns the new upload URL (with a proper extension) or None.
+        """
+        if _url_has_media_extension(url):
+            return None  # Already has extension; no action needed
+
+        if not self._session:
+            return None
+
+        # HEAD probe to determine Content-Type
+        try:
+            async with self._session.head(
+                url,
+                timeout=aiohttp.ClientTimeout(total=5),
+                allow_redirects=True,
+            ) as resp:
+                if resp.status != 200:
+                    return None
+                ct = resp.headers.get("Content-Type", "").split(";")[0].strip().lower()
+                ext = _CT_TO_EXT.get(ct)
+                if not ext:
+                    return None  # Not a recognised image type
+        except Exception as exc:
+            logger.debug("Image re-upload: HEAD probe failed for {}: {}", url, exc)
+            return None
+
+        # Download image data
+        try:
+            async with self._session.get(
+                url,
+                timeout=aiohttp.ClientTimeout(total=10),
+            ) as resp:
+                if resp.status != 200:
+                    return None
+                data = await resp.read()
+                if len(data) > 10 * 1024 * 1024:
+                    return None
+        except Exception as exc:
+            logger.debug("Image re-upload: download failed for {}: {}", url, exc)
+            return None
+
+        # Re-upload via XEP-0363 HTTP Upload
+        http_upload = self.plugin.get("xep_0363", None)
+        if not http_upload:
+            return None
+
+        try:
+            import io
+            from pathlib import Path
+
+            filename = f"image{ext}"
+            uploaded_url = await http_upload.upload_file(  # type: ignore[misc]
+                filename=Path(filename),
+                size=len(data),
+                input_file=io.BytesIO(data),
+                domain=self._server,
+            )
+            logger.info("Re-uploaded extensionless image: {} -> {}", url, uploaded_url)
+            return str(uploaded_url)
+        except Exception as exc:
+            logger.debug("Image re-upload: HTTP upload failed: {}", exc)
+            return None
 
     async def send_message_as_user(
         self,
@@ -752,6 +874,17 @@ class XMPPComponent(ComponentXMPP):
                     msg["origin_id"]["id"] = str(msg_id)
                 except Exception:
                     pass
+
+            # Attach XEP-0066 OOB when the body is a bare URL so XMPP clients
+            # (Gajim, Dino, Conversations…) inline / preview the media instead
+            # of rendering it as plain text.
+            body_stripped = content[:4000].strip()
+            if _BARE_URL_RE.match(body_stripped):
+                try:
+                    msg.enable("oob")
+                    msg["oob"]["url"] = body_stripped
+                except Exception:
+                    pass  # OOB plugin may not be loaded; safe to skip
 
             msg.send()
 

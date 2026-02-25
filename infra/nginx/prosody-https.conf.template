@@ -1,0 +1,69 @@
+# Prosody HTTPS reverse proxy
+# Fixes TLSV1_UNRECOGNIZED_NAME: Prosody's built-in HTTPS has limited SNI support.
+# Nginx terminates TLS and proxies to Prosody HTTP.
+# Rendered by envsubst; requires XMPP_DOMAIN, CERT_DIR.
+
+server {
+    listen 5281 ssl;
+    http2 on;
+    server_name ${XMPP_DOMAIN};
+
+    ssl_certificate ${CERT_DIR}/live/${XMPP_DOMAIN}/fullchain.pem;
+    ssl_certificate_key ${CERT_DIR}/live/${XMPP_DOMAIN}/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE+AESGCM:ECDHE+CHACHA20:DHE+AESGCM:DHE+CHACHA20:!aNULL:!MD5:!DSS;
+    ssl_prefer_server_ciphers off;
+
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header X-Content-Type-Options nosniff always;
+    add_header X-Frame-Options DENY always;
+    add_header X-XSS-Protection "1; mode=block" always;
+
+    # Upload (XEP-0363) - primary use case for HTTPS in dev
+    # Host must match Prosody http_host (xmpp.localhost) without port for upload component routing
+    location /upload {
+        proxy_pass http://atl-xmpp-server:5280/upload;
+        proxy_http_version 1.1;
+        proxy_set_header Host ${XMPP_DOMAIN};
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 300s;
+        proxy_send_timeout 300s;
+        client_max_body_size 100m;
+        proxy_request_buffering off;
+        proxy_buffering off;
+    }
+
+    # BOSH, WebSocket, Converse.js, status, etc.
+    location / {
+        proxy_pass http://atl-xmpp-server:5280;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection "";
+        proxy_read_timeout 900s;
+        proxy_send_timeout 900s;
+        proxy_buffering off;
+        proxy_redirect off;
+    }
+
+    # WebSocket upgrade
+    location /xmpp-websocket {
+        proxy_pass http://atl-xmpp-server:5280/xmpp-websocket;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "Upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 900s;
+        proxy_send_timeout 900s;
+        proxy_buffering off;
+    }
+
+    location = /health {
+        default_type text/plain;
+        return 200 "ok\n";
+    }
+}

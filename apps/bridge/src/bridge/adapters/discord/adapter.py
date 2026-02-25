@@ -36,10 +36,23 @@ if TYPE_CHECKING:
     from bridge.gateway.msgid_resolver import MessageIDResolver
     from bridge.identity import IdentityResolver
 
-# Media URL pattern: single URL, no surrounding text (discord-ircv3 style)
+# Media URL pattern: single URL, no surrounding text (discord-ircv3 style).
+# Matches URLs whose *path* (before any query string) ends with a media extension.
 _MEDIA_URL_PATTERN = re.compile(
-    r"^https?://[^\s\x01-\x16]+\.(?:jpg|jpeg|png|gif|mp4|webm)$",
+    r"^https?://[^\s\x01-\x16]+\.(?:jpg|jpeg|png|gif|mp4|webm)(?:[?#][^\s]*)?$",
     re.IGNORECASE,
+)
+# Image content-types returned by a HEAD probe for URLs without a recognizable extension
+_IMAGE_CONTENT_TYPES = frozenset(
+    {
+        "image/png",
+        "image/jpeg",
+        "image/gif",
+        "image/webp",
+        "image/bmp",
+        "image/svg+xml",
+        "image/avif",
+    }
 )
 _MEDIA_FETCH_TIMEOUT = 10
 _MEDIA_SIZE_LIMIT = 10 * 1024 * 1024  # 10 MB, same as XMPP
@@ -108,16 +121,65 @@ class DiscordAdapter(AdapterBase):
             pass
         return "image.png"
 
+    def _rewrite_upload_url_for_fetch(self, url: str) -> str:
+        """Rewrite XMPP upload URL to internal Docker URL when bridge cannot reach xmpp.localhost."""
+        fetch_base = os.environ.get("XMPP_UPLOAD_FETCH_URL", "").rstrip("/")
+        if not fetch_base:
+            return url
+        try:
+            from urllib.parse import urlparse, urlunparse
+
+            parsed = urlparse(url)
+            # Match XMPP upload URLs (xmpp.localhost, upload.xmpp.localhost)
+            if parsed.hostname and "xmpp.localhost" in parsed.hostname:
+                base_parsed = urlparse(fetch_base)
+                new = (
+                    base_parsed.scheme,
+                    base_parsed.netloc,
+                    parsed.path,
+                    parsed.params,
+                    parsed.query,
+                    parsed.fragment,
+                )
+                return urlunparse(new)
+        except Exception:
+            pass
+        return url
+
+    async def _probe_is_image(self, url: str) -> bool:
+        """HEAD-probe URL and return True when Content-Type indicates an image.
+
+        Used as a fallback for URLs that don't carry a recognised file extension
+        (e.g. ``https://avatars.githubusercontent.com/u/123?s=200&v=4``).
+        Failures (network error, non-200) are treated as non-image.
+        """
+        if not self._session:
+            return False
+        try:
+            async with self._session.head(
+                url,
+                timeout=aiohttp.ClientTimeout(total=5),
+                allow_redirects=True,
+            ) as resp:
+                if resp.status != 200:
+                    return False
+                ct = resp.headers.get("Content-Type", "").split(";")[0].strip().lower()
+                return ct in _IMAGE_CONTENT_TYPES
+        except Exception as exc:
+            logger.debug("HEAD probe failed for {}: {}", url, exc)
+            return False
+
     async def _fetch_media_to_temp(self, url: str) -> str | None:
         """Fetch media URL to temp file. Returns path or None on failure. Caller must unlink."""
         if not self._session:
             return None
+        fetch_url = self._rewrite_upload_url_for_fetch(url)
         path: str | None = None
         try:
             fd, path = tempfile.mkstemp(suffix=".media")
             os.close(fd)
             total = 0
-            async with self._session.get(url, timeout=aiohttp.ClientTimeout(total=_MEDIA_FETCH_TIMEOUT)) as resp:
+            async with self._session.get(fetch_url, timeout=aiohttp.ClientTimeout(total=_MEDIA_FETCH_TIMEOUT)) as resp:
                 if resp.status != 200:
                     os.unlink(path)
                     return None
@@ -265,8 +327,13 @@ class DiscordAdapter(AdapterBase):
                     content_trimmed = (content or "").strip()
                     file_obj: File | None = None
                     temp_path: str | None = None
-                    # Media-only URL: fetch and send as File for reliable Discord embed
-                    if _MEDIA_URL_PATTERN.match(content_trimmed):
+                    # Media-only URL: fetch and send as File for reliable Discord embed.
+                    # First check by extension (fast); then probe Content-Type for
+                    # extensionless image URLs (e.g. GitHub avatar links).
+                    is_media = bool(_MEDIA_URL_PATTERN.match(content_trimmed))
+                    if not is_media and content_trimmed.startswith(("http://", "https://")):
+                        is_media = await self._probe_is_image(content_trimmed)
+                    if is_media:
                         temp_path = await self._fetch_media_to_temp(content_trimmed)
                         if temp_path:
                             filename = self._extract_filename_from_url(content_trimmed)
@@ -379,17 +446,38 @@ class DiscordAdapter(AdapterBase):
 
         content = message.content or ""
 
-        # Handle attachments
+        # Get avatar URL (needed for both attachments and content messages)
+        avatar_url = str(message.author.display_avatar.url) if message.author.display_avatar else None
+
+        # Handle attachments: emit each attachment's CDN URL as a message.
+        # The relay routes it to IRC (RELAYMSG) and XMPP (body + OOB for
+        # inline preview).  Discord CDN URLs already carry the original
+        # filename and extension, so XMPP clients render them as images.
         if message.attachments:
-            await self._handle_attachments(message)
+            for attachment in message.attachments:
+                _, att_evt = message_in(
+                    origin="discord",
+                    channel_id=channel_id,
+                    author_id=str(message.author.id),
+                    author_display=message.author.display_name or message.author.name,
+                    content=attachment.url,
+                    message_id=f"{message.id}_attachment_{attachment.id}",
+                    is_action=False,
+                    avatar_url=avatar_url,
+                    raw={},
+                )
+                logger.info(
+                    "Discord attachment bridged: channel={} author={} file={}",
+                    channel_id,
+                    message.author.display_name or message.author.name,
+                    attachment.filename,
+                )
+                self._bus.publish("discord", att_evt)
             if not content.strip():
                 return
 
         if not content.strip():
             return
-
-        # Get avatar URL
-        avatar_url = str(message.author.display_avatar.url) if message.author.display_avatar else None
 
         # For replies: include referenced message content + author so relay can add quote for IRC
         raw: dict[str, object] = {}
