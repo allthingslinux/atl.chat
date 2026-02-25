@@ -89,6 +89,8 @@ class IRCClient(pydle.Client):
         "labeled-response",
         "chghost",
         "setname",
+        "draft/relaymsg",
+        "overdrivenetworks.com/relaymsg",
     }
 
     def __init__(
@@ -224,7 +226,9 @@ class IRCClient(pydle.Client):
             discord_reply_to = self._msgid_tracker.get_discord_id(reply_to)
 
         # If this is our echo (from bridge), correlate with pending send for msgid tracking
-        if source == self.nickname:
+        # RELAYMSG: server tags with draft/relaymsg=our_nick; source is spoofed nick
+        relayed_by_us = tags.get("draft/relaymsg") == self.nickname or tags.get("relaymsg") == self.nickname
+        if source == self.nickname or relayed_by_us:
             if msgid:
                 try:
                     discord_id = self._pending_sends.get_nowait()
@@ -392,6 +396,30 @@ class IRCClient(pydle.Client):
             new_realname = message.params[0]
             logger.debug("IRC SETNAME: {} -> {}", nick, new_realname)
 
+    async def on_capability_draft_relaymsg_available(self, value):
+        """Request draft/relaymsg for stateless bridging."""
+        return True
+
+    async def on_capability_overdrivenetworks_com_relaymsg_available(self, value):
+        """Request overdrivenetworks.com/relaymsg (alternate relaymsg cap name)."""
+        return True
+
+    def _has_relaymsg(self) -> bool:
+        """Check if RELAYMSG capability was negotiated."""
+        caps = getattr(self, "_capabilities", {})
+        return bool(caps.get("draft/relaymsg") or caps.get("overdrivenetworks.com/relaymsg"))
+
+    def _sanitize_relaymsg_nick(self, nick: str) -> str:
+        """Sanitize nick for RELAYMSG: replace invalid chars with '-'.
+        When irc_relaymsg_clean_nicks: no /d suffix (server allows clean nicks).
+        Otherwise: append /d (Valware relaymsg requires '/' in nick)."""
+        invalid = " \t\n\r!+%@&#$:'\"?*,."
+        out = "".join("-" if c in invalid else c for c in nick)
+        out = (out or "user")[:32]
+        if "/" not in out and not cfg.irc_relaymsg_clean_nicks:
+            out = f"{out}/d"
+        return out
+
     async def _consume_outbound(self):
         """Consume outbound message queue with token bucket throttling."""
         while True:
@@ -409,13 +437,19 @@ class IRCClient(pydle.Client):
                 logger.exception("IRC send failed: {}", exc)
 
     async def _send_message(self, evt: MessageOut):
-        """Send message to IRC."""
+        """Send message to IRC. Uses RELAYMSG when available (stateless bridging)."""
         mapping = self._router.get_mapping_for_discord(evt.channel_id)
         if not mapping or not mapping.irc:
             return
 
         target = mapping.irc.channel
         chunks = split_irc_message(evt.content, max_bytes=450)
+
+        # Spoofed nick for RELAYMSG: display/discord (Valware requires '/' in nick)
+        display = (evt.author_display or evt.author_id or "user").strip()
+        spoofed_nick = self._sanitize_relaymsg_nick(display)
+
+        use_relaymsg = self._has_relaymsg()
 
         # Add reply tag if replying to a message (only on first chunk)
         reply_tags = None
@@ -425,11 +459,18 @@ class IRCClient(pydle.Client):
                 reply_tags = {"+draft/reply": irc_msgid}
 
         for i, chunk in enumerate(chunks):
-            tags = reply_tags if i == 0 else None
-            if tags:
-                await self.rawmsg("PRIVMSG", target, chunk, tags=tags)
+            if use_relaymsg:
+                # RELAYMSG #channel spoofed_nick :message
+                if reply_tags and i == 0:
+                    await self.rawmsg("RELAYMSG", target, spoofed_nick, chunk, tags=reply_tags)
+                else:
+                    await self.rawmsg("RELAYMSG", target, spoofed_nick, chunk)
             else:
-                await self.message(target, chunk)
+                tags = reply_tags if i == 0 else None
+                if tags:
+                    await self.rawmsg("PRIVMSG", target, chunk, tags=tags)
+                else:
+                    await self.message(target, chunk)
             # Only store mapping for first chunk (echo will have msgid)
             if i == 0:
                 self._pending_sends.put_nowait(evt.message_id)
