@@ -11,6 +11,7 @@ Central event routing layer. No protocol-specific logic lives here.
 | `bus.py` | `Bus` — thin wrapper around `Dispatcher`; registers adapters, publishes events |
 | `relay.py` | `Relay` — routes `MessageIn` → `MessageOut` (and delete/reaction/typing) for all target protocols |
 | `router.py` | `ChannelRouter` — maps Discord channel IDs ↔ IRC server/channel ↔ XMPP MUC JID |
+| `msgid_resolver.py` | `MessageIDResolver` protocol, `DefaultMessageIDResolver` — cross-protocol message ID resolution |
 
 ## Bus (`bus.py`)
 
