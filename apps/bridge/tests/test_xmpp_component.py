@@ -457,3 +457,19 @@ class TestOnRetraction:
         msg = MockMsg("room@conf.example.com/nick", plugins={"retract": retract_plugin})
         comp._on_retraction(msg)
         bus.publish.assert_not_called()
+
+    def test_skips_retraction_echo_from_our_component(self):
+        """Skip retractions we sent ourselves (MUC echoes to all participants)."""
+        router = self._make_router()
+        bus = MagicMock()
+        comp = make_component(router=router, bus=bus)
+        comp._msgid_tracker.store("xmpp-1", "discord-1", "room@conf.example.com")
+
+        muc = MagicMock()
+        muc.get_jid_property.return_value = "1046905234200469504@bridge.example.com"
+        comp.plugin = {"xep_0045": muc}
+
+        retract_plugin = MockPlugin({"id": "xmpp-1"})
+        msg = MockMsg("room@conf.example.com/1046905234200469504", plugins={"retract": retract_plugin})
+        comp._on_retraction(msg)
+        bus.publish.assert_not_called()

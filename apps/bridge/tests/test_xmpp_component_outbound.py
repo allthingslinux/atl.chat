@@ -295,7 +295,7 @@ class TestSendRetractionAsUser:
     async def test_sends_retraction_via_plugin(self):
         # Arrange
         comp = make_component()
-        retract_plugin = AsyncMock()
+        retract_plugin = MagicMock()  # slixmpp send_retraction is sync
         comp.plugin = _make_plugin_registry(
             xep_0106=_mock_jid_escape_plugin(),
             xep_0424=retract_plugin,
@@ -305,13 +305,13 @@ class TestSendRetractionAsUser:
         await comp.send_retraction_as_user("d1", "room@conf.example.com", "msg-1", "Nick")
 
         # Assert
-        retract_plugin.send_retraction.assert_awaited_once()
+        retract_plugin.send_retraction.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_exception_during_retraction_send_is_swallowed(self):
         # Arrange
         comp = make_component()
-        retract_plugin = AsyncMock()
+        retract_plugin = MagicMock()
         retract_plugin.send_retraction.side_effect = RuntimeError("err")
         comp.plugin = _make_plugin_registry(
             xep_0106=_mock_jid_escape_plugin(),

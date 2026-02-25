@@ -20,7 +20,10 @@ class TestSetupLogging:
         from bridge.__main__ import setup_logging
 
         # Act
-        with patch("bridge.__main__.logger") as mock_logger:
+        with (
+            patch("bridge.__main__.logger") as mock_logger,
+            patch.dict("os.environ", {"LOG_LEVEL": ""}, clear=False),
+        ):
             setup_logging(verbose=False)
 
             # Assert
