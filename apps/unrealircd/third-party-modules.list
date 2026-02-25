@@ -26,6 +26,9 @@
 # WebIRC/WebSocket information in WHOIS
 third/showwebirc
 
+# METADATA: avatars, message coloring, status texts (draft/metadata, draft/metadata-notify-2)
+third/metadata
+
 # third/relaymsg-atl: built from contrib/relaymsg/relaymsg-atl.c (atl.chat fork, unique name avoids upstream overwrite)
 # Add more modules as needed:
 # third/commandsno

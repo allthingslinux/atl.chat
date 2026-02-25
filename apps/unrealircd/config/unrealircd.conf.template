@@ -338,7 +338,17 @@ include "snomasks.default.conf";
 /* ---------- Project-specific ---------- */
 loadmodule "cloak_sha256";
 loadmodule "third/showwebirc";
+loadmodule "third/metadata";
 loadmodule "third/relaymsg-atl";  /* atl.chat fork: RELAYMSG for stateless bridging */
+
+/* METADATA: avatars, message coloring, status texts (draft/metadata, draft/metadata-notify-2)
+ * Usage: /metadata * set avatar :https://example.com/avatar.png
+ * Optional config - defaults used if omitted. */
+metadata {
+	max-user-metadata 10;
+	max-channel-metadata 10;
+	max-subscriptions 10;
+}
 
 /* RELAYMSG: stateless bridging - hostmask shown for relayed messages.
  * Default: require-separator yes (nicks must contain /). Bridge uses /d suffix (irc_relaymsg_clean_nicks: false).

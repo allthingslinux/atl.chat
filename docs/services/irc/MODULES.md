@@ -131,12 +131,14 @@ All module loading is inlined in `unrealircd.conf.template`. On UnrealIRCd upgra
 // Third-party and custom modules are loaded near the end
 loadmodule "cloak_sha256";
 loadmodule "third/showwebirc";
+loadmodule "third/metadata";
 loadmodule "third/relaymsg-atl";  /* atl.chat fork */
 ```
 
 ## Currently Installed Modules
 
 - **third/showwebirc**: Adds WebIRC and WebSocket information to WHOIS queries
+- **third/metadata**: METADATA command for avatars, message coloring, status texts (draft/metadata, draft/metadata-notify-2). Use with PIRC, IRCcloud, or other supporting clients.
 - **third/relaymsg-atl**: atl.chat fork for stateless bridging (RELAYMSG); allows clean nicks via `require-separator no`
 
 ## Troubleshooting
