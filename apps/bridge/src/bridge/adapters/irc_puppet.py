@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import hashlib
 import time
 from typing import TYPE_CHECKING
 
@@ -18,7 +19,7 @@ if TYPE_CHECKING:
 
 
 class IRCPuppet(pydle.Client):
-    """Single IRC puppet connection for a Discord user."""
+    """Single IRC puppet connection for a Discord user. Uses METADATA for avatar sync."""
 
     def __init__(
         self,
@@ -35,6 +36,15 @@ class IRCPuppet(pydle.Client):
         self._prejoin_commands: list[str] = prejoin_commands or []
         self._pinger_task: asyncio.Task | None = None
         self._initial_nick = nick
+        self._last_avatar_hash: str | None = None
+
+    async def on_capability_draft_metadata_available(self, value):
+        """Request draft/metadata (METADATA command)."""
+        return True
+
+    async def on_capability_draft_metadata_notify_2_available(self, value):
+        """Request draft/metadata-notify-2 (receive METADATA notifications)."""
+        return True
 
     def touch(self):
         """Update last activity timestamp."""
@@ -133,12 +143,22 @@ class IRCPuppetManager:
         """Return set of current puppet nicks (for echo detection on main connection)."""
         return {p.nickname for p in self._puppets.values()}
 
-    async def send_message(self, discord_id: str, channel: str, content: str):
-        """Send message via puppet."""
+    async def send_message(
+        self,
+        discord_id: str,
+        channel: str,
+        content: str,
+        avatar_url: str | None = None,
+    ):
+        """Send message via puppet. Sets METADATA avatar if server supports it."""
         puppet = await self.get_or_create_puppet(discord_id)
         if not puppet:
             logger.debug("IRC puppet: no puppet for discord_id={}; message not sent", discord_id)
             return
+
+        # Set avatar via METADATA before first message (when URL changed)
+        if avatar_url and hasattr(puppet, "set_metadata"):
+            await self._set_puppet_avatar(puppet, discord_id, avatar_url)
 
         try:
             for chunk in split_irc_message(content, max_bytes=450):
@@ -147,6 +167,27 @@ class IRCPuppetManager:
             logger.info("IRC puppet: sent to {} as {}", channel, puppet.nickname)
         except Exception as exc:
             logger.exception("Puppet send failed for {}: {}", discord_id, exc)
+
+    async def _set_puppet_avatar(
+        self,
+        puppet: IRCPuppet,
+        discord_id: str,
+        avatar_url: str,
+    ) -> None:
+        """Set puppet avatar via METADATA if URL changed (cached by hash)."""
+        avatar_hash = hashlib.sha1(avatar_url.encode()).hexdigest()
+        if puppet._last_avatar_hash == avatar_hash:
+            return
+
+        if "draft/metadata" not in getattr(puppet, "_capabilities", {}):
+            return
+
+        try:
+            await puppet.set_metadata("*", "avatar", avatar_url)
+            puppet._last_avatar_hash = avatar_hash
+            logger.debug("Set METADATA avatar for puppet {} ({})", puppet.nickname, discord_id)
+        except Exception as exc:
+            logger.debug("METADATA avatar set failed for {}: {}", puppet.nickname, exc)
 
     async def join_channel(self, discord_id: str, channel: str):
         """Join channel with puppet."""

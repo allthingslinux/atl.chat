@@ -675,6 +675,7 @@ class IRCAdapter:
                 evt.author_id,
                 mapping.irc.channel,
                 evt.content,
+                avatar_url=evt.avatar_url,
             )
         elif self._client:
             # Fallback to main connection

@@ -424,7 +424,7 @@ class TestSendViaPuppet:
             message_id="m1",
         )
         await adapter._send_via_puppet(evt)
-        adapter._puppet_manager.send_message.assert_awaited_once_with("u", "#test", "hi")
+        adapter._puppet_manager.send_message.assert_awaited_once_with("u", "#test", "hi", avatar_url=None)
 
     @pytest.mark.asyncio
     async def test_falls_back_to_client_when_no_irc_identity(self):

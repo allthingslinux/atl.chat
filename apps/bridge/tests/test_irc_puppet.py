@@ -38,6 +38,7 @@ def _make_manager(
 def _mock_puppet(discord_id: str = "d1", nick: str = "nick") -> MagicMock:
     p = MagicMock(spec=IRCPuppet)
     p.discord_id = discord_id
+    p.nickname = nick
     p.last_activity = time.time()
     p.touch = MagicMock()
     p.connect = AsyncMock()
@@ -221,6 +222,44 @@ class TestSendMessage:
         await manager.send_message("d1", "#test", "hello")
         # message was attempted (exception swallowed, not silently skipped)
         mock_puppet.message.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_send_message_with_avatar_url_sets_metadata_when_cap_available(self):
+        """When avatar_url provided and puppet has draft/metadata, sets METADATA avatar."""
+        manager = _make_manager()
+        mock_puppet = _mock_puppet()
+        mock_puppet._capabilities = {"draft/metadata": True}
+        mock_puppet._last_avatar_hash = None
+        mock_puppet.set_metadata = AsyncMock()
+        manager._puppets["d1"] = mock_puppet
+
+        await manager.send_message(
+            "d1",
+            "#test",
+            "hello",
+            avatar_url="https://cdn.discord.com/avatars/123/abc.png",
+        )
+
+        mock_puppet.set_metadata.assert_awaited_once_with("*", "avatar", "https://cdn.discord.com/avatars/123/abc.png")
+        mock_puppet.message.assert_awaited()
+
+    @pytest.mark.asyncio
+    async def test_send_message_with_avatar_url_skips_metadata_when_hash_unchanged(self):
+        """When avatar_url unchanged, skips METADATA SET (cached by hash)."""
+        import hashlib
+
+        manager = _make_manager()
+        mock_puppet = _mock_puppet()
+        url = "https://cdn.discord.com/avatars/123/abc.png"
+        mock_puppet._capabilities = {"draft/metadata": True}
+        mock_puppet._last_avatar_hash = hashlib.sha1(url.encode()).hexdigest()
+        mock_puppet.set_metadata = AsyncMock()
+        manager._puppets["d1"] = mock_puppet
+
+        await manager.send_message("d1", "#test", "hello", avatar_url=url)
+
+        mock_puppet.set_metadata.assert_not_awaited()
+        mock_puppet.message.assert_awaited()
 
 
 # ---------------------------------------------------------------------------

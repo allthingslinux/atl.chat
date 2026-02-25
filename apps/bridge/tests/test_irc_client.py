@@ -709,8 +709,9 @@ class TestPuppetSendPath:
         evt.channel_id = "111"
         evt.author_id = "u1"
         evt.content = "hi"
+        evt.avatar_url = None
         await adapter._send_via_puppet(evt)
-        adapter._puppet_manager.send_message.assert_awaited_once_with("u1", "#test", "hi")
+        adapter._puppet_manager.send_message.assert_awaited_once_with("u1", "#test", "hi", avatar_url=None)
 
     @pytest.mark.asyncio
     async def test_send_via_puppet_falls_back_to_client_when_no_irc(self):
