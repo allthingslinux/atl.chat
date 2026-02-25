@@ -14,6 +14,7 @@ mod_muc_slow_mode
 mod_default_bookmarks
 mod_muc_thread_polyfill
 mod_conversejs
+mod_http_avatar
 mod_http_status
 mod_measure_modules
 mod_compliance_latest
@@ -35,3 +36,4 @@ mod_groups_internal
 mod_http_admin_api
 mod_support_contact
 mod_idlecompat
+mod_pep_vcard_png_avatar
