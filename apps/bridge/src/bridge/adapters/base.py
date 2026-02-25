@@ -1,4 +1,4 @@
-"""Base adapter interface (AUDIT §1: subscribe/publish, start/stop)."""
+"""Base adapter (AUDIT §3.2: thin wrapper implementing BridgeAdapter)."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 
 
 class AdapterBase(ABC):
-    """Interface for protocol adapters. Subscribe to bus, publish events, start/stop."""
+    """Thin base for adapters. Implements BridgeAdapter with default accept_event/push_event."""
 
     @property
     @abstractmethod
