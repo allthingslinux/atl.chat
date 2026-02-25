@@ -129,16 +129,22 @@ class IRCPuppetManager:
             del self._puppets[discord_id]
             return None
 
+    def get_puppet_nicks(self) -> set[str]:
+        """Return set of current puppet nicks (for echo detection on main connection)."""
+        return {p.nickname for p in self._puppets.values()}
+
     async def send_message(self, discord_id: str, channel: str, content: str):
         """Send message via puppet."""
         puppet = await self.get_or_create_puppet(discord_id)
         if not puppet:
+            logger.debug("IRC puppet: no puppet for discord_id={}; message not sent", discord_id)
             return
 
         try:
             for chunk in split_irc_message(content, max_bytes=450):
                 await puppet.message(channel, chunk)
             puppet.touch()
+            logger.info("IRC puppet: sent to {} as {}", channel, puppet.nickname)
         except Exception as exc:
             logger.exception("Puppet send failed for {}: {}", discord_id, exc)
 
