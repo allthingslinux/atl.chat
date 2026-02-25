@@ -361,14 +361,16 @@ proxy65_interfaces = { "*" }
 -- HTTP server-level options and module configuration
 -- Docs: https://prosody.im/doc/http
 
--- External URL advertised to clients and components
+-- External URL advertised to clients and components (Converse.js BOSH/WebSocket, etc.)
+-- When behind reverse proxy, omit port. For direct dev access on :5280, set PROSODY_HTTP_EXTERNAL_URL.
 local __http_host = Lua.os.getenv("PROSODY_HTTP_HOST") or
     Lua.os.getenv("PROSODY_DOMAIN") or "localhost"
 local __http_scheme = Lua.os.getenv("PROSODY_HTTP_SCHEME") or "http"
 local __domain = Lua.os.getenv("PROSODY_DOMAIN") or "xmpp.localhost"
 -- Route requests for unknown hosts to main VirtualHost. Must match http_host when set (Prosody docs).
 http_default_host = __http_host
-http_external_url = __http_scheme .. "://" .. __http_host .. "/"
+http_external_url = Lua.os.getenv("PROSODY_HTTP_EXTERNAL_URL") or
+    (__http_scheme .. "://" .. __http_host .. "/")
 
 -- Port/interface defaults per Prosody 0.12 docs:
 -- http_ports = { 5280 } (already set above)
@@ -690,6 +692,17 @@ allow_registration = Lua.os.getenv("PROSODY_ALLOW_REGISTRATION") == "true"
 -- http_host: map HTTP Host header (e.g. xmpp.atl.chat) to this VirtualHost; set PROSODY_HTTP_HOST when different from domain
 VirtualHost(domain)
 http_host = __http_host
+
+-- Converse.js: override BOSH/WebSocket URLs when PROSODY_HTTP_EXTERNAL_URL is set (direct :5280 dev access).
+-- module:http_url() derives from request Host, which omits port and can be wrong (e.g. localhost vs xmpp.localhost).
+local __converse_base = Lua.os.getenv("PROSODY_HTTP_EXTERNAL_URL")
+if __converse_base and __converse_base ~= "" then
+    conversejs_options = {
+        bosh_service_url = (__converse_base:gsub("/$", "")) .. "/http-bind",
+        websocket_url = (__converse_base:gsub("/$", ""):gsub("^http", "ws")) .. "/xmpp-websocket",
+    }
+end
+
 ssl = {
     key = Lua.os.getenv("PROSODY_SSL_KEY") or
         ("certs/live/" .. domain .. "/privkey.pem"),

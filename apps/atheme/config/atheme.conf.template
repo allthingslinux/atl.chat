@@ -361,7 +361,7 @@ serverinfo {
 	emaillimit = 10;
 	emailtime = 300;
 	auth = none;
-	casemapping = rfc1459;
+	casemapping = ascii;
 };
 
 /* ---------- Uplink ---------- */

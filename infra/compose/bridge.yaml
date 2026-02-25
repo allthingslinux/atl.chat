@@ -26,6 +26,7 @@ services:
       - path: ../../.env.dev
         required: false
     environment:
+      - LOG_LEVEL
       - BRIDGE_DISCORD_TOKEN
       - BRIDGE_PORTAL_BASE_URL
       - BRIDGE_PORTAL_TOKEN
