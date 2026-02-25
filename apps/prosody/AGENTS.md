@@ -14,7 +14,6 @@ Prosody · Lua config · Docker · PostgreSQL (optional, for storage)
 config/
 └── prosody.cfg.lua    # Main Prosody config
 
-scripts/               # Container scripts
 www/                   # Static assets
 Containerfile
 docker-entrypoint.sh

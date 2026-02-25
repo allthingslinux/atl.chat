@@ -51,6 +51,7 @@ docs/               # Architecture, services, onboarding, bridges
 | `just lint` | pre-commit run --all-files |
 | `just scan` | Security scans (Gitleaks, Trivy) — placeholder |
 | `just build` | docker compose build |
+| `just clean` | Prune unused Docker resources and volumes |
 
 ## Environment
 
@@ -71,6 +72,7 @@ docs/               # Architecture, services, onboarding, bridges
 
 - [apps/atheme/AGENTS.md](apps/atheme/AGENTS.md)
 - [apps/bridge/AGENTS.md](apps/bridge/AGENTS.md)
+- [apps/gamja/AGENTS.md](apps/gamja/AGENTS.md)
 - [apps/prosody/AGENTS.md](apps/prosody/AGENTS.md)
 - [apps/thelounge/AGENTS.md](apps/thelounge/AGENTS.md)
 - [apps/unrealircd/AGENTS.md](apps/unrealircd/AGENTS.md)

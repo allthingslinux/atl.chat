@@ -4,6 +4,13 @@
 
 The Lounge web-based IRC client. Private mode (user accounts required). Defaults to ATL IRC server with WebIRC. Plugins: janitor (upload cleanup), giphy (`/giphy search|random`).
 
+## Repository Structure
+
+```
+config.js.template   # Config template (env vars substituted at init)
+justfile             # Loaded via: mod lounge './apps/thelounge'
+```
+
 ## Key Commands
 
 | Command | Purpose |
