@@ -2,7 +2,7 @@
 
 **Production-ready Discord–IRC–XMPP bridge with multi-presence and modern protocol support.**
 
-[![Tests](https://img.shields.io/badge/tests-769%20passing-brightgreen)]() [![Python](https://img.shields.io/badge/python-3.10+-blue)]() [![License](https://img.shields.io/badge/license-MIT-blue)]()
+[![Tests](https://img.shields.io/badge/tests-819%20passing-brightgreen)]() [![Python](https://img.shields.io/badge/python-3.10+-blue)]() [![License](https://img.shields.io/badge/license-MIT-blue)]()
 
 ## Why ATL Bridge?
 
@@ -62,6 +62,7 @@ bridge --config config.yaml
   - Replies (XEP-0461) - Reply threading
   - Spoilers (XEP-0382) - Content warnings
 - **File transfers**: HTTP Upload (XEP-0363) with IBB fallback
+- **OOB file URLs**: XEP-0066 Out of Band Data—extract file URLs from messages
 - **JID escaping**: XEP-0106 for special characters in usernames
 - **History filtering**: XEP-0203 delayed delivery detection
 
@@ -74,6 +75,9 @@ bridge --config config.yaml
 - **Reactions**: Add and remove reactions bridged to/from IRC/XMPP
 - **Typing indicators**: IRC typing → Discord `channel.typing()`
 - **Mention safety**: `@everyone` and role pings suppressed on bridged content
+- **Mention resolution**: `@nick` in IRC/XMPP content resolved to `<@userId>` for cross-protocol pings
+- **Media embedding**: Fetch image/video URLs from IRC/XMPP, send as Discord File for reliable display
+- **IRC formatting**: Bold, italic, underline, strikethrough (`\x1e` → `~~`) mapped to Discord markdown
 - **!bridge status**: Show linked IRC/XMPP accounts (requires Portal identity)
 
 ### Reliability
@@ -81,7 +85,7 @@ bridge --config config.yaml
 - **Retry logic**: Exponential backoff for transient errors (5 attempts, 2-30s)
 - **Error recovery**: Graceful handling of network failures
 - **Event loop**: uvloop for 2-4x faster async I/O (Linux/macOS; falls back to asyncio on Windows)
-- **Comprehensive tests**: 769 tests covering core, adapters, formatting, and edge cases
+- **Comprehensive tests**: 819 tests covering core, adapters, formatting, and edge cases
 
 ## Configuration
 
@@ -238,8 +242,9 @@ src/bridge/
 │   └── router.py       # Channel mapping
 ├── formatting/
 │   ├── discord_to_irc.py   # Discord markdown → IRC
-│   ├── irc_to_discord.py   # IRC control codes → Discord
-│   └── irc_message_split.py  # Long message splitting
+│   ├── irc_to_discord.py   # IRC control codes → Discord (bold, italic, strikethrough)
+│   ├── irc_message_split.py  # Long message splitting
+│   └── mention_resolution.py # @nick → Discord <@userId> for cross-protocol pings
 └── adapters/
     ├── base.py         # Adapter interface
     ├── disc.py         # Discord adapter
@@ -265,7 +270,7 @@ uv run pytest tests/test_xmpp_features.py -v
 uv run pytest tests --cov --cov-report=html
 ```
 
-**Test Coverage**: 769 tests covering:
+**Test Coverage**: 819 tests covering:
 
 - Core bridging logic and relay
 - Discord adapter (webhooks, edits, reactions, typing)
@@ -346,4 +351,4 @@ GPL3 License - see [LICENSE](LICENSE) file for details.
 
 ---
 
-**Status**: Production-ready • **Maintained**: Yes • **Tests**: 769 passing
+**Status**: Production-ready • **Maintained**: Yes • **Tests**: 819 passing
