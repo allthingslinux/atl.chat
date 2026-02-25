@@ -504,7 +504,7 @@ class XMPPComponent(ComponentXMPP):
                 sender_domain = JID(str(real_jid)).domain
                 our_domain = JID(self._component_jid).domain if "@" in self._component_jid else self._component_jid
                 if sender_domain == our_domain:
-                    logger.debug("Skipping XMPP retraction echo from our component ({})", nick)
+                    logger.trace("Skipping XMPP retraction echo from our component ({})", nick)
                     return
         if nick == "atl-bridge":
             return

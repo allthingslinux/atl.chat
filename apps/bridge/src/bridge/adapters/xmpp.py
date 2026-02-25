@@ -162,24 +162,36 @@ class XMPPAdapter:
                 logger.exception("XMPP send failed: {}", exc)
 
     async def _handle_delete_out(self, evt: MessageDeleteOut) -> None:
-        """Send XMPP retraction for deleted message."""
+        """Send XMPP retraction for deleted message.
+
+        Sends retraction with stanza-id (XEP-0424 §5.1, Gajim) and, when different,
+        with origin-id so clients that match on origin-id (e.g. Converse.js) also
+        remove the message. Each id is sent at most once.
+        """
         if not self._component:
             return
         mapping = self._router.get_mapping_for_discord(evt.channel_id)
         if not mapping or not mapping.xmpp:
             return
-        # XEP-0424 §5.1: in groupchat the MUC-assigned stanza-id must be used for retract id
-        target_xmpp_id = self._component._msgid_tracker.get_xmpp_id_for_reaction(evt.message_id)
-        if not target_xmpp_id:
+        tracker = self._component._msgid_tracker
+        stanza_id = tracker.get_xmpp_id_for_reaction(evt.message_id)
+        primary_id = tracker.get_xmpp_id(evt.message_id)
+        ids_to_send = []
+        if stanza_id:
+            ids_to_send.append(stanza_id)
+        if primary_id and primary_id not in ids_to_send:
+            ids_to_send.append(primary_id)
+        if not ids_to_send:
             logger.debug("No XMPP msgid for Discord message {}; skip retraction", evt.message_id)
             return
         nick = await self._resolve_nick_async(evt)
-        await self._component.send_retraction_as_user(
-            evt.author_id or "unknown",
-            mapping.xmpp.muc_jid,
-            target_xmpp_id,
-            nick,
-        )
+        for target_xmpp_id in ids_to_send:
+            await self._component.send_retraction_as_user(
+                evt.author_id or "unknown",
+                mapping.xmpp.muc_jid,
+                target_xmpp_id,
+                nick,
+            )
 
     async def _handle_reaction_out(self, evt: ReactionOut) -> None:
         """Send XMPP reaction for ReactionOut."""
