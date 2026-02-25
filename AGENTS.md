@@ -6,7 +6,7 @@ Unified chat infrastructure for All Things Linux: IRC, XMPP, web, and protocol b
 
 ## Quick Facts
 
-- **Layout:** Monorepo with `apps/*` (UnrealIRCd, Atheme, Prosody, WebPanel, Web, Bridge, Gamja)
+- **Layout:** Monorepo with `apps/*` (UnrealIRCd, Atheme, Prosody, WebPanel, Web, Bridge, The Lounge, Gamja)
 - **Orchestration:** Docker Compose (root `compose.yaml` includes `infra/compose/*.yaml`)
 - **Task Runner:** just (root + per-app via `mod`)
 - **Key Commands:** `just init`, `just dev`, `just prod`, `just test`, `just test-all`
@@ -21,6 +21,7 @@ apps/
 ├── prosody/        # XMPP server (Lua config)
 ├── web/            # Next.js web application
 ├── bridge/         # Discord↔IRC↔XMPP bridge (Python, in-repo)
+├── thelounge/      # Web IRC client (private mode, WebIRC, janitor/giphy plugins)
 └── gamja/          # IRC web client (planned)
 
 infra/
@@ -64,12 +65,14 @@ docs/               # Architecture, services, onboarding, bridges
 | `just xmpp` | apps/prosody | `just xmpp shell`, `just xmpp reload`, `just xmpp adduser` |
 | `just web` | apps/web | `just web dev`, `just web build` |
 | `just bridge` | apps/bridge | `just bridge test`, `just bridge check` |
+| `just lounge` | apps/thelounge | `just lounge add`, `just lounge list`, `just lounge reset` |
 
 ## Related
 
 - [apps/atheme/AGENTS.md](apps/atheme/AGENTS.md)
 - [apps/bridge/AGENTS.md](apps/bridge/AGENTS.md)
 - [apps/prosody/AGENTS.md](apps/prosody/AGENTS.md)
+- [apps/thelounge/AGENTS.md](apps/thelounge/AGENTS.md)
 - [apps/unrealircd/AGENTS.md](apps/unrealircd/AGENTS.md)
 - [apps/web/AGENTS.md](apps/web/AGENTS.md)
 - [docs/AGENTS.md](docs/AGENTS.md)
