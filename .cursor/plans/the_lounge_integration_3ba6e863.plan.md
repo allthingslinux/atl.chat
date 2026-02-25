@@ -256,13 +256,13 @@ Ensure The Lounge works in both environments before considering the integration 
 
 ---
 
-## RELAYMSG (atl/relaymsg) - Bridge Stateless Mode
+## RELAYMSG (third/relaymsg) - Bridge Stateless Mode
 
-The `atl/relaymsg` module is installed and configured, enabling **draft/relaymsg** on UnrealIRCd. This allows the bridge to use stateless bridging: a single IRC connection can send messages that appear from arbitrary nicks via `RELAYMSG #channel nick/message :text`, without per-user puppet connections.
+The `third/relaymsg` module (atl.chat fork) is installed and configured, enabling **draft/relaymsg** on UnrealIRCd. This allows the bridge to use stateless bridging: a single IRC connection can send messages that appear from arbitrary nicks via `RELAYMSG #channel nick/message :text`, without per-user puppet connections.
 
 **Current setup:**
 
-- Module: `atl/relaymsg` (custom fork from contrib/relaymsg)
+- Module: `third/relaymsg` (atl.chat fork from contrib/relaymsg)
 - Config: `relaymsg { hostmask "bridge@${IRC_DOMAIN}"; }`
 - Permission: `relaymsg` granted to `bridge-oper` operclass (atl-bridge)
 
