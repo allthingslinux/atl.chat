@@ -119,6 +119,14 @@ setup_directories() {
         fi
     done
 
+    # Critical: bind-mounted data dir (e.g. data/xmpp/data) may have host ownership;
+    # Prosody needs write access for SQLite (MAM, PEP, etc.)
+    if [[ $EUID -eq 0 ]] && [[ -d "${PROSODY_DATA_DIR}/data" ]]; then
+        if ! chown -R "$PROSODY_USER:$PROSODY_USER" "${PROSODY_DATA_DIR}/data"; then
+            log_warn "chown of data dir failed - SQL/MAM may be read-only (check volume permissions)"
+        fi
+    fi
+
     log_info "Directory setup complete"
 }
 
