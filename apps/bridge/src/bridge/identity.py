@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+import re
 from typing import Any
 
 import httpx
@@ -220,3 +222,74 @@ class IdentityResolver:
         """Check if Discord user has a linked XMPP account in Portal."""
         jid = await self.discord_to_xmpp(discord_id)
         return jid is not None
+
+
+# IRC nick: alphanumeric, underscore, hyphen; max 32 chars
+_IRC_NICK_RE = re.compile(r"[^a-zA-Z0-9_\-\[\]\\`^{}|]")
+
+
+def _sanitize_irc_nick(nick: str) -> str:
+    """Sanitize string for use as IRC nick."""
+    sanitized = _IRC_NICK_RE.sub("", nick)
+    return (sanitized or "user")[:32]
+
+
+class DevIdentityResolver:
+    """Dev-only identity resolver for IRC puppets without Portal.
+
+    Maps Discord IDs to IRC nicks via BRIDGE_DEV_IRC_NICK_MAP (discord_id:nick,...)
+    or falls back to atl_dev_{discord_id[-8:]}.
+    Use when BRIDGE_PORTAL_BASE_URL is unset and BRIDGE_DEV_IRC_PUPPETS=true.
+    """
+
+    def __init__(self) -> None:
+        raw = os.environ.get("BRIDGE_DEV_IRC_NICK_MAP", "").strip()
+        self._nick_map: dict[str, str] = {}
+        for pair in raw.split(",") if raw else []:
+            part = pair.strip()
+            if ":" in part:
+                discord_id, nick = part.split(":", 1)
+                discord_id = discord_id.strip()
+                nick = _sanitize_irc_nick(nick.strip())
+                if discord_id and nick:
+                    self._nick_map[discord_id] = nick
+
+    async def discord_to_irc(self, discord_id: str) -> str | None:
+        """Get IRC nick for Discord user (from map or atl_dev_{id})."""
+        if discord_id in self._nick_map:
+            return self._nick_map[discord_id]
+        suffix = discord_id[-8:] if len(discord_id) >= 8 else discord_id
+        return f"atl_dev_{suffix}"
+
+    async def has_irc(self, discord_id: str) -> bool:
+        """All Discord users get a dev puppet."""
+        return True
+
+    async def discord_to_xmpp(self, discord_id: str) -> str | None:
+        """No XMPP mapping in dev mode."""
+        return None
+
+    async def discord_to_portal_user(self, discord_id: str) -> str | None:
+        return None
+
+    async def irc_to_xmpp(self, nick: str, server: str | None = None) -> str | None:
+        return None
+
+    async def irc_to_discord(self, nick: str, server: str | None = None) -> str | None:
+        """Reverse lookup: nick -> discord_id from BRIDGE_DEV_IRC_NICK_MAP only."""
+        return next((did for did, n in self._nick_map.items() if n == nick), None)
+
+    async def irc_to_portal_user(self, nick: str, server: str | None = None) -> str | None:
+        return None
+
+    async def xmpp_to_irc(self, jid: str) -> str | None:
+        return None
+
+    async def xmpp_to_discord(self, jid: str) -> str | None:
+        return None
+
+    async def xmpp_to_portal_user(self, jid: str) -> str | None:
+        return None
+
+    async def has_xmpp(self, discord_id: str) -> bool:
+        return False
