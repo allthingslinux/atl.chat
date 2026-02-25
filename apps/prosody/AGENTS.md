@@ -10,8 +10,8 @@ Prosody · Lua config · Docker · PostgreSQL (optional, for storage)
 
 ## Avatar Modules
 
-- **mod_http_avatar** — Serves vCard avatars at `http://host:5280/avatar/<username>`. Used by bridge for XMPP→IRC/Discord avatar sync.
-- **mod_pep_vcard_png_avatar** — Syncs PEP avatars to vCard and converts webp→PNG (Conversations compat). Replaces `mod_pep_vcard_avatar`. Requires `webp` package (dwebp) in container.
+- **mod_http_avatar** — Serves vCard avatars at `/avatar/<username>`.
+- **mod_http_pep_avatar** — Serves PEP avatars at `/pep_avatar/<username>`. Used by bridge for XMPP→IRC/Discord. Requires users to set Avatar PEP node public.
 
 ## Repository Structure
 

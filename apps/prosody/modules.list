@@ -36,4 +36,4 @@ mod_groups_internal
 mod_http_admin_api
 mod_support_contact
 mod_idlecompat
-mod_pep_vcard_png_avatar
+mod_http_pep_avatar
