@@ -69,9 +69,7 @@ class TestChannelRouter:
 
     def test_xmpp_without_muc_jid_treated_as_absent(self):
         router = ChannelRouter()
-        router.load_from_config(
-            {"mappings": [{"discord_channel_id": "123", "xmpp": {"other_key": "value"}}]}
-        )
+        router.load_from_config({"mappings": [{"discord_channel_id": "123", "xmpp": {"other_key": "value"}}]})
         assert router.all_mappings()[0].xmpp is None
 
     def test_xmpp_non_dict_value_treated_as_absent(self):

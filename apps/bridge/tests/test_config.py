@@ -4,7 +4,6 @@ import tempfile
 from pathlib import Path
 
 import pytest
-
 from bridge.config import Config, _deep_update, load_config
 
 
@@ -249,9 +248,7 @@ class TestConfig:
         assert Config({"irc_puppet_prejoin_commands": cmds}).irc_puppet_prejoin_commands == cmds
 
     def test_config_irc_puppet_prejoin_commands_non_list(self):
-        assert (
-            Config({"irc_puppet_prejoin_commands": "not-a-list"}).irc_puppet_prejoin_commands == []
-        )
+        assert Config({"irc_puppet_prejoin_commands": "not-a-list"}).irc_puppet_prejoin_commands == []
 
     @pytest.mark.parametrize(
         "prop,expected",

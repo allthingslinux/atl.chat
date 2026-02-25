@@ -65,9 +65,7 @@ class TestMessageInEvent:
         assert evt.is_action is True
 
     def test_message_in_avatar_url(self):
-        _, evt = message_in(
-            "discord", "ch1", "u1", "User", "hi", "msg1", avatar_url="https://example.com/a.png"
-        )
+        _, evt = message_in("discord", "ch1", "u1", "User", "hi", "msg1", avatar_url="https://example.com/a.png")
         assert evt.avatar_url == "https://example.com/a.png"
 
     def test_message_in_raw_none_defaults_to_empty_dict(self):

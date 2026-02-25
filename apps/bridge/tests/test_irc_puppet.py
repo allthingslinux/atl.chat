@@ -7,7 +7,6 @@ import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from bridge.adapters.irc_msgid import MessageIDTracker
 from bridge.adapters.irc_puppet import IRCPuppet, IRCPuppetManager
 
@@ -85,9 +84,7 @@ class TestIRCPuppet:
 
     @pytest.mark.asyncio
     async def test_on_connect_sends_prejoin_commands_with_nick_substitution(self):
-        puppet = IRCPuppet(
-            "mynick", "d1", prejoin_commands=["MODE {nick} +D", "PRIVMSG NickServ IDENTIFY pass"]
-        )
+        puppet = IRCPuppet("mynick", "d1", prejoin_commands=["MODE {nick} +D", "PRIVMSG NickServ IDENTIFY pass"])
         puppet.rawmsg = AsyncMock()
         with patch.object(type(puppet).__bases__[0], "on_connect", new=AsyncMock()):
             await puppet.on_connect()
@@ -153,9 +150,7 @@ class TestGetOrCreatePuppet:
             result = await manager.get_or_create_puppet("d1")
 
         assert result is mock_puppet
-        mock_puppet.connect.assert_awaited_once_with(
-            hostname="irc.libera.chat", port=6697, tls=True, tls_verify=True
-        )
+        mock_puppet.connect.assert_awaited_once_with(hostname="irc.libera.chat", port=6697, tls=True, tls_verify=True)
         assert "d1" in manager._puppets
 
     @pytest.mark.asyncio

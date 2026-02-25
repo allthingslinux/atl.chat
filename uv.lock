@@ -185,6 +185,7 @@ name = "atl-chat"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "bridge" },
     { name = "docker" },
     { name = "irc" },
     { name = "irc-toolkit" },
@@ -218,6 +219,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "bridge", editable = "apps/bridge" },
     { name = "docker", specifier = ">=7.1.0" },
     { name = "irc", specifier = ">=20.5.0" },
     { name = "irc-toolkit", specifier = ">=0.2.0" },
@@ -362,11 +364,6 @@ dependencies = [
 ]
 
 [package.dev-dependencies]
-dev = [
-    { name = "basedpyright" },
-    { name = "hypothesis" },
-    { name = "ruff" },
-]
 test = [
     { name = "pytest" },
     { name = "pytest-asyncio" },
@@ -401,11 +398,6 @@ requires-dist = [
 ]
 
 [package.metadata.requires-dev]
-dev = [
-    { name = "basedpyright" },
-    { name = "hypothesis", specifier = ">=6.151.9" },
-    { name = "ruff" },
-]
 test = [
     { name = "pytest" },
     { name = "pytest-asyncio" },

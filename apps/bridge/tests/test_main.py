@@ -113,9 +113,7 @@ class TestGetPortalEnvVars:
         from bridge.__main__ import _get_portal_url
 
         # Act
-        with patch.dict(
-            "os.environ", {"BRIDGE_PORTAL_BASE_URL": "https://portal.example.com"}, clear=False
-        ):
+        with patch.dict("os.environ", {"BRIDGE_PORTAL_BASE_URL": "https://portal.example.com"}, clear=False):
             result = _get_portal_url()
 
         # Assert

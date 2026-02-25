@@ -6,7 +6,6 @@ import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from bridge.adapters.irc import IRCClient
 from bridge.adapters.irc_msgid import MessageIDTracker, ReactionTracker
 

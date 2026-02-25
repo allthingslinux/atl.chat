@@ -102,19 +102,13 @@ class XMPPMessageIDTracker:
         cutoff = now - self._ttl
 
         # Clean XMPP -> Discord
-        expired_xmpp = [
-            xmpp_id
-            for xmpp_id, mapping in self._xmpp_to_discord.items()
-            if mapping.timestamp < cutoff
-        ]
+        expired_xmpp = [xmpp_id for xmpp_id, mapping in self._xmpp_to_discord.items() if mapping.timestamp < cutoff]
         for xmpp_id in expired_xmpp:
             del self._xmpp_to_discord[xmpp_id]
 
         # Clean Discord -> XMPP
         expired_discord = [
-            discord_id
-            for discord_id, mapping in self._discord_to_xmpp.items()
-            if mapping.timestamp < cutoff
+            discord_id for discord_id, mapping in self._discord_to_xmpp.items() if mapping.timestamp < cutoff
         ]
         for discord_id in expired_discord:
             del self._discord_to_xmpp[discord_id]

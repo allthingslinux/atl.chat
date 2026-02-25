@@ -249,9 +249,7 @@ class DiscordAdapter:
             msg = await channel.fetch_message(int(evt.message_id))
             if is_remove:
                 await msg.remove_reaction(evt.emoji, self._bot.user)
-                logger.debug(
-                    "Removed reaction {} from Discord message {}", evt.emoji, evt.message_id
-                )
+                logger.debug("Removed reaction {} from Discord message {}", evt.emoji, evt.message_id)
             else:
                 await msg.add_reaction(evt.emoji)
                 logger.debug("Added reaction {} to Discord message {}", evt.emoji, evt.message_id)
@@ -476,9 +474,7 @@ class DiscordAdapter:
             return
 
         # Get avatar URL
-        avatar_url = (
-            str(message.author.display_avatar.url) if message.author.display_avatar else None
-        )
+        avatar_url = str(message.author.display_avatar.url) if message.author.display_avatar else None
 
         _, evt = message_in(
             origin="discord",
@@ -521,9 +517,7 @@ class DiscordAdapter:
         if not content.strip():
             return
 
-        avatar_url = (
-            str(message.author.display_avatar.url) if message.author.display_avatar else None
-        )
+        avatar_url = str(message.author.display_avatar.url) if message.author.display_avatar else None
 
         msg_id = str(getattr(message, "id", None) or payload.message_id)
         logger.debug("Discord edit received: channel={} msg_id={}", channel_id, msg_id)
@@ -548,7 +542,7 @@ class DiscordAdapter:
             logger.debug("Skipping custom Discord emoji: {}", payload.emoji.name)
             return
         # Skip our own reactions (from bridge relaying XMPP/IRC) to prevent echo
-        if self._bot and payload.user_id == self._bot.user.id:
+        if self._bot and self._bot.user and payload.user_id == self._bot.user.id:
             return
 
         channel_id = str(payload.channel_id)
@@ -587,7 +581,7 @@ class DiscordAdapter:
         if not payload.emoji.is_unicode_emoji():
             return
         # Skip our own reaction removals (from bridge relaying) to prevent echo
-        if self._bot and payload.user_id == self._bot.user.id:
+        if self._bot and self._bot.user and payload.user_id == self._bot.user.id:
             return
 
         channel_id = str(payload.channel_id)

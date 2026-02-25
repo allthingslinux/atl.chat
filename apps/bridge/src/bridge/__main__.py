@@ -34,10 +34,7 @@ def setup_logging(verbose: bool = False) -> None:
     logger.add(
         sys.stderr,
         level="DEBUG" if verbose else "INFO",
-        format=(
-            "<green>{time:HH:mm:ss}</green> | <level>{level: <8}</level> | "
-            "<cyan>{name}</cyan> | {message}"
-        ),
+        format=("<green>{time:HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan> | {message}"),
     )
 
 
@@ -50,9 +47,7 @@ def reload_config(config_path: Path) -> Config:
 
 def main() -> None:
     """Main entrypoint."""
-    parser = argparse.ArgumentParser(
-        description="ATL Bridge — Discord–IRC–XMPP multi-presence bridge"
-    )
+    parser = argparse.ArgumentParser(description="ATL Bridge — Discord–IRC–XMPP multi-presence bridge")
     parser.add_argument(
         "--config",
         "-c",

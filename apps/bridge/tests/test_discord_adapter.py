@@ -7,7 +7,6 @@ import contextlib
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from bridge.events import (
     MessageDeleteOut,
     MessageIn,
@@ -107,9 +106,7 @@ def test_resolve_discord_message_id_from_irc(bus: Bus, router: ChannelRouter) ->
     assert adapter._resolve_discord_message_id("unknown", "irc") is None
 
 
-def test_resolve_discord_message_id_unknown_origin_returns_none(
-    bus: Bus, router: ChannelRouter
-) -> None:
+def test_resolve_discord_message_id_unknown_origin_returns_none(bus: Bus, router: ChannelRouter) -> None:
     from bridge.adapters.disc import DiscordAdapter
 
     adapter = DiscordAdapter(bus, router, identity_resolver=None)
@@ -349,9 +346,7 @@ async def test_edit_fallback_to_send_when_resolve_fails(bus: Bus, router: Channe
 
 
 @pytest.mark.asyncio
-async def test_webhook_messages_are_skipped_to_prevent_echo(
-    bus: Bus, router: ChannelRouter
-) -> None:
+async def test_webhook_messages_are_skipped_to_prevent_echo(bus: Bus, router: ChannelRouter) -> None:
     """Messages from webhooks (our bridge output) must not be republished to prevent echo loops."""
     from bridge.adapters.disc import DiscordAdapter
 

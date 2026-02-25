@@ -5,11 +5,10 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 import pytest
-from cachetools import TTLCache
-
 from bridge.adapters.xmpp_component import XMPPComponent
 from bridge.adapters.xmpp_msgid import XMPPMessageIDTracker
 from bridge.events import MessageDelete, MessageIn, ReactionIn
+from cachetools import TTLCache
 
 pytestmark = pytest.mark.filterwarnings("ignore::pytest.PytestUnraisableExceptionWarning")
 
@@ -95,9 +94,7 @@ class TestOnGroupchatMessage:
         bus = MagicMock()
         comp = make_component(router=router, bus=bus)
 
-        msg = MockMsg(
-            from_jid="room@conf.example.com/nick", body="hello", mucnick="nick", msg_id="xmpp-1"
-        )
+        msg = MockMsg(from_jid="room@conf.example.com/nick", body="hello", mucnick="nick", msg_id="xmpp-1")
         comp._on_groupchat_message(msg)
 
         bus.publish.assert_called_once()
@@ -136,9 +133,7 @@ class TestOnGroupchatMessage:
         bus = MagicMock()
         comp = make_component(router=router, bus=bus)
 
-        msg = MockMsg(
-            "room@conf.example.com/nick", body="secret", plugins={"spoiler": MockPlugin()}
-        )
+        msg = MockMsg("room@conf.example.com/nick", body="secret", plugins={"spoiler": MockPlugin()})
         comp._on_groupchat_message(msg)
 
         _, evt = bus.publish.call_args[0]
@@ -188,9 +183,7 @@ class TestOnGroupchatMessage:
         bus = MagicMock()
         comp = make_component(router=router, bus=bus)
 
-        ref_plugin = MockPlugin(
-            {"type": "reply", "uri": "xmpp:room@conf.example.com?id=ref-target"}
-        )
+        ref_plugin = MockPlugin({"type": "reply", "uri": "xmpp:room@conf.example.com?id=ref-target"})
 
         class MsgWithRef(MockMsg):
             def __getitem__(self, key):

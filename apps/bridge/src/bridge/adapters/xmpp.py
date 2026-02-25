@@ -32,8 +32,8 @@ class XMPPAdapter:
         self._outbound: asyncio.Queue[MessageOut | MessageDeleteOut | ReactionOut] = asyncio.Queue()
         self._send_lock = asyncio.Lock()
         self._component: XMPPComponent | None = None
-        self._consumer_task: asyncio.Task | None = None
-        self._component_task: asyncio.Task | None = None
+        self._consumer_task: asyncio.Task[None] | None = None
+        self._component_task: asyncio.Future[None] | None = None
 
     @property
     def name(self) -> str:
@@ -89,9 +89,7 @@ class XMPPAdapter:
 
                         # Set avatar if provided
                         if evt.avatar_url:
-                            await self._component.set_avatar_for_user(
-                                evt.author_id, nick, evt.avatar_url
-                            )
+                            await self._component.set_avatar_for_user(evt.author_id, nick, evt.avatar_url)
 
                         # Check if this is an edit
                         is_edit = evt.raw.get("is_edit", False)
@@ -99,9 +97,7 @@ class XMPPAdapter:
                             # Look up original XMPP message ID (stored when we sent Discord→XMPP)
                             lookup_id = evt.message_id or evt.raw.get("replace_id")
                             original_xmpp_id = (
-                                self._component._msgid_tracker.get_xmpp_id(lookup_id)
-                                if lookup_id
-                                else None
+                                self._component._msgid_tracker.get_xmpp_id(lookup_id) if lookup_id else None
                             )
                             logger.debug(
                                 "Discord edit lookup: discord_msg_id={} lookup_id={} -> xmpp_id={}",
@@ -128,9 +124,7 @@ class XMPPAdapter:
                             # Look up reply target XMPP message ID if replying
                             reply_to_xmpp_id = None
                             if evt.reply_to_id:
-                                reply_to_xmpp_id = self._component._msgid_tracker.get_xmpp_id(
-                                    evt.reply_to_id
-                                )
+                                reply_to_xmpp_id = self._component._msgid_tracker.get_xmpp_id(evt.reply_to_id)
 
                             # Send new message; store mapping before send so stanza-id from
                             # MUC echo can update it (required for Discord→XMPP edits)

@@ -84,12 +84,7 @@ def _capture_stanza_id_from_echo(tracker: XMPPMessageIDTracker, msg: Any, room_j
             our_id,
         )
     # Only replace our_id for corrections when server rewrote top-level id
-    if (
-        stanza_id
-        and stanza_id != our_id
-        and msg_id_attr == stanza_id
-        and tracker.update_xmpp_id(our_id, stanza_id)
-    ):
+    if stanza_id and stanza_id != our_id and msg_id_attr == stanza_id and tracker.update_xmpp_id(our_id, stanza_id):
         logger.info(
             "Updated msgid mapping {} -> {} (server rewrote id); corrections use stanza-id",
             our_id,
@@ -129,9 +124,7 @@ class XMPPComponent(ComponentXMPP):
         # Dedupe: MUC delivers same message to each occupant (listener + puppets) — process once
         self._seen_msg_ids: TTLCache[tuple[str, str], None] = TTLCache(maxsize=500, ttl=60)
         # XEP-0444: track per-user reaction sets to detect removals (full set sent each update)
-        self._reactions_by_user: TTLCache[tuple[str, str], frozenset[str]] = TTLCache(
-            maxsize=2000, ttl=3600
-        )
+        self._reactions_by_user: TTLCache[tuple[str, str], frozenset[str]] = TTLCache(maxsize=2000, ttl=3600)
 
         # Register XEPs
         self.register_plugin("xep_0030")  # Service Discovery
@@ -195,9 +188,7 @@ class XMPPComponent(ComponentXMPP):
                             timeout=30,
                             maxchars=0,  # Skip MUC history to avoid flooding
                         )
-                        logger.info(
-                            "Joined MUC {} as listener ({})", mapping.xmpp.muc_jid, bridge_nick
-                        )
+                        logger.info("Joined MUC {} as listener ({})", mapping.xmpp.muc_jid, bridge_nick)
                     except XMPPError as exc:
                         logger.warning("Failed to join MUC {}: {}", mapping.xmpp.muc_jid, exc)
 
@@ -240,11 +231,7 @@ class XMPPComponent(ComponentXMPP):
             real_jid = muc.get_jid_property(room_jid, nick, "jid")
             if real_jid:
                 sender_domain = JID(str(real_jid)).domain
-                our_domain = (
-                    JID(self._component_jid).domain
-                    if "@" in self._component_jid
-                    else self._component_jid
-                )
+                our_domain = JID(self._component_jid).domain if "@" in self._component_jid else self._component_jid
                 if sender_domain == our_domain:
                     logger.debug(
                         "Echo from our puppet {} in {}; capturing stanza-id for correction mapping",
@@ -310,11 +297,7 @@ class XMPPComponent(ComponentXMPP):
         # the top-level id. Reactions in MUC require the stanza-id from the MUC server.
         stanza_id_val = sid_elem.get("id") if sid_elem is not None and sid_elem.get("id") else None
         top_level_id = msg.get("id")
-        xmpp_msg_id = (
-            str(stanza_id_val)
-            if stanza_id_val
-            else (top_level_id or f"xmpp:{room_jid}:{nick}:{id(msg)}")
-        )
+        xmpp_msg_id = str(stanza_id_val) if stanza_id_val else (top_level_id or f"xmpp:{room_jid}:{nick}:{id(msg)}")
 
         # Collect ID aliases for edit lookup: clients may use origin-id or top-level id for
         # replace_id in corrections; we must resolve any of them to Discord.
@@ -369,11 +352,7 @@ class XMPPComponent(ComponentXMPP):
             real_jid = muc.get_jid_property(room_jid, nick, "jid")
             if real_jid:
                 sender_domain = JID(str(real_jid)).domain
-                our_domain = (
-                    JID(self._component_jid).domain
-                    if "@" in self._component_jid
-                    else self._component_jid
-                )
+                our_domain = JID(self._component_jid).domain if "@" in self._component_jid else self._component_jid
                 if sender_domain == our_domain:
                     logger.debug("Skipping XMPP reaction echo from our component ({})", nick)
                     return
@@ -493,7 +472,7 @@ class XMPPComponent(ComponentXMPP):
             # Extract room from peer JID if it's a MUC participant
             peer_str = str(stream.peer)
             if "/" in peer_str:
-                room_jid = peer_str.split("/")[0]
+                room_jid = peer_str.split("/", maxsplit=1)[0]
                 nick = peer_str.split("/")[1]
             else:
                 room_jid = peer_str
@@ -530,7 +509,7 @@ class XMPPComponent(ComponentXMPP):
             )
             self._bus.publish("xmpp", evt)
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.warning("IBB stream timeout: sid={}", stream.sid)
         except Exception as exc:
             logger.exception("IBB stream error: {}", exc)
@@ -538,9 +517,7 @@ class XMPPComponent(ComponentXMPP):
             if stream.sid in self._ibb_streams:
                 del self._ibb_streams[stream.sid]
 
-    async def send_file_as_user(
-        self, discord_id: str, peer_jid: str, data: bytes, nick: str
-    ) -> None:
+    async def send_file_as_user(self, discord_id: str, peer_jid: str, data: bytes, nick: str) -> None:
         """Send file via IBB stream from a specific Discord user's JID."""
         escaped_nick = _escape_jid_node(nick)
         user_jid = f"{escaped_nick}@{self._component_jid}"
@@ -567,9 +544,7 @@ class XMPPComponent(ComponentXMPP):
         except Exception as exc:
             logger.exception("Failed to send IBB stream: {}", exc)
 
-    async def send_file_url_as_user(
-        self, discord_id: str, muc_jid: str, data: bytes, filename: str, nick: str
-    ) -> None:
+    async def send_file_url_as_user(self, discord_id: str, muc_jid: str, data: bytes, filename: str, nick: str) -> None:
         """Upload file via HTTP (XEP-0363) and send URL to MUC as user."""
         http_upload = self.plugin.get("xep_0363", None)
         if not http_upload:
@@ -723,9 +698,7 @@ class XMPPComponent(ComponentXMPP):
         except Exception as exc:
             logger.exception("Failed to send reaction: {}", exc)
 
-    async def send_retraction_as_user(
-        self, discord_id: str, muc_jid: str, target_msg_id: str, nick: str
-    ) -> None:
+    async def send_retraction_as_user(self, discord_id: str, muc_jid: str, target_msg_id: str, nick: str) -> None:
         """Send message retraction from a specific Discord user's JID."""
         escaped_nick = _escape_jid_node(nick)
         user_jid = f"{escaped_nick}@{self._component_jid}"
@@ -820,9 +793,7 @@ class XMPPComponent(ComponentXMPP):
         if not self._session:
             return None
         try:
-            async with self._session.get(
-                avatar_url, timeout=aiohttp.ClientTimeout(total=10)
-            ) as resp:
+            async with self._session.get(avatar_url, timeout=aiohttp.ClientTimeout(total=10)) as resp:
                 if resp.status == 200:
                     return await resp.read()
                 logger.warning("Failed to fetch avatar from {}: status {}", avatar_url, resp.status)

@@ -12,16 +12,16 @@ license = { text = "MIT" }
 authors = [{ name = "All Things Linux", email = "admin@allthingslinux.org" }]
 
 dependencies = [
-    "discord.py",
-    "slixmpp",
-    "httpx",
-    "pyyaml",
-    "python-dotenv",
-    "cachetools",
-    "loguru",
-    "tenacity",
-    "pydle>=1.1.0",
-    "uvloop>=0.22.1; sys_platform != 'win32'",
+  "discord.py",
+  "slixmpp",
+  "httpx",
+  "pyyaml",
+  "python-dotenv",
+  "cachetools",
+  "loguru",
+  "tenacity",
+  "pydle>=1.1.0",
+  "uvloop>=0.22.1; sys_platform != 'win32'",
 ]
 
 [project.urls]
@@ -32,28 +32,23 @@ homepage = "https://atl.chat"
 bridge = "bridge.__main__:main"
 
 [dependency-groups]
-dev = [
-    "ruff",
-    "basedpyright",
-    "hypothesis>=6.151.9",
-]
 test = [
-    "pytest",
-    "pytest-asyncio",
-    "pytest-mock",
-    "pytest-cov",
-    "pytest-timeout",
-    "pytest-httpx",
-    "pytest-socket",
-    "pytest-loguru",
-    "pytest-randomly",
-    "pytest-xdist",
-    "pytest-html",
+  "pytest",
+  "pytest-asyncio",
+  "pytest-mock",
+  "pytest-cov",
+  "pytest-timeout",
+  "pytest-httpx",
+  "pytest-socket",
+  "pytest-loguru",
+  "pytest-randomly",
+  "pytest-xdist",
+  "pytest-html",
 ]
 types = ["types-pyyaml", "types-mock", "annotated-types"]
 
 [tool.uv]
-default-groups = ["dev", "test", "types"]
+default-groups = ["test", "types"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/bridge"]
@@ -61,49 +56,17 @@ packages = ["src/bridge"]
 [tool.hatch.build.targets.sdist]
 include = ["src/bridge", "config.example.yaml"]
 
-[tool.ruff]
-exclude = [
-    ".git",
-    ".venv",
-    "venv",
-    "__pypackages__",
-    ".pytest_cache",
-    ".ruff_cache",
-    "build",
-    "dist",
-]
-line-length = 100
-indent-width = 4
-target-version = "py310"
-
-[tool.ruff.lint]
-select = ["E", "F", "I", "N", "W", "UP", "B", "SIM", "RUF"]
-ignore = [
-    "E501",
-    "RUF001", # ambiguous unicode (en-dash in descriptions intentional)
-    "RUF002",
-    "RUF003",
-    "B027",   # empty method in ABC (push_event override point)
-]
-fixable = ["ALL"]
-unfixable = []
-
-[tool.ruff.format]
-quote-style = "double"
-indent-style = "space"
-line-ending = "lf"
-
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = [
-    "--strict-markers",
-    "--tb=short",
-    "-v",
-    "--durations=10",
-    "--asyncio-mode=auto",
+  "--strict-markers",
+  "--tb=short",
+  "-v",
+  "--durations=10",
+  "--asyncio-mode=auto",
 ]
 asyncio_mode = "auto"
 timeout = 60
@@ -111,20 +74,20 @@ minversion = "8.0"
 filterwarnings = ["ignore::DeprecationWarning"]
 pythonpath = ["src"]
 norecursedirs = [
-    ".git",
-    ".venv",
-    "venv",
-    "__pypackages__",
-    "build",
-    "dist",
-    ".pytest_cache",
-    ".ruff_cache",
-    ".hypothesis",
+  ".git",
+  ".venv",
+  "venv",
+  "__pypackages__",
+  "build",
+  "dist",
+  ".pytest_cache",
+  ".ruff_cache",
+  ".hypothesis",
 ]
 markers = [
-    "unit: Unit tests with isolated components",
-    "integration: Integration tests combining multiple components",
-    "async: Async tests using asyncio",
+  "unit: Unit tests with isolated components",
+  "integration: Integration tests combining multiple components",
+  "async: Async tests using asyncio",
 ]
 
 [tool.coverage.run]
@@ -137,12 +100,26 @@ omit = ["*/tests/*", "*/test_*.py", "*/conftest.py"]
 precision = 2
 show_missing = true
 exclude_lines = [
-    "pragma: no cover",
-    "raise NotImplementedError",
-    "if TYPE_CHECKING:",
+  "pragma: no cover",
+  "raise NotImplementedError",
+  "if TYPE_CHECKING:",
 ]
 
 [tool.basedpyright]
-pythonVersion = "3.10"
+# Inherit root config; bridge-specific suppressions for adapter cycles and typing.
+pythonVersion = "3.11"
 typeCheckingMode = "basic"
-exclude = [".venv", "__pypackages__", ".pytest_cache", "references"]
+reportMissingTypeStubs = false
+reportImportCycles = "none"
+reportMissingTypeArgument = false
+reportAny = "none"
+reportUnannotatedClassAttribute = false
+reportUnusedParameter = "none"
+reportUnusedCallResult = "none"
+reportPrivateUsage = "none"
+reportImplicitStringConcatenation = "none"
+reportArgumentType = "none"
+reportUnknownParameterType = "none"
+reportMissingParameterType = "none"
+reportUnknownMemberType = "none"
+reportUnknownArgumentType = "none"

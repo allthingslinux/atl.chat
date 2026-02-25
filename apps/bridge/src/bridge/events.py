@@ -219,9 +219,7 @@ def config_reload() -> ConfigReload:
 
 
 @event("message_delete")
-def message_delete(
-    origin: str, channel_id: str, message_id: str, *, author_id: str = ""
-) -> MessageDelete:
+def message_delete(origin: str, channel_id: str, message_id: str, *, author_id: str = "") -> MessageDelete:
     return MessageDelete(
         origin=origin,
         channel_id=channel_id,

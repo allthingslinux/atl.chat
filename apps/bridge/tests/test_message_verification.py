@@ -1,8 +1,8 @@
 """Test message verification and assertions."""
 
 import pytest
-
 from bridge.gateway.router import ChannelMapping, IrcTarget, XmppTarget
+
 from tests.harness import BridgeTestHarness
 
 

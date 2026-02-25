@@ -50,17 +50,13 @@ class MessageIDTracker:
         cutoff = now - self._ttl
 
         # Clean IRC -> Discord
-        expired_irc = [
-            msgid for msgid, mapping in self._irc_to_discord.items() if mapping.timestamp < cutoff
-        ]
+        expired_irc = [msgid for msgid, mapping in self._irc_to_discord.items() if mapping.timestamp < cutoff]
         for msgid in expired_irc:
             del self._irc_to_discord[msgid]
 
         # Clean Discord -> IRC
         expired_discord = [
-            discord_id
-            for discord_id, mapping in self._discord_to_irc.items()
-            if mapping.timestamp < cutoff
+            discord_id for discord_id, mapping in self._discord_to_irc.items() if mapping.timestamp < cutoff
         ]
         for discord_id in expired_discord:
             del self._discord_to_irc[discord_id]
@@ -102,9 +98,7 @@ class ReactionTracker:
         self._cleanup()
         return self._msgid_to_key.get(irc_reaction_msgid)
 
-    def store_incoming(
-        self, irc_reaction_msgid: str, discord_id: str, emoji: str, author_id: str
-    ) -> None:
+    def store_incoming(self, irc_reaction_msgid: str, discord_id: str, emoji: str, author_id: str) -> None:
         """Store incoming IRC reaction TAGMSG for REDACT→removal mapping."""
         key = (discord_id, emoji, author_id)
         self._key_to_msgid[key] = ReactionMapping(

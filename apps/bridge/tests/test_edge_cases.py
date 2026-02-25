@@ -3,11 +3,11 @@
 import asyncio
 
 import pytest
-
 from bridge.events import message_in
 from bridge.gateway.bus import Bus
 from bridge.gateway.relay import Relay
 from bridge.gateway.router import ChannelRouter
+
 from tests.mocks import MockDiscordAdapter, MockIRCAdapter
 
 
@@ -275,9 +275,7 @@ class TestConcurrency:
 
         # Act
         async def send_message(channel_id, i):
-            _, evt = message_in(
-                "discord", channel_id, f"u{i}", f"User{i}", f"Message {i}", f"msg{i}"
-            )
+            _, evt = message_in("discord", channel_id, f"u{i}", f"User{i}", f"Message {i}", f"msg{i}")
             bus.publish("discord", evt)
 
         await asyncio.gather(

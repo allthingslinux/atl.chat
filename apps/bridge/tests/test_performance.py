@@ -4,11 +4,11 @@ import asyncio
 import time
 
 import pytest
-
 from bridge.events import message_in
 from bridge.gateway.bus import Bus
 from bridge.gateway.relay import Relay
 from bridge.gateway.router import ChannelRouter
+
 from tests.mocks import MockIRCAdapter
 
 
@@ -81,9 +81,7 @@ class TestPerformance:
         # Act
         async def send_messages(channel_id, count):
             for i in range(count):
-                _, evt = message_in(
-                    "discord", channel_id, f"u{i}", f"User{i}", f"Msg {i}", f"msg{i}"
-                )
+                _, evt = message_in("discord", channel_id, f"u{i}", f"User{i}", f"Msg {i}", f"msg{i}")
                 bus.publish("discord", evt)
                 await asyncio.sleep(0)  # Yield to event loop
 

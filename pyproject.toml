@@ -11,6 +11,7 @@ maintainers = [
 ]
 # Root is a workspace orchestrator; includes IRC test dependencies.
 dependencies = [
+  "bridge",
   "docker>=7.1.0",
   "pyyaml>=6.0.2",
   "requests>=2.32.5",
@@ -29,6 +30,9 @@ homepage = "https://atl.chat"
 # WORKSPACE DEFINITION
 [tool.uv.workspace]
 members = ["apps/bridge"]
+
+[tool.uv.sources]
+bridge = { workspace = true }
 
 [dependency-groups]
 dev = [
@@ -154,7 +158,14 @@ norecursedirs = [
 ]
 
 [tool.ruff]
-exclude = [".venv", "__pycache__", ".pytest_cache", "logs", "data", "tests/legacy"]
+exclude = [
+  ".venv",
+  "__pycache__",
+  ".pytest_cache",
+  "logs",
+  "data",
+  "tests/legacy",
+]
 line-length = 120
 target-version = "py311"
 
@@ -179,23 +190,55 @@ select = [
 [tool.ruff.lint.per-file-ignores]
 # Test infra: irctest uses camelCase (assertEqual, connectClient), conditional imports
 "tests/**" = [
-  "PLC0415",   # Lazy imports in fixtures
-  "N806",      # Class-like variables (CustomClient from pydle.featurize)
-  "N802",      # irctest camelCase API (assertEqual, connectClient, etc.)
-  "N815",      # controllerClass (irctest)
-  "N818",      # Exception names (irctest)
-  "E402",      # Conditional imports after importorskip
-  "PLR0911",   # Too many return statements
-  "PLR0912",   # Too many branches
-  "B904",      # raise from (test infra)
-  "SIM102",    # Collapsible if
-  "SIM105",    # contextlib.suppress
-  "PLW1641",   # __hash__ (dataclass)
-  "PLW2901",   # Loop variable overwrite
-  "E721",      # Type comparison
-  "E722",      # Bare except
-  "RUF012",    # Mutable class default
-  "UP035",     # typing.ContextManager deprecated
+  "PLC0415", # Lazy imports in fixtures
+  "N806",    # Class-like variables (CustomClient from pydle.featurize)
+  "N802",    # irctest camelCase API (assertEqual, connectClient, etc.)
+  "N815",    # controllerClass (irctest)
+  "N818",    # Exception names (irctest)
+  "E402",    # Conditional imports after importorskip
+  "PLR0911", # Too many return statements
+  "PLR0912", # Too many branches
+  "B904",    # raise from (test infra)
+  "SIM102",  # Collapsible if
+  "SIM105",  # contextlib.suppress
+  "PLW1641", # __hash__ (dataclass)
+  "PLW2901", # Loop variable overwrite
+  "E721",    # Type comparison
+  "E722",    # Bare except
+  "RUF012",  # Mutable class default
+  "UP035",   # typing.ContextManager deprecated
+]
+# Bridge tests: lazy imports, TimeoutError alias, datetime.UTC, en-dash in comments
+"apps/bridge/tests/**" = [
+  "PLC0415", # Lazy imports in test setup
+  "UP041",   # asyncio.TimeoutError vs TimeoutError (test mocks)
+  "UP017",   # datetime.UTC alias
+  "RUF003",  # En-dash in comments (line refs like "368–372")
+  "N806",    # Class-like variables
+  "N802",    # camelCase
+  "E402",    # Conditional imports
+  "PLR0911",
+  "PLR0912",
+  "B904",
+  "SIM102",
+  "SIM105",
+  "PLW1641",
+  "PLW2901",
+  "E721",
+  "E722",
+  "RUF012",
+  "UP035",
+]
+# Bridge src: lazy imports (circular import avoidance), complexity
+"apps/bridge/src/**" = [
+  "RUF001",   # Ambiguous unicode (en-dash in descriptions)
+  "RUF002",
+  "RUF003",
+  "B027",     # Empty method in ABC (push_event override)
+  "PLC0415",  # Lazy imports (avoid disc<->irc<->xmpp cycles)
+  "PLR0912",  # Too many branches
+  "PLR0915",  # Too many statements
+  "PLR0911",  # Too many return statements
 ]
 
 [tool.ruff.format]
@@ -205,3 +248,30 @@ line-ending = "lf"
 
 [tool.uv]
 cache-dir = ".uv_cache"
+
+[tool.basedpyright]
+# Centralized dev tooling; bridge and root share this config.
+pythonVersion = "3.11"
+typeCheckingMode = "basic"
+reportMissingTypeStubs = false
+reportImportCycles = "none"
+reportMissingTypeArgument = false
+reportAny = "none"
+reportUnannotatedClassAttribute = false
+reportUnusedParameter = "none"
+reportUnusedCallResult = "none"
+reportPrivateUsage = "none"
+reportImplicitStringConcatenation = "none"
+reportArgumentType = "none"
+reportUnknownParameterType = "none"
+reportMissingParameterType = "none"
+reportUnknownMemberType = "none"
+reportUnknownArgumentType = "none"
+exclude = [
+  ".venv",
+  "venv",
+  "__pycache__",
+  ".pytest_cache",
+  "data",
+  "*.egg-info",
+]

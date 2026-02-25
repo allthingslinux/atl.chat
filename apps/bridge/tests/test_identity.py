@@ -3,7 +3,6 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from bridge.identity import IdentityResolver, PortalClient
 
 
@@ -85,9 +84,7 @@ class TestDiscordToXmpp:
     @pytest.mark.asyncio
     async def test_discord_to_xmpp_shares_cache_with_discord_to_irc(self):
         """discord_to_irc and discord_to_xmpp use the same cache key — one API call serves both."""
-        client, resolver = make_resolver(
-            {"discord_id": "123", "irc_nick": "user", "xmpp_jid": "user@example.com"}
-        )
+        client, resolver = make_resolver({"discord_id": "123", "irc_nick": "user", "xmpp_jid": "user@example.com"})
         await resolver.discord_to_irc("123")
         assert await resolver.discord_to_xmpp("123") == "user@example.com"
         client.get_identity_by_discord.assert_called_once()

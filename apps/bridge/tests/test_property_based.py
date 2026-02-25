@@ -1,18 +1,15 @@
 """Property-based tests using hypothesis."""
 
+from bridge.events import message_in
 from hypothesis import given
 from hypothesis import strategies as st
-
-from bridge.events import message_in
 
 
 class TestPropertyBased:
     """Property-based tests for invariants."""
 
     @given(st.text(), st.text(), st.text(), st.text(), st.text(), st.text())
-    def test_message_in_roundtrip(
-        self, origin, channel_id, author_id, author_display, content, message_id
-    ):
+    def test_message_in_roundtrip(self, origin, channel_id, author_id, author_display, content, message_id):
         """Property: MessageIn preserves all input data."""
         # Arrange & Act
         _, evt = message_in(

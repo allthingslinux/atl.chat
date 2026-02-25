@@ -1,9 +1,9 @@
 """Example tests showing bridge message flow."""
 
 import pytest
-
 from bridge.events import MessageOut
 from bridge.gateway.router import ChannelMapping, IrcTarget, XmppTarget
+
 from tests.harness import BridgeTestHarness
 
 

@@ -5,7 +5,6 @@ from __future__ import annotations
 from unittest.mock import AsyncMock
 
 import pytest
-
 from bridge.identity import IdentityResolver, PortalClient
 
 
@@ -124,9 +123,7 @@ class TestIrcToPortalUser:
     @pytest.mark.asyncio
     async def test_irc_to_portal_user_with_server(self):
         # Arrange
-        client, resolver = make_resolver(
-            {"user_id": "portal-u-3"}, method="get_identity_by_irc_nick"
-        )
+        client, resolver = make_resolver({"user_id": "portal-u-3"}, method="get_identity_by_irc_nick")
 
         # Act
         result = await resolver.irc_to_portal_user("mynick", "irc.libera.chat")
@@ -185,9 +182,7 @@ class TestIrcToXmpp:
     @pytest.mark.asyncio
     async def test_irc_to_xmpp(self):
         # Arrange
-        _, resolver = make_resolver(
-            {"xmpp_jid": "nick@xmpp.example.com"}, method="get_identity_by_irc_nick"
-        )
+        _, resolver = make_resolver({"xmpp_jid": "nick@xmpp.example.com"}, method="get_identity_by_irc_nick")
 
         # Act
         result = await resolver.irc_to_xmpp("mynick")
