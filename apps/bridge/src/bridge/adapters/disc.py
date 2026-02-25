@@ -489,6 +489,11 @@ class DiscordAdapter:
             avatar_url=avatar_url,
             raw={},
         )
+        logger.info(
+            "Discord message bridged: channel={} author={}",
+            channel_id,
+            message.author.display_name or message.author.name,
+        )
         self._bus.publish("discord", evt)
 
     async def _on_raw_message_edit(self, payload) -> None:
