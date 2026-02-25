@@ -1,0 +1,13 @@
+# The Lounge - Web IRC client (loaded via root: mod lounge './apps/thelounge')
+
+default:
+    @just --list
+
+add name:
+    docker compose -f ../../compose.yaml -p atl-chat exec atl-thelounge thelounge add {{name}}
+
+list:
+    docker compose -f ../../compose.yaml -p atl-chat exec atl-thelounge thelounge list
+
+reset name:
+    docker compose -f ../../compose.yaml -p atl-chat exec atl-thelounge thelounge reset {{name}}

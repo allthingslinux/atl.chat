@@ -1,0 +1,36 @@
+/* The Lounge - ATL Chat Web IRC Client
+ * Generated from config.js.template by prepare-config.sh
+ * envsubst placeholders: IRC_NETWORK_NAME, THELOUNGE_WEBIRC_PASSWORD, IRC_LOUNGE_REJECT_UNAUTHORIZED, THELOUNGE_DELETE_UPLOADS_AFTER_MINUTES
+ */
+"use strict";
+
+module.exports = {
+  public: false,
+  reverseProxy: true,
+  theme: "default",
+
+  defaults: {
+    name: "${IRC_NETWORK_NAME}",
+    host: "atl-irc-server",
+    port: 6697,
+    tls: true,
+    rejectUnauthorized: ${IRC_LOUNGE_REJECT_UNAUTHORIZED},
+    nick: "atl%%",
+    username: "atl",
+    realname: "The Lounge User",
+    join: "#help",
+  },
+
+  webirc: {
+    "atl-irc-server": "${THELOUNGE_WEBIRC_PASSWORD}",
+    "irc.atl.chat": "${THELOUNGE_WEBIRC_PASSWORD}",
+    "irc.localhost": "${THELOUNGE_WEBIRC_PASSWORD}",
+  },
+
+  fileUpload: {
+    enable: true,
+  },
+
+  /* thelounge-plugin-janitor: minutes before deleting uploads (0 = disable). Core warns "Unknown key" — expected. */
+  deleteUploadsAfter: ${THELOUNGE_DELETE_UPLOADS_AFTER_MINUTES},
+};
