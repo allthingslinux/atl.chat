@@ -2,7 +2,7 @@
 
 > Scope: `tests/` directory. Inherits root [AGENTS.md](../AGENTS.md).
 
-799-test pytest suite covering all bridge components.
+819-test pytest suite covering all bridge components.
 
 ## Quick Facts
 
@@ -49,6 +49,7 @@ Use `BridgeTestHarness` for any test that needs a real Bus + Relay wired togethe
 | `test_xmpp_features.py` | XMPP XEP features (0308, 0424, 0444, 0461, 0382) |
 | `test_xmpp_msgid.py` | `XMPPMessageIDTracker`: store, bidirectional lookup, room JID, TTL expiry |
 | `test_formatting.py` | `discord_to_irc`, `irc_to_discord`, `split_irc_message` |
+| `test_mention_resolution.py` | `@nick` → Discord mention resolution via guild member lookup |
 | `test_message_formatting.py` | Extended formatting: edge cases, Unicode, control codes |
 | `test_file_transfers.py` | XMPP HTTP Upload (XEP-0363) + IBB (XEP-0047) fallback |
 | `test_presence_events.py` | Join/Part/Quit relay across protocols |
@@ -73,8 +74,8 @@ Use `BridgeTestHarness` for any test that needs a real Bus + Relay wired togethe
 
 ## Commands
 
-- `just test` — all tests
-- `just test -k foo` — run tests matching `foo`
+- `just bridge test` — all tests (from monorepo root)
+- `just bridge test -k foo` — run tests matching `foo`
 - `uv run pytest tests -v` — verbose output
 - `uv run pytest tests --cov --cov-report=html` — with coverage
 

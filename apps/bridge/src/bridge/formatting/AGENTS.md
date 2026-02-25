@@ -9,8 +9,10 @@ Stateless format converters between Discord markdown and IRC control codes, plus
 | File | Purpose |
 |------|---------|
 | `discord_to_irc.py` | Strip Discord markdown to plain text for IRC; preserves URLs |
-| `irc_to_discord.py` | Convert IRC control codes to Discord markdown; strips colors |
+| `irc_to_discord.py` | Convert IRC control codes to Discord markdown; strips colors; strikethrough `\x1e` → `~~` |
 | `irc_message_split.py` | Split long messages at IRC's byte limit, preserving word boundaries and UTF-8 |
+| `reply_fallback.py` | Reply threading fallback when msgid unavailable |
+| `mention_resolution.py` | Resolve `@nick` in IRC/XMPP content to Discord `<@userId>` via guild member lookup |
 
 ## `discord_to_irc.py`
 
