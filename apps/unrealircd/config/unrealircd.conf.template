@@ -338,6 +338,14 @@ include "snomasks.default.conf";
 /* ---------- Project-specific ---------- */
 loadmodule "cloak_sha256";
 loadmodule "third/showwebirc";
+loadmodule "third/relaymsg";  /* atl.chat custom fork: require-separator no */
+
+/* RELAYMSG: stateless bridging - hostmask shown for relayed messages */
+/* require-separator no: allow clean nicks (no /d suffix) when using custom relaymsg fork */
+relaymsg {
+	hostmask "bridge@${IRC_DOMAIN}";
+	require_separator no;
+}
 
 me {
 	name "${IRC_DOMAIN}";
@@ -349,6 +357,13 @@ me {
 webirc {
 	mask ${ATL_GATEWAY_IP}/32;
 	password "change_me_webirc_password";
+}
+
+/* The Lounge web client - passes real user IP via WEBIRC */
+proxy thelounge {
+	type webirc;
+	match { ip 172.16.0.0/12; }
+	password "${THELOUNGE_WEBIRC_PASSWORD}";
 }
 
 admin {
@@ -732,11 +747,13 @@ oper admin {
 }
 
 /* Bridge oper: creates channels and sets +P (permanent) so they persist when empty.
- * Needs channel override so IRCOp can set +P without being chanop. */
+ * Needs channel override so IRCOp can set +P without being chanop.
+ * relaymsg: allows RELAYMSG for stateless bridging (third/relaymsg, atl.chat fork). */
 operclass bridge-oper {
 	parent locop;
 	permissions {
 		channel { operonly; override; }
+		relaymsg;
 	}
 }
 
