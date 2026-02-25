@@ -9,6 +9,7 @@ import uuid
 from typing import TYPE_CHECKING, Any
 
 import aiohttp
+import httpx
 from cachetools import TTLCache
 from loguru import logger
 from slixmpp import JID
@@ -16,6 +17,7 @@ from slixmpp.componentxmpp import ComponentXMPP
 from slixmpp.exceptions import XMPPError
 
 from bridge.adapters.xmpp_msgid import XMPPMessageIDTracker
+from bridge.config import cfg
 from bridge.events import message_in
 from bridge.gateway import Bus, ChannelRouter
 
@@ -117,6 +119,9 @@ class XMPPComponent(ComponentXMPP):
         self._avatar_cache: TTLCache[str, str] = TTLCache(
             maxsize=1000, ttl=86400
         )  # discord_id -> avatar_hash (24h TTL)
+        self._avatar_url_resolve_cache: TTLCache[tuple[str, str], str | None] = TTLCache(
+            maxsize=500, ttl=cfg.avatar_cache_ttl_seconds
+        )  # (base_domain, node) -> resolved URL or None
         self._session: aiohttp.ClientSession | None = None
         self._ibb_streams: dict[str, asyncio.Task] = {}  # sid -> handler task
         self._msgid_tracker = XMPPMessageIDTracker()  # Track message IDs for edits
@@ -199,6 +204,24 @@ class XMPPComponent(ComponentXMPP):
         if self._session:
             await self._session.close()
             self._session = None
+
+    def _resolve_avatar_url(self, base_domain: str, node: str) -> str | None:
+        """Resolve avatar URL: try /pep_avatar/ first, then /avatar/ (vCard) as fallback. Cached."""
+        cache_key = (base_domain, node)
+        if cache_key in self._avatar_url_resolve_cache:
+            return self._avatar_url_resolve_cache[cache_key]
+        pep_url = f"https://{base_domain}/pep_avatar/{node}"
+        vcard_url = f"https://{base_domain}/avatar/{node}"
+        for url in (pep_url, vcard_url):
+            try:
+                r = httpx.head(url, follow_redirects=True, timeout=1.5)
+                if r.status_code == 200:
+                    self._avatar_url_resolve_cache[cache_key] = url
+                    return url
+            except Exception:
+                continue
+        self._avatar_url_resolve_cache[cache_key] = None
+        return None
 
     def _on_groupchat_message(self, msg: Any) -> None:
         """Handle MUC message; emit MessageIn."""
@@ -326,8 +349,8 @@ class XMPPComponent(ComponentXMPP):
         if aliases:
             raw_data["xmpp_id_aliases"] = aliases
 
-        # Build avatar URL from mod_http_avatar. Base from room domain (muc.atl.chat → atl.chat);
-        # path from real JID localpart (alice@atl.chat → /avatar/alice). User domain irrelevant.
+        # Build avatar URL: try PEP first, then vCard as fallback. Base from room domain (muc.atl.chat → atl.chat);
+        # path from real JID localpart (alice@atl.chat → /pep_avatar/alice). User domain irrelevant.
         avatar_url: str | None = None
         if muc and nick:
             real_jid = muc.get_jid_property(room_jid, nick, "jid")
@@ -335,7 +358,7 @@ class XMPPComponent(ComponentXMPP):
                 room_domain = JID(room_jid).domain
                 base_domain = room_domain[4:] if room_domain.startswith("muc.") else room_domain
                 node = JID(str(real_jid)).local
-                avatar_url = f"https://{base_domain}/avatar/{node}"
+                avatar_url = self._resolve_avatar_url(base_domain, node)
 
         _, evt = message_in(
             origin="xmpp",

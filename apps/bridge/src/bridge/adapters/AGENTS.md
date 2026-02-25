@@ -143,7 +143,7 @@ Key methods:
 
 Inbound handlers:
 
-- `_on_groupchat_message` — emits `MessageIn` to Bus; skips delayed delivery (XEP-0203). Builds `avatar_url` from MUC real JID via `https://{domain}/avatar/{node}` (mod_http_avatar), deriving domain from room JID (e.g. `muc.atl.chat` → `atl.chat`).
+- `_on_groupchat_message` — emits `MessageIn` to Bus; skips delayed delivery (XEP-0203). Builds `avatar_url` via `_resolve_avatar_url`: tries `/pep_avatar/{node}` first, then `/avatar/{node}` (vCard) as fallback. Cached by (domain, node).
 - `_on_reactions` — emits `ReactionIn` to Bus.
 - `_on_retraction` — emits `MessageDelete` to Bus.
 

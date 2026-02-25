@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from bridge.adapters.xmpp_component import XMPPComponent
@@ -26,6 +26,7 @@ def make_component(router=None, bus=None):
     comp._component_jid = "bridge.example.com"
     comp._session = None
     comp._avatar_cache = TTLCache(maxsize=10, ttl=60)
+    comp._avatar_url_resolve_cache = TTLCache(maxsize=500, ttl=3600)
     comp._ibb_streams = {}
     comp._msgid_tracker = XMPPMessageIDTracker()
     comp._puppets_joined = set()
@@ -209,13 +210,14 @@ class TestOnGroupchatMessage:
         router.get_mapping_for_xmpp.assert_called_once_with("room@conf.example.com")
 
     def test_avatar_url_built_from_room_domain_when_real_jid_set(self):
-        """When MUC exposes real JID, avatar_url is derived from room domain."""
+        """When MUC exposes real JID, avatar_url is resolved (pep or vCard fallback)."""
         router = self._make_router()
         bus = MagicMock()
         comp = make_component(router=router, bus=bus)
         muc = MagicMock()
         muc.get_jid_property.return_value = "alice@atl.chat"
         comp.plugin = {"xep_0045": muc}  # type: ignore[attr-defined]
+        comp._resolve_avatar_url = lambda b, n: f"https://{b}/pep_avatar/{n}"  # type: ignore[method-assign]
 
         msg = MockMsg(
             from_jid="room@conf.example.com/nick",
@@ -226,7 +228,7 @@ class TestOnGroupchatMessage:
         comp._on_groupchat_message(msg)
 
         _, evt = bus.publish.call_args[0]
-        assert evt.avatar_url == "https://conf.example.com/avatar/alice"
+        assert evt.avatar_url == "https://conf.example.com/pep_avatar/alice"
         muc.get_jid_property.assert_called_with("room@conf.example.com", "nick", "jid")
 
     def test_avatar_url_strips_muc_prefix_from_domain(self):
@@ -237,6 +239,7 @@ class TestOnGroupchatMessage:
         muc = MagicMock()
         muc.get_jid_property.return_value = "bob@atl.chat"
         comp.plugin = {"xep_0045": muc}  # type: ignore[attr-defined]
+        comp._resolve_avatar_url = lambda b, n: f"https://{b}/pep_avatar/{n}"  # type: ignore[method-assign]
 
         msg = MockMsg(
             from_jid="room@muc.atl.chat/nick",
@@ -245,7 +248,7 @@ class TestOnGroupchatMessage:
         comp._on_groupchat_message(msg)
 
         _, evt = bus.publish.call_args[0]
-        assert evt.avatar_url == "https://atl.chat/avatar/bob"
+        assert evt.avatar_url == "https://atl.chat/pep_avatar/bob"
 
     def test_avatar_url_none_when_real_jid_none(self):
         """When MUC does not expose real JID, avatar_url is None."""
@@ -261,6 +264,42 @@ class TestOnGroupchatMessage:
 
         _, evt = bus.publish.call_args[0]
         assert evt.avatar_url is None
+
+    def test_resolve_avatar_url_tries_pep_then_vcard(self):
+        """_resolve_avatar_url tries pep_avatar first, then avatar (vCard) as fallback."""
+        comp = make_component()
+        comp._avatar_url_resolve_cache.clear()
+
+        with patch("httpx.head") as mock_head:
+            # pep returns 404, vcard returns 200
+            mock_head.side_effect = [
+                MagicMock(status_code=404),
+                MagicMock(status_code=200),
+            ]
+            url = comp._resolve_avatar_url("atl.chat", "alice")
+            assert url == "https://atl.chat/avatar/alice"
+            assert mock_head.call_count == 2
+            mock_head.assert_any_call(
+                "https://atl.chat/pep_avatar/alice",
+                follow_redirects=True,
+                timeout=1.5,
+            )
+            mock_head.assert_any_call(
+                "https://atl.chat/avatar/alice",
+                follow_redirects=True,
+                timeout=1.5,
+            )
+
+    def test_resolve_avatar_url_returns_none_when_both_fail(self):
+        """_resolve_avatar_url returns None when both URLs return non-200."""
+        comp = make_component()
+        comp._avatar_url_resolve_cache.clear()
+
+        with patch("httpx.head") as mock_head:
+            mock_head.return_value = MagicMock(status_code=404)
+            url = comp._resolve_avatar_url("atl.chat", "alice")
+            assert url is None
+            assert mock_head.call_count == 2
 
 
 # ---------------------------------------------------------------------------
