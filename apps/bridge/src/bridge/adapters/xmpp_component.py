@@ -210,8 +210,14 @@ class XMPPComponent(ComponentXMPP):
         cache_key = (base_domain, node)
         if cache_key in self._avatar_url_resolve_cache:
             return self._avatar_url_resolve_cache[cache_key]
-        pep_url = f"https://{base_domain}/pep_avatar/{node}"
-        vcard_url = f"https://{base_domain}/avatar/{node}"
+        base = cfg.xmpp_avatar_base_url
+        if base:
+            base = base.rstrip("/")
+            pep_url = f"{base}/pep_avatar/{node}"
+            vcard_url = f"{base}/avatar/{node}"
+        else:
+            pep_url = f"https://{base_domain}/pep_avatar/{node}"
+            vcard_url = f"https://{base_domain}/avatar/{node}"
         for url in (pep_url, vcard_url):
             try:
                 r = httpx.head(url, follow_redirects=True, timeout=1.5)
@@ -248,6 +254,10 @@ class XMPPComponent(ComponentXMPP):
         mapping = self._router.get_mapping_for_xmpp(room_jid)
         if not mapping:
             logger.debug("XMPP: no mapping for room {}; message from {} not bridged", room_jid, nick)
+            return
+
+        # Skip XEP-0424 retraction messages: _on_retraction handles them; do not bridge fallback body
+        if msg.get_plugin("retract", check=True):
             return
 
         # Skip our own echoed messages (from puppets or listener) to prevent doubling
@@ -435,6 +445,7 @@ class XMPPComponent(ComponentXMPP):
                 author_display=nick,
                 raw={"is_remove": True},
             )
+            logger.info("XMPP reaction removal bridged: room={} author={} emoji={}", room_jid, nick, emoji)
             self._bus.publish("xmpp", evt)
         for emoji in added:
             _, evt = reaction_in(
@@ -445,6 +456,7 @@ class XMPPComponent(ComponentXMPP):
                 author_id=nick,
                 author_display=nick,
             )
+            logger.info("XMPP reaction bridged: room={} author={} emoji={}", room_jid, nick, emoji)
             self._bus.publish("xmpp", evt)
 
     def _on_retraction(self, msg: Any) -> None:
@@ -460,12 +472,25 @@ class XMPPComponent(ComponentXMPP):
         if not mapping:
             return
 
+        # Skip our own echoed retractions (from puppets) to prevent loop/doubling
+        plugin_registry = getattr(self, "plugin", None)
+        muc = plugin_registry.get("xep_0045", None) if plugin_registry else None
+        if muc and nick:
+            real_jid = muc.get_jid_property(room_jid, nick, "jid")
+            if real_jid:
+                sender_domain = JID(str(real_jid)).domain
+                our_domain = JID(self._component_jid).domain if "@" in self._component_jid else self._component_jid
+                if sender_domain == our_domain:
+                    logger.debug("Skipping XMPP retraction echo from our component ({})", nick)
+                    return
+        if nick == "atl-bridge":
+            return
+
         retract = msg.get_plugin("retract", check=True)
         if not retract:
             return
 
         target_msg_id = retract.get("id")
-        logger.debug("Received XMPP retraction from {}: message {}", nick, target_msg_id)
 
         discord_id = self._msgid_tracker.get_discord_id(target_msg_id)
         if not discord_id:
@@ -478,7 +503,10 @@ class XMPPComponent(ComponentXMPP):
             origin="xmpp",
             channel_id=room_jid,
             message_id=discord_id,
+            author_id=nick or "",
+            author_display=nick or "",
         )
+        logger.info("XMPP retraction bridged: room={} author={} message={}", room_jid, nick, target_msg_id)
         self._bus.publish("xmpp", evt)
 
     def _on_ibb_stream_start(self, stream: Any) -> None:
@@ -734,9 +762,8 @@ class XMPPComponent(ComponentXMPP):
             msg.enable("store")
             msg.send()
             logger.info(
-                "Sent XMPP reaction %s from %s to msg %s in %s",
+                "XMPP: sent reaction %s to message %s in room %s (from IRC/Discord)",
                 "removal" if is_remove else emoji,
-                user_jid,
                 target_msg_id,
                 muc_jid,
             )
@@ -755,13 +782,13 @@ class XMPPComponent(ComponentXMPP):
             return
 
         try:
-            await retraction_plugin.send_retraction(  # type: ignore[misc]
+            retraction_plugin.send_retraction(
                 JID(muc_jid),
                 target_msg_id,
                 mtype="groupchat",
                 mfrom=JID(user_jid),
             )
-            logger.debug("Sent retraction from {} for message {}", user_jid, target_msg_id)
+            logger.info("XMPP: sent retraction for message {} to room {} (from IRC/Discord)", target_msg_id, muc_jid)
         except Exception as exc:
             logger.exception("Failed to send retraction: {}", exc)
 

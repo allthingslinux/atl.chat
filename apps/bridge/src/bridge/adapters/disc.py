@@ -10,7 +10,15 @@ from typing import TYPE_CHECKING
 
 import aiohttp
 from cachetools import TTLCache
-from discord import AllowedMentions, File, Intents, Message, TextChannel
+from discord import (
+    AllowedMentions,
+    File,
+    Intents,
+    Message,
+    RawBulkMessageDeleteEvent,
+    RawMessageDeleteEvent,
+    TextChannel,
+)
 from discord.ext import commands
 from discord.webhook import Webhook
 from loguru import logger
@@ -47,6 +55,17 @@ def _ensure_valid_username(name: str) -> str:
 
 # Disable mass pings for bridged content; user mentions are allowed (IRC/XMPP don't produce snowflake syntax).
 _ALLOWED_MENTIONS = AllowedMentions(everyone=False, roles=False)
+
+# Hostnames Discord cannot fetch (internal Docker, localhost). Don't pass these as avatar_url.
+_AVATAR_INTERNAL_HOSTS = ("atl-xmpp-server", "localhost", "127.0.0.1")
+
+
+def _avatar_url_ok_for_discord(url: str | None) -> bool:
+    """True if avatar URL is publicly fetchable by Discord (not internal)."""
+    if not url:
+        return False
+    url_lower = url.lower()
+    return not any(h in url_lower for h in _AVATAR_INTERNAL_HOSTS)
 
 
 class DiscordAdapter:
@@ -172,10 +191,13 @@ class DiscordAdapter:
         if not webhook:
             return None
 
+        # Discord cannot fetch internal URLs (atl-xmpp-server, localhost). Skip avatar for those.
+        send_avatar_url = avatar_url if _avatar_url_ok_for_discord(avatar_url) else None
+
         msg = await webhook.send(
             content=content[:2000],
             username=_ensure_valid_username(author_display),
-            avatar_url=avatar_url,
+            avatar_url=send_avatar_url,
             allowed_mentions=_ALLOWED_MENTIONS,
             wait=True,
         )
@@ -233,7 +255,7 @@ class DiscordAdapter:
         try:
             msg = await channel.fetch_message(int(evt.message_id))
             await msg.delete()
-            logger.debug("Deleted Discord message {} from IRC/XMPP", evt.message_id)
+            logger.info("Discord: deleted message {} (from IRC REDACT / XMPP retraction)", evt.message_id)
         except Exception as exc:
             logger.debug("Could not delete Discord message {}: {}", evt.message_id, exc)
 
@@ -249,10 +271,10 @@ class DiscordAdapter:
             msg = await channel.fetch_message(int(evt.message_id))
             if is_remove:
                 await msg.remove_reaction(evt.emoji, self._bot.user)
-                logger.debug("Removed reaction {} from Discord message {}", evt.emoji, evt.message_id)
+                logger.info("Discord: removed reaction {} from message {} (from IRC/XMPP)", evt.emoji, evt.message_id)
             else:
                 await msg.add_reaction(evt.emoji)
-                logger.debug("Added reaction {} to Discord message {}", evt.emoji, evt.message_id)
+                logger.info("Discord: added reaction {} to message {} (from IRC/XMPP)", evt.emoji, evt.message_id)
         except Exception as exc:
             logger.debug(
                 "Could not {} reaction on {}: {}",
@@ -318,7 +340,7 @@ class DiscordAdapter:
                             evt.channel_id,
                             evt.author_display,
                             evt.content,
-                            avatar_url=evt.raw.get("avatar_url"),
+                            avatar_url=evt.avatar_url,
                         )
                 # Store XMPP->Discord mapping for retraction, reaction, and edit routing
                 origin = (evt.raw or {}).get("origin")
@@ -570,6 +592,9 @@ class DiscordAdapter:
             author_id=str(payload.user_id),
             author_display=author_display,
         )
+        logger.info(
+            "Discord reaction bridged: channel={} author={} emoji={}", channel_id, author_display, str(payload.emoji)
+        )
         self._bus.publish("discord", evt)
 
     async def _fetch_user(self, user_id: int):
@@ -608,6 +633,12 @@ class DiscordAdapter:
             author_display=author_display,
             raw={"is_remove": True},
         )
+        logger.info(
+            "Discord reaction removal bridged: channel={} author={} emoji={}",
+            channel_id,
+            author_display,
+            str(payload.emoji),
+        )
         self._bus.publish("discord", evt)
 
     async def _on_typing(self, channel, user) -> None:
@@ -630,38 +661,62 @@ class DiscordAdapter:
         _, evt = typing_in(origin="discord", channel_id=channel_id, user_id=str(user.id))
         self._bus.publish("discord", evt)
 
-    async def _on_raw_message_delete(self, payload) -> None:
+    async def _on_raw_message_delete(self, payload: RawMessageDeleteEvent) -> None:
         """Handle Discord message deletes via raw event (fires for cached and uncached messages)."""
         channel_id = str(payload.channel_id)
         if not self._is_bridged_channel(channel_id):
             return
 
         author_id = ""
+        author_display = ""
         if payload.cached_message:
             author_id = str(payload.cached_message.author.id)
+            author_display = (
+                getattr(
+                    payload.cached_message.author,
+                    "global_name",
+                    None,
+                )
+                or getattr(payload.cached_message.author, "name", "")
+                or ""
+            )
 
         _, evt = message_delete(
             origin="discord",
             channel_id=channel_id,
             message_id=str(payload.message_id),
             author_id=author_id,
+            author_display=author_display,
+        )
+        logger.info("Discord message delete bridged: channel={} message_id={}", channel_id, payload.message_id)
+        logger.debug(
+            "Discord: publishing message_delete channel={} message_id={} -> relay (IRC needs msgid for REDACT)",
+            channel_id,
+            payload.message_id,
         )
         self._bus.publish("discord", evt)
 
-    async def _on_raw_bulk_message_delete(self, payload) -> None:
+    async def _on_raw_bulk_message_delete(self, payload: RawBulkMessageDeleteEvent) -> None:
         """Handle Discord bulk message deletes (e.g. moderator purge)."""
         channel_id = str(payload.channel_id)
         if not self._is_bridged_channel(channel_id):
             return
 
         cached = {m.id: m for m in payload.cached_messages}
+        logger.info("Discord bulk delete bridged: channel={} count={}", channel_id, len(payload.message_ids))
         for message_id in payload.message_ids:
-            author_id = str(cached[message_id].author.id) if message_id in cached else ""
+            author_id = ""
+            author_display = ""
+            if message_id in cached:
+                a = cached[message_id].author
+                author_id = str(a.id)
+                author_display = getattr(a, "global_name", None) or getattr(a, "name", "") or ""
             _, evt = message_delete(
                 origin="discord",
                 channel_id=channel_id,
                 message_id=str(message_id),
                 author_id=author_id,
+                author_display=author_display,
             )
             self._bus.publish("discord", evt)
 
@@ -699,6 +754,7 @@ class DiscordAdapter:
 
         intents = Intents.default()
         intents.message_content = True
+        intents.messages = True  # Required for on_raw_message_delete / on_raw_bulk_message_delete
         intents.guilds = True
         intents.members = True
         intents.typing = True
