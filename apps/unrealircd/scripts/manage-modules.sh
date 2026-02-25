@@ -335,7 +335,7 @@ Environment Variables:
 Notes:
   - Some operations may require UnrealIRCd to be restarted
   - After installing modules, add 'loadmodule "third/modulename";' to unrealircd.conf
-  - third/relaymsg is built from contrib/ during image build (atl.chat fork), not via this script
+  - third/relaymsg-atl is built from contrib/relaymsg/ during image build (atl.chat fork), not via this script
   - Use REHASH command in IRC or restart UnrealIRCd after configuration changes
   - Contrib modules are not officially supported by the UnrealIRCd team
 

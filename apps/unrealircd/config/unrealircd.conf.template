@@ -338,13 +338,14 @@ include "snomasks.default.conf";
 /* ---------- Project-specific ---------- */
 loadmodule "cloak_sha256";
 loadmodule "third/showwebirc";
-loadmodule "third/relaymsg";  /* atl.chat custom fork: require-separator no */
+loadmodule "third/relaymsg-atl";  /* atl.chat fork: RELAYMSG for stateless bridging */
 
-/* RELAYMSG: stateless bridging - hostmask shown for relayed messages */
-/* require-separator no: allow clean nicks (no /d suffix) when using custom relaymsg fork */
+/* RELAYMSG: stateless bridging - hostmask shown for relayed messages.
+ * Default: require-separator yes (nicks must contain /). Bridge uses /d suffix (irc_relaymsg_clean_nicks: false).
+ * For clean nicks (no /): add "require-separator no;" and set irc_relaymsg_clean_nicks: true in bridge config. */
 relaymsg {
 	hostmask "bridge@${IRC_DOMAIN}";
-	require_separator no;
+	require-separator no;
 }
 
 me {
@@ -748,7 +749,7 @@ oper admin {
 
 /* Bridge oper: creates channels and sets +P (permanent) so they persist when empty.
  * Needs channel override so IRCOp can set +P without being chanop.
- * relaymsg: allows RELAYMSG for stateless bridging (third/relaymsg, atl.chat fork). */
+ * relaymsg: allows RELAYMSG for stateless bridging (third/relaymsg-atl, atl.chat fork). */
 operclass bridge-oper {
 	parent locop;
 	permissions {

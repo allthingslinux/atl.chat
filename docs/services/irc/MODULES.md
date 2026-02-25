@@ -131,13 +131,13 @@ All module loading is inlined in `unrealircd.conf.template`. On UnrealIRCd upgra
 // Third-party and custom modules are loaded near the end
 loadmodule "cloak_sha256";
 loadmodule "third/showwebirc";
-loadmodule "third/relaymsg";  /* atl.chat fork */
+loadmodule "third/relaymsg-atl";  /* atl.chat fork */
 ```
 
 ## Currently Installed Modules
 
 - **third/showwebirc**: Adds WebIRC and WebSocket information to WHOIS queries
-- **third/relaymsg**: atl.chat fork for stateless bridging (RELAYMSG); allows clean nicks via `require-separator no`
+- **third/relaymsg-atl**: atl.chat fork for stateless bridging (RELAYMSG); allows clean nicks via `require-separator no`
 
 ## Troubleshooting
 

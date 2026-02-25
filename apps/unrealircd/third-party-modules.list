@@ -26,7 +26,7 @@
 # WebIRC/WebSocket information in WHOIS
 third/showwebirc
 
-# third/relaymsg: built from contrib/relaymsg (atl.chat fork with require-separator option)
+# third/relaymsg-atl: built from contrib/relaymsg/relaymsg-atl.c (atl.chat fork, unique name avoids upstream overwrite)
 # Add more modules as needed:
 # third/commandsno
 # third/clones

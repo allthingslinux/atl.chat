@@ -1,9 +1,12 @@
 /* Copyright © 2025 Valware
  * License: GPLv3
- * Name: third/relaymsg (atl.chat fork)
+ * Name: third/relaymsg-atl (atl.chat fork)
  *
  * Modified by atl.chat: add require-separator config option to allow clean nicks
  * (no / suffix) for cross-platform name consistency. Default: yes (upstream behavior).
+ *
+ * Uses unique name third/relaymsg-atl to avoid collision with upstream third/relaymsg
+ * during UnrealIRCd build (make runs "unrealircd -m upgrade" which overwrites contrib modules).
  */
 /*** <<<MODULE MANAGER START>>>
 module
@@ -13,10 +16,9 @@ module
 	min-unrealircd-version "6.1.0";
 	max-unrealircd-version "6.*";
 	post-install-text {
-		"The module is installed. Now all you need to do is add a loadmodule line:";
-		"loadmodule \"third/relaymsg\";";
-		"The module needs no other configuration.";
-		"Once you're good to go, you can finally type in your shell: ./unrealircd rehash";
+		"The module is installed. Add to unrealircd.conf:";
+		"loadmodule \"third/relaymsg-atl\";";
+		"Then: ./unrealircd rehash";
 	}
 }
 *** <<<MODULE MANAGER END>>>
@@ -34,6 +36,15 @@ void free_config(void);
 int hookfunc_configtest(ConfigFile *cf, ConfigEntry *ce, int type, int *errs);
 int hookfunc_configrun(ConfigFile *cf, ConfigEntry *ce, int type);
 
+/** Returns 1 if cep->name is a separator/clean-nicks option (hyphen or underscore). */
+static int is_separator_option(const char *name)
+{
+	if (!name)
+		return 0;
+	return !strcmp(name, "allow-clean-nicks") || !strcmp(name, "allow_clean_nicks") ||
+	       !strcmp(name, "require-separator") || !strcmp(name, "require_separator");
+}
+
 int relaymsg_tag_is_ok(Client *client, const char *name, const char *value);
 const char *relay_msg_cap_parameter(Client *client);
 
@@ -49,7 +60,7 @@ struct MyConfStruct
 static struct MyConfStruct MyConf;
 
 ModuleHeader MOD_HEADER = {
-	"third/relaymsg",
+	"third/relaymsg-atl",
 	"1.0.1",
 	"Implements draft/relaymsg (atl.chat: optional separator)",
 	"Valware",
@@ -127,6 +138,25 @@ int hookfunc_configtest(ConfigFile *cf, ConfigEntry *ce, int type, int *errs)
 
 	for (cep = ce->items; cep; cep = cep->next)
 	{
+		if (is_separator_option(cep->name))
+		{
+			if (!cep->value || !*cep->value)
+			{
+				config_error("%s:%i: %s::allow-clean-nicks requires yes or no", cep->file->filename, cep->line_number, CONF_BLOCK_NAME);
+				errors++;
+			}
+			else if (!strcasecmp(cep->value, "yes") || !strcasecmp(cep->value, "true") || !strcmp(cep->value, "1"))
+				; /* ok */
+			else if (!strcasecmp(cep->value, "no") || !strcasecmp(cep->value, "false") || !strcmp(cep->value, "0"))
+				; /* ok */
+			else
+			{
+				config_error("%s:%i: %s::allow-clean-nicks must be yes or no", cep->file->filename, cep->line_number, CONF_BLOCK_NAME);
+				errors++;
+			}
+			continue;
+		}
+
 		if (!cep->value)
 		{
 			config_error("%s:%i: blank %s value", cep->file->filename, cep->line_number, CONF_BLOCK_NAME);
@@ -151,20 +181,6 @@ int hookfunc_configtest(ConfigFile *cf, ConfigEntry *ce, int type, int *errs)
 			if (!strchr(cep->value, '@'))
 			{
 				config_error("%s:%i: %s::%s must be in nick@hostmask format", cep->file->filename, cep->line_number, CONF_BLOCK_NAME, cep->name);
-				errors++;
-			}
-			continue;
-		}
-
-		if (!strcmp(cep->name, "require-separator") || !strcmp(cep->name, "require_separator"))
-		{
-			if (!strcasecmp(cep->value, "yes") || !strcasecmp(cep->value, "true") || !strcmp(cep->value, "1"))
-				; /* ok */
-			else if (!strcasecmp(cep->value, "no") || !strcasecmp(cep->value, "false") || !strcmp(cep->value, "0"))
-				; /* ok */
-			else
-			{
-				config_error("%s:%i: %s::require-separator must be yes or no", cep->file->filename, cep->line_number, CONF_BLOCK_NAME);
 				errors++;
 			}
 			continue;
@@ -198,9 +214,14 @@ int hookfunc_configrun(ConfigFile *cf, ConfigEntry *ce, int type)
 			safe_strdup(MyConf.hostmask, cep->value);
 			continue;
 		}
-		if (!strcmp(cep->name, "require-separator") || !strcmp(cep->name, "require_separator"))
+		if (is_separator_option(cep->name))
 		{
-			MyConf.require_separator = (!strcasecmp(cep->value, "yes") || !strcasecmp(cep->value, "true") || !strcmp(cep->value, "1"));
+			int yes_val = cep->value && (!strcasecmp(cep->value, "yes") || !strcasecmp(cep->value, "true") || !strcmp(cep->value, "1"));
+			/* allow-clean-nicks yes => require_separator no; require-separator yes => require_separator yes */
+			if (!strcmp(cep->name, "allow-clean-nicks") || !strcmp(cep->name, "allow_clean_nicks"))
+				MyConf.require_separator = !yes_val;  /* allow-clean-nicks yes = no separator required */
+			else
+				MyConf.require_separator = yes_val;   /* require-separator yes = separator required */
 			continue;
 		}
 	}

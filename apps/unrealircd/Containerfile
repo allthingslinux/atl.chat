@@ -53,13 +53,14 @@ USER builduser
 # Copy configuration settings
 COPY config.settings .
 
-# Add custom relaymsg module before Config (UnrealIRCd only builds src/modules/third/)
-COPY contrib/relaymsg/relaymsg.c src/modules/third/
+# Add atl.chat relaymsg fork as third/relaymsg-atl (unique name avoids upstream overwrite during make)
+# UnrealIRCd's make runs "unrealircd -m upgrade" which replaces third/relaymsg with contrib version
+COPY contrib/relaymsg/relaymsg-atl.c src/modules/third/
 
 # Configure UnrealIRCd build
 RUN ./Config -quick
 
-# Compile UnrealIRCd (includes our relaymsg)
+# Compile UnrealIRCd (includes third/relaymsg-atl)
 RUN make -j"$(nproc)"
 
 # Install UnrealIRCd
