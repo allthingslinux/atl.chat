@@ -28,35 +28,41 @@ XMPP Adapter     ──┘
 - **Bus** (`gateway/bus.py`) — dispatches typed events to registered adapters
 - **Relay** (`gateway/relay.py`) — transforms `MessageIn` → `MessageOut` for other protocols; applies content filtering
 - **Router** (`gateway/router.py`) — maps Discord channel IDs ↔ IRC channels ↔ XMPP MUCs
-- **Identity** (`identity.py`) — Portal API client with TTL cache; resolves Discord ID → IRC nick / XMPP JID
+- **Identity** (`identity/`) — Portal API client with TTL cache; resolves Discord ID → IRC nick / XMPP JID
 
 ## Repository Structure
 
 ```
 src/bridge/
 ├── __main__.py          # Entry point + signal handling
-├── config.py            # YAML config + env overlay (Config class)
-├── events.py            # All event dataclasses + factory functions
-├── identity.py          # Portal API client + TTL cache
+├── events.py            # Re-export from core.events
+├── errors.py            # Re-export from core.errors
+├── config/              # YAML config + env overlay
+│   ├── loader.py        # load_config, load_config_with_env
+│   └── schema.py       # Config class, cfg singleton
+├── core/                # Domain primitives
+│   ├── constants.py    # ProtocolOrigin, ORIGINS
+│   ├── events.py       # Event dataclasses, factories, Dispatcher, BridgeAdapter
+│   └── errors.py        # BridgeError, BridgeConfigurationError
+├── identity/            # Portal API + dev resolver
+│   ├── portal.py       # PortalClient, IdentityResolver
+│   └── dev.py          # DevIdentityResolver
 ├── gateway/
-│   ├── bus.py           # Event dispatcher
-│   ├── relay.py         # MessageIn → MessageOut routing
-│   └── router.py        # Channel mapping
+│   ├── bus.py          # Event dispatcher
+│   ├── relay.py        # MessageIn → MessageOut routing
+│   ├── router.py       # Channel mapping
+│   └── msgid_resolver.py # MessageIDResolver port, DefaultMessageIDResolver
 ├── formatting/
 │   ├── discord_to_irc.py
 │   ├── irc_to_discord.py
-│   └── irc_message_split.py
+│   ├── irc_message_split.py
+│   └── reply_fallback.py
 └── adapters/
-    ├── base.py          # Adapter protocol (accept_event / push_event)
-    ├── disc.py          # Discord adapter (webhooks, raw events)
-    ├── irc.py           # IRC adapter (pydle, IRCv3)
-    ├── irc_puppet.py    # Per-user IRC puppet manager
-    ├── irc_throttle.py  # Token bucket flood control
-    ├── irc_msgid.py     # IRC msgid ↔ Discord ID tracker (1h TTL)
-    ├── xmpp.py          # XMPP adapter
-    ├── xmpp_component.py # slixmpp component + XEPs
-    └── xmpp_msgid.py    # XMPP stanza-id ↔ Discord ID tracker
-tests/                   # pytest suite (778 tests)
+    ├── base.py         # AdapterBase ABC
+    ├── discord/        # DiscordAdapter, handlers, webhook
+    ├── irc/            # IRCAdapter, IRCClient, puppet, msgid, throttle
+    └── xmpp/           # XMPPAdapter, XMPPComponent, msgid
+tests/                  # pytest suite (799 tests)
 ```
 
 ## Common Tasks
