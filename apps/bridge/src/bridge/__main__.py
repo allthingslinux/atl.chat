@@ -14,12 +14,13 @@ from typing import Any, Protocol
 from loguru import logger
 
 from bridge import __version__
-from bridge.adapters.disc import DiscordAdapter
+from bridge.adapters.discord import DiscordAdapter
 from bridge.adapters.irc import IRCAdapter
 from bridge.adapters.xmpp import XMPPAdapter
 from bridge.config import Config, cfg, load_config_with_env
-from bridge.events import config_reload, dispatcher
+from bridge.events import config_reload
 from bridge.gateway import Bus, ChannelRouter, Relay
+from bridge.gateway.msgid_resolver import DefaultMessageIDResolver
 from bridge.identity import DevIdentityResolver, IdentityResolver, PortalClient
 
 
@@ -139,19 +140,20 @@ def main() -> None:
     config = reload_config(args.config)
     logger.info("Config loaded from {}", args.config)
 
-    # SIGHUP reload
-    def on_sighup(*a: object, **kw: object) -> None:
-        reload_config(args.config)
-        _, evt = config_reload()
-        dispatcher.dispatch("main", evt)
-        logger.info("Config reloaded (SIGHUP)")
-
-    signal.signal(signal.SIGHUP, on_sighup)
-
-    # Create gateway components
+    # Create gateway components (before SIGHUP handler so it can use bus.publish)
     bus = Bus()
     router = ChannelRouter()
     router.load_from_config(config.raw)
+
+    # SIGHUP reload — use bus.publish (AUDIT §5)
+    def on_sighup(*a: object, **kw: object) -> None:
+        config = reload_config(args.config)
+        router.load_from_config(config.raw)
+        _, evt = config_reload()
+        bus.publish("main", evt)
+        logger.info("Config reloaded (SIGHUP)")
+
+    signal.signal(signal.SIGHUP, on_sighup)
 
     # Relay: MessageIn -> MessageOut for other protocols
     relay = Relay(bus, router)
@@ -214,10 +216,11 @@ async def _run(
     identity_resolver: IdentityResolver | None,
 ) -> None:
     """Async run loop. Start adapters and wait."""
+    msgid_resolver = DefaultMessageIDResolver()
     adapters: list[Adapter] = []
-    discord_adapter = DiscordAdapter(bus, router, identity_resolver)
-    irc_adapter = IRCAdapter(bus, router, identity_resolver)
-    xmpp_adapter = XMPPAdapter(bus, router, identity_resolver)
+    discord_adapter = DiscordAdapter(bus, router, identity_resolver, msgid_resolver)
+    irc_adapter = IRCAdapter(bus, router, identity_resolver, msgid_resolver)
+    xmpp_adapter = XMPPAdapter(bus, router, identity_resolver, msgid_resolver)
     adapters.extend([discord_adapter, irc_adapter, xmpp_adapter])
 
     logger.info("Starting adapters")
