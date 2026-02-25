@@ -55,6 +55,7 @@ Two classes:
 - `on_kick` — emits `Part`; auto-rejoins after `irc_rejoin_delay` if `irc_auto_rejoin` is set.
 - `on_disconnect` — reconnects with exponential backoff via `_connect_with_backoff`.
 - Outbound queue consumed by `_consume_outbound`; uses `TokenBucket` for flood control.
+- **RELAYMSG**: When server advertises `draft/relaymsg` or `overdrivenetworks.com/relaymsg`, main-connection sends use `RELAYMSG #channel nick/d :message` (stateless bridging) instead of `PRIVMSG`. Spoofed nick format: `author_display/discord` (Valware requires `/` in nick). Echo detection: skip messages with `draft/relaymsg` or `relaymsg` tag matching our nick.
 - Typing: `TAGMSG` with `typing=active`, throttled to once per 3 seconds.
 - Reactions: `TAGMSG` with `+draft/reply` + `+draft/react`.
 - Deletes: `REDACT` command with original IRC msgid.
