@@ -9,12 +9,14 @@ Contains the single installable package: `bridge`.
 ```
 src/bridge/          # The bridge package (entry point: __main__.py)
 ├── __main__.py      # Entry point + signal handling
-├── config.py        # YAML config + env overlay
-├── events.py        # Event dataclasses + factory functions
-├── identity.py      # Portal API client + TTL cache
-├── gateway/         # Bus, Relay, Router
+├── events.py        # Re-export from core.events
+├── errors.py        # Re-export from core.errors
+├── config/          # YAML config + env overlay (loader, schema)
+├── core/            # Constants, events, errors
+├── identity/        # Portal API + dev resolver
+├── gateway/         # Bus, Relay, Router, MessageIDResolver
 ├── formatting/      # Discord↔IRC format converters
-└── adapters/        # Discord, IRC, XMPP protocol adapters
+└── adapters/        # discord/, irc/, xmpp/ protocol packages
 ```
 
 ## Related
