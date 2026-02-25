@@ -392,7 +392,7 @@ class TestSendRedact:
         adapter._msgid_tracker.store("irc-id", "discord-id")
         router.get_mapping_for_discord.return_value = _irc_mapping()
         evt = MessageDeleteOut(target_origin="irc", channel_id="111", message_id="discord-id")
-        with patch("bridge.adapters.irc.cfg") as mock_cfg:
+        with patch("bridge.adapters.irc.adapter.cfg") as mock_cfg:
             mock_cfg.irc_redact_enabled = True
             await adapter._send_redact(evt)
         adapter._client.rawmsg.assert_awaited_once_with("REDACT", "#test", "irc-id")
@@ -405,7 +405,7 @@ class TestSendRedact:
         adapter._msgid_tracker.store("irc-id", "discord-id")
         router.get_mapping_for_discord.return_value = _irc_mapping()
         evt = MessageDeleteOut(target_origin="irc", channel_id="111", message_id="discord-id")
-        with patch("bridge.adapters.irc.cfg") as mock_cfg:
+        with patch("bridge.adapters.irc.adapter.cfg") as mock_cfg:
             mock_cfg.irc_redact_enabled = False
             await adapter._send_redact(evt)
         adapter._client.rawmsg.assert_not_called()
@@ -419,7 +419,7 @@ class TestSendRedact:
         adapter._msgid_tracker.store("irc-id", "discord-id")
         router.get_mapping_for_discord.return_value = _irc_mapping()
         evt = MessageDeleteOut(target_origin="irc", channel_id="111", message_id="discord-id")
-        with patch("bridge.adapters.irc.cfg") as mock_cfg:
+        with patch("bridge.adapters.irc.adapter.cfg") as mock_cfg:
             mock_cfg.irc_redact_enabled = True
             await adapter._send_redact(evt)
         adapter._client.rawmsg.assert_not_called()
@@ -524,9 +524,9 @@ class TestStart:
             await asyncio.sleep(9999)
 
         with (
-            patch("bridge.adapters.irc.IRCClient") as mock_irc_client,
-            patch("bridge.adapters.irc._connect_with_backoff", side_effect=_fake_backoff),
-            patch("bridge.adapters.irc.IRCPuppetManager", return_value=mock_puppet_mgr),
+            patch("bridge.adapters.irc.adapter.IRCClient") as mock_irc_client,
+            patch("bridge.adapters.irc.adapter._connect_with_backoff", side_effect=_fake_backoff),
+            patch("bridge.adapters.irc.adapter.IRCPuppetManager", return_value=mock_puppet_mgr),
             patch.dict("os.environ", {"BRIDGE_IRC_NICK": "testbot", "IRC_PUPPET_IDLE_TIMEOUT_HOURS": "12"}),
         ):
             mock_irc_client.return_value = MagicMock()
@@ -649,7 +649,7 @@ class TestIRCAdapterEdgeCases:
         adapter._msgid_tracker.store("irc-id", "discord-id")
         router.get_mapping_for_discord.return_value = _irc_mapping()
         evt = MessageDeleteOut(target_origin="irc", channel_id="111", message_id="discord-id")
-        with patch("bridge.adapters.irc.cfg") as mock_cfg:
+        with patch("bridge.adapters.irc.adapter.cfg") as mock_cfg:
             mock_cfg.irc_redact_enabled = True
             await adapter._send_redact(evt)
         # rawmsg was attempted (exception was swallowed, not silently skipped)

@@ -7,8 +7,7 @@ import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from bridge.adapters.irc_msgid import MessageIDTracker
-from bridge.adapters.irc_puppet import IRCPuppet, IRCPuppetManager
+from bridge.adapters.irc import IRCPuppet, IRCPuppetManager, MessageIDTracker
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -147,7 +146,7 @@ class TestGetOrCreatePuppet:
         manager = _make_manager(irc_nick="mynick")
         mock_puppet = _mock_puppet()
 
-        with patch("bridge.adapters.irc_puppet.IRCPuppet", return_value=mock_puppet):
+        with patch("bridge.adapters.irc.puppet.IRCPuppet", return_value=mock_puppet):
             result = await manager.get_or_create_puppet("d1")
 
         assert result is mock_puppet
@@ -160,7 +159,7 @@ class TestGetOrCreatePuppet:
         manager = _make_manager(irc_nick="mynick", ping_interval=60, prejoin_commands=cmds)
         mock_puppet = _mock_puppet()
 
-        with patch("bridge.adapters.irc_puppet.IRCPuppet", return_value=mock_puppet) as mock_cls:
+        with patch("bridge.adapters.irc.puppet.IRCPuppet", return_value=mock_puppet) as mock_cls:
             await manager.get_or_create_puppet("d1")
 
         mock_cls.assert_called_once_with("mynick", "d1", ping_interval=60, prejoin_commands=cmds)
@@ -171,7 +170,7 @@ class TestGetOrCreatePuppet:
         mock_puppet = _mock_puppet()
         mock_puppet.connect = AsyncMock(side_effect=OSError("refused"))
 
-        with patch("bridge.adapters.irc_puppet.IRCPuppet", return_value=mock_puppet):
+        with patch("bridge.adapters.irc.puppet.IRCPuppet", return_value=mock_puppet):
             result = await manager.get_or_create_puppet("d1")
 
         assert result is None
@@ -406,7 +405,7 @@ class TestPuppetEdgeCases:
         mock_puppet = _mock_puppet()
         mock_puppet.connect = AsyncMock(side_effect=_slow_connect)
 
-        with patch("bridge.adapters.irc_puppet.IRCPuppet", return_value=mock_puppet):
+        with patch("bridge.adapters.irc.puppet.IRCPuppet", return_value=mock_puppet):
             # Start first call, let it reach connect
             task1 = asyncio.create_task(manager.get_or_create_puppet("d1"))
             await connect_started.wait()
@@ -494,7 +493,7 @@ class TestPuppetEdgeCases:
     # --- TokenBucket: acquire returns 0 when tokens available ---
 
     def test_token_bucket_acquire_zero_when_available(self):
-        from bridge.adapters.irc_throttle import TokenBucket
+        from bridge.adapters.irc import TokenBucket
 
         bucket = TokenBucket(limit=10, refill_rate=10.0)
         assert bucket.acquire() == 0.0
@@ -502,7 +501,7 @@ class TestPuppetEdgeCases:
     # --- TokenBucket: acquire returns positive wait when empty ---
 
     def test_token_bucket_acquire_positive_when_empty(self):
-        from bridge.adapters.irc_throttle import TokenBucket
+        from bridge.adapters.irc import TokenBucket
 
         bucket = TokenBucket(limit=1, refill_rate=1.0)
         bucket.use_token()  # drain
@@ -511,7 +510,7 @@ class TestPuppetEdgeCases:
     # --- TokenBucket: use_token returns False when empty ---
 
     def test_token_bucket_use_token_false_when_empty(self):
-        from bridge.adapters.irc_throttle import TokenBucket
+        from bridge.adapters.irc import TokenBucket
 
         bucket = TokenBucket(limit=1, refill_rate=1.0)
         assert bucket.use_token() is True

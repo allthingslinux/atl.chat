@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-from bridge.adapters.xmpp_msgid import XMPPMessageIDTracker, XMPPMessageMapping
+from bridge.adapters.xmpp import XMPPMessageIDTracker, XMPPMessageMapping
 
 
 class TestXMPPMessageMapping:
@@ -114,7 +114,7 @@ class TestXMPPMessageIDTracking:
 
     def test_expired_entries_removed_on_get_discord_id(self) -> None:
         """Expired entries are removed when get_discord_id triggers _cleanup."""
-        with patch("bridge.adapters.xmpp_msgid.time") as mock_time:
+        with patch("bridge.adapters.xmpp.msgid.time") as mock_time:
             mock_time.time.side_effect = [1000.0, 1002.0]
             tracker = XMPPMessageIDTracker(ttl_seconds=1)
             tracker.store("xmpp-old", "discord-old", "room@conf.example.com")
@@ -122,7 +122,7 @@ class TestXMPPMessageIDTracking:
 
     def test_expired_entries_removed_on_get_xmpp_id(self) -> None:
         """Expired entries are removed when get_xmpp_id triggers _cleanup."""
-        with patch("bridge.adapters.xmpp_msgid.time") as mock_time:
+        with patch("bridge.adapters.xmpp.msgid.time") as mock_time:
             mock_time.time.side_effect = [1000.0, 1002.0]
             tracker = XMPPMessageIDTracker(ttl_seconds=1)
             tracker.store("xmpp-old", "discord-old", "room@conf.example.com")
@@ -130,7 +130,7 @@ class TestXMPPMessageIDTracking:
 
     def test_fresh_entries_not_expired(self) -> None:
         """Entries within TTL are not removed."""
-        with patch("bridge.adapters.xmpp_msgid.time") as mock_time:
+        with patch("bridge.adapters.xmpp.msgid.time") as mock_time:
             mock_time.time.side_effect = [1000.0, 1000.5, 1000.5, 1000.5]
             tracker = XMPPMessageIDTracker(ttl_seconds=3600)
             tracker.store("xmpp-fresh", "discord-fresh", "room@conf.example.com")
@@ -148,7 +148,7 @@ class TestXMPPMessageIDTracking:
 
     def test_expired_room_jid_returns_none(self) -> None:
         """get_room_jid returns None for expired entries."""
-        with patch("bridge.adapters.xmpp_msgid.time") as mock_time:
+        with patch("bridge.adapters.xmpp.msgid.time") as mock_time:
             mock_time.time.side_effect = [1000.0, 1002.0]
             tracker = XMPPMessageIDTracker(ttl_seconds=1)
             tracker.store("xmpp-1", "discord-1", "room@conf.example.com")
@@ -156,7 +156,7 @@ class TestXMPPMessageIDTracking:
 
     def test_cleanup_removes_from_both_dicts(self) -> None:
         """_cleanup removes expired entries from both _xmpp_to_discord and _discord_to_xmpp."""
-        with patch("bridge.adapters.xmpp_msgid.time") as mock_time:
+        with patch("bridge.adapters.xmpp.msgid.time") as mock_time:
             mock_time.time.side_effect = [1000.0, 1002.0]
             tracker = XMPPMessageIDTracker(ttl_seconds=1)
             tracker.store("xmpp-1", "discord-1", "room@conf.example.com")

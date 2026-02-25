@@ -8,8 +8,7 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from bridge.adapters.xmpp_component import XMPPComponent, _escape_jid_node
-from bridge.adapters.xmpp_msgid import XMPPMessageIDTracker
+from bridge.adapters.xmpp import XMPPComponent, XMPPMessageIDTracker, _escape_jid_node
 from cachetools import TTLCache
 
 pytestmark = pytest.mark.filterwarnings("ignore::pytest.PytestUnraisableExceptionWarning")

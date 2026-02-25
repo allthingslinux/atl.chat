@@ -5,8 +5,7 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 import pytest
-from bridge.adapters.xmpp_component import XMPPComponent
-from bridge.adapters.xmpp_msgid import XMPPMessageIDTracker
+from bridge.adapters.xmpp import XMPPComponent, XMPPMessageIDTracker
 from bridge.events import MessageDelete, MessageIn, ReactionIn
 from cachetools import TTLCache
 
@@ -467,7 +466,7 @@ class TestOnRetraction:
 
         muc = MagicMock()
         muc.get_jid_property.return_value = "1046905234200469504@bridge.example.com"
-        comp.plugin = {"xep_0045": muc}
+        comp.plugin = {"xep_0045": muc}  # type: ignore[typeddict-unknown-key]
 
         retract_plugin = MockPlugin({"id": "xmpp-1"})
         msg = MockMsg("room@conf.example.com/1046905234200469504", plugins={"retract": retract_plugin})

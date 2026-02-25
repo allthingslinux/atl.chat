@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 from bridge.config import Config, _deep_update, load_config
+from bridge.errors import BridgeConfigurationError
 
 
 class TestDeepUpdate:
@@ -273,3 +274,22 @@ class TestConfig:
     def test_deep_update_non_dict_replaces_dict(self):
         result = _deep_update({"a": {"x": 1}}, {"a": "scalar"})
         assert result == {"a": "scalar"}
+
+    def test_reload_validates_mappings_structure(self):
+        """Invalid mappings raise BridgeConfigurationError."""
+        config = Config({})
+        with pytest.raises(BridgeConfigurationError) as exc_info:
+            config.reload({"mappings": [{}]})
+        assert exc_info.value.code == "missing_discord_channel_id"
+
+    def test_reload_validates_mappings_item_type(self):
+        config = Config({})
+        with pytest.raises(BridgeConfigurationError) as exc_info:
+            config.reload({"mappings": ["not-a-dict"]})
+        assert exc_info.value.code == "invalid_mapping_item"
+
+    def test_reload_skips_validation_when_validate_false(self):
+        """reload(..., validate=False) allows invalid structure."""
+        config = Config({})
+        config.reload({"mappings": [{}]}, validate=False)
+        assert config.mappings == [{}]

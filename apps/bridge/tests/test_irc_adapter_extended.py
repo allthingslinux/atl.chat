@@ -124,10 +124,10 @@ class TestStartSasl:
 
         # Act
         with (
-            patch("bridge.adapters.irc.IRCClient") as mock_irc_cls,
-            patch("bridge.adapters.irc._connect_with_backoff", side_effect=_fake_backoff),
-            patch("bridge.adapters.irc.IRCPuppetManager", return_value=mock_puppet_mgr),
-            patch("bridge.adapters.irc.cfg") as mock_cfg,
+            patch("bridge.adapters.irc.adapter.IRCClient") as mock_irc_cls,
+            patch("bridge.adapters.irc.adapter._connect_with_backoff", side_effect=_fake_backoff),
+            patch("bridge.adapters.irc.adapter.IRCPuppetManager", return_value=mock_puppet_mgr),
+            patch("bridge.adapters.irc.adapter.cfg") as mock_cfg,
             patch.dict("os.environ", {"BRIDGE_IRC_NICK": "bot"}),
         ):
             mock_cfg.irc_use_sasl = True
@@ -164,10 +164,10 @@ class TestStartSasl:
 
         # Act
         with (
-            patch("bridge.adapters.irc.IRCClient") as mock_irc_cls,
-            patch("bridge.adapters.irc._connect_with_backoff", side_effect=_fake_backoff),
-            patch("bridge.adapters.irc.IRCPuppetManager", return_value=mock_puppet_mgr),
-            patch("bridge.adapters.irc.cfg") as mock_cfg,
+            patch("bridge.adapters.irc.adapter.IRCClient") as mock_irc_cls,
+            patch("bridge.adapters.irc.adapter._connect_with_backoff", side_effect=_fake_backoff),
+            patch("bridge.adapters.irc.adapter.IRCPuppetManager", return_value=mock_puppet_mgr),
+            patch("bridge.adapters.irc.adapter.cfg") as mock_cfg,
             patch.dict("os.environ", {"BRIDGE_IRC_NICK": "bot"}),
         ):
             mock_cfg.irc_use_sasl = False

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from bridge.adapters.irc_msgid import MessageIDTracker
+from bridge.adapters.irc import MessageIDTracker
 
 
 class TestIRCReplyThreading:

@@ -39,7 +39,7 @@ def router() -> ChannelRouter:
 
 
 def test_name_property(bus: Bus, router: ChannelRouter) -> None:
-    from bridge.adapters.disc import DiscordAdapter
+    from bridge.adapters.discord import DiscordAdapter
 
     adapter = DiscordAdapter(bus, router, identity_resolver=None)
     assert adapter.name == "discord"
@@ -47,7 +47,7 @@ def test_name_property(bus: Bus, router: ChannelRouter) -> None:
 
 def test_accept_event_all_types(bus: Bus, router: ChannelRouter) -> None:
     """Adapter accepts MessageOut, MessageDeleteOut, ReactionOut, TypingOut for discord target."""
-    from bridge.adapters.disc import DiscordAdapter
+    from bridge.adapters.discord import DiscordAdapter
 
     adapter = DiscordAdapter(bus, router, identity_resolver=None)
     assert adapter.accept_event("relay", MessageOut("discord", "123", "u1", "A", "hi", "m1"))
@@ -59,7 +59,7 @@ def test_accept_event_all_types(bus: Bus, router: ChannelRouter) -> None:
 
 
 def test_push_event_queues_message_out(bus: Bus, router: ChannelRouter) -> None:
-    from bridge.adapters.disc import DiscordAdapter
+    from bridge.adapters.discord import DiscordAdapter
 
     adapter = DiscordAdapter(bus, router, identity_resolver=None)
     evt = MessageOut("discord", "123", "u1", "Alice", "hi", "m1")
@@ -69,7 +69,7 @@ def test_push_event_queues_message_out(bus: Bus, router: ChannelRouter) -> None:
 
 
 def test_is_bridged_channel(bus: Bus, router: ChannelRouter) -> None:
-    from bridge.adapters.disc import DiscordAdapter
+    from bridge.adapters.discord import DiscordAdapter
 
     adapter = DiscordAdapter(bus, router, identity_resolver=None)
     assert adapter._is_bridged_channel("123") is True
@@ -78,36 +78,42 @@ def test_is_bridged_channel(bus: Bus, router: ChannelRouter) -> None:
 
 
 def test_resolve_discord_message_id_from_xmpp(bus: Bus, router: ChannelRouter) -> None:
-    from bridge.adapters.disc import DiscordAdapter
-    from bridge.adapters.xmpp import XMPPAdapter
-    from bridge.adapters.xmpp_msgid import XMPPMessageIDTracker
+    from bridge.adapters.discord import DiscordAdapter
+    from bridge.adapters.xmpp import XMPPMessageIDTracker
+    from bridge.gateway.msgid_resolver import DefaultMessageIDResolver
 
-    adapter = DiscordAdapter(bus, router, identity_resolver=None)
-    xmpp = XMPPAdapter(bus, router, identity_resolver=None)
-    xmpp._component = MagicMock()
-    xmpp._component._msgid_tracker = XMPPMessageIDTracker()
-    xmpp._component._msgid_tracker.store("orig-1", "discord-999", "room@conf.example.com")
-    bus._dispatcher._targets = [xmpp]
+    mock_component = MagicMock()
+    mock_component._msgid_tracker = XMPPMessageIDTracker()
+    mock_component._msgid_tracker.store("orig-1", "discord-999", "room@conf.example.com")
+
+    resolver = DefaultMessageIDResolver()
+    resolver.register_xmpp(mock_component)
+
+    adapter = DiscordAdapter(bus, router, identity_resolver=None, msgid_resolver=resolver)
     result = adapter._resolve_discord_message_id("orig-1", "xmpp")
     assert result == "discord-999"
     assert adapter._resolve_discord_message_id("unknown", "xmpp") is None
 
 
 def test_resolve_discord_message_id_from_irc(bus: Bus, router: ChannelRouter) -> None:
-    from bridge.adapters.disc import DiscordAdapter
+    from bridge.adapters.discord import DiscordAdapter
     from bridge.adapters.irc import IRCAdapter
+    from bridge.gateway.msgid_resolver import DefaultMessageIDResolver
 
-    adapter = DiscordAdapter(bus, router, identity_resolver=None)
     irc = IRCAdapter(bus, router, identity_resolver=None)
     irc._msgid_tracker.store("irc-msg-1", "discord-888")
-    bus._dispatcher._targets = [irc]
+
+    resolver = DefaultMessageIDResolver()
+    resolver.register_irc(irc._msgid_tracker)
+
+    adapter = DiscordAdapter(bus, router, identity_resolver=None, msgid_resolver=resolver)
     result = adapter._resolve_discord_message_id("irc-msg-1", "irc")
     assert result == "discord-888"
     assert adapter._resolve_discord_message_id("unknown", "irc") is None
 
 
 def test_resolve_discord_message_id_unknown_origin_returns_none(bus: Bus, router: ChannelRouter) -> None:
-    from bridge.adapters.disc import DiscordAdapter
+    from bridge.adapters.discord import DiscordAdapter
 
     adapter = DiscordAdapter(bus, router, identity_resolver=None)
     assert adapter._resolve_discord_message_id("x", "unknown") is None
@@ -115,7 +121,7 @@ def test_resolve_discord_message_id_unknown_origin_returns_none(bus: Bus, router
 
 @pytest.mark.asyncio
 async def test_on_message_skips_bot(bus: Bus, router: ChannelRouter) -> None:
-    from bridge.adapters.disc import DiscordAdapter
+    from bridge.adapters.discord import DiscordAdapter
 
     adapter = DiscordAdapter(bus, router, identity_resolver=None)
     adapter._bot = MagicMock()
@@ -134,7 +140,7 @@ async def test_on_message_skips_bot(bus: Bus, router: ChannelRouter) -> None:
 
 @pytest.mark.asyncio
 async def test_on_message_skips_unbridged_channel(bus: Bus, router: ChannelRouter) -> None:
-    from bridge.adapters.disc import DiscordAdapter
+    from bridge.adapters.discord import DiscordAdapter
 
     adapter = DiscordAdapter(bus, router, identity_resolver=None)
     adapter._bot = MagicMock()
@@ -159,7 +165,7 @@ async def test_on_message_skips_unbridged_channel(bus: Bus, router: ChannelRoute
 
 @pytest.mark.asyncio
 async def test_on_message_includes_reply_to_id(bus: Bus, router: ChannelRouter) -> None:
-    from bridge.adapters.disc import DiscordAdapter
+    from bridge.adapters.discord import DiscordAdapter
 
     adapter = DiscordAdapter(bus, router, identity_resolver=None)
     adapter._bot = MagicMock()
@@ -186,7 +192,7 @@ async def test_on_message_includes_reply_to_id(bus: Bus, router: ChannelRouter) 
 
 @pytest.mark.asyncio
 async def test_on_message_edit_publishes_with_is_edit(bus: Bus, router: ChannelRouter) -> None:
-    from bridge.adapters.disc import DiscordAdapter
+    from bridge.adapters.discord import DiscordAdapter
 
     adapter = DiscordAdapter(bus, router, identity_resolver=None)
     published = []
@@ -216,7 +222,7 @@ async def test_on_message_edit_publishes_with_is_edit(bus: Bus, router: ChannelR
 
 @pytest.mark.asyncio
 async def test_on_message_edit_skips_bot(bus: Bus, router: ChannelRouter) -> None:
-    from bridge.adapters.disc import DiscordAdapter
+    from bridge.adapters.discord import DiscordAdapter
 
     adapter = DiscordAdapter(bus, router, identity_resolver=None)
     published = []
@@ -237,7 +243,7 @@ async def test_on_message_edit_skips_bot(bus: Bus, router: ChannelRouter) -> Non
 
 @pytest.mark.asyncio
 async def test_on_message_delete_publishes(bus: Bus, router: ChannelRouter) -> None:
-    from bridge.adapters.disc import DiscordAdapter
+    from bridge.adapters.discord import DiscordAdapter
 
     adapter = DiscordAdapter(bus, router, identity_resolver=None)
     published = []
@@ -259,7 +265,7 @@ async def test_on_message_delete_publishes(bus: Bus, router: ChannelRouter) -> N
 
 @pytest.mark.asyncio
 async def test_on_message_delete_skips_unbridged(bus: Bus, router: ChannelRouter) -> None:
-    from bridge.adapters.disc import DiscordAdapter
+    from bridge.adapters.discord import DiscordAdapter
 
     adapter = DiscordAdapter(bus, router, identity_resolver=None)
     published = []
@@ -277,19 +283,22 @@ async def test_on_message_delete_skips_unbridged(bus: Bus, router: ChannelRouter
 @pytest.mark.asyncio
 async def test_queue_consumer_edits_when_resolve_succeeds(bus: Bus, router: ChannelRouter) -> None:
     """When replace_id resolves, queue consumer calls _webhook_edit instead of send."""
-    from bridge.adapters.disc import DiscordAdapter
+    from bridge.adapters.discord import DiscordAdapter
     from bridge.adapters.irc import IRCAdapter
+    from bridge.gateway.msgid_resolver import DefaultMessageIDResolver
 
-    adapter = DiscordAdapter(bus, router, identity_resolver=None)
+    irc = IRCAdapter(bus, router, identity_resolver=None)
+    irc._msgid_tracker.store("orig-123", "55555")
+
+    resolver = DefaultMessageIDResolver()
+    resolver.register_irc(irc._msgid_tracker)
+
+    adapter = DiscordAdapter(bus, router, identity_resolver=None, msgid_resolver=resolver)
     adapter._bot = MagicMock()
     mock_webhook = MagicMock()
     mock_webhook.send = AsyncMock(return_value=MagicMock(id=99999))
     mock_webhook.edit_message = AsyncMock()
     adapter._get_or_create_webhook = AsyncMock(return_value=mock_webhook)
-
-    irc = IRCAdapter(bus, router, identity_resolver=None)
-    irc._msgid_tracker.store("orig-123", "55555")
-    bus._dispatcher._targets = [irc]
 
     evt = MessageOut(
         "discord",
@@ -316,7 +325,7 @@ async def test_queue_consumer_edits_when_resolve_succeeds(bus: Bus, router: Chan
 @pytest.mark.asyncio
 async def test_edit_fallback_to_send_when_resolve_fails(bus: Bus, router: ChannelRouter) -> None:
     """When replace_id cannot be resolved, edit is skipped and message is sent as new."""
-    from bridge.adapters.disc import DiscordAdapter
+    from bridge.adapters.discord import DiscordAdapter
 
     adapter = DiscordAdapter(bus, router, identity_resolver=None)
     adapter._bot = MagicMock()
@@ -348,7 +357,7 @@ async def test_edit_fallback_to_send_when_resolve_fails(bus: Bus, router: Channe
 @pytest.mark.asyncio
 async def test_webhook_messages_are_skipped_to_prevent_echo(bus: Bus, router: ChannelRouter) -> None:
     """Messages from webhooks (our bridge output) must not be republished to prevent echo loops."""
-    from bridge.adapters.disc import DiscordAdapter
+    from bridge.adapters.discord import DiscordAdapter
 
     adapter = DiscordAdapter(bus, router, identity_resolver=None)
     adapter._bot = MagicMock()
@@ -380,7 +389,7 @@ async def test_webhook_messages_are_skipped_to_prevent_echo(bus: Bus, router: Ch
 @pytest.mark.asyncio
 async def test_regular_messages_are_published(bus: Bus, router: ChannelRouter) -> None:
     """Regular Discord messages (no webhook_id) are published to the bus."""
-    from bridge.adapters.disc import DiscordAdapter
+    from bridge.adapters.discord import DiscordAdapter
 
     adapter = DiscordAdapter(bus, router, identity_resolver=None)
     adapter._bot = MagicMock()
@@ -413,7 +422,7 @@ async def test_regular_messages_are_published(bus: Bus, router: ChannelRouter) -
 
 def test_discord_adapter_accepts_message_out_for_discord(bus: Bus, router: ChannelRouter) -> None:
     """Discord adapter accepts MessageOut with target_origin=discord."""
-    from bridge.adapters.disc import DiscordAdapter
+    from bridge.adapters.discord import DiscordAdapter
 
     adapter = DiscordAdapter(bus, router, identity_resolver=None)
     assert adapter.accept_event("irc", MessageOut("discord", "123", "u1", "Alice", "hi", "m1"))
@@ -423,7 +432,7 @@ def test_discord_adapter_accepts_message_out_for_discord(bus: Bus, router: Chann
 
 def test_ensure_valid_username() -> None:
     """Webhook usernames are 2-32 chars (AUDIT §3)."""
-    from bridge.adapters.disc import _ensure_valid_username
+    from bridge.adapters.discord import _ensure_valid_username
 
     assert len(_ensure_valid_username("A")) >= 2
     assert len(_ensure_valid_username("x" * 50)) == 32
@@ -433,10 +442,11 @@ def test_ensure_valid_username() -> None:
 @pytest.mark.asyncio
 async def test_push_event_triggers_handle_delete_out(bus: Bus, router: ChannelRouter) -> None:
     """push_event(MessageDeleteOut) schedules _handle_delete_out."""
-    from bridge.adapters import disc
+    from bridge.adapters.discord import DiscordAdapter
+    from bridge.adapters.discord import handlers as discord_handlers
 
-    with patch.object(disc, "TextChannel", MagicMock):
-        adapter = disc.DiscordAdapter(bus, router, identity_resolver=None)
+    with patch.object(discord_handlers, "TextChannel", MagicMock):
+        adapter = DiscordAdapter(bus, router, identity_resolver=None)
         adapter._bot = MagicMock()
         mock_channel = MagicMock()
         mock_msg = MagicMock()
@@ -455,7 +465,7 @@ async def test_push_event_triggers_handle_delete_out(bus: Bus, router: ChannelRo
 @pytest.mark.asyncio
 async def test_handle_delete_out_no_bot_returns_early(bus: Bus, router: ChannelRouter) -> None:
     """_handle_delete_out does nothing when _bot is None."""
-    from bridge.adapters.disc import DiscordAdapter
+    from bridge.adapters.discord import DiscordAdapter
 
     adapter = DiscordAdapter(bus, router, identity_resolver=None)
     adapter._bot = None
@@ -467,10 +477,11 @@ async def test_handle_delete_out_no_bot_returns_early(bus: Bus, router: ChannelR
 @pytest.mark.asyncio
 async def test_handle_reaction_out_adds_reaction(bus: Bus, router: ChannelRouter) -> None:
     """_handle_reaction_out adds emoji to Discord message."""
-    from bridge.adapters import disc
+    from bridge.adapters.discord import DiscordAdapter
+    from bridge.adapters.discord import handlers as discord_handlers
 
-    with patch.object(disc, "TextChannel", MagicMock):
-        adapter = disc.DiscordAdapter(bus, router, identity_resolver=None)
+    with patch.object(discord_handlers, "TextChannel", MagicMock):
+        adapter = DiscordAdapter(bus, router, identity_resolver=None)
         adapter._bot = MagicMock()
         mock_channel = MagicMock()
         mock_msg = MagicMock()
@@ -487,10 +498,11 @@ async def test_handle_reaction_out_adds_reaction(bus: Bus, router: ChannelRouter
 @pytest.mark.asyncio
 async def test_handle_typing_out_triggers_typing(bus: Bus, router: ChannelRouter) -> None:
     """_handle_typing_out triggers channel.typing()."""
-    from bridge.adapters import disc
+    from bridge.adapters.discord import DiscordAdapter
+    from bridge.adapters.discord import handlers as discord_handlers
 
-    with patch.object(disc, "TextChannel", MagicMock), patch("asyncio.sleep", AsyncMock()):
-        adapter = disc.DiscordAdapter(bus, router, identity_resolver=None)
+    with patch.object(discord_handlers, "TextChannel", MagicMock), patch("asyncio.sleep", AsyncMock()):
+        adapter = DiscordAdapter(bus, router, identity_resolver=None)
         adapter._bot = MagicMock()
         mock_channel = MagicMock()
         mock_typing = MagicMock()
@@ -508,7 +520,7 @@ async def test_handle_typing_out_triggers_typing(bus: Bus, router: ChannelRouter
 @pytest.mark.asyncio
 async def test_webhook_send_returns_message_id(bus: Bus, router: ChannelRouter) -> None:
     """_webhook_send returns Discord message ID when successful."""
-    from bridge.adapters.disc import DiscordAdapter
+    from bridge.adapters.discord import DiscordAdapter
 
     adapter = DiscordAdapter(bus, router, identity_resolver=None)
     mock_webhook = MagicMock()
@@ -523,7 +535,7 @@ async def test_webhook_send_returns_message_id(bus: Bus, router: ChannelRouter) 
 @pytest.mark.asyncio
 async def test_webhook_send_none_when_no_webhook(bus: Bus, router: ChannelRouter) -> None:
     """_webhook_send returns None when _get_or_create_webhook returns None."""
-    from bridge.adapters.disc import DiscordAdapter
+    from bridge.adapters.discord import DiscordAdapter
 
     adapter = DiscordAdapter(bus, router, identity_resolver=None)
     adapter._get_or_create_webhook = AsyncMock(return_value=None)
@@ -535,7 +547,7 @@ async def test_webhook_send_none_when_no_webhook(bus: Bus, router: ChannelRouter
 @pytest.mark.asyncio
 async def test_webhook_edit_succeeds(bus: Bus, router: ChannelRouter) -> None:
     """_webhook_edit returns True when edit succeeds."""
-    from bridge.adapters.disc import DiscordAdapter
+    from bridge.adapters.discord import DiscordAdapter
 
     adapter = DiscordAdapter(bus, router, identity_resolver=None)
     mock_webhook = MagicMock()
@@ -553,7 +565,7 @@ async def test_webhook_edit_succeeds(bus: Bus, router: ChannelRouter) -> None:
 @pytest.mark.asyncio
 async def test_on_reaction_add_publishes_unicode_emoji(bus: Bus, router: ChannelRouter) -> None:
     """_on_reaction_add publishes ReactionIn for unicode emoji."""
-    from bridge.adapters.disc import DiscordAdapter
+    from bridge.adapters.discord import DiscordAdapter
 
     adapter = DiscordAdapter(bus, router, identity_resolver=None)
     published = []
@@ -582,7 +594,7 @@ async def test_on_reaction_add_publishes_unicode_emoji(bus: Bus, router: Channel
 @pytest.mark.asyncio
 async def test_on_reaction_add_skips_custom_emoji(bus: Bus, router: ChannelRouter) -> None:
     """_on_reaction_add does not publish for custom Discord emoji."""
-    from bridge.adapters.disc import DiscordAdapter
+    from bridge.adapters.discord import DiscordAdapter
 
     adapter = DiscordAdapter(bus, router, identity_resolver=None)
     published = []
@@ -599,7 +611,7 @@ async def test_on_reaction_add_skips_custom_emoji(bus: Bus, router: ChannelRoute
 @pytest.mark.asyncio
 async def test_on_typing_publishes_when_bridged(bus: Bus, router: ChannelRouter) -> None:
     """_on_typing publishes TypingIn for bridged channel."""
-    from bridge.adapters.disc import DiscordAdapter
+    from bridge.adapters.discord import DiscordAdapter
 
     adapter = DiscordAdapter(bus, router, identity_resolver=None)
     published = []
@@ -622,7 +634,7 @@ async def test_on_typing_publishes_when_bridged(bus: Bus, router: ChannelRouter)
 @pytest.mark.asyncio
 async def test_on_typing_skips_bot(bus: Bus, router: ChannelRouter) -> None:
     """_on_typing does not publish when user is bot."""
-    from bridge.adapters.disc import DiscordAdapter
+    from bridge.adapters.discord import DiscordAdapter
 
     adapter = DiscordAdapter(bus, router, identity_resolver=None)
     published = []
@@ -641,10 +653,11 @@ async def test_on_typing_skips_bot(bus: Bus, router: ChannelRouter) -> None:
 @pytest.mark.asyncio
 async def test_upload_file_sends_to_channel(bus: Bus, router: ChannelRouter) -> None:
     """upload_file sends file to Discord channel."""
-    from bridge.adapters import disc
+    from bridge.adapters.discord import DiscordAdapter
+    from bridge.adapters.discord import adapter as discord_adapter
 
-    with patch.object(disc, "TextChannel", MagicMock):
-        adapter = disc.DiscordAdapter(bus, router, identity_resolver=None)
+    with patch.object(discord_adapter, "TextChannel", MagicMock):
+        adapter = DiscordAdapter(bus, router, identity_resolver=None)
         adapter._bot = MagicMock()
         mock_channel = MagicMock()
         mock_channel.send = AsyncMock()
@@ -660,7 +673,7 @@ async def test_upload_file_sends_to_channel(bus: Bus, router: ChannelRouter) -> 
 @pytest.mark.asyncio
 async def test_upload_file_no_bot_returns_early(bus: Bus, router: ChannelRouter) -> None:
     """upload_file does nothing when _bot is None."""
-    from bridge.adapters.disc import DiscordAdapter
+    from bridge.adapters.discord import DiscordAdapter
 
     adapter = DiscordAdapter(bus, router, identity_resolver=None)
     adapter._bot = None
@@ -671,7 +684,7 @@ async def test_upload_file_no_bot_returns_early(bus: Bus, router: ChannelRouter)
 @pytest.mark.asyncio
 async def test_cmd_bridge_status_replies_with_identity(bus: Bus, router: ChannelRouter) -> None:
     """_cmd_bridge_status replies with IRC/XMPP link status when identity configured."""
-    from bridge.adapters.disc import DiscordAdapter
+    from bridge.adapters.discord import DiscordAdapter
 
     mock_identity = MagicMock()
     mock_identity.discord_to_irc = AsyncMock(return_value="ircnick")
@@ -695,7 +708,7 @@ async def test_cmd_bridge_status_replies_with_identity(bus: Bus, router: Channel
 @pytest.mark.asyncio
 async def test_cmd_bridge_status_no_identity(bus: Bus, router: ChannelRouter) -> None:
     """_cmd_bridge_status replies with 'not configured' when no identity resolver."""
-    from bridge.adapters.disc import DiscordAdapter
+    from bridge.adapters.discord import DiscordAdapter
 
     adapter = DiscordAdapter(bus, router, identity_resolver=None)
     ctx = MagicMock()
@@ -711,7 +724,7 @@ async def test_cmd_bridge_status_no_identity(bus: Bus, router: ChannelRouter) ->
 @pytest.mark.asyncio
 async def test_cmd_bridge_status_no_guild_returns_early(bus: Bus, router: ChannelRouter) -> None:
     """_cmd_bridge_status returns without replying when ctx.guild is None."""
-    from bridge.adapters.disc import DiscordAdapter
+    from bridge.adapters.discord import DiscordAdapter
 
     mock_identity = MagicMock()
     adapter = DiscordAdapter(bus, router, identity_resolver=mock_identity)

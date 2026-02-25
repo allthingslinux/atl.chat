@@ -6,8 +6,7 @@ import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from bridge.adapters.irc import IRCClient
-from bridge.adapters.irc_msgid import MessageIDTracker, ReactionTracker
+from bridge.adapters.irc import IRCClient, MessageIDTracker, ReactionTracker
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -467,7 +466,7 @@ class TestSendMessage:
     @pytest.mark.asyncio
     async def test_sends_relaymsg_clean_nick_when_configured(self):
         """When irc_relaymsg_clean_nicks is true, no /d suffix on spoofed nick."""
-        with patch("bridge.adapters.irc.cfg") as mock_cfg:
+        with patch("bridge.adapters.irc.client.cfg") as mock_cfg:
             mock_cfg.irc_relaymsg_clean_nicks = True
             client, _, router = _make_client()
             client._capabilities = {"draft/relaymsg": True}

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-from bridge.adapters.irc_msgid import MessageIDTracker, MessageMapping
+from bridge.adapters.irc import MessageIDTracker, MessageMapping
 
 
 class TestMessageMapping:
@@ -68,7 +68,7 @@ class TestMessageIDTracker:
 
     def test_expired_entries_removed_on_get_discord_id(self) -> None:
         """Expired entries are removed when get_discord_id triggers _cleanup."""
-        with patch("bridge.adapters.irc_msgid.time") as mock_time:
+        with patch("bridge.adapters.irc.msgid.time") as mock_time:
             mock_time.time.side_effect = [1000.0, 1002.0]  # store at 1000, get at 1002
             tracker = MessageIDTracker(ttl_seconds=1)
             tracker.store("irc-old", "discord-old")
@@ -77,7 +77,7 @@ class TestMessageIDTracker:
 
     def test_expired_entries_removed_on_get_irc_msgid(self) -> None:
         """Expired entries are removed when get_irc_msgid triggers _cleanup."""
-        with patch("bridge.adapters.irc_msgid.time") as mock_time:
+        with patch("bridge.adapters.irc.msgid.time") as mock_time:
             mock_time.time.side_effect = [1000.0, 1002.0]
             tracker = MessageIDTracker(ttl_seconds=1)
             tracker.store("irc-old", "discord-old")
@@ -85,7 +85,7 @@ class TestMessageIDTracker:
 
     def test_fresh_entries_not_expired(self) -> None:
         """Entries within TTL are not removed."""
-        with patch("bridge.adapters.irc_msgid.time") as mock_time:
+        with patch("bridge.adapters.irc.msgid.time") as mock_time:
             mock_time.time.side_effect = [
                 1000.0,
                 1000.5,

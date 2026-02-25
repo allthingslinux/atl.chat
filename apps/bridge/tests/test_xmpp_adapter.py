@@ -626,7 +626,7 @@ class TestStart:
         }
         with (
             patch.dict("os.environ", env, clear=True),
-            patch("bridge.adapters.xmpp.XMPPComponent", return_value=mock_comp),
+            patch("bridge.adapters.xmpp.adapter.XMPPComponent", return_value=mock_comp),
         ):
             await adapter.start()
         bus.register.assert_called_once_with(adapter)
@@ -664,7 +664,7 @@ class TestStart:
 
         with (
             patch.dict("os.environ", env, clear=True),
-            patch("bridge.adapters.xmpp.XMPPComponent", return_value=mock_comp),
+            patch("bridge.adapters.xmpp.adapter.XMPPComponent", return_value=mock_comp),
         ):
             await adapter.start()
 
@@ -831,7 +831,7 @@ class TestEdgeCases:
 
         with (
             patch.dict("os.environ", env, clear=True),
-            patch("bridge.adapters.xmpp.XMPPComponent", side_effect=components),
+            patch("bridge.adapters.xmpp.adapter.XMPPComponent", side_effect=components),
         ):
             await adapter.start()
             first_task = adapter._consumer_task

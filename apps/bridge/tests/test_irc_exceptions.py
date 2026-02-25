@@ -3,9 +3,14 @@
 from unittest.mock import AsyncMock, Mock
 
 import pytest
-from bridge.adapters.irc import IRCAdapter, IRCClient
-from bridge.adapters.irc_msgid import MessageIDTracker, ReactionTracker
-from bridge.adapters.irc_puppet import IRCPuppet, IRCPuppetManager
+from bridge.adapters.irc import (
+    IRCAdapter,
+    IRCClient,
+    IRCPuppet,
+    IRCPuppetManager,
+    MessageIDTracker,
+    ReactionTracker,
+)
 
 
 class TestIRCClient:
