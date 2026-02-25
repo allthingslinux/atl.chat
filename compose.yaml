@@ -17,6 +17,7 @@ include:
   - infra/compose/irc.yaml
   - infra/compose/xmpp.yaml
   - infra/compose/bridge.yaml
+  - infra/compose/thelounge.yaml
 
 services:
   dozzle:
