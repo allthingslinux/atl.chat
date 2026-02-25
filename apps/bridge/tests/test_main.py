@@ -322,6 +322,48 @@ class TestMain:
         mock_pc.assert_called_once()
         mock_ir.assert_called_once()
 
+    def test_main_creates_dev_identity_when_dev_irc_puppets_enabled(self, tmp_path):
+        """main() creates DevIdentityResolver when Portal absent and BRIDGE_DEV_IRC_PUPPETS=true."""
+        from bridge.__main__ import main
+        from bridge.identity import DevIdentityResolver
+
+        config_file = tmp_path / "config.yaml"
+        config_file.write_text("mappings: []\n")
+        mock_config = MagicMock()
+        mock_config.raw = {}
+        mock_config.identity_cache_ttl_seconds = 3600
+        captured_identity: list = []
+
+        async def _capture_run(bus, router, identity):
+            captured_identity.append(identity)
+
+        loop = asyncio.new_event_loop()
+        try:
+            import sys
+
+            fake_uvloop = MagicMock()
+            fake_uvloop.run.side_effect = lambda coro, **kw: loop.run_until_complete(coro)
+            sys.modules["uvloop"] = fake_uvloop
+
+            with (
+                patch("sys.argv", ["bridge", "--config", str(config_file)]),
+                patch("bridge.__main__.setup_logging"),
+                patch("bridge.__main__.reload_config", return_value=mock_config),
+                patch("bridge.__main__.ChannelRouter"),
+                patch("bridge.__main__.Bus"),
+                patch("bridge.__main__.Relay"),
+                patch("bridge.__main__._get_portal_url", return_value=None),
+                patch("bridge.__main__._dev_irc_puppets_enabled", return_value=True),
+                patch("bridge.__main__._run", side_effect=_capture_run),
+            ):
+                main()
+        finally:
+            sys.modules.pop("uvloop", None)
+            loop.close()
+
+        assert len(captured_identity) == 1
+        assert isinstance(captured_identity[0], DevIdentityResolver)
+
 
 # ---------------------------------------------------------------------------
 # _run() — adapter lifecycle
