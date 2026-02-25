@@ -198,3 +198,38 @@ class TestXMPPMessageIDTracking:
         tracker = XMPPMessageIDTracker()
         tracker.store("our-id", "discord-123", "room@muc.example.com")
         assert tracker.get_xmpp_id_for_reaction("discord-123") == "our-id"
+
+    def test_add_discord_id_alias_enables_irc_webhook_reply_lookup(self) -> None:
+        """add_discord_id_alias links real Discord ID when original used irc_msgid.
+
+        IRC messages: XMPP stores (xmpp_id, irc_msgid). Discord webhook returns
+        real discord_id later. This alias lets get_xmpp_id(discord_id) resolve.
+        """
+        tracker = XMPPMessageIDTracker()
+        # Simulate IRC->XMPP: stored with irc_msgid as "discord_id" key
+        tracker.store("xmpp-reply-target", "irc-msgid-abc", "room@conf.example.com")
+        assert tracker.get_xmpp_id("irc-msgid-abc") == "xmpp-reply-target"
+        assert tracker.get_xmpp_id("999888777") is None  # real discord ID not yet linked
+        # Discord adapter adds alias when webhook returns ID
+        added = tracker.add_discord_id_alias("999888777", "irc-msgid-abc")
+        assert added is True
+        assert tracker.get_xmpp_id("999888777") == "xmpp-reply-target"
+
+    def test_add_discord_id_alias_propagates_stanza_id_for_gajim(self) -> None:
+        """add_discord_id_alias propagates stanza-id so get_xmpp_id_for_reaction returns it.
+
+        Gajim matches replies by stanza-id in MUC. We must use stanza-id in the reply
+        reference to avoid "The referenced message is not available."
+        """
+        tracker = XMPPMessageIDTracker()
+        tracker.store("our-id", "irc-msgid-xyz", "room@conf.example.com")
+        tracker.add_stanza_id_alias("our-id", "muc-stanza-id-123")
+        assert tracker.get_xmpp_id_for_reaction("irc-msgid-xyz") == "muc-stanza-id-123"
+        assert tracker.get_xmpp_id_for_reaction("discord-999") is None
+        tracker.add_discord_id_alias("discord-999", "irc-msgid-xyz")
+        assert tracker.get_xmpp_id_for_reaction("discord-999") == "muc-stanza-id-123"
+
+    def test_add_discord_id_alias_nonexistent_returns_false(self) -> None:
+        """add_discord_id_alias returns False when existing_key not found."""
+        tracker = XMPPMessageIDTracker()
+        assert tracker.add_discord_id_alias("new-discord-id", "nonexistent-irc-msgid") is False

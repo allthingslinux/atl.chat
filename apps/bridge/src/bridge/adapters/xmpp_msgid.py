@@ -54,6 +54,25 @@ class XMPPMessageIDTracker:
         self._xmpp_to_discord[alias_id] = mapping
         return True
 
+    def add_discord_id_alias(self, new_discord_id: str, existing_key: str) -> bool:
+        """Add Discord ID as alias for get_xmpp_id lookups.
+
+        Used when an IRC message is relayed: XMPP stores (xmpp_id, irc_msgid) and Discord
+        later gets the real discord_id from the webhook. This links discord_id -> xmpp_id
+        so Discord replies to IRC webhooks resolve to the correct XMPP message.
+        Also propagates stanza_id so get_xmpp_id_for_reaction (used for replies) returns
+        stanza-id for Gajim compatibility (clients match replies by stanza-id in MUC).
+        """
+        self._cleanup()
+        mapping = self._discord_to_xmpp.get(existing_key)
+        if not mapping:
+            return False
+        self._discord_to_xmpp[new_discord_id] = mapping
+        stanza_id = self._discord_to_stanza_id.get(existing_key)
+        if stanza_id:
+            self._discord_to_stanza_id[new_discord_id] = stanza_id
+        return True
+
     def get_discord_id(self, xmpp_id: str) -> str | None:
         """Get Discord message ID from XMPP message ID."""
         self._cleanup()

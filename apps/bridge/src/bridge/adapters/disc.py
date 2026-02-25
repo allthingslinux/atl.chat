@@ -376,10 +376,22 @@ class DiscordAdapter:
                 # Store IRC->Discord mapping for REDACT routing
                 if discord_msg_id and evt.raw.get("origin") == "irc":
                     from bridge.adapters.irc import IRCAdapter
+                    from bridge.adapters.xmpp import XMPPAdapter
 
                     for adapter in self._bus._adapters:
                         if isinstance(adapter, IRCAdapter) and adapter._msgid_tracker:
                             adapter._msgid_tracker.store(evt.message_id, str(discord_msg_id))
+                            break
+                    # Link discord_id -> xmpp_id so Discord replies to IRC webhooks resolve for XMPP
+                    irc_msgid = evt.message_id
+                    for adapter in self._bus._adapters:
+                        if isinstance(adapter, XMPPAdapter) and adapter._component:
+                            if adapter._component._msgid_tracker.add_discord_id_alias(str(discord_msg_id), irc_msgid):
+                                logger.debug(
+                                    "Linked Discord reply target: discord_id={} -> xmpp (via irc_msgid={})",
+                                    discord_msg_id,
+                                    irc_msgid,
+                                )
                             break
                 await asyncio.sleep(delay)
             except asyncio.CancelledError:

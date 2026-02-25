@@ -128,10 +128,14 @@ class XMPPAdapter:
                                     evt.message_id,
                                 )
                         else:
-                            # Look up reply target XMPP message ID if replying
+                            # Look up reply target XMPP message ID if replying.
+                            # Prefer stanza-id (get_xmpp_id_for_reaction) so Gajim matches
+                            # the reply to the displayed message (MUC uses stanza-id).
                             reply_to_xmpp_id = None
                             if evt.reply_to_id:
-                                reply_to_xmpp_id = self._component._msgid_tracker.get_xmpp_id(evt.reply_to_id)
+                                reply_to_xmpp_id = self._component._msgid_tracker.get_xmpp_id_for_reaction(
+                                    evt.reply_to_id
+                                )
 
                             # Send new message; store mapping before send so stanza-id from
                             # MUC echo can update it (required for Discord→XMPP edits)
@@ -164,7 +168,8 @@ class XMPPAdapter:
         mapping = self._router.get_mapping_for_discord(evt.channel_id)
         if not mapping or not mapping.xmpp:
             return
-        target_xmpp_id = self._component._msgid_tracker.get_xmpp_id(evt.message_id)
+        # XEP-0424 §5.1: in groupchat the MUC-assigned stanza-id must be used for retract id
+        target_xmpp_id = self._component._msgid_tracker.get_xmpp_id_for_reaction(evt.message_id)
         if not target_xmpp_id:
             logger.debug("No XMPP msgid for Discord message {}; skip retraction", evt.message_id)
             return
