@@ -15,7 +15,8 @@ config/
 ├── unrealircd.conf.template   # Main config (env vars substituted at init)
 ├── badwords.conf, spamfilter.conf, dccallow.conf, etc.
 ├── aliases/, examples/, help/, tls/
-└── modules.sources.list
+├── modules.sources.list
+└── third-party-modules.list   # third/showwebirc, third/relaymsg (atl.chat fork), etc.
 
 scripts/           # Docker entrypoint helpers
 config.settings   # UnrealIRCd build settings
@@ -35,6 +36,11 @@ justfile          # Loaded via: mod irc './apps/unrealircd'
 | `just irc ssl-status` | Show SSL cert status |
 | `just irc modules-list` | List available modules |
 | `just irc gencloak` | Run gencloak-update-env.sh |
+
+## Third-Party Modules
+
+- **third/showwebirc** — WebIRC/WebSocket info in WHOIS
+- **third/relaymsg** — draft/relaymsg for stateless bridging (atl.chat fork); bridge sends `RELAYMSG` instead of puppet PRIVMSG when server supports it
 
 ## Config Generation
 
