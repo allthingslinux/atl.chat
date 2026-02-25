@@ -42,6 +42,8 @@ justfile           # Loaded via: mod irc './apps/unrealircd'
 
 - **third/showwebirc** — WebIRC/WebSocket info in WHOIS
 - **third/metadata** — METADATA command for avatars, message coloring, status texts (draft/metadata, draft/metadata-notify-2)
+- **third/react** — IRCv3 draft/react (message reactions)
+- **third/redact** — IRCv3 draft/message-redaction (REDACT command for message deletion)
 - **third/relaymsg-atl** — draft/relaymsg for stateless bridging (atl.chat fork); bridge sends `RELAYMSG` instead of puppet PRIVMSG when server supports it
 
 ## Config Generation

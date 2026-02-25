@@ -2,8 +2,10 @@
  * License: GPLv3
  * Name: third/relaymsg-atl (atl.chat fork)
  *
- * Modified by atl.chat: add require-separator config option to allow clean nicks
- * (no / suffix) for cross-platform name consistency. Default: yes (upstream behavior).
+ * Modified by atl.chat:
+ * - add require-separator config option to allow clean nicks (no / suffix)
+ * - attach msgid tag (IRCv3 message-ids) to RELAYMSG for bridge REDACT support
+ * - in cmd_rrelaymsg: add msgid + draft/relaymsg when upstream (e.g. Atheme) strips tags
  *
  * Uses unique name third/relaymsg-atl to avoid collision with upstream third/relaymsg
  * during UnrealIRCd build (make runs "unrealircd -m upgrade" which overwrites contrib modules).
@@ -25,8 +27,10 @@ module
 */
 
 #include "unrealircd.h"
+#include <time.h>
 
 #define CONF_BLOCK_NAME "relaymsg"
+#define MSGID_TAG "msgid"
 #define NAME_RELAYMSG "draft/relaymsg"
 
 long CAP_RELAYMSG = 0L;
@@ -61,7 +65,7 @@ static struct MyConfStruct MyConf;
 
 ModuleHeader MOD_HEADER = {
 	"third/relaymsg-atl",
-	"1.0.1",
+	"1.0.5",
 	"Implements draft/relaymsg (atl.chat: optional separator)",
 	"Valware",
 	"unrealircd-6",
@@ -248,6 +252,16 @@ static int nick_has_valid_separator(const char *nick)
 	return strchr(nick, '/') != NULL;
 }
 
+/** Generate a unique msgid per IRCv3 message-ids. Format: serverid-timestamp-counter. */
+static char *relaymsg_generate_msgid(void)
+{
+	static unsigned int counter = 0;
+	static char buf[96];
+	unsigned long long ts = (unsigned long long)time(NULL);
+	snprintf(buf, sizeof(buf), "%s-%llu-%u", me.id, ts, ++counter);
+	return buf;
+}
+
 CMD_FUNC(cmd_relaymsg)
 {
 	MessageTag *mtags = NULL, *m = NULL;
@@ -305,6 +319,11 @@ CMD_FUNC(cmd_relaymsg)
 		safe_strdup(m->name, NAME_RELAYMSG);
 		safe_strdup(m->value, client->name);
 		AddListItem(m, mtags);
+
+		/* Do NOT add our synthetic msgid here - the core message-ids module adds msgid
+		 * when delivering to clients. That canonical msgid is what chathistory/redact
+		 * use. A second msgid would overwrite in client parsers and we'd store the
+		 * wrong one, causing REDACT UNKNOWN_MSGID. */
 		new_message(client, recv_mtags, &mtags);
 
 		sendto_channel(channel, &me, NULL, NULL, 0, SEND_LOCAL, mtags,
@@ -314,8 +333,23 @@ CMD_FUNC(cmd_relaymsg)
 	}
 }
 
+/** Return 1 if mtags contains msgid, 0 otherwise. */
+static int mtags_has_msgid(MessageTag *mtags)
+{
+	MessageTag *t;
+	for (t = mtags; t; t = t->next)
+		if (t->name && !strcmp(t->name, MSGID_TAG))
+			return 1;
+	return 0;
+}
+
 CMD_FUNC(cmd_rrelaymsg)
 {
+	MessageTag *mtags = NULL;
+	MessageTag *relaymsg_tag = NULL;
+	MessageTag *msgid_tag = NULL;
+	MessageTag *use_mtags;
+
 	if (parc < 5)
 		return;
 
@@ -335,9 +369,29 @@ CMD_FUNC(cmd_rrelaymsg)
 		if (!channel)
 			return;
 
-		sendto_channel(channel, &me, NULL, NULL, 0, SEND_LOCAL, recv_mtags,
+		use_mtags = recv_mtags;
+		if (!recv_mtags || !mtags_has_msgid(recv_mtags))
+		{
+			/* Upstream (e.g. Atheme) strips IRCv3 tags; add both for bridge echo correlation. */
+			Client *relay_client = find_user(parv[1], NULL);
+			const char *relay_nick = relay_client ? relay_client->name : parv[3];
+			relaymsg_tag = safe_alloc(sizeof(MessageTag));
+			safe_strdup(relaymsg_tag->name, NAME_RELAYMSG);
+			safe_strdup(relaymsg_tag->value, relay_nick);
+			AddListItem(relaymsg_tag, mtags);
+			msgid_tag = safe_alloc(sizeof(MessageTag));
+			safe_strdup(msgid_tag->name, MSGID_TAG);
+			safe_strdup(msgid_tag->value, relaymsg_generate_msgid());
+			AddListItem(msgid_tag, mtags);
+			use_mtags = mtags;
+			/* Run new_message so message-ids and other hooks propagate tags to clients. */
+			if (relay_client)
+				new_message(relay_client, NULL, &use_mtags);
+		}
+
+		sendto_channel(channel, &me, NULL, NULL, 0, SEND_LOCAL, use_mtags,
 			":%s!%s PRIVMSG %s :%s", parv[3], MyConf.hostmask, parv[2], parv[4]);
-		sendto_server(client, 0, 0, recv_mtags,
+		sendto_server(client, 0, 0, use_mtags,
 			":%s RRELAYMSG %s %s %s :%s", me.name, parv[1], parv[2], parv[3], parv[4]);
 	}
 }

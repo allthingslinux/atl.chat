@@ -339,6 +339,8 @@ include "snomasks.default.conf";
 loadmodule "cloak_sha256";
 loadmodule "third/showwebirc";
 loadmodule "third/metadata";
+loadmodule "third/react";         /* IRCv3 draft/react: message reactions */
+loadmodule "third/redact";        /* IRCv3 draft/message-redaction: REDACT for deletion */
 loadmodule "third/relaymsg-atl";  /* atl.chat fork: RELAYMSG for stateless bridging */
 
 /* METADATA: avatars, message coloring, status texts (draft/metadata, draft/metadata-notify-2)
