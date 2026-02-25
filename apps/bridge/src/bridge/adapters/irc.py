@@ -123,7 +123,7 @@ class IRCClient(pydle.Client):
         self._auto_rejoin = auto_rejoin
         self._ready = False
         self._pending_sends: asyncio.Queue[str] = asyncio.Queue()  # discord_id for echo correlation
-        self._pending_reactions: asyncio.Queue[tuple[str, str, str]] = asyncio.Queue()
+        self._message_tags: dict[str, str | bool] = {}  # set in on_raw_privmsg from message.tags
         self._puppet_nick_check: Callable[[str], bool] | None = None  # set by adapter for echo detection
         # Fallback echo detection when relaymsg tag missing (e.g. via irc-services)
         self._recent_relaymsg_sends: TTLCache[tuple[str, str], None] = TTLCache(maxsize=100, ttl=5)
@@ -151,7 +151,8 @@ class IRCClient(pydle.Client):
             await asyncio.sleep(1)  # Allow server to process OPER
             for channel in self._channels:
                 await self.rawmsg("MODE", channel, "+P")
-                logger.info("Set {} permanent (+P)", channel)
+                await self.rawmsg("MODE", channel, "+H", "50:1d")  # Required for REDACT (chathistory)
+                logger.info("Set {} permanent (+P) and history (+H 50:1d)", channel)
         except Exception as exc:
             logger.warning("Could not set channels permanent (OPER/MODE): {}", exc)
 
@@ -189,6 +190,22 @@ class IRCClient(pydle.Client):
         if params and "ready" in (str(p) for p in params):
             self._ready = True
             logger.debug("IRC ready (PONG received)")
+
+    async def on_raw_privmsg(self, message) -> None:
+        """Set _message_tags from parsed message so on_message can read msgid/draft/relaymsg."""
+        self._message_tags = getattr(message, "tags", None) or {}
+        if self._message_tags:
+            params = getattr(message, "params", [])
+            target = params[0] if params else "?"
+            logger.debug(
+                "IRC: PRIVMSG to {} with tags={}",
+                target,
+                self._message_tags,
+            )
+        try:
+            await super().on_raw_privmsg(message)
+        finally:
+            self._message_tags = {}
 
     async def on_kick(self, channel: str, target: str, by: str, reason: str | None = None) -> None:
         """Handle KICK; rejoin if we were kicked and not banned."""
@@ -250,9 +267,26 @@ class IRCClient(pydle.Client):
                 try:
                     discord_id = self._pending_sends.get_nowait()
                     self._msgid_tracker.store(msgid, discord_id)  # irc_msgid, discord_id
+                    logger.debug("IRC: stored msgid {} -> {} for REDACT/edit correlation", msgid, discord_id)
                 except asyncio.QueueEmpty:
-                    pass
+                    logger.debug(
+                        "IRC: RELAYMSG echo had msgid {} but no pending_send (queue empty); cannot correlate",
+                        msgid,
+                    )
+            elif relayed_by_us or from_recent_relaymsg:
+                logger.info(
+                    "IRC: RELAYMSG echo received for {} in {} but no msgid tag (UnrealIRCd message-ids may not add msgid to relaymsg)",
+                    source,
+                    target,
+                )
+                logger.debug(
+                    "IRC: RELAYMSG echo tags={} (empty => server may not send tags or message-tags cap not negotiated)",
+                    tags,
+                )
             return  # Skip publishing our own echoed messages to prevent doubling
+
+        if msgid:
+            logger.debug("IRC: external message with msgid={} from {}", msgid, source)
 
         _, evt = message_in(
             origin="irc",
@@ -295,7 +329,7 @@ class IRCClient(pydle.Client):
         self._bus.publish("irc", evt)
 
     async def on_raw_tagmsg(self, message) -> None:
-        """Handle IRC TAGMSG with +draft/react or +typing; publish for Relay."""
+        """Handle IRC TAGMSG with +draft/react, +draft/unreact, or +typing; publish for Relay."""
         if not self._ready:
             return
         params = getattr(message, "params", [])
@@ -311,24 +345,18 @@ class IRCClient(pydle.Client):
         tags = getattr(message, "tags", {}) or {}
         reply_to = tags.get("+draft/reply")
         react = tags.get("+draft/react")
+        unreact = tags.get("+draft/unreact")
         typing_val = tags.get("typing")
 
         source = getattr(message, "source", "") or ""
         nick = source.split("!")[0] if "!" in source else source
 
         if react and reply_to:
+            # Add reaction
+            if nick == self.nickname:
+                return  # Skip our own echo
             discord_id = self._msgid_tracker.get_discord_id(reply_to)
             if discord_id:
-                # Our own echo: capture reaction TAGMSG msgid for removal via REDACT
-                if nick == self.nickname:
-                    msgid = tags.get("msgid")
-                    if msgid:
-                        try:
-                            pending = self._pending_reactions.get_nowait()
-                            self._reaction_tracker.store(pending[0], pending[1], pending[2], msgid)
-                        except asyncio.QueueEmpty:
-                            pass
-                    return
                 from bridge.events import reaction_in
 
                 msgid = tags.get("msgid")
@@ -342,6 +370,26 @@ class IRCClient(pydle.Client):
                     author_id=nick,
                     author_display=nick,
                 )
+                logger.info("IRC reaction bridged: channel={} author={} emoji={}", target, nick, react)
+                self._bus.publish("irc", evt)
+        elif unreact and reply_to:
+            # Remove reaction (IRCv3 +draft/unreact)
+            if nick == self.nickname:
+                return  # Skip our own echo
+            discord_id = self._msgid_tracker.get_discord_id(reply_to)
+            if discord_id:
+                from bridge.events import reaction_in
+
+                _, evt = reaction_in(
+                    origin="irc",
+                    channel_id=f"{self._server}/{target}",
+                    message_id=discord_id,
+                    emoji=unreact,
+                    author_id=nick,
+                    author_display=nick,
+                    raw={"is_remove": True},
+                )
+                logger.info("IRC reaction removal bridged: channel={} author={} emoji={}", target, nick, unreact)
                 self._bus.publish("irc", evt)
         elif typing_val == "active":
             from bridge.events import typing_in
@@ -359,6 +407,7 @@ class IRCClient(pydle.Client):
         if len(params) < 2:
             return
         target, irc_msgid = params[0], params[1]
+        logger.debug("IRC: received REDACT target={} msgid={}", target, irc_msgid)
         if not target.startswith("#"):
             return
         mapping = self._router.get_mapping_for_irc(self._server, target)
@@ -382,20 +431,29 @@ class IRCClient(pydle.Client):
                 author_display=nick or author_id,
                 raw={"is_remove": True},
             )
+            logger.info("IRC REDACT (reaction) bridged: channel={} emoji={}", target, emoji)
             self._bus.publish("irc", evt)
             return
 
         discord_id = self._msgid_tracker.get_discord_id(irc_msgid)
         if not discord_id:
-            logger.debug("No Discord msgid for IRC REDACT {}; skip", irc_msgid)
+            logger.debug(
+                "No Discord msgid for IRC REDACT {}; skip (msgid never stored or expired)",
+                irc_msgid,
+            )
             return
+        source = getattr(message, "source", "") or ""
+        nick = source.split("!")[0] if "!" in source else source
         from bridge.events import message_delete
 
         _, evt = message_delete(
             origin="irc",
             channel_id=f"{self._server}/{target}",
             message_id=discord_id,
+            author_id=nick,
+            author_display=nick,
         )
+        logger.info("IRC REDACT (message) bridged: channel={} msgid={}", target, irc_msgid)
         self._bus.publish("irc", evt)
 
     async def on_raw_chghost(self, message):
@@ -414,6 +472,46 @@ class IRCClient(pydle.Client):
             nick = message.source
             new_realname = message.params[0]
             logger.debug("IRC SETNAME: {} -> {}", nick, new_realname)
+
+    async def on_capability_message_tags_available(self, value):
+        """Request message-tags (required for msgid on PRIVMSG/RELAYMSG)."""
+        logger.info("IRC: requesting message-tags capability (value={})", value)
+        return True
+
+    async def on_capability_message_tags_5_0_available(self, value):
+        """Request message-tags when UnrealIRCd advertises as message-tags:5.0."""
+        logger.info("IRC: requesting message-tags:5.0 capability (value={})", value)
+        return True
+
+    async def on_raw_cap_ls(self, params):
+        """Skip '*' sentinel (multi-line CAP LS) so pydle doesn't send CAP END prematurely.
+        Always request message-tags (req for msgid) since UnrealIRCd may send it in a batch we process after our REQ."""
+        if not params or not params[0]:
+            await super().on_raw_cap_ls(params)
+            return
+        batch = params[0].strip()
+        if batch == "*":
+            logger.debug("IRC: skipping CAP LS sentinel '*' (multi-line; waiting for real batches)")
+            return
+        await super().on_raw_cap_ls(params)
+        # Ensure we request message-tags; UnrealIRCd may send it in a later batch but we need it for msgid.
+        caps = getattr(self, "_capabilities", {})
+        if caps.get("message-tags") is None and "message-tags" not in getattr(self, "_capabilities_requested", set()):
+            logger.debug("IRC: explicitly requesting message-tags (required for msgid)")
+            self._capabilities_requested.add("message-tags")
+            await self.rawmsg("CAP", "REQ", "message-tags")
+
+    async def on_capability_message_tags_enabled(self):
+        """Log when message-tags capability is negotiated (required for msgid on PRIVMSG)."""
+        logger.info("IRC: message-tags capability negotiated")
+
+    async def on_capability_draft_message_redaction_available(self, value):
+        """Request draft/message-redaction for REDACT (message deletion)."""
+        return True
+
+    async def on_capability_draft_relaymsg_enabled(self):
+        """Log when draft/relaymsg is negotiated."""
+        logger.debug("IRC: draft/relaymsg capability negotiated")
 
     async def on_capability_draft_relaymsg_available(self, value):
         """Request draft/relaymsg for stateless bridging."""
@@ -500,6 +598,10 @@ class IRCClient(pydle.Client):
             # Only store mapping for first chunk (echo will have msgid)
             if i == 0:
                 self._pending_sends.put_nowait(evt.message_id)
+                logger.debug(
+                    "IRC: queued pending_send discord_id={} for echo correlation",
+                    evt.message_id,
+                )
 
     def queue_message(self, evt: MessageOut):
         """Queue outbound message."""
@@ -552,6 +654,11 @@ class IRCAdapter:
         """Queue MessageOut, MessageDeleteOut, or ReactionOut for IRC send."""
         if isinstance(evt, MessageDeleteOut) and evt.target_origin == "irc":
             if self._client:
+                logger.debug(
+                    "IRC: received MessageDeleteOut channel={} message_id={}",
+                    evt.channel_id,
+                    evt.message_id,
+                )
                 asyncio.create_task(self._send_redact(evt))  # noqa: RUF006
             return
         if isinstance(evt, ReactionOut) and evt.target_origin == "irc":
@@ -574,7 +681,7 @@ class IRCAdapter:
                 logger.warning("IRC MessageOut dropped: no client (channel={})", evt.channel_id)
 
     async def _send_reaction(self, evt: ReactionOut) -> None:
-        """Send IRC TAGMSG with +draft/react for add, or REDACT for removal."""
+        """Send IRC TAGMSG with +draft/react for add, or +draft/unreact for removal (IRCv3 spec)."""
         if not self._client:
             return
         is_remove = evt.raw.get("is_remove", False)
@@ -583,36 +690,31 @@ class IRCAdapter:
             return
         target = mapping.irc.channel
 
-        if is_remove:
-            irc_reaction_msgid = self._client._reaction_tracker.get_reaction_msgid(
-                evt.message_id, evt.emoji, evt.author_id
-            )
-            if not irc_reaction_msgid:
-                logger.debug(
-                    "No IRC reaction msgid for removal {} on {}; skip",
-                    evt.emoji,
-                    evt.message_id,
-                )
-                return
-            try:
-                await self._client.rawmsg("REDACT", target, irc_reaction_msgid)
-                logger.debug("Sent REDACT for reaction {} on {}", evt.emoji, evt.message_id)
-            except Exception as exc:
-                logger.exception("Reaction REDACT failed: {}", exc)
-            return
-
         irc_msgid = self._msgid_tracker.get_irc_msgid(evt.message_id)
         if not irc_msgid:
             logger.debug("No IRC msgid for reaction on {}; skip", evt.message_id)
             return
+
+        if is_remove:
+            try:
+                await self._client.rawmsg(
+                    "TAGMSG",
+                    target,
+                    tags={"+draft/reply": irc_msgid, "+draft/unreact": evt.emoji},
+                )
+                logger.info("IRC: sent reaction removal {} on message {}", evt.emoji, evt.message_id)
+            except Exception as exc:
+                logger.exception("Reaction unreact TAGMSG failed: {}", exc)
+            return
+
+        # Add reaction
         try:
-            self._client._pending_reactions.put_nowait((evt.message_id, evt.emoji, evt.author_id))
             await self._client.rawmsg(
                 "TAGMSG",
                 target,
                 tags={"+draft/reply": irc_msgid, "+draft/react": evt.emoji},
             )
-            logger.debug("Sent reaction {} to IRC", evt.emoji)
+            logger.info("IRC: sent reaction {} to channel {}", evt.emoji, target)
         except Exception as exc:
             logger.exception("Reaction TAGMSG failed: {}", exc)
 
@@ -642,12 +744,28 @@ class IRCAdapter:
             logger.debug("Typing TAGMSG failed: {}", exc)
 
     async def _send_redact(self, evt: MessageDeleteOut) -> None:
-        """Send REDACT to IRC when Discord message is deleted."""
+        """Send REDACT to IRC when Discord message is deleted (requires draft/message-redaction)."""
         if not self._client:
+            return
+        if not cfg.irc_redact_enabled:
+            logger.debug(
+                "IRC: skipping REDACT for message {} (irc_redact_enabled=false; UnrealIRCd third/redact crashes)",
+                evt.message_id,
+            )
+            return
+        caps = getattr(self._client, "_capabilities", {})
+        if not caps.get("draft/message-redaction"):
+            logger.info(
+                "IRC: skipping REDACT for Discord message {} (draft/message-redaction not negotiated)",
+                evt.message_id,
+            )
             return
         irc_msgid = self._msgid_tracker.get_irc_msgid(evt.message_id)
         if not irc_msgid:
-            logger.debug("No IRC msgid for Discord message {}; skip REDACT", evt.message_id)
+            logger.info(
+                "IRC: skipping REDACT for Discord message {} (no IRC msgid stored; echo may lack msgid tag)",
+                evt.message_id,
+            )
             return
         mapping = self._router.get_mapping_for_discord(evt.channel_id)
         if not mapping or not mapping.irc:
@@ -655,7 +773,8 @@ class IRCAdapter:
         target = mapping.irc.channel
         try:
             await self._client.rawmsg("REDACT", target, irc_msgid)
-            logger.debug("Sent REDACT for {} to IRC", evt.message_id)
+            logger.info("IRC: sent REDACT for message {} to channel {}", evt.message_id, target)
+            logger.debug("IRC: REDACT irc_msgid={} -> discord_id={}", irc_msgid, evt.message_id)
         except Exception as exc:
             logger.exception("REDACT failed: {}", exc)
 

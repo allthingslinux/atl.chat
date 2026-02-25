@@ -51,6 +51,7 @@ def _mock_client() -> MagicMock:
     c.rawmsg = AsyncMock()
     c.queue_message = MagicMock()
     c._typing_last = 0
+    c._capabilities = {"draft/message-redaction": True}  # REDACT support
     return c
 
 
@@ -284,6 +285,29 @@ class TestSendReaction:
             tags={"+draft/reply": "irc-id", "+draft/react": "👍"},
         )
 
+    @pytest.mark.asyncio
+    async def test_sends_tagmsg_with_unreact_for_removal(self):
+        """Reaction removal uses +draft/unreact per IRCv3 spec (not REDACT)."""
+        adapter, _, router = _make_adapter()
+        adapter._client = _mock_client()
+        adapter._msgid_tracker.store("irc-id", "discord-id")
+        router.get_mapping_for_discord.return_value = _irc_mapping()
+        evt = ReactionOut(
+            target_origin="irc",
+            channel_id="111",
+            message_id="discord-id",
+            emoji="👍",
+            author_id="u",
+            author_display="U",
+            raw={"is_remove": True},
+        )
+        await adapter._send_reaction(evt)
+        adapter._client.rawmsg.assert_awaited_once_with(
+            "TAGMSG",
+            "#test",
+            tags={"+draft/reply": "irc-id", "+draft/unreact": "👍"},
+        )
+
 
 # ---------------------------------------------------------------------------
 # _send_typing
@@ -368,8 +392,37 @@ class TestSendRedact:
         adapter._msgid_tracker.store("irc-id", "discord-id")
         router.get_mapping_for_discord.return_value = _irc_mapping()
         evt = MessageDeleteOut(target_origin="irc", channel_id="111", message_id="discord-id")
-        await adapter._send_redact(evt)
+        with patch("bridge.adapters.irc.cfg") as mock_cfg:
+            mock_cfg.irc_redact_enabled = True
+            await adapter._send_redact(evt)
         adapter._client.rawmsg.assert_awaited_once_with("REDACT", "#test", "irc-id")
+
+    @pytest.mark.asyncio
+    async def test_skips_redact_when_disabled(self):
+        """REDACT is skipped when irc_redact_enabled is false (UnrealIRCd workaround)."""
+        adapter, _, router = _make_adapter()
+        adapter._client = _mock_client()
+        adapter._msgid_tracker.store("irc-id", "discord-id")
+        router.get_mapping_for_discord.return_value = _irc_mapping()
+        evt = MessageDeleteOut(target_origin="irc", channel_id="111", message_id="discord-id")
+        with patch("bridge.adapters.irc.cfg") as mock_cfg:
+            mock_cfg.irc_redact_enabled = False
+            await adapter._send_redact(evt)
+        adapter._client.rawmsg.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_skips_redact_when_cap_not_negotiated(self):
+        """REDACT is only sent when draft/message-redaction was negotiated."""
+        adapter, _, router = _make_adapter()
+        adapter._client = _mock_client()
+        adapter._client._capabilities = {}  # No draft/message-redaction
+        adapter._msgid_tracker.store("irc-id", "discord-id")
+        router.get_mapping_for_discord.return_value = _irc_mapping()
+        evt = MessageDeleteOut(target_origin="irc", channel_id="111", message_id="discord-id")
+        with patch("bridge.adapters.irc.cfg") as mock_cfg:
+            mock_cfg.irc_redact_enabled = True
+            await adapter._send_redact(evt)
+        adapter._client.rawmsg.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
@@ -596,7 +649,9 @@ class TestIRCAdapterEdgeCases:
         adapter._msgid_tracker.store("irc-id", "discord-id")
         router.get_mapping_for_discord.return_value = _irc_mapping()
         evt = MessageDeleteOut(target_origin="irc", channel_id="111", message_id="discord-id")
-        await adapter._send_redact(evt)
+        with patch("bridge.adapters.irc.cfg") as mock_cfg:
+            mock_cfg.irc_redact_enabled = True
+            await adapter._send_redact(evt)
         # rawmsg was attempted (exception was swallowed, not silently skipped)
         adapter._client.rawmsg.assert_awaited_once()
 

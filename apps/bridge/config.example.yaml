@@ -37,6 +37,9 @@ irc_tls_verify: true
 # RELAYMSG: no /d suffix when UnrealIRCd relaymsg has require_separator no
 irc_relaymsg_clean_nicks: true
 
+# IRC REDACT: set true when UnrealIRCd third/redact segfault is fixed
+irc_redact_enabled: false
+
 # IRC SASL (optional)
 irc_use_sasl: false
 irc_sasl_user: ''

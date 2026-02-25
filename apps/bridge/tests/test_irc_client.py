@@ -297,6 +297,37 @@ class TestOnRawTagmsg:
         _, evt = bus.publish.call_args[0]
         assert evt.user_id == "user"
 
+    @pytest.mark.asyncio
+    async def test_publishes_reaction_removal_on_unreact_tag(self):
+        """+draft/unreact TAGMSG emits ReactionIn with is_remove=True."""
+        client, bus, router = _make_client()
+        router.get_mapping_for_irc.return_value = MagicMock(discord_channel_id="111")
+        client._msgid_tracker.store("irc-orig", "discord-orig")
+        msg = _mock_message(
+            params=["#test"],
+            tags={"+draft/reply": "irc-orig", "+draft/unreact": "👍"},
+            source="user!user@host",
+        )
+        await client.on_raw_tagmsg(msg)
+        bus.publish.assert_called_once()
+        _, evt = bus.publish.call_args[0]
+        assert evt.emoji == "👍"
+        assert evt.message_id == "discord-orig"
+        assert evt.author_id == "user"
+        assert evt.raw.get("is_remove") is True
+
+    @pytest.mark.asyncio
+    async def test_skips_unreact_when_no_discord_id(self):
+        client, bus, router = _make_client()
+        router.get_mapping_for_irc.return_value = MagicMock(discord_channel_id="111")
+        msg = _mock_message(
+            params=["#test"],
+            tags={"+draft/reply": "unknown-irc-id", "+draft/unreact": "👍"},
+            source="user!u@h",
+        )
+        await client.on_raw_tagmsg(msg)
+        bus.publish.assert_not_called()
+
 
 # ---------------------------------------------------------------------------
 # on_raw_redact

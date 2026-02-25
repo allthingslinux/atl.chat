@@ -112,6 +112,15 @@ class Config:
         return int(self._data.get("avatar_cache_ttl_seconds", 86400))
 
     @property
+    def xmpp_avatar_base_url(self) -> str | None:
+        """Base URL for XMPP avatar resolution (HEAD check). When bridge runs in Docker,
+        use internal hostname (e.g. http://atl-xmpp-server:5280). Empty = derive from room JID domain."""
+        val = self._data.get("xmpp_avatar_base_url")
+        if val and isinstance(val, str) and val.strip():
+            return val.strip()
+        return None
+
+    @property
     def irc_puppet_idle_timeout_hours(self) -> int:
         """Hours before disconnecting idle IRC puppets (AUDIT §4)."""
         return int(self._data.get("irc_puppet_idle_timeout_hours", 24))
@@ -140,6 +149,19 @@ class Config:
     def irc_auto_rejoin(self) -> bool:
         """Whether to auto-rejoin channels after KICK/disconnect."""
         return bool(self._data.get("irc_auto_rejoin", True))
+
+    @property
+    def irc_redact_enabled(self) -> bool:
+        """Send REDACT to IRC when Discord message deleted. Disabled by default: UnrealIRCd
+        third/redact segfaults on REDACT. Re-enable when upstream fixed (env: BRIDGE_IRC_REDACT_ENABLED)."""
+        import os
+
+        env_val = os.environ.get("BRIDGE_IRC_REDACT_ENABLED", "").lower()
+        if env_val in ("1", "true", "yes"):
+            return True
+        if env_val in ("0", "false", "no"):
+            return False
+        return bool(self._data.get("irc_redact_enabled", False))
 
     @property
     def irc_relaymsg_clean_nicks(self) -> bool:

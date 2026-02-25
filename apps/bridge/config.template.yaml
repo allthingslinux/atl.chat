@@ -19,6 +19,8 @@ announce_extras: false
 # Timeouts and limits
 identity_cache_ttl_seconds: 3600
 avatar_cache_ttl_seconds: 86400
+# XMPP avatar: base URL for bridge to HEAD-check (required in Docker; use internal hostname)
+xmpp_avatar_base_url: ${XMPP_AVATAR_BASE_URL}
 irc_puppet_idle_timeout_hours: 24
 irc_puppet_postfix: ''
 
@@ -33,6 +35,10 @@ irc_tls_verify: ${IRC_TLS_VERIFY}
 
 # RELAYMSG: /d suffix (Valware default). Set true only if UnrealIRCd relaymsg has allow-clean-nicks yes.
 irc_relaymsg_clean_nicks: false
+
+# IRC REDACT: send REDACT when Discord message deleted. Disabled by default: UnrealIRCd third/redact
+# segfaults on REDACT (exit 139). Set true after upstream fix.
+irc_redact_enabled: false
 
 # IRC SASL (optional)
 irc_use_sasl: false
