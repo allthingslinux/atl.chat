@@ -326,7 +326,8 @@ class XMPPComponent(ComponentXMPP):
         if aliases:
             raw_data["xmpp_id_aliases"] = aliases
 
-        # Build avatar URL from mod_http_avatar (derived from room domain)
+        # Build avatar URL from mod_http_avatar. Base from room domain (muc.atl.chat → atl.chat);
+        # path from real JID localpart (alice@atl.chat → /avatar/alice). User domain irrelevant.
         avatar_url: str | None = None
         if muc and nick:
             real_jid = muc.get_jid_property(room_jid, nick, "jid")

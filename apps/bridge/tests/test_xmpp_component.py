@@ -214,7 +214,7 @@ class TestOnGroupchatMessage:
         bus = MagicMock()
         comp = make_component(router=router, bus=bus)
         muc = MagicMock()
-        muc.get_jid_property.return_value = "alice@xmpp.example.com"
+        muc.get_jid_property.return_value = "alice@atl.chat"
         comp.plugin = {"xep_0045": muc}  # type: ignore[attr-defined]
 
         msg = MockMsg(
