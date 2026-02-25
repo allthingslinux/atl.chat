@@ -64,6 +64,7 @@ create_directories() {
         "$PROJECT_ROOT/data/xmpp/data"
         "$PROJECT_ROOT/data/xmpp/logs"
         "$PROJECT_ROOT/data/xmpp/uploads"
+        "$PROJECT_ROOT/data/thelounge"
         "$PROJECT_ROOT/data/certs"
     )
 
