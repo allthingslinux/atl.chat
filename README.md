@@ -14,6 +14,7 @@ apps/
 ├── prosody/        # XMPP server
 ├── web/            # Next.js web application
 ├── bridge/         # Discord↔IRC↔XMPP bridge (in-repo)
+├── thelounge/      # Web IRC client (private mode, WebIRC)
 └── gamja/          # IRC web client (planned)
 ```
 
@@ -23,6 +24,7 @@ Compose fragments in `infra/compose/`:
 - `xmpp.yaml` — Prosody
 - `cert-manager.yaml` — Lego (Let's Encrypt)
 - `bridge.yaml` — Discord↔IRC↔XMPP bridge
+- `thelounge.yaml` — The Lounge web IRC client
 - `networks.yaml` — Shared `atl-chat` network
 
 ## Quick Start
@@ -52,8 +54,8 @@ just dev       # Starts stack with dev profile (Dozzle, localhost domains)
 
 `just init` runs `scripts/init.sh` and `scripts/prepare-config.sh` to:
 
-- Create `data/irc/`, `data/atheme/`, `data/xmpp/`, `data/certs/`
-- Substitute `.env` into UnrealIRCd and Atheme config templates
+- Create `data/irc/`, `data/atheme/`, `data/xmpp/`, `data/thelounge/`, `data/certs/`
+- Substitute `.env` into UnrealIRCd, Atheme, and Bridge config templates
 - Generate dev certs for `irc.localhost` (if missing)
 
 `just dev` requires `.env.dev` (copy from `.env.dev.example`); it overrides domains for localhost.
@@ -83,7 +85,7 @@ just prod
 ```bash
 just irc shell      # Bash into IRC server
 just irc reload     # Reload UnrealIRCd config
-just irc logs       # View IRC logs
+just logs           # Follow logs (root command; use service name to filter)
 ```
 
 See [docs/services/irc/](docs/services/irc/) for full docs.
@@ -109,7 +111,7 @@ See [docs/services/xmpp/](docs/services/xmpp/).
 
 ### Web
 
-Next.js 15 app (port 3000):
+Next.js 14 app (port 3000):
 
 ```bash
 just web dev
@@ -121,11 +123,21 @@ just web dev
 Discord↔IRC↔XMPP bridge (in-repo). See [apps/bridge/](apps/bridge/) and `infra/compose/bridge.yaml`.
 
 ```bash
-just bridge test      # Run bridge tests
-just bridge lint      # Ruff check
-just bridge format    # Ruff format
-just bridge typecheck # Basedpyright
-just bridge check     # Full check (lint + format + typecheck + test)
+just bridge test       # Run bridge tests
+just bridge lint       # Ruff check
+just bridge format     # Ruff format
+just bridge typecheck  # Basedpyright
+just bridge check      # Full check (lint + format + typecheck + test)
+```
+
+### The Lounge
+
+Web IRC client (private mode, WebIRC). See [apps/thelounge/](apps/thelounge/).
+
+```bash
+just lounge add <name>   # Create user (prompts for password)
+just lounge list        # List users
+just lounge reset <name> # Reset user password
 ```
 
 ## Task Running
@@ -167,6 +179,7 @@ data/
 ├── xmpp/
 │   ├── data/          # Prosody SQLite
 │   └── uploads/       # File uploads
+├── thelounge/         # The Lounge user data
 └── certs/             # TLS certs (Let's Encrypt layout)
     └── live/<domain>/  # fullchain.pem, privkey.pem
 ```
