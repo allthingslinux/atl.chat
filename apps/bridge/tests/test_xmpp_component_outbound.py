@@ -53,6 +53,7 @@ def make_component(router=None, bus=None) -> Any:
     comp._ibb_streams = {}
     comp._msgid_tracker = XMPPMessageIDTracker()
     comp._puppets_joined = set()
+    comp._recent_sent_nicks = TTLCache(maxsize=200, ttl=10)
     # Mock plugin() lookup and message creation
     comp.plugin = MagicMock()
     comp.make_message = MagicMock()

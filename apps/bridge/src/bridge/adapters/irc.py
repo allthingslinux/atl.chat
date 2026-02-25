@@ -6,9 +6,11 @@ import asyncio
 import contextlib
 import os
 import random
+from collections.abc import Callable
 from typing import TYPE_CHECKING, ClassVar
 
 import pydle
+from cachetools import TTLCache
 from loguru import logger
 
 from bridge.adapters.irc_msgid import MessageIDTracker, ReactionTracker
@@ -122,6 +124,9 @@ class IRCClient(pydle.Client):
         self._ready = False
         self._pending_sends: asyncio.Queue[str] = asyncio.Queue()  # discord_id for echo correlation
         self._pending_reactions: asyncio.Queue[tuple[str, str, str]] = asyncio.Queue()
+        self._puppet_nick_check: Callable[[str], bool] | None = None  # set by adapter for echo detection
+        # Fallback echo detection when relaymsg tag missing (e.g. via irc-services)
+        self._recent_relaymsg_sends: TTLCache[tuple[str, str], None] = TTLCache(maxsize=100, ttl=5)
 
     async def on_connect(self):
         """After connect, join channels and start consumer."""
@@ -167,6 +172,14 @@ class IRCClient(pydle.Client):
 
     async def on_raw_379(self, message: object) -> None:
         """RPL_WHOISHOST: mode info in WHOIS. No-op to avoid Unknown command."""
+        pass
+
+    async def on_raw_320(self, message: object) -> None:
+        """RPL_WHOIS (320): UnrealIRCd sends security-groups/WEBIRC info. No-op to avoid Unknown command."""
+        pass
+
+    async def on_raw_381(self, message: object) -> None:
+        """RPL_YOUREOPER (381): You are now an IRC Operator. No-op to avoid Unknown command."""
         pass
 
     async def on_raw_pong(self, message) -> None:
@@ -227,8 +240,12 @@ class IRCClient(pydle.Client):
 
         # If this is our echo (from bridge), correlate with pending send for msgid tracking
         # RELAYMSG: server tags with draft/relaymsg=our_nick; source is spoofed nick
+        # Puppets: plain PRIVMSG from our puppets; main connection receives and must skip
+        # Fallback: relaymsg tag may be missing (e.g. via irc-services); check recent sends
         relayed_by_us = tags.get("draft/relaymsg") == self.nickname or tags.get("relaymsg") == self.nickname
-        if source == self.nickname or relayed_by_us:
+        from_puppet = self._puppet_nick_check is not None and self._puppet_nick_check(source)
+        from_recent_relaymsg = (self._server, target, source) in self._recent_relaymsg_sends
+        if source == self.nickname or relayed_by_us or from_puppet or from_recent_relaymsg:
             if msgid:
                 try:
                     discord_id = self._pending_sends.get_nowait()
@@ -248,6 +265,7 @@ class IRCClient(pydle.Client):
             is_action=False,
             raw={"tags": tags, "irc_msgid": msgid, "irc_reply_to": reply_to},
         )
+        logger.info("IRC message bridged: channel={} author={}", target, source)
         self._bus.publish("irc", evt)
 
     async def on_ctcp_action(self, by, target, message):
@@ -273,6 +291,7 @@ class IRCClient(pydle.Client):
             message_id=f"irc:{self._server}:{target}:{by}:{id(message)}",
             is_action=True,
         )
+        logger.info("IRC action bridged: channel={} author={}", target, by)
         self._bus.publish("irc", evt)
 
     async def on_raw_tagmsg(self, message) -> None:
@@ -440,6 +459,7 @@ class IRCClient(pydle.Client):
         """Send message to IRC. Uses RELAYMSG when available (stateless bridging)."""
         mapping = self._router.get_mapping_for_discord(evt.channel_id)
         if not mapping or not mapping.irc:
+            logger.warning("IRC send skipped: no mapping for channel {}", evt.channel_id)
             return
 
         target = mapping.irc.channel
@@ -471,12 +491,19 @@ class IRCClient(pydle.Client):
                     await self.rawmsg("PRIVMSG", target, chunk, tags=tags)
                 else:
                     await self.message(target, chunk)
+            if i == 0:
+                if use_relaymsg:
+                    logger.info("IRC: sent RELAYMSG to {} as {}", target, spoofed_nick)
+                    self._recent_relaymsg_sends[(self._server, target, spoofed_nick)] = None
+                else:
+                    logger.info("IRC: sent PRIVMSG to {} as {}", target, spoofed_nick)
             # Only store mapping for first chunk (echo will have msgid)
             if i == 0:
                 self._pending_sends.put_nowait(evt.message_id)
 
     def queue_message(self, evt: MessageOut):
         """Queue outbound message."""
+        logger.info("IRC: queued message for channel={}", evt.channel_id)
         self._outbound.put_nowait(evt)
 
     async def disconnect(self, expected=True):
@@ -543,6 +570,8 @@ class IRCAdapter:
                 task.add_done_callback(self._puppet_tasks.discard)
             elif self._client:
                 self._client.queue_message(evt)
+            else:
+                logger.warning("IRC MessageOut dropped: no client (channel={})", evt.channel_id)
 
     async def _send_reaction(self, evt: ReactionOut) -> None:
         """Send IRC TAGMSG with +draft/react for add, or REDACT for removal."""
@@ -712,8 +741,11 @@ class IRCAdapter:
                 ping_interval=cfg.irc_puppet_ping_interval,
                 prejoin_commands=cfg.irc_puppet_prejoin_commands,
             )
-            await self._puppet_manager.start()
+            pm = self._puppet_manager
+            await pm.start()
             logger.info("IRC puppet manager started (idle timeout: {}h)", idle_timeout)
+            # Main connection receives puppet PRIVMSGs; skip to prevent Discord echo
+            self._client._puppet_nick_check = lambda n, m=pm: n in m.get_puppet_nicks()
 
         logger.info(
             "IRC connection started: {}:{}, channels {}",

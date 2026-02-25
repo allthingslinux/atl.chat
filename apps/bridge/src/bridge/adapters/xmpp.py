@@ -50,13 +50,16 @@ class XMPPAdapter:
     def push_event(self, source: str, evt: object) -> None:
         """Queue MessageOut, MessageDeleteOut, or ReactionOut for XMPP send."""
         if isinstance(evt, (MessageOut, MessageDeleteOut, ReactionOut)):
+            if isinstance(evt, MessageOut):
+                logger.info("XMPP: queued message for channel={}", evt.channel_id)
             self._outbound.put_nowait(evt)
 
     def _resolve_nick(self, evt: MessageOut | MessageDeleteOut | ReactionOut) -> str:
         """Fallback nick when identity resolver unavailable (dev without Portal)."""
         author = getattr(evt, "author_id", None) or ""
         display = getattr(evt, "author_display", None) or ""
-        return (author or display)[:20] or "bridge"
+        # Prefer display (e.g. "kaizen") over raw author_id (e.g. Discord snowflake)
+        return (display or author)[:20] or "bridge"
 
     async def _resolve_nick_async(self, evt: MessageOut | MessageDeleteOut | ReactionOut) -> str:
         """Resolve XMPP nick from identity or fallback (dev mode without Portal)."""
@@ -80,7 +83,11 @@ class XMPPAdapter:
                     await asyncio.sleep(0.25)
                     continue
                 mapping = self._router.get_mapping_for_discord(evt.channel_id)
-                if mapping and mapping.xmpp and self._component:
+                if not mapping or not mapping.xmpp:
+                    logger.warning("XMPP send skipped: no mapping for channel {}", evt.channel_id)
+                elif not self._component:
+                    logger.warning("XMPP send skipped: no component (channel={})", evt.channel_id)
+                else:
                     async with self._send_lock:
                         muc_jid = mapping.xmpp.muc_jid
 
@@ -137,6 +144,7 @@ class XMPPAdapter:
                                 discord_message_id=evt.message_id,
                             )
                             if xmpp_msg_id:
+                                logger.info("XMPP: sent message to {} as {}", muc_jid, nick)
                                 logger.debug(
                                     "Stored Discord→XMPP mapping: discord_id={} -> xmpp_id={}",
                                     evt.message_id,

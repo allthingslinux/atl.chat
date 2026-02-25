@@ -30,6 +30,7 @@ def make_component(router=None, bus=None):
     comp._msgid_tracker = XMPPMessageIDTracker()
     comp._puppets_joined = set()
     comp._seen_msg_ids = TTLCache(maxsize=500, ttl=60)
+    comp._recent_sent_nicks = TTLCache(maxsize=200, ttl=10)
     comp._reactions_by_user = TTLCache(maxsize=2000, ttl=3600)
     return comp
 

@@ -322,7 +322,7 @@ class TestHandleReactionOut:
 
     @pytest.mark.asyncio
     async def test_sends_reaction_with_display_fallback(self):
-        """When identity returns None, use author_id then author_display as nick."""
+        """When identity returns None, prefer author_display over author_id (avoids raw Discord IDs)."""
         adapter, _, router = _make_adapter(identity_nick=None)
         comp = _mock_component()
         adapter._component = comp
@@ -337,7 +337,7 @@ class TestHandleReactionOut:
         )
         await adapter._handle_reaction_out(evt)
         comp.send_reaction_as_user.assert_awaited_once_with(
-            "u1", "room@conf.example.com", "xmpp-msg-1", "👍", "u1", is_remove=False
+            "u1", "room@conf.example.com", "xmpp-msg-1", "👍", "DisplayUser", is_remove=False
         )
 
     @pytest.mark.asyncio
@@ -429,7 +429,8 @@ class TestOutboundConsumer:
         comp.set_avatar_for_user.assert_awaited_once_with("u1", "xmpp_nick", "https://cdn.example.com/avatar.png")
 
     @pytest.mark.asyncio
-    async def test_message_no_identity_nick_uses_author_id_fallback(self):
+    async def test_message_no_identity_nick_uses_display_then_author_fallback(self):
+        """Without identity, prefer author_display over author_id (avoids raw Discord IDs)."""
         adapter, _, router = _make_adapter(identity_nick=None)
         comp = _mock_component()
         adapter._component = comp
@@ -449,7 +450,7 @@ class TestOutboundConsumer:
             "u1",
             "room@conf.example.com",
             "hi",
-            "u1",
+            "U",
             reply_to_id=None,
             discord_message_id="m1",
         )
@@ -734,7 +735,7 @@ class TestEdgeCases:
 
     @pytest.mark.asyncio
     async def test_handle_reaction_out_no_identity_uses_fallback_nick(self):
-        """Without identity resolver (dev mode), reaction uses author_id as nick."""
+        """Without identity resolver (dev mode), prefer author_display over author_id."""
         bus = MagicMock(spec=Bus)
         router = MagicMock(spec=ChannelRouter)
         adapter = XMPPAdapter(bus, router, identity_resolver=None)
@@ -751,7 +752,7 @@ class TestEdgeCases:
         )
         await adapter._handle_reaction_out(evt)
         comp.send_reaction_as_user.assert_awaited_once_with(
-            "u1", "room@conf.example.com", "xmpp-msg-1", "👍", "u1", is_remove=False
+            "u1", "room@conf.example.com", "xmpp-msg-1", "👍", "U", is_remove=False
         )
 
     # --- Consumer: exception during send doesn't crash loop ---
@@ -925,7 +926,7 @@ class TestConsumerGuardConditions:
 
     @pytest.mark.asyncio
     async def test_consumer_uses_fallback_nick_when_no_identity(self):
-        """_identity is None (dev mode) → use author_id as fallback nick."""
+        """_identity is None (dev mode) → prefer author_display over author_id."""
         adapter = XMPPAdapter(MagicMock(spec=Bus), MagicMock(spec=ChannelRouter), None)
         comp = _mock_component()
         adapter._component = comp
@@ -945,7 +946,7 @@ class TestConsumerGuardConditions:
             "u1",
             "room@conf.example.com",
             "hi",
-            "u1",
+            "U",
             reply_to_id=None,
             discord_message_id="m1",
         )

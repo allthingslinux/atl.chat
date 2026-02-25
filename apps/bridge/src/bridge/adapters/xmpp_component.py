@@ -123,6 +123,8 @@ class XMPPComponent(ComponentXMPP):
         self._puppets_joined: set[tuple[str, str]] = set()  # (muc_jid, user_jid) — avoid re-join
         # Dedupe: MUC delivers same message to each occupant (listener + puppets) — process once
         self._seen_msg_ids: TTLCache[tuple[str, str], None] = TTLCache(maxsize=500, ttl=60)
+        # Fallback echo detection when get_jid_property returns None (MUC may not expose real JID)
+        self._recent_sent_nicks: TTLCache[tuple[str, str], None] = TTLCache(maxsize=200, ttl=10)
         # XEP-0444: track per-user reaction sets to detect removals (full set sent each update)
         self._reactions_by_user: TTLCache[tuple[str, str], frozenset[str]] = TTLCache(maxsize=2000, ttl=3600)
 
@@ -222,6 +224,7 @@ class XMPPComponent(ComponentXMPP):
 
         mapping = self._router.get_mapping_for_xmpp(room_jid)
         if not mapping:
+            logger.debug("XMPP: no mapping for room {}; message from {} not bridged", room_jid, nick)
             return
 
         # Skip our own echoed messages (from puppets or listener) to prevent doubling
@@ -240,6 +243,10 @@ class XMPPComponent(ComponentXMPP):
                     )
                     _capture_stanza_id_from_echo(self._msgid_tracker, msg, room_jid)
                     return
+        # Fallback: get_jid_property may return None (MUC may not expose real JID to all occupants)
+        if (room_jid, nick) in self._recent_sent_nicks:
+            logger.debug("Echo from recent send {} in {} (jid lookup returned None); skipping", nick, room_jid)
+            return
         if nick == "atl-bridge":
             return  # Listener nick; we never send from it but skip for safety
 
@@ -330,6 +337,7 @@ class XMPPComponent(ComponentXMPP):
             is_action=False,
             raw=raw_data if raw_data else {},
         )
+        logger.info("XMPP message bridged: room={} author={}", room_jid, nick)
         self._bus.publish("xmpp", evt)
 
     def _on_reactions(self, msg: Any) -> None:
@@ -595,6 +603,8 @@ class XMPPComponent(ComponentXMPP):
         """
         escaped_nick = _escape_jid_node(nick)
         user_jid = f"{escaped_nick}@{self._component_jid}"
+        # Record before send for echo detection fallback (when get_jid_property returns None)
+        self._recent_sent_nicks[(muc_jid, nick)] = None
         await self._ensure_puppet_joined(muc_jid, user_jid, nick)
 
         try:
@@ -726,6 +736,7 @@ class XMPPComponent(ComponentXMPP):
         """Send message correction (XEP-0308) to MUC via slixmpp's build_correction."""
         escaped_nick = _escape_jid_node(nick)
         user_jid = f"{escaped_nick}@{self._component_jid}"
+        self._recent_sent_nicks[(muc_jid, nick)] = None
         await self._ensure_puppet_joined(muc_jid, user_jid, nick)
 
         try:
@@ -767,7 +778,7 @@ class XMPPComponent(ComponentXMPP):
         self._puppets_joined.add(key)
 
     async def join_muc_as_user(self, muc_jid: str, nick: str) -> None:
-        """Join MUC as a specific user JID."""
+        """Join MUC as a specific user JID. Retries with nick_bridge if primary nick conflicts."""
         escaped_nick = _escape_jid_node(nick)
         user_jid = f"{escaped_nick}@{self._component_jid}"
 
@@ -776,17 +787,40 @@ class XMPPComponent(ComponentXMPP):
             logger.error("XEP-0045 plugin not available")
             return
 
-        try:
-            await muc_plugin.join_muc_wait(  # type: ignore[misc,call-arg]
-                JID(muc_jid),
-                nick,
-                presence_options={"pfrom": JID(user_jid)},
-                timeout=30,
-                maxchars=0,
-            )
-            logger.info("Joined MUC {} as {}", muc_jid, user_jid)
-        except XMPPError as exc:
-            logger.warning("Failed to join MUC {} as {}: {}", muc_jid, user_jid, exc)
+        for attempt, join_nick in enumerate([nick, f"{nick}_bridge"]):
+            try:
+                await muc_plugin.join_muc_wait(  # type: ignore[misc,call-arg]
+                    JID(muc_jid),
+                    join_nick,
+                    presence_options={"pfrom": JID(user_jid)},
+                    timeout=30,
+                    maxchars=0,
+                )
+                if attempt > 0:
+                    logger.info("Joined MUC {} as {} (fallback nick, primary '{}' conflicted)", muc_jid, user_jid, nick)
+                else:
+                    logger.info("Joined MUC {} as {}", muc_jid, user_jid)
+                return
+            except TimeoutError as exc:
+                if attempt == 0:
+                    logger.warning(
+                        "Join MUC {} as {} (nick '{}') timed out; retrying with '{}_bridge'",
+                        muc_jid,
+                        user_jid,
+                        nick,
+                        nick,
+                    )
+                else:
+                    logger.exception("Join MUC {} as {} failed after retry: {}", muc_jid, user_jid, exc)
+                    return  # Don't raise; caller continues without this puppet
+            except XMPPError as exc:
+                if attempt == 0:
+                    logger.warning(
+                        "Join MUC {} as {} failed: {}; retrying with '{}_bridge'", muc_jid, user_jid, exc, nick
+                    )
+                else:
+                    logger.warning("Failed to join MUC {} as {}: {}", muc_jid, user_jid, exc)
+                    return  # Don't raise; preserve original behavior (log only)
 
     async def _fetch_avatar_bytes(self, avatar_url: str) -> bytes | None:
         """Download avatar image from URL."""
