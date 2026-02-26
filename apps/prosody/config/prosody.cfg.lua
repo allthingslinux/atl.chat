@@ -14,7 +14,7 @@ modules_enabled = {
     -- CORE PROTOCOL MODULES (Required)
     -- ===============================================
     "roster",     -- Allow users to have a roster/contact list (RFC 6121)
-    "legacyauth", -- Legacy authentication. Only used by some old clients and bots.
+    -- "legacyauth", -- Legacy authentication. Disabled: use SASL (SCRAM-SHA-256) instead.
     "saslauth",   -- SASL authentication for clients and servers (RFC 4422)
     "tls",        -- TLS encryption support for c2s/s2s connections (RFC 6120)
     "dialback",   -- Server-to-server authentication via dialback (XEP-0220)
@@ -196,11 +196,11 @@ max_archive_query_results = Lua.tonumber(Lua.os.getenv("PROSODY_ARCHIVE_MAX_QUER
 mam_smart_enable = Lua.os.getenv("PROSODY_MAM_SMART_ENABLE") ==
 	"true" -- Disable smart archiving
 
--- Namespaces to exclude from archiving
--- dont_archive_namespaces = {
--- 	"http://jabber.org/protocol/chatstates", -- Chat state notifications
--- 	"urn:xmpp:jingle-message:0", -- Jingle messages
--- }
+-- Namespaces to exclude from archiving (typing indicators, call signaling)
+dont_archive_namespaces = {
+	"http://jabber.org/protocol/chatstates",
+	"urn:xmpp:jingle-message:0",
+}
 
 -- ===============================================
 -- MOBILE CLIENT OPTIMIZATIONS
@@ -442,8 +442,8 @@ http_paths = {
 -- Alternative: Allow access from specific IPs (more secure)
 -- http_status_allow_ips = { "127.0.0.1"; "::1"; "172.18.0.0/16"; "76.215.15.63" }
 
--- Allow access from any IP using CIDR notation (0.0.0.0/0 covers all IPv4)
-http_status_allow_cidr = "0.0.0.0/0"
+-- Restrict status endpoint to Docker network and localhost
+http_status_allow_cidr = "172.16.0.0/12"
 
 -- ===============================================
 -- TURN/STUN EXTERNAL SERVICES (XEP-0215)
@@ -528,12 +528,12 @@ anti_spam_services = { "xmppbl.org" }
 -- Global TLS configuration. See:
 -- https://prosody.im/doc/certificates
 -- https://prosody.im/doc/security
--- ssl = {
--- protocol = "tlsv1_2+",
--- ciphers = "ECDHE+AESGCM:ECDHE+CHACHA20:DHE+AESGCM:DHE+CHACHA20:!aNULL:!MD5:!DSS",
--- curve = "secp384r1",
--- options = { "cipher_server_preference", "single_dh_use", "single_ecdh_use" },
--- }
+ssl = {
+	protocol = "tlsv1_2+",
+	ciphers = "ECDHE+AESGCM:ECDHE+CHACHA20:DHE+AESGCM:DHE+CHACHA20:!aNULL:!MD5:!DSS",
+	curve = "secp384r1",
+	options = { "cipher_server_preference", "single_dh_use", "single_ecdh_use" },
+}
 
 -- Let's Encrypt certificate location (mounted into the container)
 certificates = "certs"
