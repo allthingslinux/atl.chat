@@ -46,7 +46,7 @@ prepare_config() {
     exit 1
   fi
 
-  # Load .env (base) then .env.dev (overrides for just dev)
+  # Load .env (base), then .env.dev (overrides) only if not in prod/staging
   if [ -f "$PROJECT_ROOT/.env" ]; then
     log_info "Loading environment variables from .env"
     set -a
@@ -54,16 +54,16 @@ prepare_config() {
     source "$PROJECT_ROOT/.env"
     set +a
   fi
-  if [ -f "$PROJECT_ROOT/.env.dev" ]; then
-    log_info "Loading .env.dev overrides"
+  # Only load .env.dev if it exists AND ATL_ENVIRONMENT is not prod/staging.
+  # This prevents dev overrides from leaking into production config generation.
+  if [ -f "$PROJECT_ROOT/.env.dev" ] && [ "${ATL_ENVIRONMENT:-dev}" = "dev" ]; then
+    log_info "Loading .env.dev overrides (ATL_ENVIRONMENT=dev)"
     set -a
     # shellcheck disable=SC1091
     source "$PROJECT_ROOT/.env.dev"
     set +a
   fi
-  if [ -f "$PROJECT_ROOT/.env" ] || [ -f "$PROJECT_ROOT/.env.dev" ]; then
-    log_info "Environment variables loaded"
-  fi
+  log_info "Environment variables loaded"
 
   # Ensure Atheme JSON-RPC port has a default (for existing .env without it)
   export ATHEME_HTTPD_PORT="${ATHEME_HTTPD_PORT:-8081}"

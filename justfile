@@ -38,27 +38,31 @@ dev:
 # Spin up the staging stack
 [group('Orchestration')]
 staging:
-    docker compose --profile staging up -d
+    @echo "Initializing Staging Environment..."
+    ./scripts/init.sh
+    docker compose --env-file .env up -d
 
-# Spin up the production stack (default profile)
+# Spin up the production stack
 [group('Orchestration')]
 prod:
-    docker compose --profile prod up -d
+    @echo "Initializing Production Environment..."
+    ./scripts/init.sh
+    docker compose --env-file .env up -d
 
 # Stop all services
 [group('Orchestration')]
 down:
     docker compose --profile dev down
 
-# Stop all services
+# Stop staging services
 [group('Orchestration')]
 down-staging:
-    docker compose --profile staging down
+    docker compose down
 
-# Stop all services
+# Stop production services
 [group('Orchestration')]
 down-prod:
-    docker compose --profile prod down
+    docker compose down
 
 # View logs (follow)
 [group('Orchestration')]
