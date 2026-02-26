@@ -369,7 +369,7 @@ me {
 /* Support Proxy Protocol from NPM on the same network */
 webirc {
 	mask ${ATL_GATEWAY_IP}/32;
-	password "change_me_webirc_password";
+	password "${ATL_WEBIRC_PASSWORD}";
 }
 
 /* The Lounge web client - passes real user IP via WEBIRC */
@@ -538,11 +538,11 @@ set {
 	}
 }
 
-/* Link block for services - localhost connections are exempt from link security */
+/* Link block for services - restricted to Docker network and localhost */
 link ${IRC_SERVICES_SERVER} {
 	incoming {
-		/* Allow all connections for services - Docker shared network */
-		mask *;
+		mask 172.16.0.0/12;
+		mask 127.0.0.0/8;
 		password "${IRC_SERVICES_PASSWORD}";
 	}
 	password "${IRC_SERVICES_PASSWORD}";
@@ -757,15 +757,21 @@ set {
 	cloak-method ip;
 }
 
+/* Die/Restart password: protects /DIE and /RESTART from accidental or unauthorized use. */
+drpass {
+	restart "${IRC_DRPASS}";
+	die "${IRC_DRPASS}";
+}
+
 /* Operator Configuration */
 oper admin {
 	class opers;
-	mask *@*;
+	mask *@172.16.0.0/12;
 	password "${IRC_OPER_PASSWORD}";
 	operclass netadmin-with-override;
 	swhois "is the Network Administrator";
 	vhost "${IRC_STAFF_VHOST}";
-	require-modes "";
+	require-modes "z";
 }
 
 /* Bridge oper: creates channels and sets +P (permanent) so they persist when empty.
@@ -788,7 +794,7 @@ oper atl-bridge {
 
 /* RPC Configuration for Webpanel */
 rpc-user "${WEBPANEL_RPC_USER}" {
-	match { ip *; }
+	match { ip 172.16.0.0/12; ip 127.0.0.0/8; }
 	rpc-class full;
 	password "${WEBPANEL_RPC_PASSWORD}";
 }
@@ -864,6 +870,30 @@ set {
 
 	maxchannelsperuser 10; /* maximum number of channels a user may /JOIN */
 
+	/* Allow only safe stats for regular users; everything else is oper-only */
+	allow-user-stats "kMp";
+
+	/* Spamfilter global defaults */
+	spamfilter {
+		ban-time 1d;
+		ban-reason "Spam/Advertising";
+		virus-help-channel "#help";
+	}
+
+	/* Connection throttling: limits new connections during attacks.
+	 * Exempts identified users and those with established reputation. */
+	connthrottle {
+		except { reputation-score 24; identified yes; }
+		new-users {
+			local-throttle 20:60;
+			global-throttle 30:60;
+		}
+		disabled-when {
+			reputation-gathering 1w;
+			start-delay 3m;
+		}
+	}
+
 	/* The minimum time a user must be connected before being allowed to
 	 * use a QUIT message. This will hopefully help stop spam.
 	 */
@@ -909,8 +939,8 @@ set {
 
 		/* Settings that apply to everyone */
 		everyone {
-			/* Connection flood protection - relaxed for testing: 20 connections per 10 seconds per IP */
-			connect-flood 20:10;
+			/* Connection flood protection: 5 connections per 60 seconds per IP */
+			connect-flood 5:60;
 
 			/* Handshake data flood protection */
 			handshake-data-flood {
