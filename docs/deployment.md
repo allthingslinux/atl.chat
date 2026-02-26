@@ -230,11 +230,16 @@ In NPM → Streams → Add Stream:
 | `5269` | `100.64.7.0` | `5269` | ❌ |
 | `5270` | `100.64.7.0` | `5270` | ❌ |
 
-**Note on real client IPs for IRC TCP streams:** UnrealIRCd does not support HAProxy
-PROXY Protocol on raw TCP listeners (upstream limitation). Direct IRC clients connecting
-through the NPM TCP stream on port 6697 will appear as the NPM/gateway IP. Web clients
-connecting through The Lounge or WebSocket use WEBIRC to pass real IPs. The `proxy
-npm-forwarded` block trusts `Forwarded` headers from the gateway for HTTP-based services.
+**Note on real client IPs:** Two mechanisms handle real-IP forwarding:
+
+- **WebSocket (port 8000):** NPM sends `X-Forwarded-For` headers. The `proxy npm-x-forwarded`
+  block in UnrealIRCd trusts these from the gateway IP and Tailscale range. Hosts matching
+  this are auto-exempted from connect floods and blacklist checks (UnrealIRCd 6.1.8+).
+- **WEBIRC (The Lounge, KiwiIRC):** Web gateways send the real client IP via the WEBIRC
+  protocol. The `proxy npm-webirc` block trusts the gateway for this.
+- **Raw TCP streams (port 6697):** UnrealIRCd does not support HAProxy PROXY Protocol.
+  Direct IRC clients through NPM TCP streams will appear as the proxy IP. This is an
+  upstream limitation — see the [Proxy block docs](https://www.unrealircd.org/docs/Proxy_block).
 
 **XMPP ports:** Prosody doesn't support PROXY Protocol on C2S/S2S either. The
 `trusted_proxies` config handles X-Forwarded-For for HTTP endpoints, and S2S

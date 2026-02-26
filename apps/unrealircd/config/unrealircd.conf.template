@@ -366,25 +366,31 @@ me {
 	sid "001";
 }
 
-/* WEBIRC: trust real-IP from NPM/gateway on the Tailscale mesh */
-webirc {
-	mask ${ATL_GATEWAY_IP}/32;
+/* NPM/gateway WEBIRC: passes real client IP via WEBIRC protocol.
+ * Used by web gateways (KiwiIRC, The Lounge, etc.) connecting through NPM.
+ * See: https://www.unrealircd.org/docs/Proxy_block */
+proxy npm-webirc {
+	type webirc;
+	match { ip ${ATL_GATEWAY_IP}/32; }
 	password "${ATL_WEBIRC_PASSWORD}";
 }
 
-/* Reverse proxy trust: when NPM/gateway forwards WebSocket or HTTP connections,
- * trust X-Forwarded-For headers from the gateway IP and Tailscale range.
- * For TCP stream proxying (port 6697), clients appear as the NPM IP — the webirc
- * block above handles real-IP for web clients. Direct IRC clients through TCP
- * streams will show as the proxy IP (UnrealIRCd does not support HAProxy PROXY
- * protocol; this is an upstream limitation).
- */
-proxy npm-forwarded {
-	type forwarded;
+/* NPM WebSocket reverse proxy: trust X-Forwarded-For from NPM/Tailscale.
+ * When NPM proxies WebSocket connections (port 8000), it sends X-Forwarded-For
+ * headers with the real client IP. This block trusts those headers.
+ * Hosts matching this are auto-exempted from connect floods and blacklist checks
+ * (UnrealIRCd 6.1.8+). See: https://www.unrealircd.org/docs/Proxy_block
+ *
+ * NOTE: This does NOT help with raw TCP streams (port 6697). Direct IRC TLS
+ * clients through NPM TCP streams will appear as the proxy IP — UnrealIRCd
+ * does not support HAProxy PROXY protocol. */
+proxy npm-x-forwarded {
+	type x-forwarded;
 	match { ip ${ATL_GATEWAY_IP}/32; ip 100.64.0.0/10; }
 }
 
-/* The Lounge web client - passes real user IP via WEBIRC */
+/* The Lounge web IRC client: passes real user IP via WEBIRC.
+ * Connects from Docker network. */
 proxy thelounge {
 	type webirc;
 	match { ip 172.16.0.0/12; }
