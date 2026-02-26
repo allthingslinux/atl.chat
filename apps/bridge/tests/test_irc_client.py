@@ -445,23 +445,25 @@ class TestSendMessage:
     @pytest.mark.asyncio
     async def test_sends_relaymsg_when_capability_negotiated(self):
         """When draft/relaymsg is negotiated, use RELAYMSG instead of PRIVMSG."""
-        client, _, router = _make_client()
-        client._capabilities = {"draft/relaymsg": True}
-        irc_target = MagicMock()
-        irc_target.channel = "#test"
-        router.get_mapping_for_discord.return_value = MagicMock(irc=irc_target)
-        client.rawmsg = AsyncMock()
+        with patch("bridge.adapters.irc.client.cfg") as mock_cfg:
+            mock_cfg.irc_relaymsg_clean_nicks = False
+            client, _, router = _make_client()
+            client._capabilities = {"draft/relaymsg": True}
+            irc_target = MagicMock()
+            irc_target.channel = "#test"
+            router.get_mapping_for_discord.return_value = MagicMock(irc=irc_target)
+            client.rawmsg = AsyncMock()
 
-        evt = MagicMock()
-        evt.channel_id = "111"
-        evt.content = "hello"
-        evt.message_id = "discord-1"
-        evt.reply_to_id = None
-        evt.author_display = "Alice"
-        evt.author_id = "123"
+            evt = MagicMock()
+            evt.channel_id = "111"
+            evt.content = "hello"
+            evt.message_id = "discord-1"
+            evt.reply_to_id = None
+            evt.author_display = "Alice"
+            evt.author_id = "123"
 
-        await client._send_message(evt)
-        client.rawmsg.assert_awaited_once_with("RELAYMSG", "#test", "Alice/d", "hello")
+            await client._send_message(evt)
+            client.rawmsg.assert_awaited_once_with("RELAYMSG", "#test", "Alice/d", "hello")
 
     @pytest.mark.asyncio
     async def test_sends_relaymsg_clean_nick_when_configured(self):
