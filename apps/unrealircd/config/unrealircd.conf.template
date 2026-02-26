@@ -265,7 +265,7 @@ set {
 		show-failedconnects yes;
 		except {
 			webirc yes;
-			ip { 192.168.*; 127.*; 172.17.*; }
+			ip { 192.168.*; 127.*; 172.16.0.0/12; }
 		}
 	}
 }
@@ -720,6 +720,15 @@ blacklist tornevall {
 	action gline;
 	ban-time 24h;
 	reason "Open proxy/relay detected. Check https://dnsbl.tornevall.org/ for details.";
+}
+
+/* Exempt internal Docker network from bans/blacklists.
+ * Covers bridge, services, and other containers on the atl-chat network.
+ * 172.16.0.0/12 spans all default Docker bridge subnets (172.16–31.*).
+ */
+except ban {
+	mask *@172.16.0.0/12;
+	type { blacklist; connect-flood; maxperip; handshake-data-flood; }
 }
 
 /* Network configuration */
