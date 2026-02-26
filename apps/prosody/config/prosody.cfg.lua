@@ -384,7 +384,8 @@ https_interfaces = { "*" }
 http_files_dir = "/usr/share/prosody/www"
 
 -- Trusted reverse proxies for X-Forwarded-* handling (includes Docker networks 172.16-172.31)
-trusted_proxies = { "127.0.0.1", "172.16.0.0/12", "10.0.0.0/8" }
+-- Includes Docker (172.16/12), private (10/8), and Tailscale (100.64/10) ranges
+trusted_proxies = { "127.0.0.1", "172.16.0.0/12", "10.0.0.0/8", "100.64.0.0/10" }
 
 -- Enable CORS for BOSH and WebSocket endpoints
 http_cors_override = {

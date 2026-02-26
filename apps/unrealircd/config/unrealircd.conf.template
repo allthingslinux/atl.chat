@@ -366,10 +366,22 @@ me {
 	sid "001";
 }
 
-/* Support Proxy Protocol from NPM on the same network */
+/* WEBIRC: trust real-IP from NPM/gateway on the Tailscale mesh */
 webirc {
 	mask ${ATL_GATEWAY_IP}/32;
 	password "${ATL_WEBIRC_PASSWORD}";
+}
+
+/* Reverse proxy trust: when NPM/gateway forwards WebSocket or HTTP connections,
+ * trust X-Forwarded-For headers from the gateway IP and Tailscale range.
+ * For TCP stream proxying (port 6697), clients appear as the NPM IP — the webirc
+ * block above handles real-IP for web clients. Direct IRC clients through TCP
+ * streams will show as the proxy IP (UnrealIRCd does not support HAProxy PROXY
+ * protocol; this is an upstream limitation).
+ */
+proxy npm-forwarded {
+	type forwarded;
+	match { ip ${ATL_GATEWAY_IP}/32; ip 100.64.0.0/10; }
 }
 
 /* The Lounge web client - passes real user IP via WEBIRC */
