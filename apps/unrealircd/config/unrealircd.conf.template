@@ -847,9 +847,11 @@ log {
 /* Server specific configuration */
 set {
 	kline-address '${IRC_ADMIN_EMAIL}'; /* e-mail or URL shown when a user is banned */
+	gline-address '${IRC_ADMIN_EMAIL}'; /* e-mail shown on G-lines */
 
 	modes-on-connect "+ixw"; /* when users connect, they will get these user modes */
-	modes-on-oper "+xws"; /* when someone becomes IRCOp they'll get these modes */
+	modes-on-oper "+xwsH"; /* when someone becomes IRCOp they'll get these modes */
+	snomask-on-oper "+bBcdfkqsSo"; /* server notice mask for opers */
 	modes-on-join "+nt"; /* default channel modes when a new channel is created */
 
 	/* Restrict user modes - prevent users from disabling cloaking for security */
@@ -910,7 +912,8 @@ set {
 		}
 	};
 
-	/* Restrict commands for new users (security hardening) */
+	/* Restrict commands for new users (security hardening)
+	 * See: https://www.unrealircd.org/docs/Security#Limiting_commands */
 	restrict-commands {
 		list {
 			except { identified yes; reputation-score 24; }
@@ -918,6 +921,14 @@ set {
 		}
 		invite {
 			except { identified yes; reputation-score 24; }
+			connect-delay 120s;
+		}
+		private-message {
+			except { identified yes; webirc yes; reputation-score 24; }
+			connect-delay 120s;
+		}
+		private-notice {
+			except { identified yes; webirc yes; reputation-score 24; }
 			connect-delay 120s;
 		}
 	}
