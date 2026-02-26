@@ -255,7 +255,7 @@ loadmodule "operserv/soper";	/* Non-config oper privileges (SOPER command) */
 #loadmodule "saslserv/ecdh-x25519-challenge"; /* ECDH-X25519-CHALLENGE mechanism */
 #loadmodule "saslserv/ecdsa-nist256p-challenge"; /* ECDSA-NIST256P-CHALLENGE mechanism */
 #loadmodule "saslserv/external"; 		/* EXTERNAL mechanism (IRCv3.1+) */
-#loadmodule "saslserv/scram";  			/* SCRAM-SHA mechanisms - More secure than PLAIN */
+/* saslserv/scram already loaded above in the SASL section (line 174) */
 #loadmodule "gameserv/dice";			/* DICE/WOD commands */
 #loadmodule "gameserv/eightball";		/* EIGHTBALL command */
 #loadmodule "gameserv/gamecalc";		/* Game-specific dice calculators */
@@ -353,7 +353,7 @@ serverinfo {
 	registeremail = "${ATHEME_REGISTER_EMAIL}";
 	#hidden;
 	mta = "/usr/sbin/sendmail";
-	loglevel = { debug; };
+	loglevel = { admin; error; info; network; wallops; register; };
 	maxcertfp = 0;
 	maxlogins = 5;
 	maxusers = 5;
@@ -448,6 +448,8 @@ chanserv {
 	shorthelp = "REGISTER DROP OP DEOP VOICE DEVOICE AKICK FLAGS INFO TOPIC INVITE";
 };
 
+/* chanfix: module not loaded (chanfix/main is commented out above).
+ * Enable loadmodule "chanfix/main" and uncomment this block to use ChanFix.
 chanfix {
 	nick = "${ATHEME_CHANFIX_NICK}";
 	user = "${ATHEME_CHANFIX_USER}";
@@ -459,6 +461,7 @@ chanfix {
 	};
 	autofix;
 };
+*/
 
 global {
 	nick = "${ATHEME_GLOBAL_NICK}";
@@ -785,9 +788,8 @@ operclass "sra" {
 	needoper;
 };
 
-operator "jilles" {
-	operclass = "sra";
-	#password = "$1$3gJMO9by$0G60YE6GqmuHVH3AnFPor1";
-};
+/* SRA operators are managed at runtime via OperServ SOPER command:
+ *   /msg OperServ SOPER ADD <account> sra
+ * No static operator blocks needed — operserv/soper module is loaded. */
 
 /* ---------- Operclass and operator (include sras.conf etc. if needed) ---------- */
