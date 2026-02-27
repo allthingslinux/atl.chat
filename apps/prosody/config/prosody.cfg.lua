@@ -445,7 +445,7 @@ http_paths = {
 -- http_status_allow_ips = { "127.0.0.1"; "::1"; "172.18.0.0/16"; "76.215.15.63" }
 
 -- Restrict status endpoint to Docker network and localhost
-http_status_allow_cidr = "172.16.0.0/12"
+http_status_allow_cidr = { "172.16.0.0/12", "127.0.0.0/8" }
 
 -- ===============================================
 -- TURN/STUN EXTERNAL SERVICES (XEP-0215)
@@ -572,16 +572,16 @@ push_notification_with_sender = Lua.os.getenv("PROSODY_PUSH_NOTIFICATION_WITH_SE
 allowed_oauth2_grant_types = {
     "authorization_code",
     "device_code",
-    "password",  -- Resource Owner Password Grant (Portal provisioning)
+    -- "password",  -- Removed: Resource Owner Password Grant is insecure
 }
 allowed_oauth2_response_types = {
     "code",
 }
 oauth2_access_token_ttl = 86400      -- 24 hours
 oauth2_refresh_token_ttl = 2592000   -- 30 days
-oauth2_require_code_challenge = false -- Portal uses password grant, not PKCE
+oauth2_require_code_challenge = true -- Enforce PKCE for security
 -- Dynamic client registration (enables Portal to register as OAuth2 client)
-oauth2_registration_key = Lua.os.getenv("PROSODY_OAUTH2_REGISTRATION_KEY") or "dev-oauth2-registration-key"
+oauth2_registration_key = Lua.os.getenv("PROSODY_OAUTH2_REGISTRATION_KEY") or error("PROSODY_OAUTH2_REGISTRATION_KEY must be set in .env")
 
 -- ===============================================
 -- AUTHENTICATION & ACCOUNT POLICY
@@ -913,9 +913,9 @@ ssl = {
 }
 name = "pubsub." .. domain
 modules_enabled = { "pubsub_feeds" }
--- Node "feed" pulls from [REDACTED].org; subscribe to feed@pubsub.domain
+-- Node "feed" pulls from allthingslinux.org; subscribe to feed@pubsub.domain
 feeds = {
-    feed = Lua.os.getenv("PROSODY_FEED_URL") or "https://[REDACTED].org/feed",
+    feed = Lua.os.getenv("PROSODY_FEED_URL") or "https://allthingslinux.org/feed",
 }
 add_permissions = {
     ["prosody:registered"] = { "pubsub:create-node" },
