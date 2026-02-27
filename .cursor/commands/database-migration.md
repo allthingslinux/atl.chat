@@ -23,7 +23,7 @@ Help create and manage database migrations, generating complete migration files 
     - Consider zero-downtime deployment strategies
 4. **Testing Strategy**
     - Create test data scenarios
-    - Verify migration on staging environment
+    - Verify migration on production copy/dev environment
     - Plan rollback procedures and testing
     - Document deployment steps and timing
 
@@ -36,5 +36,5 @@ Help create and manage database migrations, generating complete migration files 
 - [ ] Ensured migrations are atomic and reversible
 - [ ] Added error handling and validation
 - [ ] Created test data scenarios
-- [ ] Verified migration on staging environment
+- [ ] Verified migration on local/dev environment
 - [ ] Documented deployment steps and timing
