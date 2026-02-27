@@ -35,18 +35,11 @@ dev:
      ./scripts/init.sh
     docker compose --env-file .env --env-file .env.dev --profile dev up -d
 
-# Spin up the staging stack
-[group('Orchestration')]
-staging:
-    @echo "Initializing Staging Environment..."
-    ./scripts/init.sh
-    docker compose --env-file .env up -d
-
 # Spin up the production stack
 [group('Orchestration')]
 prod:
     @echo "Initializing Production Environment..."
-    ./scripts/init.sh
+    export ATL_ENVIRONMENT=prod && ./scripts/init.sh
     docker compose --env-file .env up -d
 
 # Stop all services
@@ -54,15 +47,10 @@ prod:
 down:
     docker compose --profile dev down
 
-# Stop staging services
-[group('Orchestration')]
-down-staging:
-    docker compose down
-
 # Stop production services
 [group('Orchestration')]
 down-prod:
-    docker compose down
+    docker compose -p atl-chat-prod down
 
 # View logs (follow)
 [group('Orchestration')]
