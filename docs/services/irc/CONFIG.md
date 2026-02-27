@@ -440,7 +440,7 @@ make up
 ```yaml
 # Docker Compose overrides
 environment:
-  - IRC_DOMAIN=staging.irc.atl.chat
+  - IRC_DOMAIN=irc.atl.chat
   - IRC_TLS_PORT=6698
 ```
 
