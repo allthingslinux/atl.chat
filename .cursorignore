@@ -2,12 +2,10 @@
 !.env.example
 !.env.shared.example
 !.env.dev
-!.env.staging
 !.env.prod
 !.env.local
 !.env.production
 !.env.development
-!.env.staging
 !.env.production
 !.env.*
 !.env.dev.example
