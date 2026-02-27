@@ -46,7 +46,7 @@ services:
     networks:
       - atl-chat
     healthcheck:
-      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
+      test: ["CMD", "pgrep", "-f", "bridge.__main__"]
       interval: 30s
       timeout: 10s
       retries: 3
