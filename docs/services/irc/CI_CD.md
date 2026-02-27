@@ -369,7 +369,7 @@ on:
 
 ### Purpose
 
-Automated deployment to staging and production environments.
+Automated deployment to production environment.
 
 ### Triggers
 
@@ -378,12 +378,6 @@ on:
   release:
     types: [published]
   workflow_dispatch:
-    inputs:
-      environment:
-        description: 'Target environment'
-        required: true
-        default: 'staging'
-        options: [staging, production]
 ```
 
 ### Deployment Strategy
@@ -392,13 +386,7 @@ on:
 
 ```yaml
 jobs:
-  deploy-staging:
-    if: github.event.inputs.environment == 'staging' || github.event_name == 'release'
-    environment: staging
-    runs-on: ubuntu-latest
-
-  deploy-production:
-    if: github.event.inputs.environment == 'production'
+  deploy:
     environment: production
     runs-on: ubuntu-latest
 ```
