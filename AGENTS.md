@@ -40,10 +40,8 @@ docs/               # Architecture, services, onboarding, bridges
 |---------|---------|
 | `just init` | Create data/ dirs, generate config, dev certs |
 | `just dev` | Start stack with dev profile (.env.dev overlay) |
-| `just staging` | Start stack with staging profile |
 | `just prod` | Start production stack |
 | `just down` | Stop dev stack |
-| `just down-staging` | Stop staging stack |
 | `just down-prod` | Stop production stack |
 | `just logs [service]` | Follow logs |
 | `just status` | Container status |
