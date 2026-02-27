@@ -255,7 +255,7 @@ loadmodule "operserv/soper";	/* Non-config oper privileges (SOPER command) */
 #loadmodule "saslserv/ecdh-x25519-challenge"; /* ECDH-X25519-CHALLENGE mechanism */
 #loadmodule "saslserv/ecdsa-nist256p-challenge"; /* ECDSA-NIST256P-CHALLENGE mechanism */
 #loadmodule "saslserv/external"; 		/* EXTERNAL mechanism (IRCv3.1+) */
-/* saslserv/scram already loaded above in the SASL section (line 174) */
+/* saslserv/scram already loaded above in the SASL section */
 #loadmodule "gameserv/dice";			/* DICE/WOD commands */
 #loadmodule "gameserv/eightball";		/* EIGHTBALL command */
 #loadmodule "gameserv/gamecalc";		/* Game-specific dice calculators */
