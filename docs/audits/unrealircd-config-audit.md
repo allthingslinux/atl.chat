@@ -346,15 +346,15 @@ oper admin {
 ### Bridge Oper
 
 ```
-oper atl-bridge {
+oper bridge {
     class opers;
-    mask *@*atl-bridge*;
+    mask *@*bridge*;
     password "${BRIDGE_IRC_OPER_PASSWORD}";
     operclass bridge-oper;
 }
 ```
 
-- 🟢 **OK** — Restricted mask (`*@*atl-bridge*`) limits this oper to bridge hostnames.
+- 🟢 **OK** — Restricted mask (`*@*bridge*`) limits this oper to bridge hostnames.
 - 🟢 **OK** — `bridge-oper` operclass has minimal permissions (just channel override + relaymsg).
 - 🟢 **OK** — Password sourced from environment variable.
 

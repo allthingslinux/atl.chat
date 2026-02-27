@@ -295,8 +295,8 @@
 | `BRIDGE_XMPP_COMPONENT_SECRET` | ✅ `change_me_xmpp_component_secret` | ❌ | bridge.yaml (env) | prosody.cfg.lua | ❌ | `xmpp/adapter.py` |
 | `BRIDGE_XMPP_COMPONENT_SERVER` | ✅ `atl-xmpp-server` | ✅ `atl-xmpp-server` | bridge.yaml (env) | ❌ | ❌ | `xmpp/adapter.py` |
 | `BRIDGE_XMPP_COMPONENT_PORT` | ✅ `5347` | ✅ `5347` | bridge.yaml (env) | ❌ | ❌ | `xmpp/adapter.py` |
-| `BRIDGE_IRC_NICK` | ✅ `atl-bridge` | ❌ | bridge.yaml (env) | ❌ | ❌ | `irc/adapter.py` |
-| `BRIDGE_IRC_OPER_PASSWORD` | ✅ `change_me_bridge_oper` | ❌ | bridge.yaml (env) | unrealircd.conf.template (`oper atl-bridge`) | prepare-config.sh | `irc/client.py` |
+| `BRIDGE_IRC_NICK` | ✅ `bridge` | ❌ | bridge.yaml (env) | ❌ | ❌ | `irc/adapter.py` |
+| `BRIDGE_IRC_OPER_PASSWORD` | ✅ `change_me_bridge_oper` | ❌ | bridge.yaml (env) | unrealircd.conf.template (`oper bridge`) | prepare-config.sh | `irc/client.py` |
 | `IRC_BRIDGE_SERVER` | ✅ `atl-irc-server` | ✅ `atl-irc-server` | ❌ | config.template.yaml | prepare-config.sh | ❌ |
 | `BRIDGE_IRC_TLS_VERIFY` | ❌ | ✅ `false` | bridge.yaml (env) | ❌ | prepare-config.sh | schema.py (`_ENV_OVERRIDE_KEYS`) |
 | `BRIDGE_RELAYMSG_CLEAN_NICKS` | ❌ | ✅ `true` | bridge.yaml (env) | ❌ | ❌ | schema.py (`_ENV_OVERRIDE_KEYS`) |

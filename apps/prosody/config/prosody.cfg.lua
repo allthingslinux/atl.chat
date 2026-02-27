@@ -922,7 +922,7 @@ add_permissions = {
 }
 
 -- Bridge XMPP component (XEP-0114)
--- Allows the atl-bridge service to connect as an external component
+-- Allows the bridge service to connect as an external component
 Component("bridge." .. domain) "component"
 component_secret = Lua.os.getenv("BRIDGE_XMPP_COMPONENT_SECRET") or Lua.os.getenv("XMPP_COMPONENT_SECRET") or "change_me_xmpp_component_secret"
 
@@ -968,4 +968,3 @@ account_cleanup = {
 	inactive_period = Lua.tonumber(Lua.os.getenv("PROSODY_ACCOUNT_INACTIVE_PERIOD")) or (365 * 24 * 3600),
 	grace_period = Lua.tonumber(Lua.os.getenv("PROSODY_ACCOUNT_GRACE_PERIOD")) or (30 * 24 * 3600),
 }
-

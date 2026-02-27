@@ -264,7 +264,7 @@ The `third/relaymsg` module (atl.chat fork) is installed and configured, enablin
 
 - Module: `third/relaymsg` (atl.chat fork from contrib/relaymsg)
 - Config: `relaymsg { hostmask "bridge@${IRC_DOMAIN}"; }`
-- Permission: `relaymsg` granted to `bridge-oper` operclass (atl-bridge)
+- Permission: `relaymsg` granted to `bridge-oper` operclass (bridge)
 
 **Bridge integration (implemented):**
 - Bridge requests `draft/relaymsg` and `overdrivenetworks.com/relaymsg` capabilities

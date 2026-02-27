@@ -803,9 +803,9 @@ operclass bridge-oper {
 	}
 }
 
-oper atl-bridge {
+oper bridge {
 	class opers;
-	mask *@*atl-bridge*;
+	mask *@*bridge*;
 	password "${BRIDGE_IRC_OPER_PASSWORD}";
 	operclass bridge-oper;
 }

@@ -122,7 +122,7 @@ See `config.example.yaml` for the full schema.
 | `BRIDGE_XMPP_COMPONENT_SECRET` | Yes | Prosody component secret |
 | `BRIDGE_XMPP_COMPONENT_SERVER` | No | Component host (default: `localhost`) |
 | `BRIDGE_XMPP_COMPONENT_PORT` | No | Component port (default: `5347`) |
-| `BRIDGE_IRC_NICK` | No | Main IRC nick (default: `atl-bridge`) |
+| `BRIDGE_IRC_NICK` | No | Main IRC nick (default: `bridge`) |
 
 ## Architecture
 

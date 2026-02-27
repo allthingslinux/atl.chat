@@ -9,6 +9,7 @@ Documentation hub for atl.chat. Human-readable guides; not code.
 | Dir | Purpose |
 |-----|---------|
 | `architecture/` | CI/CD, new-service guide, architecture overview |
+| `audits/` | Config audits (env vars, dev-prod lifecycle, prosody, unrealircd) |
 | `bridges/` | Bridge infrastructure overview |
 | `examples/` | Example configs (nginx, prometheus, unrealircd) |
 | `infra/` | Containerization, data layout, networking, SSL |

@@ -141,7 +141,7 @@ class IRCClient(pydle.Client):
         oper_password = os.environ.get("BRIDGE_IRC_OPER_PASSWORD", "").strip()
         if not oper_password:
             return
-        oper_name = "atl-bridge"  # Must match oper block in UnrealIRCd
+        oper_name = "bridge"  # Must match oper block in UnrealIRCd
         try:
             await self.rawmsg("OPER", oper_name, oper_password)
             await asyncio.sleep(1)  # Allow server to process OPER

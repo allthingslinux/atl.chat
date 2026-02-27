@@ -177,7 +177,7 @@ Dev dependencies. Install latest (no version pins). **Core:** `types-pyyaml`, `t
 
 ## Integration with atl.chat
 
-- Deploy as a bridge service under [atl.chat/apps/bridge](~/dev/allthingslinux/atl.chat/apps/bridge/) (e.g. `atl-bridge/`); compose in existing `bridge` profile; use `atl-network`; connect to IRC and XMPP by hostname per [atl.chat networking](~/dev/allthingslinux/atl.chat/docs/infra/networking.md).
+- Deploy as a bridge service under [atl.chat/apps/bridge](~/dev/allthingslinux/atl.chat/apps/bridge/) (e.g. `bridge/`); compose in existing `bridge` profile; use `atl-network`; connect to IRC and XMPP by hostname per [atl.chat networking](~/dev/allthingslinux/atl.chat/docs/infra/networking.md).
 - Secrets via env (same pattern as Biboumi/Matterbridge). Biboumi can remain for pure XMPP↔IRC; this bridge focuses on Discord↔IRC and Discord↔XMPP.
 
 ---

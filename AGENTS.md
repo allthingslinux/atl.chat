@@ -26,6 +26,7 @@ apps/
 
 infra/
 ├── compose/        # Compose fragments: irc, xmpp, bridge, cert-manager, networks
+├── nginx/          # Nginx config for Prosody HTTPS
 └── turn-standalone/
 
 scripts/            # init.sh, prepare-config.sh, gencloak-update-env.sh

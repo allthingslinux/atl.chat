@@ -137,7 +137,7 @@ Without it, PROXY protocol from NPM will break XMPP C2S/S2S when NPM is in front
 
 ### 12. Bridge Compose
 
-- [infra/compose/bridge.yaml](infra/compose/bridge.yaml) defines `atl-bridge` service using `ghcr.io/allthingslinux/bridge` image
+- [infra/compose/bridge.yaml](infra/compose/bridge.yaml) defines `bridge` service using `ghcr.io/allthingslinux/bridge` image
 - Root [compose.yaml](compose.yaml) includes `infra/compose/bridge.yaml`
 
 ### 13. E2E Test Fixture Assumptions
@@ -262,7 +262,7 @@ Root compose uses `dev`, `staging`, `prod`. Bridge sub-composes use `bridge` pro
 
 ### G. Bridge – Delete or Implement
 
-Bridge is defined in `infra/compose/bridge.yaml` using the `atl-bridge` service.
+Bridge is defined in `infra/compose/bridge.yaml` using the `bridge` service.
 
 ### H. Gamja (IRC Web Client)
 
