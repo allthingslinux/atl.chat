@@ -46,7 +46,7 @@ prepare_config() {
     exit 1
   fi
 
-  # Load .env (base), then .env.dev (overrides) only if not in prod/staging
+  # Load .env (base), then .env.dev (overrides) only if in dev
   if [ -f "$PROJECT_ROOT/.env" ]; then
     log_info "Loading environment variables from .env"
     set -a
@@ -54,9 +54,9 @@ prepare_config() {
     source "$PROJECT_ROOT/.env"
     set +a
   fi
-  # Only load .env.dev if it exists AND ATL_ENVIRONMENT is not prod/staging.
+  # Only load .env.dev if it exists AND ATL_ENVIRONMENT is dev.
   # This prevents dev overrides from leaking into production config generation.
-  if [ -f "$PROJECT_ROOT/.env.dev" ] && [ "${ATL_ENVIRONMENT:-dev}" = "dev" ]; then
+  if [ -f "$PROJECT_ROOT/.env.dev" ] && [ "${ATL_ENVIRONMENT:-}" = "dev" ]; then
     log_info "Loading .env.dev overrides (ATL_ENVIRONMENT=dev)"
     set -a
     # shellcheck disable=SC1091
