@@ -7,7 +7,7 @@
 
 ## Executive Summary
 
-The dev story is **solid and works well**. The prod story has **real gaps** that would block a production deployment. The main issues are: `just prod` doesn't run `init.sh` or load env files; the cert-manager is a placeholder that doesn't actually issue certs; the staging/prod profiles don't actually differentiate services; and there's no documentation for the prod deployment path.
+The dev story is **solid and works well**. The prod story has **real gaps** that would block a production deployment. The main issues are: `just prod` doesn't run `init.sh` or load env files; the cert-manager is a placeholder that doesn't actually issue certs; the prod profiles don't actually differentiate services; and there's no documentation for the prod deployment path.
 
 **Verdict:** Dev is ~90% clean. Prod is ~40% ready.
 
@@ -57,6 +57,7 @@ just dev
 
 ```
 just prod
+  → export ATL_ENVIRONMENT=prod (explicitly in justfile)
   → docker compose --profile prod up -d
 ```
 
@@ -68,7 +69,7 @@ That's it. **No init.sh. No env file loading. No config generation.**
 |-------|----------|---------|
 | **No init.sh** | 🔴 | `just prod` doesn't run `init.sh`. No `data/` dirs created, no configs generated from templates. If deploying to a fresh server, nothing works. |
 | **No `--env-file`** | 🔴 | Unlike `just dev` which passes `--env-file .env --env-file .env.dev`, `just prod` passes nothing. Docker Compose will auto-load `.env` but there's no explicit prod overlay. All prod-specific overrides must be in `.env` itself. |
-| **No staging/prod profile differentiation** | 🟡 | The `profiles: ["dev"]` on Dozzle means it only starts with `--profile dev`. But no services have `profiles: ["prod"]` or `profiles: ["staging"]`. So `just prod` and `just staging` start the exact same services as `docker compose up -d` (everything except Dozzle). The profiles are meaningless for prod/staging. |
+| **No prod profile differentiation** | 🟡 | The `profiles: ["dev"]` on Dozzle means it only starts with `--profile dev`. But no services have `profiles: ["prod"]`. So `just prod` starts the exact same services as `docker compose up -d` (everything except Dozzle). The profiles are meaningless for prod. |
 | **Cert-manager is a placeholder** | 🔴 | The cert-manager service uses `goacme/lego:latest` with a custom `run.sh`, but it runs on every `docker compose up` — including dev where it's not needed. There's no `CLOUDFLARE_DNS_API_TOKEN` set in dev, so it likely errors silently. In prod, someone would need to set this token, but there's no documentation for the cert issuance flow. |
 | **No prod documentation** | 🟡 | README says `just prod` starts production stack, but there's no guide for: initial prod setup, cert issuance, DNS records needed, secrets management, backup strategy. |
 
@@ -168,11 +169,10 @@ Dev uses `.localhost` TLD — `irc.localhost`, `xmpp.localhost`. These resolve t
 | Profile | What it activates | Command |
 |---------|-------------------|---------|
 | `dev` | Dozzle only | `just dev` |
-| `staging` | Nothing — no services use this profile | `just staging` |
 | `prod` | Nothing — no services use this profile | `just prod` |
 | (none) | All services except Dozzle | `docker compose up -d` |
 
-**Issue:** Staging and prod profiles are empty. `just staging` and `just prod` are functionally identical to `docker compose up -d`. The profiles add no value.
+**Issue:** Prod profiles are empty. `just prod` is functionally identical to `docker compose up -d`. The profiles add no value.
 
 ### Image Strategy
 
@@ -248,7 +248,7 @@ Line 57-63: The script unconditionally sources `.env.dev` if it exists. This mea
 
 ### 🟡 WARNING
 
-1. **Staging/prod profiles are empty** — `just staging` and `just prod` are identical to bare `docker compose up`
+1. **Prod profiles are empty** — `just prod` is identical to bare `docker compose up`
 2. **No prod deployment documentation** — DNS records, cert issuance, secrets, backups
 3. **`prepare-config.sh` always loads `.env.dev`** if present — prod configs could get dev overrides
 4. **XMPP ports bind to 0.0.0.0** — inconsistent with IRC's `ATL_CHAT_IP` binding
@@ -276,7 +276,7 @@ Line 57-63: The script unconditionally sources `.env.dev` if it exists. This mea
 
 ## Recommended Fix Priority
 
-1. Fix `just prod` / `just staging` to run init and load env files
+1. Fix `just prod` to run init and load env files
 2. Fix Prosody `.env.example` cert paths to use `${XMPP_DOMAIN}` not `localhost`
 3. Add prod deployment docs (DNS, certs, secrets)
 4. Add cert renewal mechanism
