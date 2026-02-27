@@ -64,6 +64,7 @@ modules_enabled = {
     -- SECURITY & PRIVACY
     -- ===============================================
     "tokenauth",       -- Token management for OAuth2 and other modules (prosody.im/doc/modules/mod_tokenauth)
+    "http_oauth2",     -- OAuth2/OIDC Authorization Server (generates Bearer tokens for mod_http_admin_api)
     "blocklist",       -- User blocking functionality (XEP-0191)
     "anti_spam",       -- Spam prevention and detection
     "spam_reporting",  -- Spam reporting mechanisms (XEP-0377)
@@ -73,7 +74,7 @@ modules_enabled = {
     -- REGISTRATION & USER MANAGEMENT
     -- ===============================================
     -- "register",           -- Password changes (XEP-0077); registration disabled (Portal provisions)
-    -- "invites", -- User invitation system
+    "invites", -- User invitation system (required by mod_http_admin_api and mod_http_oauth2)
     "welcome",            -- Welcome messages for new users
     "support_contact",    -- Add support JID to roster of newly registered users (in-band reg only; modules.prosody.im/mod_support_contact)
     -- "watchregistrations", -- Disabled: no in-band registration (Portal provisions via mod_http_admin_api)
@@ -563,6 +564,26 @@ push_notification_with_body = Lua.os.getenv("PROSODY_PUSH_NOTIFICATION_WITH_BODY
 push_notification_with_sender = Lua.os.getenv("PROSODY_PUSH_NOTIFICATION_WITH_SENDER") == "true"
 
 -- ===============================================
+-- OAUTH2 CONFIGURATION (mod_http_oauth2)
+-- ===============================================
+-- Enables Bearer token generation for Portal's mod_http_admin_api integration.
+-- Portal uses the Resource Owner Password Grant to obtain tokens.
+-- Tokens are also usable for OAUTHBEARER SASL auth.
+allowed_oauth2_grant_types = {
+    "authorization_code",
+    "device_code",
+    "password",  -- Resource Owner Password Grant (Portal provisioning)
+}
+allowed_oauth2_response_types = {
+    "code",
+}
+oauth2_access_token_ttl = 86400      -- 24 hours
+oauth2_refresh_token_ttl = 2592000   -- 30 days
+oauth2_require_code_challenge = false -- Portal uses password grant, not PKCE
+-- Dynamic client registration (enables Portal to register as OAuth2 client)
+oauth2_registration_key = Lua.os.getenv("PROSODY_OAUTH2_REGISTRATION_KEY") or "dev-oauth2-registration-key"
+
+-- ===============================================
 -- AUTHENTICATION & ACCOUNT POLICY
 -- ===============================================
 -- Hashed password storage and preferred SASL mechanisms
@@ -892,9 +913,9 @@ ssl = {
 }
 name = "pubsub." .. domain
 modules_enabled = { "pubsub_feeds" }
--- Node "feed" pulls from allthingslinux.org; subscribe to feed@pubsub.domain
+-- Node "feed" pulls from [REDACTED].org; subscribe to feed@pubsub.domain
 feeds = {
-    feed = Lua.os.getenv("PROSODY_FEED_URL") or "https://allthingslinux.org/feed",
+    feed = Lua.os.getenv("PROSODY_FEED_URL") or "https://[REDACTED].org/feed",
 }
 add_permissions = {
     ["prosody:registered"] = { "pubsub:create-node" },
@@ -947,3 +968,4 @@ account_cleanup = {
 	inactive_period = Lua.tonumber(Lua.os.getenv("PROSODY_ACCOUNT_INACTIVE_PERIOD")) or (365 * 24 * 3600),
 	grace_period = Lua.tonumber(Lua.os.getenv("PROSODY_ACCOUNT_GRACE_PERIOD")) or (30 * 24 * 3600),
 }
+
