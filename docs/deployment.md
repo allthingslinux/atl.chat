@@ -112,7 +112,10 @@ IRC_STS_PRELOAD=no
 
 ```bash
 # Install just if not present
-curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to /usr/local/bin
+# Documentation: https://github.com/casey/just#installation
+# Example for Debian/Ubuntu:
+sudo apt install just
+# or use the pre-built binaries from their releases page.
 
 # Initialize (creates data dirs, generates configs, obtains certs)
 just prod
@@ -393,7 +396,7 @@ Common causes:
 
 - `CLOUDFLARE_DNS_API_TOKEN` not set or expired
 - Cloudflare API token doesn't have DNS edit permissions for the zone
-- Rate limited by Let's Encrypt (check https://letsencrypt.org/docs/rate-limits/)
+- Rate limited by Let's Encrypt (check <https://letsencrypt.org/docs/rate-limits/>)
 
 ### WebSocket connections failing
 
