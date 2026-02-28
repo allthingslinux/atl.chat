@@ -18,7 +18,7 @@ loadmodule "backend/opensex";
 /* 4. Ensure pbkdf2v2_rounds is 10000-65536 for Cyrus SASL compatibility */
 /* 5. Load modules/saslserv/scram-sha module (done below) */
 loadmodule "crypto/pbkdf2v2";	/* PBKDF2 v2 - Needed for SASL SCRAM-SHA support, HIGHLY RECOMMENDED */
-#loadmodule "crypto/pbkdf2";	/* PBKDF2 v1 - Verify-only for Atheme <= 7.2 - DEPRECATED */
+/* loadmodule "crypto/pbkdf2"; -- PBKDF2 v1 - Verify-only for Atheme <= 7.2 - DEPRECATED */
 
 /* ---------- NickServ ---------- */
 loadmodule "nickserv/main";	/* Core components */
@@ -143,6 +143,7 @@ loadmodule "operserv/set_maxlogins";	/* SET MAXLOGINS command */
 loadmodule "operserv/set_maxnicks";	/* SET MAXNICKS command */
 loadmodule "operserv/set_maxusers";	/* SET MAXUSERS command */
 loadmodule "operserv/set_mdlimit";      /* SET MDLIMIT command */
+loadmodule "operserv/set_enforceprefix"; /* SET ENFORCEPREFIX command */
 loadmodule "operserv/set_nickexpire";	/* SET NICKEXPIRE command */
 loadmodule "operserv/set_recontime";	/* SET RECONTIME command */
 loadmodule "operserv/set_spam";	/* SET SPAM command */
@@ -299,9 +300,9 @@ loadmodule "groupserv/invite";			/* INVITE command */
 loadmodule "misc/httpd";				/* HTTP Server */
 loadmodule "misc/login_throttling";	/* Password-based login throttling */
 loadmodule "transport/jsonrpc";			/* JSON-RPC handler for the httpd */
-#loadmodule "exttarget/oper";			/* $oper exttarget match type */
-#loadmodule "exttarget/registered"; 	/* $registered exttarget match type */
-#loadmodule "exttarget/channel";		/* $channel exttarget match type */
+loadmodule "exttarget/oper";			/* $oper exttarget match type */
+loadmodule "exttarget/registered"; 	/* $registered exttarget match type */
+loadmodule "exttarget/channel";		/* $channel exttarget match type */
 #loadmodule "exttarget/chanacs";		/* $chanacs exttarget match type */
 #loadmodule "exttarget/server";			/* $server exttarget match type */
 loadmodule "proxyscan/main";			/* Core components */
@@ -331,6 +332,7 @@ crypto {
 	pbkdf2v2_digest = "SCRAM-SHA-256"; /* Digest: SHA1, SHA2-256, SHA2-512, or SCRAM-* variants */
 	pbkdf2v2_rounds = 64000; /* Iteration count (10000-65536 for SCRAM-SHA, default 64000) */
 	pbkdf2v2_saltlen = 32; /* Salt length in bytes (default 32 for SCRAM-SHA-256) */
+	scram_mechanisms = "SCRAM-SHA-256"; /* Limit advertised SCRAM mechanisms to those with stored digests */
 
 	/* bcrypt Configuration - Alternative to pbkdf2v2 */
 	#bcrypt_cost = 7; /* Rounds as power of 2 (4-31, default 7) */
@@ -682,8 +684,10 @@ ldap {
 };
 
 /* ---------- Logging ---------- */
-/* Single comprehensive log file - captures everything */
-logfile "logs/atheme.log" { debug; };	/* ALL LOGGING - Everything goes here */
+/* Log files split by category for production efficiency and security */
+logfile "logs/atheme.log" { error; info; admin; network; };
+logfile "logs/commands.log" { commands; };
+logfile "logs/audit.log" { register; set; denycmd; request; };
 
 /* Optional: Log to IRC channels (uncomment if needed) */
 #logfile "#services" { debug; };
@@ -791,5 +795,12 @@ operclass "sra" {
 /* SRA operators are managed at runtime via OperServ SOPER command:
  *   /msg OperServ SOPER ADD <account> sra
  * No static operator blocks needed — operserv/soper module is loaded. */
+
+/* ---------- Operators ---------- */
+/* Bootstrap SRA account - used to grant SRA to others via OperServ SOPER.
+ * Once other SRAs are added, this can be changed or removed. */
+operator "${ATHEME_SRA_BOOTSTRAP_ACCOUNT}" {
+	operclass = "sra";
+};
 
 /* ---------- Operclass and operator (include sras.conf etc. if needed) ---------- */
