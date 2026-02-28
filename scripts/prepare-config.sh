@@ -64,6 +64,7 @@ prepare_config() {
     set +a
   fi
   log_info "Environment variables loaded"
+  export DOLLAR='$'
 
   # Ensure Atheme JSON-RPC port has a default (for existing .env without it)
   export ATHEME_HTTPD_PORT="${ATHEME_HTTPD_PORT:-8081}"
