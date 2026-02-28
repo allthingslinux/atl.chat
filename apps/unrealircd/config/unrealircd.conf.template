@@ -781,16 +781,17 @@ drpass {
 	die "${IRC_DRPASS}";
 }
 
-/* Operator Configuration */
-oper admin {
+/* Staff Configuration */
+oper staff {
 	class opers;
-	mask *@172.16.0.0/12;
+	mask *;
 	password "${IRC_OPER_PASSWORD}";
 	operclass netadmin-with-override;
-	swhois "is the Network Administrator";
-	vhost "${IRC_STAFF_VHOST}";
+	swhois "is a member of the Network Staff";
+	vhost "${DOLLAR}account@${IRC_STAFF_VHOST}";
 	require-modes "z";
 }
+
 
 /* Bridge oper: creates channels and sets +P (permanent) so they persist when empty.
  * Needs channel override so IRCOp can set +P without being chanop.
@@ -808,7 +809,9 @@ oper bridge {
 	mask *@*bridge*;
 	password "${BRIDGE_IRC_OPER_PASSWORD}";
 	operclass bridge-oper;
+	vhost "bridge@bridge.atl.chat";
 }
+
 
 /* RPC Configuration for Webpanel */
 rpc-user "${WEBPANEL_RPC_USER}" {
@@ -823,7 +826,7 @@ vhost {
 	mask {
 		identified yes;
 	}
-	vhost ${IRC_DOMAIN};
+	vhost "${DOLLAR}account@${IRC_ROOT_DOMAIN}";
 }
 
 /* Logging Configuration */
