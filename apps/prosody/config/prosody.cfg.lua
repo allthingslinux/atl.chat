@@ -366,9 +366,9 @@ proxy65_interfaces = { "*" }
 -- External URL advertised to clients and components (Converse.js BOSH/WebSocket, etc.)
 -- When behind reverse proxy, omit port. For direct dev access on :5280, set PROSODY_HTTP_EXTERNAL_URL.
 local __http_host = Lua.os.getenv("PROSODY_HTTP_HOST") or
-    Lua.os.getenv("PROSODY_DOMAIN") or "localhost"
+    Lua.os.getenv("PROSODY_DOMAIN") or Lua.os.getenv("XMPP_DOMAIN") or "localhost"
 local __http_scheme = Lua.os.getenv("PROSODY_HTTP_SCHEME") or "http"
-local __domain = Lua.os.getenv("PROSODY_DOMAIN") or "xmpp.localhost"
+local __domain = Lua.os.getenv("PROSODY_DOMAIN") or Lua.os.getenv("XMPP_DOMAIN") or "xmpp.localhost"
 -- Route requests for unknown hosts to main VirtualHost. Must match http_host when set (Prosody docs).
 http_default_host = __http_host
 http_external_url = Lua.os.getenv("PROSODY_HTTP_EXTERNAL_URL") or
@@ -400,7 +400,6 @@ http_headers = {
     ["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload",
     ["X-Frame-Options"] = "DENY",
     ["X-Content-Type-Options"] = "nosniff",
-    ["X-XSS-Protection"] = "1; mode=block",
     ["Referrer-Policy"] = "strict-origin-when-cross-origin",
     -- Allow Converse.js CDN and XMPP endpoints for mod_conversejs
     ["Content-Security-Policy"] =
@@ -444,8 +443,8 @@ http_paths = {
 -- Alternative: Allow access from specific IPs (more secure)
 -- http_status_allow_ips = { "127.0.0.1"; "::1"; "172.18.0.0/16"; "76.215.15.63" }
 
--- Restrict status endpoint to Docker network and localhost
-http_status_allow_cidr = { "172.16.0.0/12", "127.0.0.0/8" }
+-- Restrict status endpoint to Docker network and localhost (IPv4/IPv6)
+http_status_allow_cidr = { "172.16.0.0/12", "127.0.0.0/8", "::1" }
 
 -- ===============================================
 -- TURN/STUN EXTERNAL SERVICES (XEP-0215)
@@ -581,7 +580,13 @@ oauth2_access_token_ttl = 86400      -- 24 hours
 oauth2_refresh_token_ttl = 2592000   -- 30 days
 oauth2_require_code_challenge = true -- Enforce PKCE for security
 -- Dynamic client registration (enables Portal to register as OAuth2 client)
-oauth2_registration_key = Lua.os.getenv("PROSODY_OAUTH2_REGISTRATION_KEY") or error("PROSODY_OAUTH2_REGISTRATION_KEY must be set in .env")
+local __oauth2_key = Lua.os.getenv("PROSODY_OAUTH2_REGISTRATION_KEY")
+local __env = Lua.os.getenv("ATL_ENVIRONMENT") or
+    (Lua.os.getenv("XMPP_DOMAIN") == "xmpp.localhost" and "dev") or "prod"
+if not __oauth2_key or __oauth2_key == "" or (__env ~= "dev" and __oauth2_key:match("^change_me_")) then
+    error("PROSODY_OAUTH2_REGISTRATION_KEY must be set to a secure value in .env")
+end
+oauth2_registration_key = __oauth2_key
 
 -- ===============================================
 -- AUTHENTICATION & ACCOUNT POLICY
@@ -717,7 +722,7 @@ push_max_hibernation_timeout = Lua.tonumber(Lua.os.getenv("PROSODY_PUSH_MAX_HIBE
 -- ===============================================
 -- Domain and registration settings
 -- Users are provisioned via Portal (mod_http_admin_api); disable self-registration.
-local domain = Lua.os.getenv("PROSODY_DOMAIN") or "atl.chat"
+local domain = Lua.os.getenv("PROSODY_DOMAIN") or Lua.os.getenv("XMPP_DOMAIN") or "atl.chat"
 allow_registration = Lua.os.getenv("PROSODY_ALLOW_REGISTRATION") == "true"
 
 -- Single VirtualHost
