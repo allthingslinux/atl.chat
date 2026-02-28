@@ -144,6 +144,18 @@ generate-password:
     @echo "Generating IRC Operator Password"
     @./scripts/generate-oper-password.sh
 
+# Bootstrap the first Services Root Administrator (SRA) account
+[group('Maintenance')]
+sra-bootstrap nick:
+    @echo "SRA Bootstrap Process:"
+    @echo "1. Connect to IRC with nick '{{ nick }}'"
+    @echo "2. Register your account: /msg NickServ REGISTER <password> <email>"
+    @echo "3. Update .env: set ATHEME_SRA_BOOTSTRAP_ACCOUNT={{ nick }}"
+    @echo "4. Reload services: just irc reload"
+    @echo "5. You will now have SRA privileges via the static bootstrap block."
+    @echo "6. Use /msg OperServ SOPER ADD <other_nick> sra to grant access to others."
+    @echo "7. Once finished, you can remove the bootstrap account from .env for security."
+
 [group('Maintenance')]
 lint:
     @echo "Linting Scripts"
