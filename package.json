@@ -11,7 +11,13 @@
     "release": "semantic-release",
     "commitlint": "commitlint",
     "commit": "cz",
-    "cz": "cz"
+    "cz": "cz",
+    "docs": "pnpm --filter @atl.chat/docs dev",
+    "docs:login": "pnpm --filter @atl.chat/docs exec alchemy login",
+    "docs:deploy": "pnpm --filter @atl.chat/docs run deploy",
+    "docs:deploy:prod": "pnpm --filter @atl.chat/docs run deploy:prod",
+    "docs:destroy": "pnpm --filter @atl.chat/docs run destroy",
+    "docs:destroy:prod": "pnpm --filter @atl.chat/docs run destroy:prod"
   },
   "config": {
     "commitizen": {
@@ -21,6 +27,12 @@
   "workspaces": [
     "apps/*"
   ],
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild", "sharp", "workerd"],
+    "overrides": {
+      "esbuild": "^0.24.0"
+    }
+  },
   "devDependencies": {
     "@commitlint/cli": "^20.4.2",
     "@commitlint/config-conventional": "^20.4.2",
