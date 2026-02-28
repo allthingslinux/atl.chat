@@ -1,0 +1,107 @@
+---
+title: IRC DNS & Ports
+description: Port assignments, A records, STS policy, and WebIRC configuration for IRC.
+---
+
+The IRC server requires a public A record, open firewall ports for client and TLS connections, an STS policy for automatic TLS upgrades, and WebIRC configuration for web clients.
+
+## Ports
+
+These port assignments are defined in `apps/unrealircd/config/unrealircd.conf.template`:
+
+| Port | Purpose | Options |
+|---|---|---|
+| `6697` | IRC over TLS (client connections) | `tls` |
+| `6900` | Server-to-server links (TLS) | `tls; serversonly` |
+| `6901` | Atheme services uplink (internal) | `serversonly` |
+| `8000` | WebSocket (plain, TLS terminated at reverse proxy) | `websocket { type text; }` |
+| `8600` | JSON-RPC API (TLS) | `rpc; tls` |
+
+UnrealIRCd also listens on two Unix sockets for local IPC:
+- `/home/unrealircd/unrealircd/data/rpc.socket` — RPC socket for the WebPanel
+- `/home/unrealircd/unrealircd/data/services.sock` — Atheme services socket
+
+## DNS records
+
+Create an A record pointing your IRC domain to the server IP:
+
+```text
+irc.atl.chat.  IN  A  <server-ip>
+```
+
+If your server has an IPv6 address, add an AAAA record as well:
+
+```text
+irc.atl.chat.  IN  AAAA  <server-ipv6>
+```
+
+Most IRC clients resolve both A and AAAA records automatically. Providing both ensures connectivity for IPv4-only and IPv6-capable clients.
+
+## STS (Strict Transport Security)
+
+UnrealIRCd advertises an STS policy to IRC clients, automatically redirecting capable clients from plaintext to TLS. The `sts` module is loaded by default in the atl.chat configuration.
+
+The STS policy is configured inside the `set::tls` block (not inside `set::plaintext-policy`):
+
+```c
+set {
+    tls {
+        /* STS policy — redirects clients to TLS port 6697 */
+        sts-policy {
+            port 6697;                        /* Redirect target */
+            duration ${IRC_STS_DURATION};     /* How long clients cache the policy */
+            preload ${IRC_STS_PRELOAD};       /* Whether to preload in client */
+        }
+    }
+}
+```
+
+You control STS behaviour through two environment variables:
+
+| Variable | Description | Recommended production value |
+|---|---|---|
+| `IRC_STS_DURATION` | Cache duration for the STS policy | `180d` (6 months) |
+| `IRC_STS_PRELOAD` | Enable STS preloading in clients | `yes` |
+
+Roll out STS gradually — start with a short duration (e.g., `1m`) and increase over time as you confirm clients connect successfully over TLS.
+
+## WebIRC
+
+WebIRC allows The Lounge and other web clients to pass the real client IP to UnrealIRCd instead of appearing as the Docker gateway IP. The configuration uses `proxy {}` blocks:
+
+```c
+/* The Lounge web IRC client: passes real user IP via WEBIRC */
+proxy thelounge {
+    type webirc;
+    match { ip 172.16.0.0/12; }           /* Docker network range */
+    password "${THELOUNGE_WEBIRC_PASSWORD}";
+}
+
+/* NPM/gateway WEBIRC: passes real client IP from reverse proxy */
+proxy npm-webirc {
+    type webirc;
+    match { ip ${ATL_GATEWAY_IP}/32; }
+    password "${ATL_WEBIRC_PASSWORD}";
+}
+```
+
+The `THELOUNGE_WEBIRC_PASSWORD` must match the password configured in The Lounge's config. The Docker network range `172.16.0.0/12` covers all default Docker bridge subnets.
+
+For WebSocket connections through a reverse proxy (e.g., Nginx Proxy Manager), an additional `proxy` block trusts `X-Forwarded-For` headers:
+
+```c
+proxy npm-x-forwarded {
+    type x-forwarded;
+    match { ip ${ATL_GATEWAY_IP}/32; ip 100.64.0.0/10; }
+}
+```
+
+The `100.64.0.0/10` range covers Tailscale addresses for overlay network deployments.
+
+## Related pages
+
+- [IRC Stack Overview](/docs/services/irc) — UnrealIRCd and Atheme overview
+- [IRC Configuration](/docs/services/irc/configuration) — env vars, config templates, secrets
+- [XMPP DNS](/docs/services/xmpp/dns) — XMPP SRV records and federation DNS
+- [Networking](/docs/architecture/networking) — full port registry and firewall rules
+- [SSL/TLS](/docs/operations/ssl-tls) — certificate management for TLS connections

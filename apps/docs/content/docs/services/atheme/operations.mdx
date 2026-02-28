@@ -1,0 +1,459 @@
+---
+title: Atheme Operations
+description: Service commands for NickServ, ChanServ, OperServ, MemoServ, HostServ, and BotServ, plus database management and container operations for Atheme IRC services.
+---
+
+This page covers day-to-day Atheme operations: interacting with service bots via IRC commands, managing the opensex flat-file database, and running container-level maintenance tasks.
+
+## Interacting with Atheme
+
+You interact with Atheme service bots by sending IRC messages. All commands follow the same pattern:
+
+```text
+/msg <ServiceBot> <COMMAND> [arguments]
+```
+
+Every service bot supports a `HELP` command that lists available commands:
+
+```text
+/msg NickServ HELP
+/msg ChanServ HELP
+/msg OperServ HELP
+```
+
+> **Note:** Atheme shares UnrealIRCd's network namespace, so there is no separate container to connect to. You send commands through your normal IRC connection to the network.
+
+## NickServ — nickname management
+
+NickServ handles nickname registration, identification, and account settings.
+
+### Registration and identification
+
+```text
+/msg NickServ REGISTER <password> <email>
+/msg NickServ IDENTIFY <password>
+/msg NickServ IDENTIFY <nickname> <password>
+```
+
+After registering, you can configure your client to auto-identify via SASL (recommended) or send `IDENTIFY` on connect.
+
+### Account settings
+
+```text
+/msg NickServ SET PASSWORD <newpassword>
+/msg NickServ SET EMAIL <newemail@example.com>
+/msg NickServ SET HIDEMAIL ON
+/msg NickServ SET PRIVATE ON
+/msg NickServ SET ENFORCE ON
+```
+
+`ENFORCE` enables nickname protection — if someone uses your nick without identifying, they are renamed to `Guest*` after 30 seconds (configurable via `enforce_delay` in the config).
+
+### Nickname grouping
+
+You can group multiple nicknames under one account (up to 5 by default):
+
+```text
+/nick AltNick
+/msg NickServ GROUP
+```
+
+### Other useful commands
+
+```text
+/msg NickServ INFO <nickname>
+/msg NickServ GHOST <nickname>
+/msg NickServ LISTCHANS
+```
+
+- `INFO` — view registration details for a nickname
+- `GHOST` — disconnect a session using your nickname (useful after a disconnection)
+- `LISTCHANS` — list channels where your account has access
+
+## ChanServ — channel management
+
+ChanServ handles channel registration, access control, mode locks, and topic management.
+
+### Channel registration
+
+You must be in the channel and have operator status to register it:
+
+```text
+/join #mychannel
+/msg ChanServ REGISTER #mychannel
+```
+
+Each account can register up to 5 channels by default.
+
+### Access control
+
+ChanServ uses a flags-based access system. You can use named templates or raw flags:
+
+```text
+/msg ChanServ FLAGS #mychannel <nickname> <template-or-flags>
+```
+
+Built-in templates and their flags:
+
+| Template | Flags | Typical role |
+|---|---|---|
+| `MEMBER` | `+Ai` | Basic member (auto-invite) |
+| `VOP` | `+AV` | Auto-voice |
+| `HOP` | `+AHehitrv` | Half-op |
+| `AOP` | `+AOehiortv` | Auto-op |
+| `SOP` | `+AOaefhiorstv` | Super-op |
+| `FOUNDER` | `+AFORaefhioqrstv` | Full control |
+
+Examples:
+
+```text
+/msg ChanServ FLAGS #mychannel friend AOP
+/msg ChanServ FLAGS #mychannel friend -AOP
+/msg ChanServ FLAGS #mychannel LIST
+```
+
+### Channel settings
+
+```text
+/msg ChanServ SET #mychannel GUARD ON
+/msg ChanServ SET #mychannel MLOCK +nt
+/msg ChanServ SET #mychannel TOPICLOCK ON
+/msg ChanServ TOPIC #mychannel New topic text here
+```
+
+- `GUARD` — ChanServ joins the channel permanently (enabled by default for new registrations)
+- `MLOCK` — locks channel modes so they persist across restarts
+- `TOPICLOCK` — only users with the `+t` flag can change the topic via ChanServ
+
+### Fantasy commands
+
+ChanServ supports in-channel "fantasy" commands prefixed with `!` (the default trigger):
+
+```text
+!op nickname
+!deop nickname
+!kick nickname reason
+!ban nickname
+!topic New topic
+```
+
+Fantasy commands are enabled by default in the config (`fantasy;` and `trigger = "!";` in the `chanserv{}` block).
+
+### Other useful commands
+
+```text
+/msg ChanServ INFO #channel
+/msg ChanServ AKICK #channel ADD <mask> <reason>
+/msg ChanServ AKICK #channel DEL <mask>
+/msg ChanServ AKICK #channel LIST
+```
+
+## OperServ — network administration
+
+OperServ provides administrative commands for IRC operators. You must have IRC operator status and be added as a services operator to use most commands.
+
+### Becoming a services operator
+
+After you have IRC oper status (via `/oper` in UnrealIRCd), a services root administrator (SRA) can grant you services operator privileges:
+
+```text
+/msg OperServ SOPER ADD <account> sra
+```
+
+The `sra` operclass has full privileges. The `ircop` operclass provides standard operator access. See the [configuration page](/docs/services/atheme/configuration) for details on operator classes.
+
+### AKILL management
+
+AKILLs are network-wide bans managed by Atheme (similar to K-lines but persistent across restarts):
+
+```text
+/msg OperServ AKILL ADD <mask> <reason>
+/msg OperServ AKILL ADD !T 7d <mask> <reason>
+/msg OperServ AKILL DEL <mask>
+/msg OperServ AKILL LIST
+```
+
+The `!T 7d` syntax sets a 7-day duration. Without `!T`, the default duration is 7 days (configured via `kline_time` in the `general{}` block). Use `!T 0` for permanent AKILLs.
+
+### Service control
+
+```text
+/msg OperServ REHASH
+/msg OperServ RESTART
+/msg OperServ SHUTDOWN
+```
+
+- `REHASH` — reloads the Atheme configuration file without restarting
+- `RESTART` — restarts Atheme services (brief disconnection from the network)
+- `SHUTDOWN` — stops Atheme services entirely
+
+> **Warning:** `RESTART` and `SHUTDOWN` affect all service bots. Users lose access to NickServ, ChanServ, and all other services until Atheme reconnects. Prefer `REHASH` for config changes when possible.
+
+### Other OperServ commands
+
+```text
+/msg OperServ JUPE <server> <reason>
+/msg OperServ MODE <channel> <modes>
+/msg OperServ CLONES LIST
+/msg OperServ UPTIME
+/msg OperServ SPECS
+```
+
+- `JUPE` — prevents a server from connecting to the network
+- `MODE` — sets channel modes as OperServ (bypasses access checks)
+- `CLONES` — monitors users connecting from the same host (default limit: 5 per host)
+
+## MemoServ — private messaging
+
+MemoServ provides offline messaging between registered users.
+
+### Sending and reading memos
+
+```text
+/msg MemoServ SEND <nickname> <message>
+/msg MemoServ SEND #channel <message>
+/msg MemoServ LIST
+/msg MemoServ READ <number>
+/msg MemoServ DELETE <number>
+```
+
+Channel memos are sent to all users with sufficient access in the channel.
+
+### Forwarding and ignoring
+
+```text
+/msg MemoServ FORWARD <nickname> <number>
+/msg MemoServ IGNORE ADD <nickname>
+/msg MemoServ IGNORE DEL <nickname>
+/msg MemoServ IGNORE LIST
+```
+
+## HostServ — virtual hosts
+
+HostServ manages virtual hosts (vhosts) that replace your real hostname on IRC.
+
+### Requesting and using vhosts
+
+```text
+/msg HostServ REQUEST <desired.vhost>
+/msg HostServ ON
+/msg HostServ OFF
+```
+
+Vhost requests require operator approval unless an operator has pre-configured offered vhosts.
+
+### Operator vhost management
+
+Operators can offer vhosts to groups of users or manage individual requests:
+
+```text
+/msg HostServ OFFER <pattern> <vhost>
+/msg HostServ ACTIVATE <nickname>
+/msg HostServ REJECT <nickname> <reason>
+/msg HostServ VHOST <nick
+els:
+
+```text
+/msg BotServ HELP
+/msg BotServ INFO #channel
+/msg BotServ SET #channel FANTASY ON
+```
+
+BotServ bots can relay NPC-style messages in channels via `SAY` and `ACT` commands.
+
+## First-run bootstrap
+
+On a fresh deployment, the Atheme database is empty. Follow these steps to set up the initial services operator:
+
+1. Connect to IRC and register a nickname:
+
+   ```text
+   /msg NickServ REGISTER <password> <email>
+   ```
+
+2. The first registered account does not automatically get operator privileges. You need to add yourself as an SRA from the Atheme console or by editing the database. The simplest approach is to use the OperServ `SOPER` command after gaining IRC oper status:
+
+   ```text
+   /oper <opername> <operpassword>
+   /msg OperServ SOPER ADD <your-account> sra
+   ```
+
+   This requires that your IRC oper block in UnrealIRCd is already configured. See [IRC Operations](/docs/services/irc/operations) for oper setup.
+
+3. Verify your services operator status:
+
+   ```text
+   /msg OperServ SPECS
+   ```
+
+## Database management
+
+Atheme uses the `backend/opensex` flat-file database format. The database file is stored at `data/atheme/data/services.db` on the host, mounted into the container at `/usr/local/atheme/data/services.db`.
+
+> **Warning:** This is not SQLite. The opensex format is Atheme's own serialization format. Do not attempt to query it with `sqlite3` or other SQL tools.
+
+### Automatic saves
+
+Atheme saves the database to disk every 5 minutes (`commit_interval = 5` in the `general{}` config block). The database is also saved on a clean shutdown.
+
+### Backing up the database
+
+```bash
+# Stop writes by shutting down Atheme (optional but safest)
+docker compose stop atl-irc-services
+
+# Copy the database file
+cp data/atheme/data/services.db data/atheme/data/services.db.bak
+
+# Restart Atheme
+docker compose start atl-irc-services
+```
+
+For a live backup without stopping the service, copy the file between save intervals. Since Atheme writes the database atomically, a simple `cp` is usually safe:
+
+```bash
+cp data/atheme/data/services.db "backups/atheme-$(date +%Y%m%d-%H%M%S).db"
+```
+
+### Restoring from backup
+
+1. Stop Atheme:
+
+   ```bash
+   docker compose stop atl-irc-services
+   ```
+
+2. Replace the database file:
+
+   ```bash
+   cp backups/atheme-YYYYMMDD-HHMMSS.db data/atheme/data/services.db
+   ```
+
+3. Start Atheme:
+
+   ```bash
+   docker compose start atl-irc-services
+   ```
+
+4. Verify services loaded correctly:
+
+   ```bash
+   docker compose logs atl-irc-services --tail 50
+   ```
+
+   Look for a line indicating the database was loaded successfully and the number of accounts/channels registered.
+
+### Database location summary
+
+| Host path | Container path | Contents |
+|---|---|---|
+| `data/atheme/data/services.db` | `/usr/local/atheme/data/services.db` | All registered nicknames, channels, access lists, memos, and settings |
+| `data/atheme/logs/atheme.log` | `/usr/local/atheme/logs/atheme.log` | Service log (all levels, including debug) |
+
+## Container operations
+
+Atheme does not have its own `just` module. Use `docker compose` commands directly, referencing the service name `atl-irc-services`.
+
+### Viewing logs
+
+```bash
+# Follow logs in real time
+docker compose logs -f atl-irc-services
+
+# Last 100 lines
+docker compose logs --tail 100 atl-irc-services
+
+# Or read the log file directly
+tail -f data/atheme/logs/atheme.log
+```
+
+### Restarting the service
+
+```bash
+# Restart the container
+docker compose restart atl-irc-services
+
+# Or stop and start separately
+docker compose stop atl-irc-services
+docker compose start atl-irc-services
+```
+
+> **Note:** Restarting Atheme causes a brief disconnection from the IRC network. All service bots disappear and reconnect. Prefer `REHASH` via OperServ for configuration changes that do not require a restart.
+
+### Health check
+
+The container health check runs `pgrep -f atheme-services` every 30 seconds:
+
+```bash
+# Check container health status
+docker inspect --format='{{.State.Health.Status}}' atl-irc-services
+
+# Check if the process is running
+docker compose exec atl-irc-services pgrep -f atheme-services
+```
+
+### Checking connectivity to UnrealIRCd
+
+Since Atheme shares UnrealIRCd's network namespace, the uplink is on `127.0.0.1:6901`:
+
+```bash
+docker compose exec atl-irc-services nc -z 127.0.0.1 6901 && echo "Uplink reachable" || echo "Uplink down"
+```
+
+## Troubleshooting
+
+### Atheme not connecting to UnrealIRCd
+
+Check that UnrealIRCd is healthy and the link password matches:
+
+```bash
+# Check UnrealIRCd health
+docker inspect --format='{{.State.Health.Status}}' atl-irc-server
+
+# Check Atheme logs for link errors
+docker compose logs atl-irc-services | grep -i "link\|password\|uplink"
+```
+
+The `IRC_SERVICES_PASSWORD` variable must be identical in both the UnrealIRCd and Atheme configs. If you changed it, regenerate both configs with `just init` and restart both services.
+
+### Services not responding to commands
+
+If service bots are visible on IRC but not responding:
+
+```bash
+# Check if the Atheme process is running
+docker compose exec atl-irc-services pgrep -f atheme-services
+
+# Check for errors in the log
+grep -i "error\|fatal\|warning" data/atheme/logs/atheme.log | tail -20
+```
+
+### Database corruption
+
+If Atheme fails to start with database errors:
+
+1. Check the logs for the specific error:
+
+   ```bash
+   docker compose logs atl-irc-services | grep -i "database\|opensex\|corrupt"
+   ```
+
+2. Restore from the most recent backup (see [Restoring from backup](#restoring-from-backup) above).
+
+3. If no backup is available, you can try starting with an empty database by moving the corrupted file:
+
+   ```bash
+   docker compose stop atl-irc-services
+   mv data/atheme/data/services.db data/atheme/data/services.db.corrupt
+   docker compose start atl-irc-services
+   ```
+
+   This loses all registrations and you will need to re-bootstrap from scratch.
+
+## Related pages
+
+- [Atheme Overview](/docs/services/atheme) — architecture, service bots, and how Atheme fits in the stack
+- [Atheme Configuration](/docs/services/atheme/configuration) — config template, modules, SASL setup, service bot identities
+- [IRC Operations](/docs/services/irc/operations) — UnrealIRCd oper setup, config reload, and certificate rotation
+- [Backups](/docs/operations/backups) — cross-service backup and restore procedures
+- [Security](/docs/operations/security) — credential rotation for `IRC_SERVICES_PASSWORD`

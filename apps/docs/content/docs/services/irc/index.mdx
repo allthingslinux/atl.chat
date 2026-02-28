@@ -1,0 +1,25 @@
+---
+title: IRC Stack Overview
+description: Overview of the atl.chat IRC stack — UnrealIRCd server and Atheme IRC services.
+---
+
+The atl.chat IRC stack consists of UnrealIRCd (the IRC server daemon) and Atheme (IRC services providing NickServ, ChanServ, and friends). Both run as Docker containers and are configured entirely via environment variables and templated config files.
+
+## Components
+
+### UnrealIRCd
+
+UnrealIRCd is the IRC server. The `apps/unrealircd/` image uses a multi-stage Alpine build: a build stage compiles UnrealIRCd from source, and a minimal runtime stage contains only the compiled binary and its config.
+
+### Atheme
+
+Atheme provides IRC services (NickServ, ChanServ, HostServ, etc.). It runs in the same network namespace as UnrealIRCd and connects to it via the Atheme uplink on `127.0.0.1:6901`.
+
+## Related pages
+
+- [Configuration](/docs/services/irc/configuration) — env vars, config templates, secrets
+- [DNS](/docs/services/irc/dns) — ports, A records, STS, WebIRC
+- [Modules](/docs/services/irc/modules) — third-party module management
+- [Operations](/docs/services/irc/operations) — oper setup, Atheme bootstrap, SSL reload
+- [Troubleshooting](/docs/services/irc/troubleshooting) — common issues and diagnostics
+- [User Modes](/docs/services/irc/user-modes) — user mode reference

@@ -1,0 +1,47 @@
+---
+title: atl.chat Documentation
+description: Unified chat infrastructure combining IRC, XMPP, Discord, and a web interface.
+---
+
+atl.chat documentation covers everything you need to deploy, operate, and contribute to a self-hosted unified chat platform that bridges IRC, XMPP, and Discord into a single community experience.
+
+## What is atl.chat?
+
+atl.chat is an open-source monorepo that provides unified chat infrastructure for the [All Things Linux](https://allthingslinux.org) community. It combines an IRC server ([UnrealIRCd](/docs/services/irc) 6.x with [Atheme](/docs/services/atheme) services), an XMPP server ([Prosody](/docs/services/xmpp)), a [Discord↔IRC↔XMPP bridge](/docs/services/bridge), web IRC clients ([The Lounge](/docs/services/thelounge), Gamja), an admin panel ([WebPanel](/docs/services/webpanel)), and a Next.js [web application](/docs/services/web) — all orchestrated with Docker Compose and managed through the [`just` task runner](/docs/reference/glossary).
+
+The project lets community members participate from whichever protocol they prefer while keeping conversations synchronised across all platforms.
+
+## Project status
+
+> **Note:** atl.chat is currently v0.1.0 alpha and not yet production-ready. APIs and configuration formats may change without notice.
+
+## Choose your path
+
+Pick the path that matches your role to find the most relevant documentation.
+
+### Developer / Contributor
+
+If you want to build features, fix bugs, or extend the platform:
+
+1. [Getting Started](/docs/getting-started) — install prerequisites and spin up the local dev stack
+2. [Architecture](/docs/architecture) — understand the system design, networking, and data model
+3. [Development](/docs/development/contributing) — learn the PR workflow, code style, and testing practices
+4. [Services](/docs/services/irc) — dive into individual service internals
+
+### Operator / Sys Admin
+
+If you want to deploy, configure, and maintain the stack in production:
+
+1. [Getting Started](/docs/getting-started) — install prerequisites and verify your environment
+2. [Operations](/docs/operations/deployment) — production deployment, SSL/TLS, backups, monitoring, and security
+3. [Services](/docs/services/irc) — per-service configuration and operational guides
+4. [Reference](/docs/reference/environment-variables) — environment variables, ports, and API reference
+
+## Quick links
+
+- [Getting Started](/docs/getting-started) — prerequisites, local development setup, and first-run guide
+- [Architecture](/docs/architecture) — system diagram, design decisions, networking, and data model
+- [Services](/docs/services/irc) — deep dives into IRC, Atheme, XMPP, Bridge, Web, The Lounge, and WebPanel
+- [Operations](/docs/operations/deployment) — deployment, SSL/TLS, backups, monitoring, troubleshooting, and security
+- [Development](/docs/development/contributing) — contributing guide, testing, and adding new services
+- [Reference](/docs/reference/environment-variables) — environment variables, ports, API reference, glossary, and FAQ

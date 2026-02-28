@@ -1,0 +1,11 @@
+{
+    "title": "Operations",
+    "pages": [
+        "deployment",
+        "ssl-tls",
+        "monitoring",
+        "backups",
+        "troubleshooting",
+        "security"
+    ]
+}

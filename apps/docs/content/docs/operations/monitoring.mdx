@@ -1,0 +1,300 @@
+---
+title: Monitoring
+description: Health checks, log inspection, metrics collection, and alerting for atl.chat services.
+---
+
+This page covers how to verify service health, inspect logs, collect metrics with Prometheus, and set up alerting for the atl.chat stack.
+
+## Health checks
+
+Every Compose service defines a Docker health check. You can view overall stack health at a glance:
+
+```bash
+# Show status of all containers including health
+docker compose ps
+```
+
+Check a specific container's health status:
+
+```bash
+docker inspect --format='{{.State.Health.Status}}' <container-name>
+```
+
+### Per-service health check commands
+
+The table below lists the exact health check command defined in each service's Compose file. These run automatically at 30-second intervals.
+
+| Container | Health check command | What it verifies |
+|---|---|---|
+| `atl-irc-server` | JSON-RPC query via Unix socket (`nc -U /home/unrealircd/unrealircd/data/rpc.socket`) | UnrealIRCd is running and the RPC interface responds |
+| `atl-irc-services` | `pgrep -f atheme-services` | Atheme process is alive |
+| `atl-xmpp-server` | `curl -sf http://localhost:5280/status` | Prosody HTTP server responds on port 5280 |
+| `atl-xmpp-nginx` | `wget -q -O - --no-check-certificate https://localhost:5281/health` | Nginx HTTPS proxy for Prosody responds |
+| `atl-bridge` | `pgrep -f bridge.__main__` | Bridge Python process is alive |
+| `atl-thelounge` | _(none defined)_ | No built-in health check — verify manually (see below) |
+| `atl-irc-webpanel` | _(none defined)_ | No built-in health check — verify manually (see below) |
+
+### Manual health verification
+
+For services without a Compose health check, or for deeper verification:
+
+```bash
+# UnrealIRCd — test TLS connection
+openssl s_client -connect localhost:6697 -servername irc.localhost </dev/null 2>/dev/null | head -5
+
+# UnrealIRCd — JSON-RPC info endpoint (requires auth; use WEBPANEL_RPC_USER/PASSWORD from .env)
+curl -s -u "$WEBPANEL_RPC_USER:$WEBPANEL_RPC_PASSWORD" \
+  -X POST http://localhost:8600/ \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","method":"rpc.info","params":{},"id":1}' | jq .
+
+# Atheme — check the HTTP API responds
+curl -sf http://localhost:8081/ && echo "Atheme HTTP OK"
+
+# Prosody — HTTP status page
+curl -sf http://localhost:5280/status
+
+# Prosody — XMPP C2S port connectivity
+nc -zv localhost 5222
+
+# Bridge — check process is running
+docker exec atl-bridge pgrep -f "bridge.__main__" && echo "Bridge running"
+
+# The Lounge — HTTP connectivity
+curl -sf http://localhost:9000/ -o /dev/null && echo "The Lounge OK"
+
+# WebPanel — HTTP connectivity
+curl -sf http://localhost:8080/ -o /dev/null && echo "WebPanel OK"
+```
+
+## Log inspection
+
+### Docker Compose logs
+
+```bash
+# Follow all service logs
+docker compose logs --follow
+
+# Follow a specific service
+docker compose logs --follow atl-irc-server
+
+# Show last 100 lines for a service
+docker compose logs --tail=100 atl-bridge
+
+# Search logs for errors
+docker compose logs atl-bridge 2>&1 | grep -i error
+
+# Filter by time range (last hour)
+docker compose logs --since=1h atl-xmpp-server
+```
+
+### Dozzle (dev profile)
+
+In the dev profile, [Dozzle](https://dozzle.dev/) runs on port 8082 and provides a browser-based log viewer for all `atl-*` containers. Open `http://localhost:8082` to view real-time logs with filtering and search.
+
+Dozzle is configured with `DOZZLE_FILTER=name=atl-*` so it only shows atl.chat containers. It is not included in the production profile.
+
+### Per-service log locations
+
+Inside containers, logs are also written to files mounted under `data/`:
+
+| Service | Container log path | Host bind-mount |
+|---|---|---|
+| UnrealIRCd | `/home/unrealircd/unrealircd/logs/` | `data/irc/logs/` |
+| Atheme | `/usr/local/atheme/logs/` | `data/atheme/logs/` |
+| Prosody | `/var/lib/prosody/logs/prosody.log` | `data/xmpp/logs/` |
+| Bridge | stdout/stderr only | _(use `docker compose logs`)_ |
+| The Lounge | `/var/opt/thelounge/` | `data/thelounge/` |
+| WebPanel | nginx access/error logs | _(use `docker compose logs`)_ |
+
+### Common log patterns to watch for
+
+```bash
+# UnrealIRCd — connection errors and netsplits
+docker compose logs atl-irc-server 2>&1 | grep -iE "error|split|refused"
+
+# Atheme — failed authentication attempts
+docker compose logs atl-irc-server 2>&1 | grep -i "SASL"
+
+# Prosody — authentication failures and certificate issues
+docker compose logs atl-xmpp-server 2>&1 | grep -iE "auth.*fail|certificate|tls"
+
+# Bridge — Discord or IRC connection issues
+docker compose logs atl-bridge 2>&1 | grep -iE "disconnect|error|reconnect"
+```
+
+## Key metrics and thresholds
+
+Monitor these metrics to catch issues before they affect users:
+
+| Metric | Source | Warning threshold | Critical threshold |
+|---|---|---|---|
+| Container health status | `docker inspect` | Any service `unhealthy` | Any service `unhealthy` for > 5 min |
+| IRC client connections | UnrealIRCd RPC (`rpc.info`) | — | Drops to 0 unexpectedly |
+| IRC server-to-server links | UnrealIRCd logs | Link count changes | Netsplit detected |
+| XMPP C2S connections | Prosody OpenMetrics | — | Drops to 0 unexpectedly |
+| XMPP auth failure rate | Prosody OpenMetrics | > 10/min sustained | > 50/min sustained |
+| Bridge process alive | `pgrep` health check | — | Process not found |
+| TLS certificate expiry | Certificate files in `data/certs/` | < 14 days | < 3 days |
+| Disk usage (`data/` volume) | Host filesystem | > 80% | > 95% |
+| Container restart count | `docker inspect` | Any restart | > 3 restarts in 10 min |
+| Memory usage per container | `docker stats` | > 500 MB (Prosody) | > 1 GB |
+
+### Checking certificate expiry
+
+```bash
+# Check the IRC TLS certificate expiry date
+openssl x509 -enddate -noout -in data/certs/live/irc.localhost/fullchain.pem
+
+# Check all certificates in data/certs/
+find data/certs/live -name "fullchain.pem" -exec \
+  sh -c 'echo "{}:"; openssl x509 -enddate -noout -in "{}"' \;
+```
+
+### Checking disk and memory usage
+
+```bash
+# Disk usage of data directories
+du -sh data/*/
+
+# Container memory and CPU usage
+docker stats --no-stream --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}"
+```
+
+## Metrics collection with Prometheus
+
+Prosody exposes an OpenMetrics-compatible endpoint via the `http_openmetrics` module. This is the primary metrics source for the stack.
+
+### Prosody OpenMetrics endpoint
+
+The endpoint is availabl
+ to your `prometheus.yml` under `scrape_configs`:
+
+```yaml
+scrape_configs:
+  # Prosody XMPP server metrics (OpenMetrics)
+  - job_name: xmpp-prosody
+    metrics_path: /metrics
+    scheme: http
+    scrape_interval: 30s
+    scrape_timeout: 10s
+    static_configs:
+      - targets: ["atl-xmpp-server:5280"]  # Use container name within Docker network
+        labels:
+          service: prosody
+          environment: production
+```
+
+> **Note:** If Prometheus runs outside the Docker network, replace `atl-xmpp-server` with the host IP and use the mapped port (default `5280`). Ensure `PROSODY_OPENMETRICS_CIDR` includes the Prometheus server's IP.
+
+### Available Prosody metrics
+
+The `http_openmetrics` and `measure_modules` modules expose these metric families:
+
+| Category | Metrics | Description |
+|---|---|---|
+| Connections | `prosody_c2s_connections_total`, `prosody_s2s_connections_total` | Client and server-to-server connection counts |
+| Authentication | `prosody_c2s_auth_success_total`, `prosody_c2s_auth_failure_total` | Auth success/failure counters |
+| Messages | `prosody_messages_sent_total`, `prosody_messages_received_total` | Message throughput |
+| Presence | `prosody_presence_sent_total`, `prosody_presence_received_total` | Presence update counters |
+| Storage | `prosody_storage_operations_total`, `prosody_storage_errors_total` | Database operation counters |
+| HTTP | `prosody_http_requests_total`, `prosody_http_request_duration_seconds` | BOSH/WebSocket request metrics |
+| System | `prosody_memory_usage_bytes`, `prosody_cpu_usage_seconds_total` | Resource usage |
+| Modules | `prosody_module_*` | Per-module status gauges (0=ok, 1=info, 2=warn, 3=error) |
+
+### Other services
+
+UnrealIRCd, Atheme, The Lounge, and the Bridge do not expose native Prometheus metrics endpoints. Monitor these services using Docker health checks, log analysis, and the JSON-RPC interfaces where available (UnrealIRCd on port 8600, Atheme on port 8081).
+
+## Alerting strategy
+
+Choose an alerting approach based on your infrastructure:
+
+### Option 1: Prometheus + Alertmanager (recommended for production)
+
+If you already run Prometheus, add alerting rules for the atl.chat stack:
+
+```yaml
+# Example Prometheus alerting rules — add to your rules file
+groups:
+  - name: atl-chat
+    rules:
+      # Prosody down
+      - alert: ProsodyDown
+        expr: up{job="xmpp-prosody"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Prosody XMPP server is down"
+
+      # High XMPP auth failure rate
+      - alert: ProsodyHighAuthFailures
+        expr: rate(prosody_c2s_auth_failure_total[5m]) > 10
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High XMPP authentication failure rate"
+
+      # High Prosody memory usage
+      - alert: ProsodyHighMemory
+        expr: prosody_memory_usage_bytes > 500000000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Prosody memory usage exceeds 500 MB"
+```
+
+### Option 2: Uptime Kuma (lightweight, self-hosted)
+
+[Uptime Kuma](https://github.com/louislam/uptime-kuma) provides a simple web UI for monitoring endpoints. Configure HTTP/TCP checks for each service:
+
+| Check type | Target | Interval |
+|---|---|---|
+| TCP | `localhost:6697` (IRC TLS) | 60s |
+| HTTP | `http://localhost:5280/status` (Prosody) | 60s |
+| HTTP | `http://localhost:9000` (The Lounge) | 60s |
+| HTTP | `http://localhost:8080` (WebPanel) | 60s |
+| TCP | `localhost:5222` (XMPP C2S) | 60s |
+
+### Option 3: Cron-based health pings (minimal)
+
+For simple setups, a cron job can run health checks and send notifications on failure:
+
+```bash
+#!/usr/bin/env bash
+# /etc/cron.d/atl-health-check — runs every 5 minutes
+# Checks all atl.chat services and sends a notification on failure
+
+SERVICES=("atl-irc-server" "atl-irc-services" "atl-xmpp-server" "atl-bridge")
+
+for svc in "${SERVICES[@]}"; do
+  status=$(docker inspect --format='{{.State.Health.Status}}' "$svc" 2>/dev/null)
+  if [ "$status" != "healthy" ]; then
+    echo "ALERT: $svc is $status" | mail -s "atl.chat health alert" ops@example.com
+  fi
+done
+```
+
+## Grafana dashboard recommendations
+
+If you use Grafana with Prometheus, create dashboards covering:
+
+1. **Connection overview** — active C2S/S2S connections over time, auth success/failure rates
+2. **Message flow** — messages per second, peak usage times
+3. **Performance** — Prosody memory and CPU usage, HTTP request duration
+4. **Errors and health** — auth failures, storage errors, container restart counts
+5. **Infrastructure** — disk usage for `data/` volumes, container resource consumption
+
+
+## Related pages
+
+- [Deployment](/docs/operations/deployment) — production deployment runbook
+- [Troubleshooting](/docs/operations/troubleshooting) — cross-service diagnostic commands and common issues
+- [Backups](/docs/operations/backups) — backup and restore procedures
+- [Security](/docs/operations/security) — secret management and network isolation
+- [SSL/TLS](/docs/operations/ssl-tls) — certificate management and expiry monitoring
+- [Environment Variables](/docs/reference/environment-variables) — complete variable reference
+- [Ports Reference](/docs/reference/ports) — complete port registry

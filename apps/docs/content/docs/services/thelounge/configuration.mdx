@@ -1,0 +1,225 @@
+---
+title: The Lounge Configuration
+description: Config template, environment variables, plugins (janitor, giphy), WebIRC setup, and user management settings for The Lounge web IRC client.
+---
+
+The Lounge is configured through a template file (`apps/thelounge/config.js.template`) that gets processed by `scripts/prepare-config.sh` during `just init` — substituting `${VAR}` placeholders with values from your `.env` (and `.env.dev` in development) to produce the final `config.js`.
+
+## Config template pipeline
+
+The configuration follows the same envsubst pattern used across the atl.chat stack:
+
+1. You set values in `.env` (copied from `.env.example`)
+2. Running `just init` or `just dev` triggers `scripts/prepare-config.sh`
+3. The script sources `.env`, then `.env.dev` if it exists (dev overrides)
+4. `envsubst` replaces all `${VAR}` references in `config.js.template`
+5. The rendered `config.js` is written to `data/thelounge/config.js`
+6. The config file is mounted into the container at `/var/opt/thelounge/config.js`
+
+To regenerate the config after changing `.env` values:
+
+```bash
+# Regenerate all configs (including The Lounge)
+just init
+
+# Or run prepare-config.sh directly
+./scripts/prepare-config.sh
+```
+
+## Environment variables
+
+The Lounge uses a small set of environment variables. Some are defined in `.env.example` and some are derived by `prepare-config.sh` at init time.
+
+### Variables from `.env.example`
+
+| Variable | Description | Default |
+|---|---|---|
+| `THELOUNGE_PORT` | Host port mapped to The Lounge's web interface (container always listens on 9000) | `9000` |
+| `THELOUNGE_WEBIRC_PASSWORD` | Shared secret for the WebIRC handshake between The Lounge and UnrealIRCd | `change_me_thelounge_webirc` |
+| `THELOUNGE_DELETE_UPLOADS_AFTER_MINUTES` | Minutes before the janitor plugin deletes uploaded files (`0` disables cleanup) | `1440` (24 hours) |
+| `IRC_NETWORK_NAME` | Network name shown in The Lounge's server list | `"All Things Linux IRC"` |
+
+> **Warning:** `THELOUNGE_WEBIRC_PASSWORD` must match the WebIRC password configured in UnrealIRCd. Change this from the default before any public deployment. If the passwords do not match, UnrealIRCd will reject The Lounge's connections and users will see a "WebIRC authentication failed" error.
+
+### Derived variables
+
+These variables are not in `.env.example` — they are computed by `prepare-config.sh`:
+
+| Variable | Description | Logic |
+|---|---|---|
+| `IRC_LOUNGE_REJECT_UNAUTHORIZED` | Whether The Lounge rejects self-signed TLS certificates from UnrealIRCd | `false` when `ATL_ENVIRONMENT=dev`, `true` otherwise |
+
+In development, self-signed certificates are used for the IRC server, so TLS verification is disabled. In production, this defaults to `true` so that The Lounge only connects to UnrealIRCd if the TLS certificate is valid.
+
+## Core configuration options
+
+The config template (`apps/thelounge/config.js.template`) produces a Node.js module that The Lounge reads at startup. Here are the key settings:
+
+### Mode and proxy
+
+```js
+module.exports = {
+  public: false,       // Private mode — admin must create user accounts
+  reverseProxy: true,  // Trust X-Forwarded-For headers for real client IPs
+  theme: "default",
+};
+```
+
+- `public: false` — disables self-registration. Users can only be created by an admin via `just lounge add <name>`.
+- `reverseProxy: true` — required when The Lounge sits behind a reverse proxy or load balancer. Ensures client IP addresses are read from forwarded headers rather than the proxy's IP.
+
+### Default server connection
+
+Every new user account gets these default IRC connection settings:
+
+```js
+defaults: {
+  name: "${IRC_NETWORK_NAME}",       // Display name in the server list
+  host: "atl-irc-server",            // Docker service name on the atl-chat network
+  port: 6697,                        // TLS-encrypted IRC
+  tls: true,                         // Always use TLS
+  rejectUnauthorized: ${IRC_LOUNGE_REJECT_UNAUTHORIZED},
+  nick: "atl%%",                     // %% is replaced with a random number
+  username: "atl",
+  realname: "The Lounge User",
+  join: "#help",                     // Auto-join channel on first connect
+},
+```
+
+Users can change these settings in their client after logging in, but the defaults ensure every new account connects to the atl.chat IRC server out of the box.
+
+### WebIRC
+
+The `webirc` block maps IRC server hostnames to the shared WebIRC password:
+
+```js
+webirc: {
+  "atl-irc-server": "${THELOUNGE_WEBIRC_PASSWORD}",
+  "irc.atl.chat": "${THELOUNGE_WEBIRC_PASSWORD}",
+  "irc.localhost": "${THELOUNGE_WEBIRC_PASSWORD}",
+},
+```
+
+When The Lounge connects to any of these hostnames, it sends a `WEBIRC` command with the password and the user's real IP address. UnrealIRCd verifies the password and applies the real IP for cloaking, bans, and connection limits.
+
+Three hostnames are listed to cover all connection scenarios:
+
+- `atl-irc-server` — Docker internal hostname (used by the default connection)
+- `irc.atl.chat` — production domain
+- `irc.localhost` — local development domain
+
+### File uploads
+
+```js
+fileUpload: {
+  enable: true,
+},
+```
+
+File uploads are enabled by default. Users can share files through The Lounge's web interface, and uploaded files are stored in `data/thelounge/uploads/`. The janitor plugin handles cleanup (see below).
+
+## Plugins
+
+The Lounge container installs two plugins at startup before launching the main process. The install commands are part of the container's entrypoint:
+
+```bash
+thelounge install thelounge-plugin-janitor 2>/dev/null || true
+thelounge install thelounge-plugin-giphy 2>/dev/null || true
+exec thelounge start
+```
+
+The `2>/dev/null || true` pattern suppresses errors if the plugin is already installed, making the startup idempotent.
+
+### thelounge-plugin-janitor
+
+The janitor plugin automatically deletes uploaded files after a configurable retention period. This keeps disk usage under control without manual intervention.
+
+| Setting | Variable | Default | Notes |
+|---|---|---|---|
+| Delete uploads after | `THELOUNGE_DELETE_UPLOADS_AFTER_MINUTES` | `1440` (24 hours) | Set to `0` to disable automatic cleanup |
+
+The config template maps this to the `deleteUploadsAfter` key:
+
+```js
+deleteUploadsAfter: ${THELOUNGE_DELETE_UPLOADS_AFTER_MINUTES},
+```
+
+> **Note:** The Lounge core does not recognize the `deleteUploadsAfter` key and logs an "Unknown key" warning at startup. This is expected — the janitor plugin reads the key directly from the config object.
+
+### thelounge-plugin-giphy
+
+The giphy plugin adds a `/giphy` command to The Lounge's chat interface for searching and posting GIFs.
+
+| Command | Description |
+|---|---|
+| `/giphy search <term>` | Search for a GIF matching the term and post it in the channel |
+| `/giphy random` | Post a random GIF in the channel |
+
+The plugin requires no additional configuration — it works out of the box after installation.
+
+## User management
+
+Because The Lounge runs in private mode, all user accounts are managed by an administrator. User data is stored in `data/thelounge/users/` as individual JSON files (one per user).
+
+### Creating users
+
+```bash
+# Create a new user (prompts for password interactively)
+just lounge add <username>
+```
+
+This runs `thelounge add <username>` inside the container. You will be prompted to set a password. The user can then log in at `http://localhost:9000` (or your configured domain) with those credentials.
+
+### Listing users
+
+```bash
+# List all registered users
+just lounge list
+```
+
+### Resetting passwords
+
+```bash
+# Reset a user's password (prompts for new password)
+just lounge reset <username>
+```
+
+### Removing users
+
+To remove a user, delete their JSON file from the data directory:
+
+```bash
+# Remove a user manually
+rm data/thelounge/users/<username>.json
+```
+
+Then restart The Lounge for the change to take effect:
+
+```bash
+docker compose restart atl-thelounge
+```
+
+## Container configuration
+
+The compose file (`infra/compose/thelounge.yaml`) defines the container setup:
+
+| Setting | Value |
+|---|---|
+| Image | `ghcr.io/thelounge/thelounge:latest` |
+| Container name | `atl-thelounge` |
+| Restart policy | `unless-stopped` |
+| User/group | `${PUID:-1000}:${PGID:-1000}` |
+| Port mapping | `${THELOUNGE_PORT:-9000}:9000` |
+| Volume | `data/thelounge:/var/opt/thelounge` |
+| Network | `atl-chat` |
+| Depends on | `atl-irc-server` (healthy) |
+
+The `THELOUNGE_HOME` environment variable is set to `/var/opt/thelounge` inside the container, which is where The Lounge looks for its config, user data, and uploads.
+
+## Related pages
+
+- [The Lounge Overview](/docs/services/thelounge) — architecture, private mode, and how The Lounge fits in the stack
+- [The Lounge Operations](/docs/services/thelounge/operations) — user CRUD via `just lounge` commands, log management
+- [IRC Configuration](/docs/services/irc/configuration) — UnrealIRCd config including WebIRC password settings
+- [Environment Variables Reference](/docs/reference/environment-variables) — complete variable reference including all `THELOUNGE_*` variables
+- [Security](/docs/operations/security) — secret management and credential rotation for `THELOUNGE_WEBIRC_PASSWORD`

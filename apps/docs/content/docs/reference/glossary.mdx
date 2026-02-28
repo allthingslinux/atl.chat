@@ -1,0 +1,103 @@
+---
+title: Glossary
+description: Definitions of project-specific terms, acronyms, and service names used across the atl.chat documentation.
+---
+
+This glossary defines every project-specific term, acronym, and service name used across the atl.chat documentation, so you can look up unfamiliar concepts in one place.
+
+## Services and applications
+
+| Term | Definition |
+|---|---|
+| **UnrealIRCd** | The IRC server (version 6.x) that powers atl.chat's IRC network. Runs as a Docker container from `apps/unrealircd/` and handles client connections, channel management, and server-to-server linking. |
+| **Atheme** | The IRC services daemon that provides nickname registration (NickServ), channel management (ChanServ), operator tools (OperServ), and other service bots. Shares a network namespace with UnrealIRCd. |
+| **Prosody** | The XMPP server that provides real-time messaging alongside IRC. Configured via Lua (`prosody.cfg.lua`) and runs from `apps/prosody/`. |
+| **The Lounge** | A self-hosted web IRC client running in private mode. Connects to UnrealIRCd via WebIRC and provides a persistent, browser-based chat experience. Managed from `apps/thelounge/`. |
+| **WebPanel** | The UnrealIRCd administration web panel served by nginx. Connects to UnrealIRCd's JSON-RPC interface for server management. Runs from `apps/webpanel/`. |
+| **Bridge** | A Python application (`apps/bridge/`) that relays messages between Discord, IRC, and XMPP using an event bus pattern. |
+| **Gamja** | A lightweight, planned IRC web client. Directory exists at `apps/gamja/` but is not yet active. |
+| **Portal** | The community web portal application, providing user-facing features beyond chat. Referenced in environment variable sections as the `PORTAL_*` variable group. |
+
+## IRC service bots (Atheme)
+
+| Term | Definition |
+|---|---|
+| **NickServ** | Atheme service bot that handles nickname registration, identification, and account management. |
+| **ChanServ** | Atheme service bot that manages channel registration, access lists, and channel settings. |
+| **OperServ** | Atheme service bot that provides IRC operator tools: akills (network bans), server management, and administrative commands. |
+| **MemoServ** | Atheme service bot that provides offline messaging between registered users. |
+| **HostServ** | Atheme service bot that manages virtual hostnames (vhosts) for registered users. |
+| **BotServ** | Atheme service bot that assigns custom bot identities to channels. |
+
+## Protocols and standards
+
+| Term | Definition |
+|---|---|
+| **IRC** | Internet Relay Chat — a text-based real-time messaging protocol defined by RFCs 1459 and 2812 (with modern IRCv3 extensions). The primary chat protocol used by atl.chat. |
+| **XMPP** | Extensible Messaging and Presence Protocol — an open XML-based messaging standard. atl.chat runs an XMPP server (Prosody) alongside IRC. |
+| **MUC** | Multi-User Chat — the XMPP extension (XEP-0045) for group chat rooms, analogous to IRC channels. |
+| **BOSH** | Bidirectional-streams Over Synchronous HTTP — an XMPP transport that tunnels XMPP stanzas over HTTP long-polling. Prosody exposes BOSH on port 5280. |
+| **WebSocket** | A full-duplex communication protocol over a single TCP connection. Used by UnrealIRCd (port 8000) and Prosody for browser-based clients. |
+| **SASL** | Simple Authentication and Security Layer — a framework for authentication in network protocols. Used by both IRC (IRCv3 SASL) and XMPP for client authentication. |
+| **SCRAM** | Salted Challenge Response Authentication Mechanism — a SASL mechanism (SCRAM-SHA-256) used by Prosody for secure password-based authentication without transmitting plaintext passwords. |
+| **TLS** | Transport Layer Security — the cryptographic protocol that encrypts connections. All atl.chat services use TLS for client and inter-service communication. |
+| **STS** | Strict Transport Security — an IRCv3 capability that tells clients to always use TLS when connecting to the server. |
+| **WebIRC** | An IRC protocol extension that allows trusted web clients (like The Lounge) to forward the real IP address of connecting users to the IRC server. |
+| **XEP** | XMPP Extension Protocol — numbered specifications that extend the core XMPP standard. Examples include XEP-0045 (MUC), XEP-0313 (MAM), and XEP-0060 (PubSub). |
+| **RFC** | Request for Comments — standards documents published by the IETF. IRC is defined by RFCs 1459/2812; TLS by RFC 8446; XMPP by RFCs 6120/6121. |
+| **PubSub** | Publish-Subscribe — an XMPP extension (XEP-0060) for event-driven messaging where publishers send data to topics and subscribers receive updates. |
+| **MAM** | Message Archive Management — an XMPP extension (XEP-0313) that stores message history server-side so clients can retrieve past messages. |
+| **TURN/STUN** | Traversal Using Relays around NAT / Session Traversal Utilities for NAT — protocols that help establish peer-to-peer connections through firewalls and NAT devices. The `infra/turn-standalone/` directory contains configuration for a standalone TURN server. |
+| **ACME** | Automatic Certificate Management Environment — the protocol used by Let's Encrypt (and other CAs) to automate TLS certificate issuance and renewal. |
+| **DNS-01** | An ACME challenge type that proves domain ownership by creating a DNS TXT record. Used by the cert-manager service with Cloudflare DNS for wildcard certificates. |
+
+## IRC concepts
+
+| Term | Definition |
+|---|---|
+| **cloak** | A virtual hostname applied to a user's connection to hide their real IP address. Generated using cloak keys defined in the environment variables. |
+| **oper** | An IRC operator — a privileged user with administrative access to the IRC server. Configured via oper blocks in UnrealIRCd's configuration. |
+| **rehash** | An UnrealIRCd command that reloads the server configuration without disconnecting users. Used after config changes or certificate renewal. |
+| **netsplit** | A temporary disconnection between IRC servers in a network, causing users on each side to appear to leave channels. |
+
+## Infrastructure and tooling
+
+| Term | Definition |
+|---|---|
+| **Docker Compose** | The container orchestration tool used to define and run the entire atl.chat stack. The root `compose.yaml` includes fragments from `infra/compose/*.yaml`. |
+| **just** | A command runner (similar to `make`) used throughout the project. The root `justfile` defines commands like `just dev`, `just prod`, and `just test`. Per-app recipes are loaded via `mod`. |
+| **envsubst** | A GNU gettext utility that substitutes environment variable references in template files. Used by `scripts/prepare-config.sh` to generate service configuration files from templates. |
+| **cert-manager** | A Docker service defined in `infra/compose/cert-manager.yaml` that uses Lego to obtain and renew TLS certificates via ACME. |
+| **Lego** | A Go-based ACME client used by the cert-manager service to request TLS certificates from Let's Encrypt. Supports DNS-01 challenges via Cloudflare. |
+| **Tailscale** | A mesh VPN service. In production, atl.chat services bind to Tailscale IP addresses for secure inter-node communication. |
+| **OpenMetrics** | A metrics exposition format (compatible with Prometheus) used for monitoring service health and performance. |
+
+## Development and CI/CD tools
+
+| Term | Definition |
+|---|---|
+| **Gitleaks** | A secret scanning tool configured as a pre-commit hook to prevent accidental commits of passwords, tokens, and API keys. |
+| **ruff** | A fast Python linter and formatter used for all Python code in the monorepo (primarily the bridge application). |
+| **Biome** | A JavaScript/TypeScript linter and formatter. Used via the `ultracite` wrapper for the web and docs applications. |
+| **luacheck** | A static analysis tool for Lua code. Used to lint Prosody configuration and UnrealIRCd Lua scripts. |
+| **shellcheck** | A static analysis tool for shell scripts. Used to lint bash scripts in `scripts/` and infrastructure directories. |
+| **semantic-release** | An automated versioning and release tool configured via `.releaserc.json`. Generates changelogs and version bumps from Conventional Commits. |
+| **Conventional Commits** | A commit message convention (`type(scope): description`) used by the project to enable automated changelogs and semantic versioning. |
+
+## Documentation and web
+
+| Term | Definition |
+|---|---|
+| **Fumadocs** | The documentation framework used by `apps/docs/`. Built on Next.js with file-system routing — the directory structure under `content/docs/` determines the navigation hierarchy. |
+| **MDX** | Markdown with JSX — a file format that combines Markdown content with React components. All documentation pages are `.mdx` files. |
+| **Cloudflare Pages** | The hosting platform where the documentation site and web application are deployed. The docs site builds via the OpenNext adapter for Cloudflare Workers. |
+| **BLUF** | Bottom Line Up Front — a writing principle used throughout this documentation where the key takeaway appears in the first sentence of every page. |
+| **Mermaid** | A diagramming language rendered in MDX via the `remarkMdxMermaid` plugin. Used for all architecture and flow diagrams instead of ASCII art. |
+
+
+## Related pages
+
+- [FAQ](/docs/reference/faq) — frequently asked questions about atl.chat
+- [Environment Variables](/docs/reference/environment-variables) — complete variable reference
+- [Architecture Overview](/docs/architecture) — system diagram and design decisions
+- [Getting Started](/docs/getting-started) — prerequisites and monorepo orientation

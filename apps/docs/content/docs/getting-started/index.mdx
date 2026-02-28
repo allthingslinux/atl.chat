@@ -1,0 +1,263 @@
+---
+title: Getting Started
+description: Prerequisites, install commands, and monorepo orientation for running atl.chat locally.
+---
+
+This page covers the tools you need to install, how the monorepo is organised, and how to verify everything works — follow it before moving on to the [Local Development](/docs/getting-started/local-development) hands-on guide.
+
+## Prerequisites
+
+You need the following tools installed before you can run the stack. A Unix-like shell is required (Linux or macOS; WSL2 on Windows).
+
+| Tool | Minimum version | Purpose |
+|---|---|---|
+| [Docker](https://docs.docker.com/engine/install/) | ≥ 24.0 | Container runtime for all services |
+| [Docker Compose](https://docs.docker.com/compose/install/) | ≥ 2.20 (v2 plugin) | Multi-container orchestration (`docker compose`, not `docker-compose`) |
+| [Node.js](https://nodejs.org/) | ≥ 22.0 | JavaScript runtime for the web app and docs site |
+| [pnpm](https://pnpm.io/installation) | ≥ 9.0 | Fast, disk-efficient JS package manager (monorepo workspaces) |
+| [Python](https://www.python.org/) | ≥ 3.11 | Required for the bridge service and test suite |
+| [uv](https://docs.astral.sh/uv/) | ≥ 0.4 | Fast Python package manager (replaces pip/venv) |
+| [just](https://just.systems/) | ≥ 1.25 | Task runner (replaces `make`) |
+
+### Ubuntu / Debian
+
+```bash
+# Docker (official repo)
+sudo apt-get update
+sudo apt-get install -y ca-certificates curl gnupg
+sudo install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
+  https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+sudo apt-get update
+sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+
+# Node.js 22 via NodeSource
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+sudo apt-get install -y nodejs
+
+# pnpm
+corepack enable
+corepack prepare pnpm@latest --activate
+
+# Python 3.11+
+sudo apt-get install -y python3 python3-venv
+
+# uv
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# just
+curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | sudo bash -s -- --to /usr/local/bin
+```
+
+### macOS (Homebrew)
+
+```bash
+# Docker Desktop (includes Compose v2)
+brew install --cask docker
+
+# Node.js 22
+brew install node@22
+
+# pnpm
+corepack enable
+corepack prepare pnpm@latest --activate
+
+# Python 3.11+
+brew install python@3.12
+
+# uv
+brew install uv
+
+# just
+brew install just
+```
+
+### Arch Linux
+
+```bash
+# Docker + Compose plugin
+sudo pacman -S docker docker-compose
+sudo systemctl enable --now docker
+
+# Node.js 22
+sudo pacman -S nodejs-lts-jod
+
+# pnpm
+corepack enable
+corepack prepare pnpm@latest --activate
+
+# Python 3.11+
+sudo pacman -S python
+
+# uv
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# just
+sudo pacman -S just
+```
+
+### Verify your toolchain
+
+Run these commands to confirm everything is installed at the right version:
+
+```bash
+docker --version          # Docker version 24.x+
+docker compose version    # Docker Compose version v2.20+
+node --version            # v22.x+
+pnpm --version            # 9.x+
+python3 --version         # Python 3.11+
+uv --version              # uv 0.4+
+just --version            # just 1.25+
+```
+
+## Monorepo layout
+
+The repository is a pnpm workspace with Docker Compose orchestration. Each directory under `apps/` is a self-contained service or application:
+
+```
+atl.chat/
+├── apps/
+│   ├── unrealircd/     # UnrealIRCd 6.x IRC server — the core chat daemon
+│   ├── atheme/         # Atheme IRC services — NickServ, ChanServ, OperServ, and more
+│   ├── prosody/        # Prosody XMPP server — federated messaging
+│   ├── bridge/         # Python Discord↔IRC↔XMPP relay bridge
+│   ├── web/            # Next.js web application — the public-facing site
+│   ├── webpanel/       # UnrealIRCd admin panel (nginx + JSON-RPC)
+│   ├── thelounge/      # The Lounge web IRC client (private mode, WebIRC)
+│   ├── gamja/          # Gamja lightweight IRC web client (planned)
+│   └── docs/           # This documentation site (Fumadocs on Cloudflare Workers)
+│
+├── infra/
+│   ├── compose/        # Docker Compose fragments: irc, xmpp, bridge, cert-manager, networks
+│   ├── nginx/          # Nginx reverse proxy config for Prosody HTTPS
+│   └── turn-standalone/# TURN/STUN server for XMPP media
+│
+├── scripts/            # Automation: init.sh, prepare-config.sh, gencloak-update-env.sh
+├── tests/              # Root pytest suite: unit, integration, e2e, protocol tests
+├── docs-old/           # Legacy documentation (being migrated into apps/docs)
+├── data/               # Runtime data directories (created by just init, git-ignored)
+│
+├── compose.yaml        # Root Compose file — includes infra/compose/*.yaml fragments
+├── justfile            # Task runner recipes: just dev, just prod, just test, etc.
+├── .env.example        # Master environment variable template
+├── .env.dev.example    # Dev overlay template (localhost domains, self-signed certs)
+├── pyproject.toml      # Python project config (bridge, tests, linting)
+└── pnpm-workspace.yaml # pnpm workspace definition
+```
+
+### How services interconnect
+
+UnrealIRCd is the core IRC daemon. Atheme connects to it over a server-to-server link (port 6901) to provide nickname registration, channel management, and other services. The Lounge and Gamja connect as IRC clients via WebSocket (port 8000). The WebPanel talks to UnrealIRCd's JSON-RPC API (port 8600) for administration.
+
+Prosody runs the XMPP side, handling federated messaging with BOSH/WebSocket endpoints for web clients.
+
+The Bridge service relays messages between Discord, IRC, and XMPP channels, connecting to all three protocols simultaneously.
+
+The Web app (Next.js) is the public-facing site. The Docs site (this one) is built with Fumadocs and deployed separately to Cloudflare Workers.
+
+All services are orchestrated via Docker Compose, sharing a common Docker network. Configuration is templated from `.env` variables using `envsubst` during `just init`.
+
+## Verification checklist
+
+After running `just dev` (covered in the [Local Development](/docs/getting-started/local-development) guide), verify each service is running:
+
+```bash
+# Check all containers are up
+docker compose ps
+
+# IRC server (UnrealIRCd) — TLS on port 6697
+docker compose logs atl-irc-server | tail -5
+
+# IRC services (Atheme) — linked to UnrealIRCd
+docker compose logs atl-irc-services | tail -5
+
+# XMPP server (Prosody) — client port 5222
+docker compose logs atl-xmpp-server | tail -5
+
+# Bridge — Discord↔IRC↔XMPP relay
+docker compose logs atl-bridge | tail -5
+
+# The Lounge — web IRC client on port 9000
+curl -s -o /dev/null -w "%{http_code}" http://localhost:9000
+
+# WebPanel — admin panel on port 8080
+curl -s -o /dev/null -w "%{http_code}" http://localhost:8080
+```
+
+You should see all containers in a `running` state and HTTP 200 responses from The Lounge and WebPanel.
+
+## Common first-run issues
+
+### 1. `CLOUDFLARE_DNS_API_TOKEN` warning from Docker Compose
+
+```
+WARN[0000] The "CLOUDFLARE_DNS_API_TOKEN" variable is not set. Defaulting to a blank string.
+```
+
+This is safe to ignore in local development. The cert-manager service uses this token for DNS-01 challenges in production. Locally, `just init` generates self-signed certificates instead.
+
+### 2. pnpm build scripts warning (esbuild/sharp/workerd)
+
+```
+ WARN  build scripts are blocked by default
+```
+
+This warning appears during `pnpm install` because esbuild, sharp, and workerd have native build scripts that pnpm blocks by default. These packages include pre-built fallback binaries, so the warning is non-blocking. Your install will complete successfully.
+
+### 3. `core.hooksPath` conflict with pre-commit
+
+If `pre-commit install` fails or hooks do not run, your Git config may have a `core.hooksPath` set by another tool. Fix it with:
+
+```bash
+git config --unset-all core.hooksPath
+pre-commit install
+```
+
+### 4. Integration tests timing out
+
+Tests in `tests/integration/` and `tests/e2e/` build fresh Docker images and can time out in constrained environments (CI runners, VMs with limited resources). For quick validation, run unit tests instead:
+
+```bash
+# Fast — no Docker needed
+uv run pytest tests/unit/
+uv run pytest apps/bridge/tests/
+```
+
+### 5. `apps/web` lint failure (biome `.gitignore` issue)
+
+Running `ultracite check` in `apps/web/` currently fails because the Biome config expects a `.gitignore` file in that directory. This is a known pre-existing issue. The Next.js build (`pnpm run build`) works fine — the lint failure does not affect functionality.
+
+### 6. Docker daemon not running
+
+If `docker compose` commands fail with "Cannot connect to the Docker daemon", start the daemon:
+
+```bash
+# Linux (systemd)
+sudo systemctl start docker
+
+# Linux (manual, e.g. in a VM)
+sudo dockerd &>/tmp/dockerd.log &
+
+# macOS — open Docker Desktop from Applications
+```
+
+### 7. Port conflicts with existing services
+
+If a service fails to start with "address already in use", another process is occupying that port. Check what is listening:
+
+```bash
+# Find the process using a port (e.g. 6697)
+sudo lsof -i :6697
+# or
+sudo ss -tlnp | grep 6697
+```
+
+Stop the conflicting process or change the port in your `.env` file.
+
+## Next steps
+
+- Follow the [Local Development](/docs/getting-started/local-development) guide to clone, configure, and bring up the full stack.
+- Read the [Architecture Overview](/docs/architecture) to understand how services communicate.
+- See the [Environment Variables Reference](/docs/reference/environment-variables) for the complete list of configuration options.

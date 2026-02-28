@@ -1,0 +1,183 @@
+---
+title: API Reference
+description: JSON-RPC and REST API reference for atl.chat services and the Portal integration.
+---
+
+The atl.chat stack exposes several internal APIs for server management, IRC services, XMPP user provisioning, and cross-protocol identity resolution. Most APIs are consumed internally by other services in the stack or by the external Portal application — they are not designed for direct end-user access.
+
+## API overview
+
+| API | Protocol | Port | Consumer | Purpose |
+|---|---|---|---|---|
+| [UnrealIRCd JSON-RPC](#unrealircd-json-rpc) | JSON-RPC 2.0 | 8600 | WebPanel, Portal | IRC server management |
+| [Atheme HTTP API](#atheme-http-api) | JSON-RPC | 8081 | Portal | IRC services management (NickServ, ChanServ, etc.) |
+| [Prosody REST API](#prosody-rest-api) | REST (HTTP) | 5280 | Portal | XMPP user account provisioning |
+| [Portal Bridge API](#portal-bridge-api) | REST (HTTP) | — | Bridge | Cross-protocol identity resolution |
+| [Fumadocs Search API](#fumadocs-search-api) | REST (HTTP) | 3000 | Docs UI | Documentation full-text search |
+
+## UnrealIRCd JSON-RPC
+
+UnrealIRCd 6.x exposes a [JSON-RPC 2.0](https://www.unrealircd.org/docs/JSON-RPC) interface for server management. The WebPanel and Portal use this API to query server state, manage users, and perform administrative actions.
+
+| Detail | Value |
+|---|---|
+| Endpoint | `https://<IRC_DOMAIN>:8600/api` |
+| Protocol | JSON-RPC 2.0 over HTTPS |
+| Authentication | HTTP Basic (`IRC_UNREAL_RPC_USER` / `IRC_UNREAL_RPC_PASSWORD`) |
+| Internal socket | `/home/unrealircd/unrealircd/data/rpc.socket` (used by healthcheck) |
+
+The healthcheck verifies the RPC socket is responsive:
+
+```bash
+echo '{"jsonrpc":"2.0","method":"rpc.info","params":{},"id":1}' \
+  | nc -U /home/unrealircd/unrealircd/data/rpc.socket
+```
+
+Common methods include `rpc.info`, `user.list`, `channel.list`, and `server.rehash`. See the [UnrealIRCd JSON-RPC documentation](https://www.unrealircd.org/docs/JSON-RPC) for the full method reference.
+
+### Environment variables
+
+| Variable | Description | Default |
+|---|---|---|
+| `IRC_UNREAL_JSONRPC_URL` | Full RPC endpoint URL | `https://irc.atl.chat:8600/api` |
+| `IRC_UNREAL_RPC_USER` | RPC username (matches `WEBPANEL_RPC_USER`) | `adminpanel` |
+| `IRC_UNREAL_RPC_PASSWORD` | RPC password (matches `WEBPANEL_RPC_PASSWORD`) | `change_me_webpanel_password` |
+
+> **Warning:** Change `IRC_UNREAL_RPC_PASSWORD` before production deployment. This credential grants full administrative access to the IRC server.
+
+## Atheme HTTP API
+
+Atheme IRC services expose an HTTP JSON-RPC interface for programmatic access to NickServ, ChanServ, OperServ, and other service bots. The Portal uses this API to manage IRC registrations and query account information.
+
+| Detail | Value |
+|---|---|
+| Endpoint | `http://atl-irc-server:8081/jsonrpc` |
+| Protocol | JSON-RPC over HTTP |
+| Authentication | Atheme credentials (configured in Atheme's `httpd` block) |
+
+Atheme shares the network namespace with UnrealIRCd (`network_mode: service:atl-irc-server`), so port 8081 is exposed through the IRC server container.
+
+### Environment variables
+
+| Variable | Description | Default |
+|---|---|---|
+| `IRC_ATHEME_JSONRPC_URL` | Atheme JSON-RPC endpoint URL | `http://atl-irc-server:8081/jsonrpc` |
+
+## Prosody REST API
+
+Prosody exposes a REST API via [`mod_http_admin_api`](https://modules.prosody.im/mod_http_admin_api) for XMPP user account management. The Portal uses this API to provision and deprovision XMPP accounts. Self-registration is disabled — all user creation flows through this API.
+
+| Detail | Value |
+|---|---|
+| Base URL | `http://atl-xmpp-server:5280` |
+| Protocol | REST over HTTP |
+| Authentication | OAuth2 Bearer token (via `mod_http_oauth2`) or HTTP Basic |
+| Module | `mod_http_admin_api` (loaded per-VirtualHost, not globally) |
+
+The `mod_http_oauth2` module generates Bearer tokens using the Resource Owner Password Grant. These tokens are also usable for OAUTHBEARER SASL authentication.
+
+### Environment variables
+
+| Variable | Description | Default |
+|---|---|---|
+| `PROSODY_REST_URL` | Prosody REST API base URL | `http://atl-xmpp-server:5280` |
+| `PROSODY_REST_USERNAME` | REST admin username (JID) | `admin@atl.chat` |
+| `PROSODY_REST_PASSWORD` | REST admin password | `change_me_prosody_rest_password` |
+
+> **Warning:** Change `PROSODY_REST_PASSWORD` before production deployment. This credential grants admin-level access to XMPP user management.
+
+## Portal Bridge API
+
+The bridge optionally integrates with the [Portal](https://github.com/allthingslinux/portal) application for unified user identity across protocols. The Portal is a separate Next.js project and is not part of this monorepo. When `BRIDGE_PORTAL_BASE_URL` is set, the bridge creates a `PortalClient` and `IdentityResolver` to map users between Discord, IRC, and XMPP.
+
+### Identity endpoint
+
+The bridge calls a single Portal endpoint to resolve cross-protocol identities:
+
+```
+GET {BRIDGE_PORTAL_BASE_URL}/api/bridge/identity
+```
+
+Authentication uses a Bearer token (`BRIDGE_PORTAL_TOKEN`) in the `Authorization` header.
+
+### Query parameters
+
+Look up a user identity by providing one of the following query parameters:
+
+| Parameter | Type | Description |
+|---|---|---|
+| `discordId` | string | Discord user ID |
+| `ircNick` | string | IRC nickname |
+| `ircServer` | string | IRC server hostname (optional, used with `ircNick`) |
+| `xmppJid` | string | XMPP JID |
+
+### Response
+
+The endpoint returns a JSON object with the user's linked identities:
+
+```json
+{
+  "ok": true,
+  "identity": {
+    "user_id": "portal-user-id",
+    "discord_id": "123456789",
+    "irc_nick": "username",
+    "xmpp_jid": "username@atl.chat"
+  }
+}
+```
+
+Returns `404` when no matching identity is found. The bridge's `IdentityResolver` caches results in a TTL cache (default: 1 hour, max 1024 entries) to reduce API calls.
+
+### Identity resolution flow
+
+The bridge uses the `IdentityResolver` to translate user identities when relaying messages:
+
+1. A message arrives on one protocol (e.g., Discord)
+2. The resolver checks its TTL cache for a cached identity
+3. On cache miss, it calls `GET /api/bridge/identity?discordId=<id>`
+4. The Portal returns the linked IRC nick and/or XMPP JID
+5. The bridge uses the resolved identity for puppet nicks on the target protocol
+
+When `BRIDGE_PORTAL_BASE_URL` is not set, identity resolution is disabled and the bridge falls back to dev puppet nicks or generic relay formatting.
+
+### Environment variables
+
+| Variable | Description | Default |
+|---|---|---|
+| `BRIDGE_PORTAL_BASE_URL` | Portal API base URL (also accepts `BRIDGE_PORTAL_URL`) | `https://portal.atl.tools` |
+| `BRIDGE_PORTAL_TOKEN` | Bearer token for Portal API (also accepts `BRIDGE_PORTAL_API_TOKEN`) | `change_me_bridge_portal_token` |
+
+> **Warning:** Change `BRIDGE_PORTAL_TOKEN` before production deployment.
+
+### Retry behaviour
+
+The `PortalClient` uses exponential backoff retries (up to 5 attempts, 2–30 second delays) for transient HTTP errors including connection timeouts, read/write errors, and HTTP status errors.
+
+## Fumadocs Search API
+
+The docs site exposes an [Orama](https://orama.com/) search endpoint used by the built-in search UI:
+
+```
+GET /api/search?query=<term>
+```
+
+This is an internal endpoint powering the documentation search bar. It is not intended for external consumption and its schema may change between releases.
+
+## Future APIs
+
+The following APIs are planned or under consideration:
+
+- **Bridge metrics endpoint** — expose relay statistics (message counts, latency, error rates) for monitoring integration
+- **Bridge admin API** — runtime configuration changes (reload config, pause/resume relays) without container restart
+- **Portal webhook receiver** — allow the Portal to push identity updates to the bridge instead of polling
+
+These APIs will be documented here as they are implemented. Track progress in the [atl.chat GitHub repository](https://github.com/allthingslinux/atl.chat).
+
+## Related pages
+
+- [Environment Variables](/docs/reference/environment-variables) — full variable reference including all API credentials
+- [Ports Reference](/docs/reference/ports) — complete port registry for all services
+- [Bridge Configuration](/docs/services/bridge/configuration) — bridge setup and Portal integration
+- [WebPanel Configuration](/docs/services/webpanel/configuration) — WebPanel RPC connection setup
+- [Security](/docs/operations/security) — credential rotation and secret management

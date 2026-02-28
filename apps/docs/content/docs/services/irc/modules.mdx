@@ -1,0 +1,121 @@
+---
+title: IRC Modules
+description: Managing third-party UnrealIRCd modules with third-party-modules.list and manage-modules.sh.
+---
+
+UnrealIRCd supports third-party modules for extended functionality. atl.chat manages these via a declarative list file and an automated install process during the Docker image build.
+
+## Module list
+
+Third-party modules are declared in `apps/unrealircd/third-party-modules.list`. The file format is:
+
+- One module name per line (e.g., `third/showwebirc`)
+- Lines starting with `#` are comments
+- Empty lines are ignored
+
+The current modules installed by atl.chat:
+
+| Module | Purpose |
+|---|---|
+| `third/showwebirc` | Shows WebIRC/WebSocket information in WHOIS replies |
+| `third/metadata` | IRCv3 `draft/metadata` — avatars, message colouring, status texts |
+| `third/react` | IRCv3 `draft/react` — message reactions |
+| `third/redact` | IRCv3 `draft/message-redaction` — REDACT command for message deletion |
+| `third/relaymsg-atl` | atl.chat fork of RELAYMSG for stateless bridging |
+
+## Installing modules
+
+Modules are installed during the Docker image build. The `Containerfile` reads `third-party-modules.list` and runs `unrealircd module install` for each entry:
+
+```bash
+# The build process runs this for each module:
+./unrealircd module install third/module-name
+```
+
+To add a new module:
+
+1. Find the module at [modules.unrealircd.org](https://modules.unrealircd.org/)
+2. Add a line to `apps/unrealircd/third-party-modules.list`:
+
+   ```text
+   # Description of what the module does
+   third/module-name
+   ```
+
+3. Rebuild the Docker image:
+
+   ```bash
+   docker compose build atl-irc-server
+   ```
+
+4. Reference the module in `unrealircd.conf`:
+
+   ```c
+   loadmodule "third/module-name";
+   ```
+
+5. Restart or rehash the server:
+
+   ```bash
+   # Rehash loads new config without disconnecting users
+   just irc reload
+
+   # Full restart if the module requires it
+   docker compose restart atl-irc-server
+   ```
+
+## Verifying modules
+
+To check which modules are loaded on a running server:
+
+```bash
+# List all installed modules
+docker compose exec atl-irc-server unrealircd module list
+
+# Get info about a specific module
+docker compose exec atl-irc-server unrealircd module info third/module-name
+```
+
+To upgrade all third-party modules to their latest versions:
+
+```bash
+docker compose exec atl-irc-server unrealircd module upgrade
+```
+
+## Enabling modules
+
+After adding a module to the list and rebuilding, reference it in `unrealircd.conf` with a `loadmodule` directive:
+
+```c
+loadmodule "third/showwebirc";
+loadmodule "third/metadata";
+loadmodule "third/react";
+loadmodule "third/redact";
+loadmodule "third/relaymsg-atl";
+```
+
+Some modules require additional configuration blocks. For example, the `metadata` module:
+
+```c
+metadata {
+    max-user-metadata 10;
+    max-channel-metadata 10;
+    max-subscriptions 10;
+}
+```
+
+And the `relaymsg-atl` module for bridge integration:
+
+```c
+relaymsg {
+    hostmask "bridge@${IRC_DOMAIN}";
+    require-separator no;  /* Allow clean nicks without / separator */
+}
+```
+
+## Related pages
+
+- [IRC Stack Overview](/docs/services/irc) — UnrealIRCd and Atheme overview
+- [IRC Configuration](/docs/services/irc/configuration) — env vars, config templates, and module loading
+- [IRC Operations](/docs/services/irc/operations) — rehash vs restart for module changes
+- [Bridge Overview](/docs/services/bridge) — the relaymsg-atl module powers bridge integration

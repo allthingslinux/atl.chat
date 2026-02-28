@@ -1,0 +1,347 @@
+---
+title: Atheme Configuration
+description: Config template, environment variables, module system, SASL setup, service bot identities, and general settings for Atheme IRC services.
+---
+
+Atheme is configured through a template file (`apps/atheme/config/atheme.conf.template`) that gets processed by `scripts/prepare-config.sh` during `just init` — substituting `${VAR}` placeholders with values from your `.env` (and `.env.dev` in development) to produce the final `atheme.conf`.
+
+## Config template pipeline
+
+The configuration follows the same envsubst pattern used across the atl.chat stack:
+
+1. You set values in `.env` (copied from `.env.example`)
+2. Running `just init` or `just dev` triggers `scripts/prepare-config.sh`
+3. The script sources `.env`, then `.env.dev` if it exists (dev overrides)
+4. `envsubst` replaces all `${VAR}` references in `atheme.conf.template`
+5. The rendered `atheme.conf` is written to `apps/atheme/config/atheme.conf`
+6. The config directory is mounted read-only into the container at `/usr/local/atheme/etc`
+
+> **Warning:** `prepare-config.sh` unconditionally sources `.env.dev` if the file exists, even when preparing production configs. Do not leave `.env.dev` on a production server, or your production Atheme config will contain development overrides.
+
+To regenerate the config after changing `.env` values:
+
+```bash
+# Regenerate all configs (including Atheme)
+just init
+
+# Or run prepare-config.sh directly
+./scripts/prepare-config.sh
+```
+
+## Environment variables
+
+### Server identity
+
+These variables define how Atheme identifies itself to UnrealIRCd and the network:
+
+| Variable | Description | Default |
+|---|---|---|
+| `ATHEME_SERVER_NAME` | Server name announced to the IRC network | `services.atl.chat` |
+| `ATHEME_SERVER_DESC` | Human-readable server description | `"All Things Linux IRC Services"` |
+| `ATHEME_NUMERIC` | Unique server numeric identifier (must not conflict with other servers) | `00A` |
+| `ATHEME_RECONTIME` | Seconds to wait before reconnecting to the uplink after a disconnect | `10` |
+| `ATHEME_NETNAME` | Network name used in service messages | `atl.chat` |
+| `ATHEME_HIDEHOST_SUFFIX` | Suffix appended to hidden hostnames (e.g., `user.users.atl.chat`) | `users.atl.chat` |
+
+### Network information
+
+| Variable | Description | Default |
+|---|---|---|
+| `ATHEME_ADMIN_NAME` | Administrator name shown in `/admin` queries | `"All Things Linux"` |
+| `ATHEME_ADMIN_EMAIL` | Administrator email shown in `/admin` queries | `admin@allthingslinux.org` |
+| `ATHEME_REGISTER_EMAIL` | Sender address for registration and verification emails | `noreply@allthingslinux.org` |
+| `ATHEME_HELP_CHANNEL` | Channel shown to users when they use unknown commands | `#help` |
+| `ATHEME_HELP_URL` | URL shown to users for additional help | `https://discord.gg/linux` |
+
+### Uplink connection
+
+These control how Atheme connects to UnrealIRCd. Because Atheme shares UnrealIRCd's network namespace (`network_mode: service:atl-irc-server`), the uplink host is always `127.0.0.1`:
+
+| Variable | Description | Default |
+|---|---|---|
+| `ATHEME_UPLINK_HOST` | Hostname or IP of the UnrealIRCd services port | `127.0.0.1` |
+| `ATHEME_UPLINK_PORT` | Port for the services uplink (plaintext, localhost only) | `6901` |
+| `IRC_SERVICES_PASSWORD` | Shared password for the UnrealIRCd ↔ Atheme link (used as both `send_password` and `receive_password`) | `change_me_secure_services_pass` |
+
+> **Warning:** `IRC_SERVICES_PASSWORD` must match the link password configured in UnrealIRCd. Change this from the default before any public deployment. The same variable is referenced in both `atheme.conf.template` and `unrealircd.conf.template`.
+
+### HTTP daemon
+
+| Variable | Description | Default |
+|---|---|---|
+| `ATHEME_HTTPD_PORT` | Port for the Atheme HTTP server (JSON-RPC API) | `8081` |
+
+The HTTP daemon binds to `0.0.0.0` inside the shared network namespace. Since UnrealIRCd's port mappings expose this port, the JSON-RPC API is reachable at `http://localhost:8081` in development.
+
+### Service bot identities
+
+Each service bot has four environment variables controlling its IRC presence: `_NICK`, `_USER`, `_HOST`, and `_REAL`. These are purely cosmetic — they control how the bot appears on IRC, not its functionality.
+
+| Service | Nick variable | Default nick | Default realname |
+|---|---|---|---|
+| NickServ | `ATHEME_NICKSERV_NICK` | `NickServ` | `"Nickname Services"` |
+| ChanServ | `ATHEME_CHANSERV_NICK` | `ChanServ` | `"Channel Services"` |
+| OperServ | `ATHEME_OPERSERV_NICK` | `OperServ` | `"Operator Services"` |
+| MemoServ | `ATHEME_MEMOSERV_NICK` | `MemoServ` | `"Memo Services"` |
+| SaslServ | `ATHEME_SASLSERV_NICK` | `SaslServ` | `"SASL Authentication Agent"` |
+| BotServ | `ATHEME_BOTSERV_NICK` | `BotServ` | `"Bot Services"` |
+| GroupServ | `ATHEME_GROUPSERV_NICK` | `GroupServ` | `"Group Management Services"` |
+| HostServ | `ATHEME_HOSTSERV_NICK` | `HostServ` | `"Host Management Services"` |
+| InfoServ | `ATHEME_INFOSERV_NICK` | `InfoServ` | `"Information Service"` |
+| HelpServ | `ATHEME_HELPSERV_NICK` | `HelpServ` | `"Help Services"` |
+| StatServ | `ATHEME_STATSERV_NICK` | `StatServ` | `"Statistics Services"` |
+| Global | `ATHEME_GLOBAL_NICK` | `Global` | `"Network Announcements"` |
+| ALIS | `ATHEME_ALIS_NICK` | `ALIS` | `"Channel Directory"` |
+| Proxyscan | `ATHEME_PROXYSCAN_NICK` | `Proxyscan` | `"Proxyscan Service"` |
+| GameServ | `ATHEME_GAMESERV_NICK` | `GameServ` | `"Game Services"` |
+| RPGServ | `ATHEME_RPGSERV_NICK` | `RPGServ` | `"RPG Finding Services"` |
+
+All bots default to `services.atl.chat` as their host. The full set of variables for each bot follows the pattern `ATHEME_<SERVICE>_NICK`, `ATHEME_<SERVICE>_USER`, `ATHEME_<SERVICE>_HOST`, `ATHEME_<SERVICE>_REAL`.
+
+> **Note:** ChanFix variables (`ATHEME_CHANFIX_*`) are defined in `.env.example` but only consumed in a commented-out block in the config template. The ChanFix module is disabled by default.
+
+## Module system
+
+Atheme's functionality is entirely module-driven. The config template loads modules via `loadmodule` directives, organized by category. Modules that are commented out (`#loadmodule`) are available but disabled by default.
+
+### Core modules
+
+These three modules are required and must be loaded first:
+
+```c
+loadmodule "protocol/unreal4";   /* UnrealIRCd server-to-server protocol */
+loadmodule "backend/opensex";    /* Atheme's native flat-file database */
+loadmodule "crypto/pbkdf2v2";    /* Password hashing (must load before other crypto) */
+```
+
+- `protocol/unreal4` — speaks UnrealIRCd's S2S protocol. This is the only protocol module you should load for this stack.
+- `backend/opensex` — Atheme's flat-file database format. The database is stored at `data/atheme/data/services.db`. This is not SQLite — it is Atheme's own serialization format.
+- `crypto/pbkdf2v2` — PBKDF2 v2 password hashing. Must be loaded before any other crypto module to ensure SCRAM-SHA support works correctly.
+
+### Service modules
+
+Each service bot loads a `main` module plus individual command modules. The template loads a comprehensive set for each service. Here is a summary of the module categories and approximate counts:
+
+| Category | Modules loaded | Key capabilities |
+|---|---|---|
+| NickServ | 50 | Registration, identification, ghost, group, vhost, cert fingerprints, enforcement |
+| ChanServ | 51 | Registration, access/flags, akick, ban, topic, mode lock, antiflood, templates |
+| OperServ | 42 | AKILL, clones, jupe, mode, rehash, restart, shutdown, soper |
+| MemoServ | 10 | Send, list, read, forward, delete, ignore |
+| GroupServ | 22 | Register, join, flags, set properties |
+| HostServ | 9 | Vhost requests, offers, on/off |
+| HelpServ | 4 | Help tickets, service directory |
+| SASL | 3 | PLAIN, SCRAM-SHA, AUTHCOOKIE |
+| Global / InfoServ | 2 | Network announcements, login info |
+| StatServ | 4 | Server, channel, netsplit statistics |
+| ALIS | 1 | Advanced channel list search |
+
+### Disabled modules
+
+The following modules are available in the template but disabled by default:
+
+- **SASL EXTERNAL** — certificate-based authentication
+- **SASL ECDH/ECDSA** — elliptic curve challenge mechanisms
+
+To enable a disabled module, uncomment the relevant `loadmodule` line in `atheme.conf.template` and regenerate the config with `just init`.
+
+## SASL and password hashing
+
+Atheme handles SASL authentication for the IRC network, allowing clients to authenticate before completing the IRC connection handshake. This is the recommended authentication method.
+
+### SASL mechanisms
+
+Three SASL mechanisms are loaded:
+
+| Mechanism | Module | Security | Notes |
+|---|---|---|---|
+| PLAIN | `saslserv/plain` | Relies on TLS for transport security | Widely supported by all IRC clients |
+| SCRAM-SHA | `saslserv/scram` | Challenge-response, no plaintext password sent | More secure; requires client support |
+| AUTHCOOKIE | `saslserv/authcookie` | Cookie-based | Used by IRIS web interface |
+
+### PBKDF2v2 configuration
+
+The `crypto{}` block configures password hashing. The current settings are optimized for SCRAM-SHA-256 support:
+
+```c
+crypto {
+    pbkdf2v2_digest = "SCRAM-SHA-256";  /* Enables SCRAM-SHA-256 SASL mechanism */
+    pbkdf2v2_rounds = 64000;            /* Iteration count (10000–65536 for SCRAM compat) */
+    pbkdf2v2_saltlen = 32;              /* Salt length in bytes */
+};
+```
+
+Key requirements for SCRAM-SHA to work:
+
+1. Atheme must be built with `--with-libidn` (the Containerfile includes this)
+2. `crypto/pbkdf2v2` must be loaded before any other crypto module
+3. The digest must be set to a `SCRAM-*` variant (`SCRAM-SHA-256` is recommended)
+4. Rounds must be between 10,000 and 65,536 for Cyrus SASL compatibility
+5. The `saslserv/scram` module must be loaded
+
+> **Note:** When you change the `pbkdf2v2_digest` setting, existing passwords are not automatically re-hashed. Users need to change their password (or re-identify) for the new hash format to take effect.
+
+## Service bot configuration blocks
+
+Beyond the identity variables, each service bot has a configuration block in the template with service-specific settings. Here are the notable ones:
+
+### NickServ
+
+```c
+nickserv {
+    /* ... identity vars ... */
+    aliases {
+        "ID" = "IDENTIFY";
+        "MYACCESS" = "LISTCHANS";
+    };
+    spam;                    /* Send spam warnings to users */
+    maxnicks = 5;            /* Max nicknames per account */
+    expire = 30;             /* Days before unused nicknames expire */
+    enforce_expire = 14;     /* Days before enforced nicknames expire */
+    enforce_delay = 30;      /* Seconds before nickname enforcement kicks in */
+    enforce_prefix = "Guest"; /* Prefix for enforced nickname changes */
+    waitreg_time = 30;       /* Seconds a user must wait before registering */
+    show_custom_metadata;    /* Show custom metadata in INFO */
+};
+```
+
+### ChanServ
+
+```c
+chanserv {
+    /* ... identity vars ... */
+    maxchans = 5;            /* Max channels per account */
+    fantasy;                 /* Enable fantasy commands (e.g., !op, !kick) */
+    trigger = "!";           /* Fantasy command prefix */
+    expire = 30;             /* Days before unused channels expire */
+    maxchanacs = 0;          /* Max access entries per channel (0 = unlimited) */
+    maxfounders = 4;         /* Max founders per channel */
+    changets;                /* Sync channel TS on registration */
+    antiflood_enforce_method = quiet;  /* Flood response: quiet offenders */
+    templates {
+        vop = "+AV";
+        hop = "+AHehitrv";
+        aop = "+AOehiortv";
+        sop = "+AOaefhiorstv";
+        founder = "+AFORaefhioqrstv";
+        member = "+Ai";
+        op = "+AOiortv";
+    };
+    deftemplates = "MEMBER=+Ai OP=+AOiortv";
+};
+```
+
+### General settings
+
+The `general{}` block controls network-wide service behavior:
+
+```c
+general {
+    helpchan = "${ATHEME_HELP_CHANNEL}";
+    helpurl = "${ATHEME_HELP_URL}";
+    join_chans;              /* ChanServ joins registered channels */
+    leave_chans;             /* ChanServ leaves when channel empties */
+    uflags = { hidemail; };  /* Default user flags */
+    cflags = { guard; verbose; };  /* Default channel flags */
+    flood_msgs = 7;          /* Messages before flood protection triggers */
+    flood_time = 10;         /* Flood detection window (seconds) */
+    ratelimit_uses = 5;      /* Command uses before rate limiting */
+    ratelimit_period = 60;   /* Rate limit window (seconds) */
+    kline_time = 7;          /* Default KLINE duration (days, 0 = permanent) */
+    commit_interval = 5;     /* Database save interval (minutes) */
+    default_clone_allowed = 5;
+    default_clone_warn = 4;
+    clone_identified_increase_limit;
+    uplink_sendq_limit = 1048576;  /* 1 MB send queue */
+    language = "en";
+    immune_level = immune;
+    show_entity_id;
+    load_database_mdeps;
+    match_masks_through_vhost;
+};
+```
+
+Notable defaults: ChanServ guards (joins) all registered channels, user emails are hidden by default, and the database is saved every 5 minutes.
+
+## Logging
+
+Atheme uses a single comprehensive log file that captures all log levels:
+
+```c
+logfile "logs/atheme.log" { debug; };
+```
+
+The log file is written to `data/atheme/logs/atheme.log` on the host (mounted as `/usr/local/atheme/logs/` in the container). The `debug` level captures everything — admin actions, errors, info, network events, wallops, and registrations.
+
+> **Note:** The `ATHEME_LOG_LEVEL` variable is defined in `.env.example` but is not actually consumed by the config template. The log level is hardcoded to `debug` in the template. To change the log level, you need to edit the `logfile` directive in `atheme.conf.template` directly.
+
+Optional IRC channel logging is available but commented out:
+
+```c
+/* Uncomment to log to IRC channels */
+#logfile "#services" { debug; };
+#logfile "!snotices" { debug; };
+```
+
+## Operator classes
+
+Atheme defines two operator classes that control what services operators can do:
+
+### ircop
+
+The base operator class with standard privileges:
+
+- User management: auspex (see hidden info), admin, sendpass, vhost, mark
+- Channel management: auspex, admin, cmodes, joinstaffonly
+- General: auspex, helper, viewprivs, flood bypass
+- OperServ: omode, akill, jupe, global
+- Group: auspex, admin
+
+### sra (Services Root Administrator)
+
+Extends `ircop` with elevated privileges:
+
+- User: exceedlimits, hold, regnolimit
+- General: metadata, admin
+- OperServ: noop, grant
+- Requires IRC operator status (`needoper`)
+
+SRA operators are managed at runtime via the OperServ SOPER command rather than static config blocks:
+
+```text
+/msg OperServ SOPER ADD <account> sra
+```
+
+## DNSBL configuration
+
+The Proxyscan service checks connecting users against DNS-based blocklists:
+
+```c
+proxyscan {
+    blacklists {
+        "dnsbl.dronebl.org";
+        "rbl.efnetrbl.org";
+        "tor.efnet.org";
+        "dnsbl.tornevall.org";
+        "bl.spamcop.net";
+    };
+    dnsbl_action = kline;  /* Automatically KLINE users matching a DNSBL */
+};
+```
+
+## Known issues and audit notes
+
+Based on the [environment variable audit](/docs/reference/environment-variables), several Atheme-related variables have known quirks:
+
+- `ATHEME_UPLINK_SSL_PORT` — defined in `.env.example` as `6900` but never consumed by any template or compose file. The uplink uses plaintext on port 6901 (safe because it is localhost-only within the shared network namespace).
+- `ATHEME_LOG_LEVEL` — defined in `.env.example` as `all` but not referenced in the config template. Log level is hardcoded.
+- `ATHEME_CHANFIX_*` — four variables defined for ChanFix but only used in a commented-out config block. ChanFix is disabled by default.
+- `ATHEME_VERSION` — set to `master` in `.env.example`. Consider pinning to a specific commit or tag for production stability.
+
+## Related pages
+
+- [Atheme Overview](/docs/services/atheme) — architecture, service bots, and how Atheme fits in the stack
+- [Atheme Operations](/docs/services/atheme/operations) — service commands for NickServ, ChanServ, OperServ, and database management
+- [IRC Configuration](/docs/services/irc/configuration) — UnrealIRCd config including the services uplink and link password
+- [Environment Variables Reference](/docs/reference/environment-variables) — complete variable reference including all `ATHEME_*` variables
+- [Security](/docs/operations/security) — secret management and credential rotation for `IRC_SERVICES_PASSWORD`

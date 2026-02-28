@@ -1,0 +1,253 @@
+---
+title: The Lounge Operations
+description: User management via just lounge commands, log management, health checks, restart procedures, and troubleshooting for The Lounge web IRC client.
+---
+
+This page covers day-to-day operations for The Lounge: managing user accounts with `just lounge` recipes, inspecting logs, checking container health, and troubleshooting common issues.
+
+## User management
+
+The Lounge runs in private mode, so all user accounts are created and managed by an administrator. User data is stored as individual JSON files in `data/thelounge/users/` on the host (mounted at `/var/opt/thelounge/users/` inside the container).
+
+### Creating a user
+
+```bash
+# Create a new user (prompts for password interactively)
+just lounge add <username>
+```
+
+This executes `thelounge add <username>` inside the `atl-thelounge` container. You are prompted to set a password. Once created, the user can log in at `http://localhost:9000` (or your configured domain) with those credentials.
+
+### Listing users
+
+```bash
+# List all registered users
+just lounge list
+```
+
+This shows every user account that has a JSON file in the users directory.
+
+### Resetting a password
+
+```bash
+# Reset a user's password (prompts for new password)
+just lounge reset <username>
+```
+
+The user's existing sessions are not terminated immediately — they remain connected until the next login attempt, at which point the new password is required.
+
+### Removing a user
+
+There is no `just lounge` recipe for user removal. Delete the user's JSON file manually and restart the container:
+
+```bash
+# Remove the user's data file
+rm data/thelounge/users/<username>.json
+
+# Restart The Lounge to pick up the change
+docker compose restart atl-thelounge
+```
+
+### User data structure
+
+Each user account is a JSON file at `data/thelounge/users/<username>.json`. The file contains the user's hashed password, client settings, saved networks, and channel preferences. The Lounge reads these files at startup and watches for changes at runtime.
+
+| Host path | Container path | Contents |
+|---|---|---|
+| `data/thelounge/users/<user>.json` | `/var/opt/thelounge/users/<user>.json` | Hashed password, networks, channels, client preferences |
+| `data/thelounge/users/` | `/var/opt/thelounge/users/` | All user account files |
+
+## Log management
+
+### Container logs
+
+The primary way to inspect The Lounge logs is through Docker:
+
+```bash
+# Follow logs in real time
+docker compose logs -f atl-thelounge
+
+# Last 100 lines
+docker compose logs --tail 100 atl-thelounge
+
+# Logs since a specific time
+docker compose logs --since 1h atl-thelounge
+```
+
+### Internal logs
+
+The Lounge also writes logs inside its data directory. These include chat message logs when logging is enabled per-user:
+
+| Host path | Container path | Contents |
+|---|---|---|
+| `data/thelounge/logs/` | `/var/opt/thelounge/logs/` | Per-user, per-channel message logs |
+| `data/thelounge/logs/<user>/<network>/` | `/var/opt/thelounge/logs/<user>/<network>/` | Channel-specific log files |
+
+Message logging is a per-user setting controlled from The Lounge's web interface under Settings. When enabled, logs are stored as plain text files organised by user, network, and channel.
+
+To inspect a specific user's logs:
+
+```bash
+# List log directories for a user
+ls data/thelounge/logs/<username>/
+
+# Tail a specific channel log
+tail -f data/thelounge/logs/<username>/<network>/#channel.log
+```
+
+## Health check and status
+
+The Lounge container does not define a custom health check in the compose file. You can verify the service is running by checking the container status and testing the web interface:
+
+```bash
+# Check container status
+docker compose ps atl-thelounge
+
+# Verify the web interface is responding
+curl -s -o /dev/null -w "%{http_code}" http://localhost:9000
+# Expected: 200
+```
+
+### Checking the IRC connection
+
+The Lounge connects to UnrealIRCd over TLS on port 6697 via the Docker network. If users report connection issues, verify that UnrealIRCd is healthy:
+
+```bash
+# Check UnrealIRCd health
+docker inspect --format='{{.State.Health.Status}}' atl-irc-server
+
+# Check The Lounge logs for connection errors
+docker compose logs atl-thelounge | grep -i "error\|disconnect\|refused"
+```
+
+## Restart procedures
+
+### Graceful restart
+
+```bash
+# Restart the container
+docker compose restart atl-thelounge
+```
+
+A restart disconnects all active user sessions from IRC temporarily. The Lounge reconnects to UnrealIRCd automatically after the container starts, and users see their sessions resume when they refresh the browser.
+
+### Full stop and start
+
+```bash
+# Stop The Lounge
+docker compose stop atl-thelounge
+
+# Start The Lounge
+docker compose start atl-thelounge
+```
+
+### When to restart
+
+You need to restart The Lounge when:
+
+- You regenerate the config file (after running `just init` or modifying `.env` values)
+- You manually remove a user JSON file
+- You update the container image
+
+You do not need to restart for:
+
+- Creating new users (`just lounge add` takes effect immediately)
+- Resetting passwords (`just lounge reset` takes effect immediately)
+- User-side settings changes (saved to JSON files in real time)
+
+## Troubleshooting
+
+### Users cannot log in
+
+If a user cannot authenticate:
+
+1. Verify the user account exists:
+
+   ```bash
+   just lounge list
+   ```
+
+2. Reset the password:
+
+   ```bash
+   just lounge reset <username>
+   ```
+
+3. Check The Lounge logs for authentication errors:
+
+   ```bash
+   docker compose logs atl-thelounge | grep -i "auth\|login\|password"
+   ```
+
+### The Lounge cannot connect to UnrealIRCd
+
+If users see "Disconnected" or connection errors in the web interface:
+
+1. Confirm UnrealIRCd is healthy:
+
+   ```bash
+   docker inspect --format='{{.State.Health.Status}}' atl-irc-server
+   ```
+
+2. Check that the WebIRC password matches between The Lounge config and UnrealIRCd config. Both must use the same `THELOUNGE_WEBIRC_PASSWORD` value from `.env`:
+
+   ```bash
+   # Check the rendered config
+   grep -i webirc data/thelounge/config.js
+   ```
+
+3. If the password was changed, regenerate configs and restart both services:
+
+   ```bash
+   just init
+   docker compose restart atl-irc-server atl-thelounge
+   ```
+
+### Web interface not loading
+
+If `http://localhost:9000` is not responding:
+
+1. Check the container is running:
+
+   ```bash
+   docker compose ps atl-thelounge
+   ```
+
+2. Check for port conflicts:
+
+   ```bash
+   # See what is using port 9000
+   ss -tlnp | grep 9000
+   ```
+
+3. Check container logs for startup errors:
+
+   ```bash
+   docker compose logs --tail 50 atl-thelounge
+   ```
+
+### Plugin installation failures
+
+The Lounge installs plugins (janitor, giphy) at every container start. If plugins fail to install, you see warnings in the logs but The Lounge still starts. The `2>/dev/null || true` pattern in the entrypoint suppresses these errors.
+
+To manually reinstall a plugin:
+
+```bash
+docker compose exec atl-thelounge thelounge install thelounge-plugin-janitor
+docker compose exec atl-thelounge thelounge install thelounge-plugin-giphy
+```
+
+Then restart the container for the plugins to load:
+
+```bash
+docker compose restart atl-thelounge
+```
+
+## Related pages
+
+- [The Lounge Overview](/docs/services/thelounge) — architecture, private mode, and how The Lounge fits in the stack
+- [The Lounge Configuration](/docs/services/thelounge/configuration) — config template, plugins, environment variables
+- [IRC Operations](/docs/services/irc/operations) — UnrealIRCd oper setup, config reload, and certificate rotation
+- [Monitoring](/docs/operations/monitoring) — health checks and log inspection across all services
+- [Backups](/docs/operations/backups) — backup and restore procedures for The Lounge user data
+- [Security](/docs/operations/security) — credential rotation for `THELOUNGE_WEBIRC_PASSWORD`

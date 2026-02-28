@@ -1,0 +1,131 @@
+---
+title: XMPP Modules
+description: Managing Prosody modules — source directory, enabled directory, and community modules.
+---
+
+Prosody modules extend the server with additional functionality. atl.chat manages community modules via a `modules.list` file that is processed during the Docker image build.
+
+## Module directories
+
+The Prosody container uses two directories for community modules:
+
+| Directory | Purpose |
+|---|---|
+| `/usr/local/lib/prosody/prosody-modules/` | Full community modules repository (cloned from `hg.prosody.im`) |
+| `/usr/local/lib/prosody/prosody-modules-enabled/` | Symlinks to active modules from the repository |
+
+During the Docker build, the `Containerfile` clones the [prosody-modules](https://modules.prosody.im/) Mercurial repository, then creates symlinks in the `enabled` directory for each module listed in `modules.list`. Modules not in the list are removed to reduce image size.
+
+At container startup, `docker-entrypoint.sh` runs `setup_community_modules()` which verifies the enabled directory exists and logs the count of active modules.
+
+## Built-in modules
+
+Prosody ships with a comprehensive set of built-in modules. You enable them in `prosody.cfg.lua`:
+
+```lua
+modules_enabled = {
+  "roster",
+  "saslauth",
+  "tls",
+  "dialback",
+  "disco",
+  "carbons",
+  "pep",
+  "private",
+  "blocklist",
+  "vcard4",
+  "version",
+  "uptime",
+  "time",
+  "ping",
+  "register",
+  "admin_adhoc",
+}
+```
+
+## Community modules
+
+Community modules are declared in `apps/prosody/modules.list`, one module name per line. The current list includes:
+
+| Module | Purpose |
+|---|---|
+| `mod_cloud_notify_extensions` | Push notification extensions |
+| `mod_cloud_notify_filters` | Push notification filtering |
+| `mod_cloud_notify_encrypted` | Encrypted push notifications |
+| `mod_cloud_notify_priority_tag` | Priority tagging for push notifications |
+| `mod_compliance_2023` | XMPP compliance suite 2023 |
+| `mod_compliance_latest` | Latest XMPP compliance checks |
+| `mod_muc_notifications` | MUC room notifications |
+| `mod_muc_offline_delivery` | Offline message delivery for MUC |
+| `mod_muc_limits` | Rate limiting for MUC rooms |
+| `mod_muc_moderation` | Message moderation in MUC |
+| `mod_muc_mam_hints` | MAM hints for MUC |
+| `mod_muc_mam_markers` | Read markers for MUC MAM |
+| `mod_muc_markers` | Chat markers for MUC |
+| `mod_muc_defaults` | Default MUC room settings |
+| `mod_muc_slow_mode` | Slow mode for MUC rooms |
+| `mod_muc_thread_polyfill` | Thread support polyfill for MUC |
+| `mod_default_bookmarks` | Default bookmark entries for new users |
+| `mod_conversejs` | Built-in Converse.js web client |
+| `mod_http_avatar` | Serves vCard avatars at `/avatar/<username>` |
+| `mod_http_status` | HTTP status endpoint |
+| `mod_http_admin_api` | HTTP admin API |
+| `mod_http_oauth2` | OAuth2 authentication |
+| `mod_http_pep_avatar` | PEP avatar HTTP access |
+| `mod_measure_modules` | Module performance metrics |
+| `mod_anti_spam` | Spam detection and filtering |
+| `mod_admin_blocklist` | Server-wide blocklist management |
+| `mod_spam_reporting` | XEP-0377 spam reporting |
+| `mod_report_forward` | Forward spam reports to admins |
+| `mod_csi_battery_saver` | Client State Indication battery optimisation |
+| `mod_invites` | Invitation-based registration |
+| `mod_s2s_status` | Server-to-server connection status |
+| `mod_s2s_keepalive` | Keep S2S connections alive |
+| `mod_log_slow_events` | Log slow event processing |
+| `mod_pastebin` | Auto-paste long messages |
+| `mod_reload_modules` | Reload modules without restart |
+| `mod_pubsub_subscription` | PubSub subscription management |
+| `mod_pubsub_feeds` | PubSub Atom/RSS feeds |
+| `mod_groups_internal` | Internal contact groups |
+| `mod_support_contact` | Support contact information |
+| `mod_idlecompat` | Idle time compatibility |
+
+## Adding a community module
+
+1. Find the module in the [prosody-modules repository](https://modules.prosody.im/)
+2. Add the module name to `apps/prosody/modules.list`:
+
+   ```text
+   mod_new_module
+   ```
+
+3. Rebuild the Docker image:
+
+   ```bash
+   docker compose build atl-xmpp-server
+   ```
+
+4. Enable the module in `prosody.cfg.lua` if it is not auto-loaded:
+
+   ```lua
+   modules_enabled = {
+     -- existing modules...
+     "new_module",
+   }
+   ```
+
+5. Restart or reload Prosody:
+
+   ```bash
+   # Reload config without restart
+   just xmpp reload
+
+   # Full restart if needed
+   docker compose restart atl-xmpp-server
+   ```
+
+## Related pages
+
+- [XMPP Overview](/docs/services/xmpp) — Prosody architecture and components
+- [XMPP Configuration](/docs/services/xmpp/configuration) — prosody.cfg.lua and modules_enabled list
+- [XMPP Operations](/docs/services/xmpp/operations) — prosodyctl commands and service management

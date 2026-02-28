@@ -1,0 +1,76 @@
+---
+title: Web App Overview
+description: Overview of the atl.chat public-facing Next.js landing site deployed to Cloudflare Pages.
+---
+
+The web app (`apps/web`) is the public-facing atl.chat landing site — a Next.js application that lists all community chat platforms (IRC, XMPP, Discord, Signal) and links visitors to connection instructions. It deploys to Cloudflare Pages via `@cloudflare/next-on-pages`.
+
+## What it is (and isn't)
+
+- **Is:** The `atl.chat` public homepage — a single-page site showing how to connect via IRC, XMPP, Discord, Signal, and other platforms.
+- **Is not:** The [Portal](https://github.com/allthingslinux/portal) app, which is a separate Next.js project in its own repository handling user identity, profiles, and the Portal API consumed by the bridge.
+
+## Technology stack
+
+| Layer | Technology |
+|---|---|
+| Framework | Next.js (App Router) |
+| Language | TypeScript |
+| Styling | Tailwind CSS + shadcn/ui |
+| UI components | Button, Card, Badge (from shadcn/ui via Radix UI) |
+| Icons | Lucide React |
+| Linting | Biome (via ultracite) |
+| Deployment target | Cloudflare Pages (`@cloudflare/next-on-pages`) |
+| Package manager | pnpm (workspace member `atl.chat`) |
+
+## Architecture
+
+The web app follows a minimal Next.js App Router structure:
+
+```
+apps/web/
+├── app/
+│   ├── layout.tsx        # Root layout with Geist font loading
+│   ├── page.tsx          # Landing page — the only route
+│   ├── globals.css       # Tailwind CSS imports
+│   ├── favicon.ico
+│   └── fonts/            # Geist Sans and Geist Mono (local fonts)
+├── components/
+│   └── ui/               # shadcn/ui components (button, card, badge)
+├── lib/
+│   └── utils.ts          # Tailwind merge utility (cn helper)
+├── next.config.mjs       # Cloudflare dev platform setup
+├── wrangler.toml         # Cloudflare Pages deployment config
+├── biome.jsonc           # Extends ultracite/biome presets
+└── package.json          # Package name: "atl.chat"
+```
+
+## Routes
+
+The site currently has a single route:
+
+| Route | Component | Description |
+|---|---|---|
+| `/` | `app/page.tsx` | Landing page with platform cards for IRC, XMPP, Signal, and a Discord join button. Also shows "Someday Maybe?" badges for Mastodon and Matrix. |
+
+The app uses Next.js App Router with `layout.tsx` providing the root HTML structure, Geist font variables, and global styles. There are no additional routes, API routes, or dynamic segments at this time — the site is a static single-page application.
+
+## Environment variables
+
+The web app uses client-side environment variables (prefixed with `NEXT_PUBLIC_`) to configure service connection URLs:
+
+| Variable | Description | Default |
+|---|---|---|
+| `NEXT_PUBLIC_ATL_BASE_DOMAIN` | Base domain for the atl.chat project | `atl.chat` |
+| `NEXT_PUBLIC_ATL_ENVIRONMENT` | Environment identifier (`development` or `production`) | `development` |
+| `NEXT_PUBLIC_IRC_WS_URL` | IRC WebSocket URL for browser-based IRC clients | `wss://irc.atl.chat/ws` |
+| `NEXT_PUBLIC_XMPP_BOSH_URL` | XMPP BOSH endpoint for browser-based XMPP clients | `https://xmpp.atl.chat/http-bind` |
+| `NEXT_PUBLIC_SENTRY_DSN` | Sentry DSN for error tracking (optional) | _(empty)_ |
+
+See `apps/web/.env.example` for the full list. Copy it to `apps/web/.env.local` for local overrides.
+
+> **Note:** During local development, `just web dev` automatically overrides `NEXT_PUBLIC_IRC_WS_URL` and `NEXT_PUBLIC_XMPP_BOSH_URL` to point at `localhost` ports.
+
+## Related pages
+
+- [Development](/docs/services/web/development) — dev server, build, deployment, and linting

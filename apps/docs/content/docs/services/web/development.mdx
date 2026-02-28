@@ -1,0 +1,112 @@
+---
+title: Web Development
+description: Running the dev server, building for Cloudflare Pages, environment variables, and deployment for the atl.chat web app.
+---
+
+The web app runs as a standard Next.js dev server locally and builds to a Cloudflare Pages-compatible output via `@cloudflare/next-on-pages` for production deployment.
+
+## Dev server
+
+Start the development server using the `just` recipe, which automatically sets localhost-appropriate environment variables:
+
+```bash
+just web dev
+```
+
+This runs `pnpm dev` with `NEXT_PUBLIC_IRC_WS_URL=ws://localhost:8000` and `NEXT_PUBLIC_XMPP_BOSH_URL=http://localhost:5280/http-bind`, so the app points at your local IRC and XMPP services. The dev server starts at `http://localhost:3000`.
+
+Alternatively, run directly with pnpm:
+
+```bash
+# From apps/web/
+NEXT_PUBLIC_IRC_WS_URL="ws://localhost:8000" \
+NEXT_PUBLIC_XMPP_BOSH_URL="http://localhost:5280/http-bind" \
+pnpm dev
+```
+
+> **Note:** The web app runs outside Docker as a local Node.js process. The rest of the stack (IRC, XMPP, etc.) runs in Docker via `just dev`.
+
+## Build
+
+Build the app for production:
+
+```bash
+just web build
+```
+
+This runs `next build`, which uses `@cloudflare/next-on-pages` (configured in `next.config.mjs`) to produce output compatible with Cloudflare Pages. The build output goes to `.vercel/output/static` as specified in `wrangler.toml`.
+
+To preview the production build locally with Wrangler:
+
+```bash
+# From apps/web/
+npx wrangler pages dev .vercel/output/static
+```
+
+This starts a local Cloudflare Pages preview server so you can verify the production build before deploying.
+
+## Cloudflare Pages deployment
+
+Deployment is configured in `apps/web/wrangler.toml`:
+
+```toml
+compatibility_date = "2024-07-29"
+compatibility_flags = ["nodejs_compat"]
+name = "atl-chat"
+pages_build_output_dir = ".vercel/output/static"
+
+[vars]
+NODE_VERSION = "18.18.0"
+```
+
+Key settings:
+
+| Setting | Value | Purpose |
+|---|---|---|
+| `name` | `atl-chat` | Cloudflare Pages project name |
+| `pages_build_output_dir` | `.vercel/output/static` | Build output directory for `@cloudflare/next-on-pages` |
+| `compatibility_flags` | `nodejs_compat` | Enables Node.js API compatibility in Workers runtime |
+| `NODE_VERSION` | `18.18.0` | Node.js version used in the Cloudflare build environment |
+
+Pushes to the main branch trigger an automatic Cloudflare Pages deployment. Environment variables for production (such as `NEXT_PUBLIC_IRC_WS_URL`) are managed in the Cloudflare dashboard under the project's environment settings.
+
+## Environment variables
+
+The web app reads environment variables at build time (since they use the `NEXT_PUBLIC_` prefix, they are inlined into the client bundle during build).
+
+For local development, create `apps/web/.env.local` by copying the example:
+
+```bash
+cp apps/web/.env.example apps/web/.env.local
+```
+
+See the [Web App Overview](/docs/services/web) for the full variable reference table.
+
+For production, set these variables in the Cloudflare Pages dashboard:
+
+1. Go to your Cloudflare Pages project settings
+2. Navigate to **Settings → Environment variables**
+3. Add each `NEXT_PUBLIC_*` variable with production values (e.g., `NEXT_PUBLIC_IRC_WS_URL=wss://irc.atl.chat/ws`)
+
+> **Note:** Since `NEXT_PUBLIC_` variables are embedded at build time, you need to trigger a new deployment after changing them in the Cloudflare dashboard.
+
+## Linting and type-checking
+
+The web app uses [Biome](https://biomejs.dev/) via the `ultracite` wrapper for linting and formatting:
+
+```bash
+just web lint          # Run Ultracite/Biome check
+just web fix           # Auto-fix lint issues
+just web type-check    # Run TypeScript type checking (tsc --noEmit)
+```
+
+The Biome configuration in `biome.jsonc` extends the `ultracite/biome/core` and `ultracite/biome/next` presets.
+
+> **Note:** `ultracite check` currently fails due to a pre-existing issue where the Biome config expects a `.gitignore` in `apps/web/`. The Next.js build (`just web build`) works fine regardless.
+
+
+## Related pages
+
+- [Web App Overview](/docs/services/web) — architecture, routes, and environment variables
+- [Contributing](/docs/development/contributing) — PR workflow, commit conventions, and code style guides
+- [Testing](/docs/development/testing) — test directory layout and running tests

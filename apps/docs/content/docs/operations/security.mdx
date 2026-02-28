@@ -1,0 +1,396 @@
+---
+title: Security
+description: Secret management, credential rotation, Docker network isolation, TLS best practices, and Gitleaks pre-commit hook configuration for the atl.chat stack.
+---
+
+This page covers how to generate, store, and rotate secrets for every atl.chat service, how the Docker network isolates internal traffic from external access, TLS hardening guidance, and how the Gitleaks pre-commit hook prevents accidental secret commits.
+
+## Secret management overview
+
+All secrets live in the `.env` file at the repository root. Services consume them through Docker Compose `env_file` directives and config templates processed by `scripts/prepare-config.sh` via `envsubst`. The `.env` file is listed in `.gitignore` and must never be committed.
+
+### File permissions
+
+Lock down your secrets files immediately after creation:
+
+```bash
+# Restrict .env to owner-only read/write
+chmod 600 .env
+```
+
+## Generating secure values
+
+Every sensitive environment variable in `.env.example` ships with a placeholder value (e.g. `change_me_*`). You must replace each one before deploying to production.
+
+### IRC cloak keys (`IRC_CLOAK_KEY_1`, `IRC_CLOAK_KEY_2`, `IRC_CLOAK_KEY_3`)
+
+Cloak keys mask user IP addresses. All three keys must be identical across every IRC server in your network. Use the built-in `just` recipe:
+
+```bash
+# Generates 3 cloak keys and writes them to .env automatically
+just irc gencloak
+```
+
+This runs `scripts/gencloak-update-env.sh`, which invokes UnrealIRCd's `gencloak` command inside the container, parses the three keys, updates `.env`, and re-runs `prepare-config.sh`.
+
+### IRC operator password (`IRC_OPER_PASSWORD`)
+
+UnrealIRCd requires an Argon2-hashed password for IRC operators. Generate one interactively:
+
+```bash
+# Requires the IRC container to be running
+just irc generate-password
+```
+
+This prompts you for a password (input is hidden), then outputs an Argon2 hash. Copy the hash into your `.env`:
+
+```bash
+IRC_OPER_PASSWORD="$argon2id$v=19$m=6144,t=2,p=2$..."
+```
+
+After updating, apply the change:
+
+```bash
+# Re-generate config from templates
+bash scripts/prepare-config.sh
+
+# Reload without restart (as IRCOp: /REHASH) or restart the container
+docker compose restart atl-irc-server
+```
+
+### IRC die/restart password (`IRC_DRPASS`)
+
+This password protects the `/DIE` and `/RESTART` IRC commands. Generate a random value:
+
+```bash
+openssl rand -base64 32
+```
+
+Set it in `.env`:
+
+```bash
+IRC_DRPASS=<generated-value>
+```
+
+### IRC services password (`IRC_SERVICES_PASSWORD`)
+
+Shared secret between UnrealIRCd and Atheme for the services link. Generate a strong random value:
+
+```bash
+openssl rand -base64 32
+```
+
+### WebIRC passwords (`ATL_WEBIRC_PASSWORD`, `THELOUNGE_WEBIRC_PASSWORD`)
+
+WebIRC passwords authenticate web clients (The Lounge, the Next.js web app) to UnrealIRCd so that real user IPs are forwarded. Generate a unique value for each:
+
+```bash
+# For the web frontend
+openssl rand -base64 32
+# For The Lounge
+openssl rand -base64 32
+```
+
+### WebPanel RPC password (`WEBPANEL_RPC_PASSWORD`)
+
+Authenticates the WebPanel to UnrealIRCd's JSON-RPC interface:
+
+```bash
+openssl rand -base64 32
+```
+
+### Bridge secrets
+
+| Variable | Purpose | Generation |
+|---|---|---|
+| `BRIDGE_DISCORD_TOKEN` | Discord bot token | Create at [Discord Developer Portal](https://discord.com/developers/applications) → Bot → Reset Token |
+| `BRIDGE_PORTAL_TOKEN` | Portal API authentication | `openssl rand -base64 32` |
+| `BRIDGE_XMPP_COMPONENT_SECRET` | XMPP component authentication | `openssl rand -base64 32` |
+| `BRIDGE_IRC_OPER_PASSWORD` | Bridge IRC oper credentials | `openssl rand -base64 32` |
+
+### Prosody (XMPP) secrets
+
+| Variable | Purpose | Generation |
+|---|---|---|
+| `PROSODY_DB_PASSWORD` | PostgreSQL database password (production only) | `openssl rand -base64 32` |
+| `PROSODY_OAUTH2_REGISTRATION_KEY` | OAuth2 client registration key | `openssl rand -base64 32` |
+
+### TURN secret (`TURN_SECRET`)
+
+Shared secret for TURN/STUN authentication:
+
+```bash
+openssl rand -base64 32
+```
+
+### Cloudflare DNS API token (`CLOUDFLARE_DNS_API_TOKEN`)
+
+Required only for production TLS via Let's Encrypt DNS-01 challenges. Create a scoped API token in the [Cloudflare dashboard](https://dash.cloudflare.com/profile/api-tokens) with `Zone:DNS:Edit` permission for your domain. Not needed for local development.
+
+### Alchemy password (`ALCHEMY_PASSWORD`)
+
+Used by the docs deployment (Cloudflare Workers via Alchemy) to encrypt deployment state secrets:
+
+```bash
+openssl rand -base64 32
+```
+
+### Portal integration passwords
+
+These variables are consumed by the external ATL Portal service, not by this monorepo's compose stack:
+
+| Variable | Purpose | Generation |
+|---|---|---|
+| `IRC_UNREAL_RPC_PASSWORD` | Portal → UnrealIRCd JSON-RPC | Should match `WEBPANEL_RPC_PASSWORD` |
+| `PROSODY_REST_PASSWORD` | Portal → Prosody REST API | `openssl rand -base64 32` |
+
+## Credential rotation
+
+Rotate all secrets on a regular schedule (every 6–12 months) or immediately after a suspected compromise.
+
+### Rotation procedure
+
+1. Generate a new value using the methods above
+2. Update `.env` with the new value
+3. Re-generate config templates:
+   ```bash
+   bash scripts/prepare-config.sh
+   ```
+4. Restart affected services:
+   ```bash
+   # Single service
+   docker compose restart atl-irc-server
+
+   # Full stack
+   docker compose down
+   docker compose up -d
+   ```
+5. Verify the service is healthy:
+   ```bash
+   docker compose ps
+   ```
+
+### Coordinated rotation
+
+Some secrets are shared between services and must be updated in lockstep:
+
+| Secret | Services that share it |
+|---|---|
+| `IRC_SERVICES_PASSWORD` | UnrealIRCd ↔ Atheme |
+| `ATL_WEBIRC_PASSWORD` | UnrealIRCd ↔ Next.js web app |
+| `THELOUNGE_WEBIRC_PASSWORD` | UnrealIRCd ↔ The Lounge |
+| `WEBPANEL_RPC_PASSWORD` | UnrealIRCd ↔ WebPanel |
+| `BRIDGE_XMPP_COMPONENT_SECRET` | Prosody ↔ Bridge |
+| `BRIDGE_IRC_OPER_PASSWORD` | UnrealIRCd ↔ Bridge |
+| `IRC_CLOAK_KEY_1/2/3` | All IRC servers in the network |
+
+After updating a shared secret, restart both services that use it. For example, after rotating `IRC_SERVICES_PASSWORD`:
+
+```bash
+bash scripts/prepare-config.sh
+docker compose restart atl-irc-server
+# Atheme shares UnrealIRCd's network namespace and restarts with it,
+# but if running independently:
+docker compose restart atl-irc-services
+```
+
+## Docker network isolation
+
+All services run on a single Docker bridge network named `atl-chat`, defined in `infra/compose/networks.yaml`. This means every container can reach every other container by hostname on internal ports, but only explicitly published ports are accessible from the host.
+
+### Externally exposed ports
+
+These ports are bound to the host and accessible to external clients. In production, they bind to the Tailscale IP (`ATL_CHAT_IP`). In development, they bind to `127.0.0.1` via `.env.dev`.
+
+| Service | Port | Variable | Purpose |
+|---|---|---|---|
+| UnrealIRCd | 6697 | `IRC_TLS_PORT` | IRC client connections (TLS) |
+| UnrealIRCd | 6900 | `IRC_SERVER_PORT` | Server-to-server linking |
+| UnrealIRCd | 8600 | `IRC_RPC_PORT` | JSON-RPC API |
+| UnrealIRCd | 8000 | `IRC_WEBSOCKET_PORT` | WebSocket for web clients |
+| UnrealIRCd | 8081 | `ATHEME_HTTPD_PORT` | Atheme JSON-RPC (shared network namespace) |
+| WebPanel | 8080 | `WEBPANEL_PORT` | Admin web interface |
+| Prosody | 5222 | `PROSODY_C2S_PORT` | XMPP client-to-server |
+| Prosody | 5269 | `PROSODY_S2S_PORT` | XMPP server-to-server |
+| Prosody | 5223 | `PROSODY_C2S_DIRECT_TLS_PORT` | XMPP Direct TLS |
+| Prosody | 5270 | `PROSODY_S2S_DIRECT_TLS_PORT` | XMPP S2S Direct TLS |
+| Prosody | 5280 | `PROSODY_HTTP_PORT` | BOSH / WebSocket |
+| Prosody | 5000 | `PROSODY_PROXY65_PORT` | File transfer proxy |
+| Nginx (XMPP) | 5281 | `PROSODY_HTTPS_PORT` | XMPP HTTPS proxy |
+| The Lounge | 9000 | `THELOUNGE_PORT` | Web IRC client |
+| Dozzle | 8082 | `DOZZLE_PORT` | Log viewer (dev profile only) |
+
+### Internal-only communication
+
+These connections happen over the `atl-chat` Docker network and are never exposed to the host:
+
+| From | To | Port | Purpose |
+|---|---|---|---|
+| Atheme | UnrealIRCd | 6901 | Services link (shared network namespace via `network_mode: service:atl-irc-server`) |
+| Bridge | UnrealIRCd | 6697 | IRC connection |
+| Bridge | Prosody | 5347 | XMPP component protocol |
+| The Lounge | UnrealIRCd | 6697 | IRC connection (WebIRC) |
+| WebPanel | UnrealIRCd | 8600 | JSON-RPC |
+| cert-manager | — | — | Writes to shared `data/certs/` volume only |
+
+### Atheme network namespace sharing
+
+Atheme uses `network_mode: service:atl-irc-server`, which means it shares UnrealIRCd's network stack entirely. Atheme connects to UnrealIRCd on `127.0.0.1:6901` (loopback within the shared namespace). This is why the Atheme HTTP port (8081) appears as a published port on the UnrealIRCd container.
+
+### Production hardening
+
+In production, bind published ports to your Tailscale IP rather than `0.0.0.0`:
+
+```bash
+# .env (production)
+ATL_CHAT_IP=100.64.7.0
+ATL_GATEWAY_IP=100.64.1.0
+```
+
+This ensures services are only reachable over the Tailscale mesh, not on the public internet. Place a reverse proxy (e.g. Caddy, nginx) in front of web-facing ports (8000, 8080, 9000, 5280, 5281) to add rate limiting and additional TLS termination.
+
+## TLS configuration best practices
+
+Detailed certificate management is covered in the [SSL/TLS page](/docs/operations/ssl-tls). This section
+tore private keys in the repository. The `data/` directory is in `.gitignore`.
+- In development, `just init` generates self-signed certificates. These are not suitable for production.
+
+### Post-renewal hooks
+
+After certificate renewal, services need to pick up the new certificates:
+
+```bash
+# UnrealIRCd: reload config (picks up new certs)
+docker compose kill -s HUP atl-irc-server
+
+# Prosody: reload
+docker compose exec atl-xmpp-server prosodyctl reload
+```
+
+### STS configuration
+
+UnrealIRCd's Strict Transport Security is configured via environment variables:
+
+| Variable | Default | Description |
+|---|---|---|
+| `IRC_STS_DURATION` | `1m` | STS policy duration (use longer values like `365d` in production) |
+| `IRC_STS_PRELOAD` | `no` | Whether to include in STS preload lists |
+
+## Gitleaks pre-commit hook
+
+The repository uses [Gitleaks](https://github.com/gitleaks/gitleaks) as a pre-commit hook to prevent accidental secret commits. It is configured in `.pre-commit-config.yaml`:
+
+```yaml
+- repo: https://github.com/gitleaks/gitleaks
+  rev: v8.30.0
+  hooks:
+    - id: gitleaks
+      args: [--config, .gitleaks.toml]
+```
+
+### Setup
+
+Install the pre-commit hooks:
+
+```bash
+# If core.hooksPath is set by your environment, unset it first
+git config --unset-all core.hooksPath
+
+# Install hooks
+pre-commit install
+```
+
+Or run manually:
+
+```bash
+# Scan all files
+pre-commit run gitleaks --all-files
+
+# Equivalent via just
+just lint
+```
+
+### How it works
+
+Gitleaks scans staged files against a comprehensive rule set defined in `.gitleaks.toml` (auto-generated from the upstream Gitleaks default config). It detects patterns for hundreds of secret types: API keys, tokens, passwords, private keys, and more.
+
+The `.gitleaks.toml` global allowlist excludes common false positives:
+
+- Binary and font files
+- Lock files (`pnpm-lock.yaml`, `package-lock.json`, etc.)
+- Vendored dependencies
+- Template variables (`${VAR}`, `$VAR`, `{{ var }}`)
+- Common file paths
+
+### Handling a blocked commit
+
+If Gitleaks blocks your commit, it means a potential secret was detected in your staged changes:
+
+1. Review the Gitleaks output to identify the flagged file and line
+2. If it is a real secret:
+   - Remove the secret from the file
+   - Move it to `.env` (which is gitignored)
+   - Reference it via environment variable substitution
+3. If it is a false positive:
+   - Add an inline comment `# gitleaks:allow` on the flagged line, or
+   - Add the specific pattern to the `[[rules.allowlists]]` section in `.gitleaks.toml`
+
+### Handling accidental secret commits
+
+If a secret was committed before the hook was installed:
+
+1. Rotate the compromised secret immediately using the generation methods above
+2. Remove the secret from the repository history using `git filter-repo`:
+   ```bash
+   # Install git-filter-repo if needed
+   pip install git-filter-repo
+
+   # Remove the file containing the secret from all history
+   git filter-repo --invert-paths --path <file-with-secret>
+
+   # Or replace a specific string across all history
+   git filter-repo --replace-text <(echo 'OLD_SECRET==>REDACTED')
+   ```
+3. Force-push the cleaned history:
+   ```bash
+   git push --force --all
+   git push --force --tags
+   ```
+4. Notify all contributors to re-clone or rebase onto the cleaned history
+5. If the secret was for an external service (Discord token, Cloudflare API token), revoke it at the provider and generate a new one
+
+> **Warning:** Force-pushing rewrites history for all collaborators. Coordinate with your team before doing this. In most cases, rotating the secret is sufficient — history rewriting is only necessary if the secret grants persistent access that cannot be revoked.
+
+## Verification checklist
+
+After configuring secrets for a new deployment, verify everything is in place:
+
+```bash
+# Check .env exists and has restricted permissions
+ls -la .env
+# Expected: -rw------- 1 user user ... .env
+
+# Verify all placeholder values have been replaced
+grep -c 'change_me' .env
+# Expected: 0
+
+# Verify Gitleaks hook is installed
+pre-commit run gitleaks --all-files
+# Expected: Passed (or specific findings to address)
+
+# Verify services start with the new secrets
+docker compose up -d
+docker compose ps
+# Expected: all services show "Up" / "healthy"
+```
+
+## Related pages
+
+- [SSL/TLS](/docs/operations/ssl-tls) — certificate management, renewal, and per-service cert paths
+- [Deployment](/docs/operations/deployment) — production deployment runbook
+- [Environment Variables](/docs/reference/environment-variables) — complete variable reference with security warnings
+- [Architecture](/docs/architecture) — system design and service connectivity
+- [IRC Configuration](/docs/services/irc/configuration) — UnrealIRCd secrets, oper blocks, and cloak keys
+- [XMPP Configuration](/docs/services/xmpp/configuration) — Prosody TLS and authentication settings
+- [Atheme Configuration](/docs/services/atheme/configuration) — Atheme services link password and SASL setup
+- [Bridge Configuration](/docs/services/bridge/configuration) — bridge credentials and Discord token

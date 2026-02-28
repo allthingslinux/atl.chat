@@ -1,0 +1,299 @@
+---
+title: Contributing
+description: PR workflow, commit conventions, pre-commit hooks, and language-specific code style guides for atl.chat contributors.
+---
+
+This guide covers everything you need to contribute code, docs, or configuration to atl.chat — from branching to merge.
+
+## PR workflow
+
+atl.chat uses a fork-and-PR model against the `main` branch. Every merge into `main` triggers [semantic-release](https://semantic-release.gitbook.io/) which reads commit messages to determine the next version, generate changelogs, and publish a GitHub release.
+
+### Branch naming
+
+Use a descriptive prefix that matches the work type:
+
+| Prefix | Use case | Example |
+|---|---|---|
+| `feat/` | New feature or enhancement | `feat/xmpp-muc-bridging` |
+| `fix/` | Bug fix | `fix/cloak-key-fallback` |
+| `docs/` | Documentation only | `docs/add-atheme-ops-guide` |
+| `chore/` | Tooling, CI, dependency updates | `chore/bump-unrealircd-image` |
+| `refactor/` | Code restructuring (no behaviour change) | `refactor/bridge-event-bus` |
+| `test/` | Test additions or fixes | `test/irc-integration-suite` |
+
+### Step-by-step
+
+1. Fork the repository on GitHub and clone your fork locally.
+
+2. Create a branch from `main`:
+
+   ```bash
+   git checkout main && git pull origin main
+   git checkout -b feat/my-feature
+   ```
+
+3. Make your changes. Run tests and linting before committing:
+
+   ```bash
+   just test          # run root pytest suite
+   just lint          # run all pre-commit hooks
+   ```
+
+4. Commit using [Conventional Commits](#commit-style) format.
+
+5. Push your branch and open a pull request against `main`.
+
+6. Address review feedback. Push additional commits — the PR will be squash-merged.
+
+### Code review expectations
+
+- Every PR requires at least one approving review before merge.
+- Reviewers check for correctness, test coverage, style compliance, and documentation updates.
+- Keep PRs focused. If a change touches multiple services, consider splitting into separate PRs.
+- CI must pass (lint, unit tests, type checks) before merge is allowed.
+- PRs are squash-merged into `main` to keep a linear history.
+
+## Commit style
+
+atl.chat enforces [Conventional Commits](https://www.conventionalcommits.org/) via commitlint (run as a pre-commit hook on the `commit-msg` stage). Semantic-release parses these messages to determine version bumps and generate release notes.
+
+### Format
+
+```
+<type>(<scope>): <description>
+
+[optional body]
+
+[optional footer(s)]
+```
+
+### Types
+
+| Type | Version bump | Purpose |
+|---|---|---|
+| `feat` | minor | New feature or user-facing enhancement |
+| `fix` | patch | Bug fix |
+| `docs` | — | Documentation only |
+| `chore` | — | Tooling, CI, dependencies |
+| `refactor` | — | Code restructuring without behaviour change |
+| `test` | — | Adding or updating tests |
+| `ci` | — | CI/CD pipeline changes |
+| `style` | — | Formatting, whitespace (no logic change) |
+| `perf` | patch | Performance improvement |
+
+A commit with `BREAKING CHANGE:` in the footer (or `!` after the type) triggers a major version bump.
+
+### Scopes
+
+Use the app or area name as scope: `irc`, `atheme`, `xmpp`, `bridge`, `web`, `lounge`, `webpanel`, `docs`, `infra`, `ops`, `ci`.
+
+### Examples
+
+```bash
+# Feature with scope
+feat(bridge): add XMPP MUC room join/part relay
+
+# Bug fix
+fix(irc): correct cloak key fallback in prepare-config.sh
+
+# Documentation
+docs(ops): add SSL certificate renewal runbook
+
+# Breaking change (major version bump)
+feat(bridge)!: switch event bus from polling to WebSocket
+
+BREAKING CHANGE: bridge config.yaml now requires a `ws_url` field.
+
+# Chore with body
+chore(deps): bump UnrealIRCd image to 6.1.8
+
+Updated base image tag in infra/compose/irc.yaml.
+Tested locally with `just dev` — all services start cleanly.
+```
+
+### Interactive commits
+
+The repo includes [Commitizen](https://commitizen-tools.github.io/commitizen/) for guided commit message creation. Run it interactively:
+
+```bash
+pnpm exec cz
+```
+
+This walks you through type, scope, description, body, and breaking change prompts.
+
+## Pre-commit hooks
+
+atl.chat uses [pre-commit](https://pre-commit.com/) to enforce code quality on every commit. The `just lint` command runs all hooks against the entire repo.
+
+### Setup
+
+1. Install pre-commit (included in the Python dev dependencies):
+
+   ```bash
+   uv sync          # installs pre-commit into the venv
+   ```
+
+2. If your environment sets `core.hooksPath` (some editors and CI systems do this), unset it first — otherwise `pre-commit install` will silently fail to register hooks:
+
+   ```bash
+   git config --unset-all core.hooksPath
+   ```
+
+3. Install the git hooks:
+
+   ```bash
+   uv run pre-commit install
+   uv run pre-commit install --hook-type commit-msg   # enables commitlint
+   ```
+
+4. Verify hooks are active:
+
+   ```bash
+   uv run pre-commit run --all-files
+   ```
+
+   This is equivalent to `just lint`.
+
+### Hook reference
+
+The full hook set defined in `.pre-commit-config.yaml`:
+
+| Hook | Source | What it does |
+|---|---|---|
+| `check-json` | pre-commit-hooks | Validates JSON syntax |
+| `check-toml` | pre-commit-hooks | Validates TOML syntax |
+| `end-of-file-fixer` | pre-commit-hooks | Ensures files end with a newline |
+| `trailing-whitespace` | pre-commit-hooks | Removes trailing whitespace (excludes `.md`) |
+| `validate-pyproject` | validate-pyproject | Validates `pyproject.toml` schema |
+| `yamlfix` | yamlfix | Auto-formats YAML files |
+| `yamllint` | yamllint | Lints YAML files |
+| `actionlint` | actionlint | Lints GitHub Actions workflows |
+| `markdownlint-fix` | markdownlint-cli | Auto-fixes Markdown style issues |
+| `ruff-check` | ruff-pre-commit | Python linting with auto-fix (`--fix`) |
+| `ruff-format` | ruff-pre-commit | Python formatting |
+| `shellcheck` | shellcheck-py | Shell script static analysis |
+| `shfmt` | pre-commit-shfmt | Shell script formatting |
+| `gitleaks` | gitleaks | Scans for accidentally committed secrets |
+| `commitlint` | commitlint-pre-commit-hook | Validates commit message format (commit-msg stage) |
+| `luacheck` | local (Docker) | Lua static analysis (runs via Docker image) |
+| `lint-web` | local | Runs Biome/ultracite on `apps/web/` TypeScript/JSX files |
+
+### Running hooks manually
+
+```bash
+# Run all hooks on all files
+just lint
+
+# Run a specific hook
+uv run pre-commit run ruff-check --all-files
+uv run pre-commit run shellcheck --all-files
+
+# Run hooks only on staged files (default git hook behaviour)
+uv run pre-commit run
+```
+
+## Code style
+
+Each language in the monorepo has its own linter and formatter. The pre-commit hooks enforce these automatically, but you can also run them standalone during development.
+
+### Python — ruff
+
+All Python code (bridge, tests, scripts) is linted and formatted by [ruff](https://docs.astral.sh/ruff/). Configuration lives in the root `pyproject.toml`.
+
+| Setting | Value |
+|---|---|
+| Target version | Python 3.11 |
+| Line length | 120 |
+| Quote style | Double quotes |
+| Indent style | Spaces |
+| Line ending | LF |
+
+Enabled rule sets: `E` (pycodestyle), `F` (pyflakes), `I` (isort), `N` (pep8-naming), `UP` (pyupgrade), `B` (flake8-bugbear), `SIM` (flake8-simplify), `PL` (pylint), `RUF` (ruff-specific).
+
+```bash
+# Lint with auto-fix
+uv run ruff check --fix .
+
+# Format
+uv run ruff format .
+
+# Check without modifying files
+uv run ruff check .
+uv run ruff format --check .
+```
+
+Per-file ignores are configured for test directories and the bridge source (see `[tool.ruff.lint.per-file-ignores]` in `pyproject.toml`).
+
+### TypeScript / JSX — Biome (ultracite)
+
+The Next.js web app (`apps/web/`) uses [ultracite](https://github.com/haydenbleasel/ultracite), a wrapper around [Biome](https://biomejs.dev/), for linting and formatting. Ultracite ships a pre-configured Biome profile for Next.js projects.
+
+```bash
+# Check for issues
+cd apps/web && pnpm run check
+
+# Auto-fix
+cd apps/web && pnpm run fix
+
+# Or via the pre-commit hook (runs automatically on apps/web/ JS/TSX files)
+uv run pre-commit run lint-web --all-files
+```
+
+> **Note:** The `ultracite check` command currently has a known issue where it expects a `.gitignore` in `apps/web/`. This does not affect builds (`pnpm run build` works fine).
+
+### Lua — luacheck
+
+Prosody configuration and any Lua scripts are checked by [luacheck](https://luacheck.readthedocs.io/). The pre-commit hook runs luacheck via a Docker image, so no local Lua installation is needed.
+
+Configuration lives in `.luacheckrc` at the repo root:
+
+| Setting | Value |
+|---|---|
+| Standard | `min` (minimal standard globals) |
+| Max line length | 300 |
+| Prosody globals | Declared in the `globals` table (VirtualHost, Component, modules_enabled, etc.) |
+
+```bash
+# Run via pre-commit
+uv run pre-commit run luacheck --all-files
+
+# Run directly with Docker (same as the hook)
+docker run --rm -v "$PWD":/data ghcr.io/lunarmodules/luacheck:latest .
+```
+
+Known warning: `apps/prosody/config/prosody.cfg.lua` may emit unused-variable warnings because Prosody config files declare variables consumed by the Prosody runtime. The `.luacheckrc` sets `unused = false` for this file.
+
+### Shell — shellcheck and shfmt
+
+Shell scripts (`scripts/`, `infra/`) are analysed by [shellcheck](https://www.shellcheck.net/) for correctness and formatted by [shfmt](https://github.com/mvdan/sh) for consistency.
+
+shfmt settings (from `.pre-commit-config.yaml`):
+
+| Setting | Value |
+|---|---|
+| Language | `bash` |
+| Indent | 2 spaces |
+| Binary ops | Newline after |
+| Switch cases | Indented |
+| Keep padding | Yes |
+| Simplify | Yes |
+
+```bash
+# Run shellcheck
+uv run pre-commit run shellcheck --all-files
+
+# Run shfmt
+uv run pre-commit run shfmt --all-files
+
+# Run shellcheck directly
+shellcheck scripts/*.sh
+```
+
+Known warning: `infra/nginx/docker-entrypoint.sh` triggers shellcheck SC2016 (unexpanded variable in single quotes) — this is intentional and can be ignored.
+
+## Related pages
+
+- [Testing](/docs/development/testing) — test directory layout, running tests, fixtures
+- [Adding a Service](/docs/development/adding-a-service) — checklist for adding a new service to the monorepo
+- [Security](/docs/operations/security) — secret management and Gitleaks configuration

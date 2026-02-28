@@ -1,0 +1,12 @@
+{
+    "title": "Services",
+    "pages": [
+        "irc",
+        "atheme",
+        "xmpp",
+        "bridge",
+        "web",
+        "thelounge",
+        "webpanel"
+    ]
+}

@@ -1,0 +1,376 @@
+---
+title: Adding a Service
+description: Step-by-step guide for integrating a new service into the atl.chat monorepo, covering containers, compose, configuration, data, documentation, and tests.
+---
+
+This guide walks you through every step needed to add a new service to the atl.chat monorepo — from creating the app directory to wiring it into Docker Compose, the `just` task runner, and the documentation site.
+
+## Overview
+
+Each service in atl.chat follows a consistent pattern:
+
+1. Application code and container definition live in `apps/<service>/`
+2. A Docker Compose fragment lives in `infra/compose/<service>.yaml`
+3. Environment variables are declared in `.env.example`
+4. Config templates use `envsubst` for variable substitution at init time
+5. Persistent data directories are created by `scripts/init.sh`
+6. A `justfile` module exposes per-service commands
+7. Documentation lives in `apps/docs/content/docs/services/<service>/`
+
+Use existing services as reference implementations throughout this guide. Good starting points:
+
+- **Bridge** (`apps/bridge/`) — Python service with a simple Containerfile and compose fragment
+- **The Lounge** (`apps/thelounge/`) — Node.js service with user management recipes
+- **UnrealIRCd** (`apps/unrealircd/`) — Complex multi-stage build with extensive configuration
+
+## 1. Create the app directory
+
+Create `apps/<service>/` with your application code, a `Containerfile`, and a `.dockerignore`.
+
+### Containerfile
+
+Use a multi-stage build: a **build stage** that compiles or installs dependencies, and a minimal **runtime stage** that copies only what is needed. Here is a minimal example modelled after the Bridge service:
+
+```dockerfile
+# Stage 1: Build
+FROM python:3.12-slim AS build
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
+
+# Stage 2: Runtime
+FROM python:3.12-slim AS production
+WORKDIR /app
+COPY --from=build /app /app
+
+# Run as non-root
+RUN groupadd --system --gid 1001 nonroot && \
+    useradd --system --uid 1001 --gid nonroot nonroot
+USER nonroot
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+    CMD ["curl", "-f", "http://localhost:8080/health"] || exit 1
+
+CMD ["python", "-m", "myservice"]
+```
+
+Key conventions:
+
+- Always run as a non-root user in the runtime stage
+- Include a `HEALTHCHECK` instruction — compose `depends_on` conditions rely on it
+- Use `EXPOSE` to document the ports your service listens on
+- Use build arguments (`ARG`) for version pinning (see `apps/unrealircd/Containerfile` for an example)
+
+Reference: [`apps/bridge/Containerfile`](https://github.com/allthingslinux/atl.chat/blob/main/apps/bridge/Containerfile), [`apps/unrealircd/Containerfile`](https://github.com/allthingslinux/atl.chat/blob/main/apps/unrealircd/Containerfile)
+
+### .dockerignore
+
+Add a `.dockerignore` to keep the build context small:
+
+```text
+.git
+__pycache__
+*.pyc
+node_modules
+.env*
+data/
+```
+
+### Verify the image builds
+
+```bash
+# From the repository root
+docker build -f apps/<service>/Containerfile apps/<service>/
+```
+
+## 2. Create the Docker Compose fragment
+
+Each service gets its own compose fragment at `infra/compose/<service>.yaml`. This keeps the root `compose.yaml` clean — it only uses `include:` directives.
+
+### Write the compose fragment
+
+Create `infra/compose/<service>.yaml` following this pattern (modelled after `infra/compose/bridge.yaml`):
+
+```yaml
+# =============================================================================
+# <Service Name> Stack
+# =============================================================================
+
+name: atl-<service>
+
+include:
+  - networks.yaml  # shared atl-chat network
+
+services:
+  atl-<service>:
+    build:
+      context: ../../apps/<service>
+      dockerfile: Containerfile
+
+    container_name: atl-<service>
+    restart: unless-stopped
+
+    # Wait for dependencies to be healthy before starting
+    depends_on:
+      atl-irc-server:
+        condition: service_healthy
+
+    env_file:
+      - path: ../../.env
+        required: false
+      - path: ../../.env.dev
+        required: false
+
+    environment:
+      - MY_SERVICE_PORT=${MY_SERVICE_PORT:-8080}
+      - TZ=UTC
+
+    volumes:
+      - ../../data/<service>:/data
+
+    ports:
+      - '${ATL_CHAT_IP:-127.0.0.1}:${MY_SERVICE_PORT:-8080}:8080'
+
+    networks:
+      - atl-chat
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+```
+
+Key points:
+
+- **`include: - networks.yaml`** — every fragment includes the shared network definition
+- **`depends_on` with `condition: service_healthy`** — use this when your service needs another service to be ready (e.g., IRC server, XMPP server)
+- **`env_file`** — load both `.env` (base) and `.env.dev` (dev overrides) with `required: false`
+- **Bind-mount volumes** — atl.chat uses bind-mount `data/` directories, not named Docker volumes
+- **Port binding** — bind to `${ATL_CHAT_IP:-127.0.0.1}` so ports are not exposed on all interfaces by default
+
+Reference: [`infra/compose/bridge.yaml`](https://github.com/allthingslinux/atl.chat/blob/main/infra/compose/bridge.yaml), [`infra/compose/irc.yaml`](https://github.com/allthingslinux/atl.chat/blob/main/infra/compose/irc.yaml)
+
+### Special case: network namespace sharing
+
+If your service needs to share a network namespace with another container (like Atheme shares with UnrealIRCd), use `network_mode: service:<other-service>` instead of joining the `atl-chat` network directly. See the `atl-irc-services` definition in `infra/compose/irc.yaml` for this pattern.
+
+### Register in the root compose.yaml
+
+Add your fragment to the `include:` list in the root `compose.yaml`:
+
+```yaml
+include:
+  - infra/compose/networks.yaml
+  - infra/compose/cert-manager.yaml
+  - infra/compose/irc.yaml
+  - infra/compose/xmpp.yaml
+  - infra/compose/bridge.yaml
+  - infra/compose/thelounge.yaml
+  - in
+==========================
+# <SERVICE NAME>
+# =============================================================================
+MY_SERVICE_PORT=8080                    # Port for the service HTTP endpoint
+MY_SERVICE_SECRET=change_me_secret      # API secret (change before production!)
+```
+
+Follow these conventions:
+
+- Use the `SCREAMING_SNAKE_CASE` naming convention with a service prefix (e.g., `BRIDGE_`, `THELOUNGE_`)
+- Provide sensible defaults for development
+- Mark secrets with a `change_me_` prefix so they are obvious in audits
+- Add a comment describing each variable
+
+### Add config templates (if needed)
+
+If your service needs a configuration file that references environment variables, create a template:
+
+1. Create `apps/<service>/config/<service>.conf.template` with `${VARIABLE}` placeholders
+2. Add the `envsubst` substitution step to `scripts/prepare-config.sh`
+
+Here is the pattern used for existing services in `prepare-config.sh`:
+
+```bash
+# Prepare <service> configuration
+local service_template="$PROJECT_ROOT/apps/<service>/config/<service>.conf.template"
+local service_config="$PROJECT_ROOT/apps/<service>/config/<service>.conf"
+if [ -f "$service_template" ]; then
+    log_info "Preparing <service> configuration from template..."
+    local temp_file="/tmp/<service>-config.tmp"
+    envsubst < "$service_template" > "$temp_file"
+    cp "$temp_file" "$service_config"
+    rm -f "$temp_file"
+    log_success "<Service> configuration prepared"
+fi
+```
+
+Reference: [`scripts/prepare-config.sh`](https://github.com/allthingslinux/atl.chat/blob/main/scripts/prepare-config.sh) — see how UnrealIRCd, Atheme, Bridge, and The Lounge configs are templated.
+
+### Document new variables
+
+Add all new variables to the [Environment Variables reference](/docs/reference/environment-variables). Include the variable name, description, whether it is required, and its default value. Flag any secrets with a security warning.
+
+## 4. Set up persistent data directories
+
+### Add directories to init.sh
+
+Edit `scripts/init.sh` and add your service's data directories to the `data_dirs` array in the `create_directories()` function:
+
+```bash
+local data_dirs=(
+    # ... existing directories ...
+    "$PROJECT_ROOT/data/<service>"
+    "$PROJECT_ROOT/data/<service>/logs"   # if your service writes logs
+)
+```
+
+### Set permissions
+
+If your service runs as a specific UID/GID inside the container, add a permissions block in the `set_permissions()` function:
+
+```bash
+# Set ownership for <service> data directory
+if [ -d "$PROJECT_ROOT/data/<service>" ]; then
+    sudo chown -R "$current_uid:$current_gid" "$PROJECT_ROOT/data/<service>"
+    chmod 755 "$PROJECT_ROOT/data/<service>"
+    log_info "Set permissions for <service> data directory"
+fi
+```
+
+The `data/` directory is gitignored. All persistent state (databases, logs, uploads) goes here — never inside `apps/<service>/`.
+
+Reference: [`scripts/init.sh`](https://github.com/allthingslinux/atl.chat/blob/main/scripts/init.sh) — see how IRC, Atheme, XMPP, and The Lounge directories are created.
+
+## 5. Add a justfile module
+
+Create `apps/<service>/justfile` with common development commands:
+
+```makefile
+# <Service Name> - loaded via root: mod <alias> './apps/<service>'
+
+default:
+    @just --list
+
+# Add service-specific recipes here, for example:
+logs:
+    docker compose -f ../../compose.yaml -p atl-chat logs -f atl-<service>
+
+shell:
+    docker compose -f ../../compose.yaml -p atl-chat exec atl-<service> sh
+
+restart:
+    docker compose -f ../../compose.yaml -p atl-chat restart atl-<service>
+```
+
+Then register the module in the root `justfile`:
+
+```makefile
+# <Service Name>
+mod <alias> './apps/<service>'
+```
+
+After this, users can run `just <alias> logs`, `just <alias> shell`, etc.
+
+Reference: [`apps/bridge/justfile`](https://github.com/allthingslinux/atl.chat/blob/main/apps/bridge/justfile), [`apps/thelounge/justfile`](https://github.com/allthingslinux/atl.chat/blob/main/apps/thelounge/justfile)
+
+## 6. Add documentation
+
+Create a documentation section for your service under `apps/docs/content/docs/services/<service>/`.
+
+### Required pages
+
+At minimum, create an overview page. Add configuration and operations pages if the service has non-trivial setup or operational procedures.
+
+**`services/<service>/index.mdx`** — overview page:
+
+```mdx
+---
+title: "<Service Name>"
+description: "Overview of <Service Name> within the atl.chat stack."
+---
+
+<Service Name> provides [brief description of what it does and why it exists in the stack].
+
+## Components
+
+[Describe the service architecture and how it connects to other services.]
+
+## Technology
+
+| Component | Technology |
+|---|---|
+| Runtime | Python 3.12 / Node.js 22 / etc. |
+| Container | Alpine-based multi-stage |
+| Config | envsubst templates |
+
+## Related pages
+
+- [Configuration](/docs/services/<service>/configuration) — environment variables and config files
+- [Operations](/docs/services/<service>/operations) — management commands and procedures
+```
+
+### Navigation metadata
+
+Create `services/<service>/meta.json` to control sidebar ordering:
+
+```json
+{
+  "title": "<Service Name>",
+  "pages": ["index", "configuration", "operations"]
+}
+```
+
+Then add your service to the parent `services/meta.json` pages array.
+
+### Update related pages
+
+- Update the [Architecture Overview](/docs/architecture) if your service changes the system topology or adds new inter-service connections
+- Update the [Ports reference](/docs/reference/ports) with any new port mappings
+- Update the [Environment Variables reference](/docs/reference/environment-variables) with all new variables
+
+## 7. Add tests
+
+### Health check test
+
+Add a health check test to `tests/unit/` or `tests/integration/` that verifies your service starts and responds:
+
+```python
+def test_service_health_check():
+    """Verify <service> container reports healthy."""
+    # For integration tests that require Docker:
+    result = subprocess.run(
+        ["docker", "compose", "ps", "--format", "json", "atl-<service>"],
+        capture_output=True, text=True
+    )
+    status = json.loads(result.stdout)
+    assert status["Health"] == "healthy"
+```
+
+### Integration tests
+
+If your service exposes an API or interacts with other services, add integration tests to `tests/integration/`. Use the existing pytest fixtures for Docker Compose orchestration.
+
+Reference: [`tests/`](https://github.com/allthingslinux/atl.chat/blob/main/tests/) — see existing test patterns for IRC and bridge services.
+
+## Quick reference checklist
+
+Use this as a final check before opening your PR:
+
+- [ ] `apps/<service>/` exists with `Containerfile` and `.dockerignore`
+- [ ] `infra/compose/<service>.yaml` defines the service with health check
+- [ ] Root `compose.yaml` includes your compose fragment
+- [ ] `docker compose config --quiet` passes
+- [ ] New env vars added to `.env.example` with comments
+- [ ] Config templates added to `scripts/prepare-config.sh` (if applicable)
+- [ ] `data/<service>/` added to `scripts/init.sh`
+- [ ] `apps/<service>/justfile` created and registered in root `justfile`
+- [ ] Documentation pages created under `services/<service>/`
+- [ ] `services/<service>/meta.json` created and parent `meta.json` updated
+- [ ] [Ports reference](/docs/reference/ports) updated
+- [ ] [Environment Variables reference](/docs/reference/environment-variables) updated
+- [ ] Health check and integration tests added

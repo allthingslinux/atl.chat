@@ -1,0 +1,47 @@
+{
+  "name": "@atl.chat/docs",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev --port 3001",
+    "build": "next build",
+    "start": "next start",
+    "deploy": "opennextjs-cloudflare build && tsx alchemy.run.ts",
+    "deploy:prod": "opennextjs-cloudflare build && tsx alchemy.run.ts --stage prod",
+    "preview": "opennextjs-cloudflare preview",
+    "destroy": "tsx alchemy.run.ts --destroy",
+    "destroy:prod": "tsx alchemy.run.ts --destroy --stage prod",
+    "check-types": "fumadocs-mdx && next typegen && tsc --noEmit",
+    "typecheck": "fumadocs-mdx && tsc --noEmit",
+    "lint:links": "tsx scripts/lint.ts",
+    "postinstall": "fumadocs-mdx"
+  },
+  "dependencies": {
+    "@opennextjs/cloudflare": "latest",
+    "@types/mdx": "^2.0.13",
+    "alchemy": "latest",
+    "fumadocs-core": "latest",
+    "fumadocs-mdx": "latest",
+    "fumadocs-ui": "npm:@fumadocs/base-ui@latest",
+    "lucide-react": "^0.564.0",
+    "mermaid": "^11.12.3",
+    "next": "16.1.6",
+    "next-themes": "^0.4.6",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "tailwind-merge": "^3.4.1"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260305.0",
+    "@tailwindcss/postcss": "^4.1.18",
+    "@types/node": "^25.2.3",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "next-validate-link": "^1.6.4",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.18",
+    "tsx": "^4",
+    "typescript": "^5.9.3",
+    "wrangler": "^4.69.0"
+  }
+}
