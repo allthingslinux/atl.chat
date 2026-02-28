@@ -88,7 +88,7 @@ docs/               # Architecture, services, onboarding, bridges
 ### System dependencies (pre-installed by VM snapshot)
 
 Docker, `just`, `uv`, `pnpm`, Node.js 22, Python 3.11+3.12, `envsubst` (gettext-base).
-Docker daemon must be started manually: `sudo dockerd &>/tmp/dockerd.log &` then ensure socket permissions: `sudo chmod 666 /var/run/docker.sock`.
+Docker daemon must be started manually: `sudo dockerd &>/tmp/dockerd.log &`. For non-root Docker access add your user to the `docker` group (`sudo usermod -aG docker $USER` then re-login), or prefix Docker commands with `sudo`. Avoid `chmod 666 /var/run/docker.sock` — it grants root-equivalent access to all local users.
 
 ### Starting the dev environment
 
