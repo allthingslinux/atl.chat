@@ -11,10 +11,10 @@ USER_ID=${PUID:-1000}
 GROUP_ID=${PGID:-1000}
 
 # Create directories with proper ownership
-mkdir -p /home/unrealircd/unrealircd/data /home/unrealircd/unrealircd/logs /home/unrealircd/unrealircd/tmp
+mkdir -p /home/unrealircd/unrealircd/data /home/unrealircd/unrealircd/tmp
 
 # Fix ownership of directories (important for rootless Docker)
-chown -R "${USER_ID}:${GROUP_ID}" /home/unrealircd/unrealircd/data /home/unrealircd/unrealircd/logs /home/unrealircd/unrealircd/tmp 2> /dev/null || true
+chown -R "${USER_ID}:${GROUP_ID}" /home/unrealircd/unrealircd/data /home/unrealircd/unrealircd/tmp 2> /dev/null || true
 
 # Ensure data directory has proper permissions for control socket
 chmod 755 /home/unrealircd/unrealircd/data 2> /dev/null || true

@@ -10,15 +10,11 @@ loadmodule "protocol/unreal4";
 loadmodule "backend/opensex";
 
 /* ---------- Crypto: pbkdf2v2 (SCRAM-SHA) ---------- */
-/* Password Hashing - HIGHLY RECOMMENDED to use pbkdf2v2 */
-/* SCRAM-SHA Setup Requirements: */
-/* 1. Build Atheme with: ./configure --with-libidn */
-/* 2. Load pbkdf2v2 BEFORE any other crypto module (done below) */
-/* 3. Configure pbkdf2v2_digest = "SCRAM-SHA-256" (recommended) */
-/* 4. Ensure pbkdf2v2_rounds is 10000-65536 for Cyrus SASL compatibility */
-/* 5. Load modules/saslserv/scram-sha module (done below) */
-loadmodule "crypto/pbkdf2v2";	/* PBKDF2 v2 - Needed for SASL SCRAM-SHA support, HIGHLY RECOMMENDED */
-/* loadmodule "crypto/pbkdf2"; -- PBKDF2 v1 - Verify-only for Atheme <= 7.2 - DEPRECATED */
+/* PBKDF2 v2 — required for SASL SCRAM-SHA support. Must be loaded BEFORE any other
+ * crypto module. Configure in the crypto{} block below.
+ * Docs: https://atheme.dev/docs/config/crypto */
+loadmodule "crypto/pbkdf2v2";
+/* loadmodule "crypto/pbkdf2"; -- PBKDF2 v1 - verify-only for Atheme <= 7.2 - DEPRECATED */
 
 /* ---------- NickServ ---------- */
 loadmodule "nickserv/main";	/* Core components */
@@ -310,36 +306,35 @@ loadmodule "proxyscan/dnsbl";			/* Proxyscan (DNSBL) modules */
 #loadmodule "contrib/backtrace";	/* Backtrace module */
 
 crypto {
-	/* Argon2 Configuration - Alternative to pbkdf2v2 */
-	#argon2_type = "argon2id"; /* Type: argon2d (GPU-resistant), argon2i (side-channel resistant), argon2id (balanced) */
-	#argon2_memcost = 16; /* Memory cost as power of 2 in KiB (3-30, default 16 = 64 MiB RAM) */
-	#argon2_timecost = 3; /* Time cost iterations (3-1048576, default 3) */
-	#argon2_threads = 1; /* CPU threads to use (1-255, default 1, experimental) */
-	#argon2_saltlen = 16; /* Salt length in bytes (4-48, default 16) */
-	#argon2_hashlen = 64; /* Digest length in bytes (16-128, default 64) */
+	/* Argon2 — alternative to pbkdf2v2 (requires --with-argon2 at build time)
+	 * argon2id is recommended: balances side-channel and GPU resistance. */
+	#argon2_type = "argon2id"; /* argon2d (GPU-resistant), argon2i (side-channel resistant), argon2id (balanced) */
+	#argon2_memcost = 16; /* memory cost as power of 2 in KiB (3–30, default 16 = 64 MiB) */
+	#argon2_timecost = 3; /* time cost iterations (3–1048576, default 3) */
+	#argon2_threads = 1; /* CPU threads to use (1–255, default 1, experimental) */
+	#argon2_saltlen = 16; /* salt length in bytes (4–48, default 16) */
+	#argon2_hashlen = 64; /* digest length in bytes (16–128, default 64) */
 
-	/* Scrypt Configuration - Alternative to pbkdf2v2 */
-	#scrypt_memlimit = 14; /* Memory cost as power of 2 in KiB (14-26, default 14 = 16 MiB RAM) */
-	#scrypt_opslimit = 524288; /* Computation amount (32768-4294967295, default 524288) */
+	/* Scrypt — alternative to pbkdf2v2 (requires --with-sodium at build time) */
+	#scrypt_memlimit = 14; /* memory cost as power of 2 in KiB (14–26, default 14 = 16 MiB) */
+	#scrypt_opslimit = 524288; /* computation amount (32768–4294967295, default 524288) */
 
-	/* PBKDF2v2 Configuration - HIGHLY RECOMMENDED */
-	/* Configure pbkdf2v2 for SCRAM-SHA-256 support */
-	/* SCRAM-SHA Requirements: */
-	/* 1. Must be loaded BEFORE any other crypto module */
-	/* 2. Use SCRAM-SHA-256 (recommended), SCRAM-SHA-512, or SCRAM-SHA-1 */
-	/* 3. Rounds must be 10000-65536 for Cyrus SASL compatibility */
-	/* 4. Load modules/saslserv/scram-sha module for SASL support */
-	pbkdf2v2_digest = "SCRAM-SHA-256"; /* Digest: SHA1, SHA2-256, SHA2-512, or SCRAM-* variants */
-	pbkdf2v2_rounds = 64000; /* Iteration count (10000-65536 for SCRAM-SHA, default 64000) */
-	pbkdf2v2_saltlen = 32; /* Salt length in bytes (default 32 for SCRAM-SHA-256) */
-	scram_mechanisms = "SCRAM-SHA-256"; /* Limit advertised SCRAM mechanisms to those with stored digests */
+	/* PBKDF2v2 — active configuration (loaded above).
+	 * Using "SCRAM-SHA-256" digest stores both a PBKDF2 key and a SCRAM ServerKey/StoredKey,
+	 * enabling SASL SCRAM-SHA-256 without preventing SASL PLAIN logins.
+	 * Valid rounds range: 10000–5000000 (default 64000). Keep ≤65536 for Cyrus SASL client compatibility.
+	 * Docs: https://atheme.dev/docs/config/crypto#pbkdf2v2 */
+	pbkdf2v2_digest = "SCRAM-SHA-256";
+	pbkdf2v2_rounds = 64000;
+	pbkdf2v2_saltlen = 32;
+	scram_mechanisms = "SCRAM-SHA-256"; /* advertise only mechanisms with stored digests */
 
-	/* bcrypt Configuration - Alternative to pbkdf2v2 */
-	#bcrypt_cost = 7; /* Rounds as power of 2 (4-31, default 7) */
+	/* bcrypt — alternative to pbkdf2v2 */
+	#bcrypt_cost = 7; /* rounds as power of 2 (4–31, default 7) */
 
-	/* Crypt3 SHA2 Configuration - Requires GNU glibc v2.7+ */
-	#crypt3_sha2_256_rounds = 5000; /* SHA2-256 rounds (5000-1000000, default 5000) */
-	#crypt3_sha2_512_rounds = 5000; /* SHA2-512 rounds (5000-1000000, default 5000) */
+	/* Crypt3 SHA2 — requires GNU glibc v2.7+ */
+	#crypt3_sha2_256_rounds = 5000; /* rounds (5000–1000000, default 5000) */
+	#crypt3_sha2_512_rounds = 5000; /* rounds (5000–1000000, default 5000) */
 };
 
 /* ---------- Server info and uplink ---------- */
@@ -684,36 +679,31 @@ ldap {
 };
 
 /* ---------- Logging ---------- */
-/* Log files split by category for production efficiency and security */
-logfile "logs/atheme.log" { error; info; admin; network; };
-logfile "logs/commands.log" { commands; };
-logfile "logs/audit.log" { register; set; denycmd; request; };
-
-/* Optional: Log to IRC channels (uncomment if needed) */
-#logfile "#services" { debug; };
-#logfile "!snotices" { debug; };
+/* All categories to stdout — captured by Docker json-file driver with rotation.
+ * Use `docker compose logs atl-irc-services` to read. */
+logfile "/dev/stdout" { error; info; admin; network; commands; register; set; denycmd; request; };
 
 /* ---------- General settings ---------- */
 general {
-	#permissive_mode; /* Unknown function - not documented */
-	helpchan = "${ATHEME_HELP_CHANNEL}"; /* Network help channel shown for unknown commands */
-	helpurl = "${ATHEME_HELP_URL}"; /* Webpage for services help */
-	#silent; /* Prevents WALLOPS/GLOBOPS - not recommended to uncomment */
-	#verbose_wallops; /* Additional event information - may cause large amounts of messages */
-	join_chans; /* Allow ChanServ to join registered channels (recommended) */
-	leave_chans; /* ChanServ leaves channels after everyone else (recommended) */
-	#secure; /* Requires /msg <service>@<host> instead of /msg <service> */
-	uflags = { hidemail; }; /* Default user flags: hides email address */
-	cflags = { guard; verbose; }; /* Default channel flags: ChanServ inhabits channel, verbose notifications */
-	#raw; /* Allows RAW/INJECT commands - TAINTS the instance, use for debugging only */
-	flood_msgs = 7; /* Number of messages to trigger flood protection */
+	#permissive_mode; /* Purpose undocumented; not recommended to enable */
+	helpchan = "${ATHEME_HELP_CHANNEL}"; /* Channel shown when user requests help for an unknown command */
+	helpurl = "${ATHEME_HELP_URL}"; /* URL shown when user requests help for an unknown command */
+	#silent; /* Suppresses WALLOPS/GLOBOPS — not recommended */
+	#verbose_wallops; /* Enables additional event WALLOPS (e.g. AKILLs) — can be noisy */
+	join_chans; /* Allow ChanServ to join registered channels (required for fantasy commands) */
+	leave_chans; /* ChanServ leaves channels after everyone else leaves */
+	#secure; /* Require /msg <service>@<host> instead of /msg <service> */
+	uflags = { hidemail; }; /* Default flags for new user accounts */
+	cflags = { guard; verbose; }; /* Default flags for newly registered channels */
+	#raw; /* Allows RAW/INJECT commands — TAINTS the instance; debugging only */
+	flood_msgs = 7; /* Number of messages within flood_time that triggers flood protection */
 	flood_time = 10; /* Time window in seconds for flood detection */
-	ratelimit_uses = 5; /* Number of uses before ratelimit kicks in */
-	ratelimit_period = 60; /* Time period in seconds for ratelimit */
-	#vhost_change = 30; /* Days before vHost can be changed again */
-	kline_time = 7; /* Default expiration time for KLINEs in days (0 = permanent) */
+	ratelimit_uses = 5; /* Uses of ratelimited commands before cooldown applies */
+	ratelimit_period = 60; /* Cooldown period in seconds for ratelimited commands */
+	#vhost_change = 30; /* Days a user must wait before changing vHost again (HostServ) */
+	kline_time = 7; /* Default KLINE expiry in days (0 = permanent) */
 	#kline_with_ident; /* KLINE user@host instead of *@host */
-	#kline_verified_ident; /* KLINE *@host for unverified, user@host for verified idents */
+	#kline_verified_ident; /* KLINE *@host for unverified idents, user@host for verified */
 	clone_time = 0;
 	commit_interval = 5; /* Save database every 5 minutes */
 	#db_save_blocking;

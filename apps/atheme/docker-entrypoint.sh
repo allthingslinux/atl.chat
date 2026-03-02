@@ -13,7 +13,7 @@ if [ "$(id -u)" = "0" ]; then
 fi
 
 # Create directories with proper ownership
-mkdir -p /usr/local/atheme/data /usr/local/atheme/logs /usr/local/atheme/var
+mkdir -p /usr/local/atheme/data /usr/local/atheme/var
 
 # Validate configuration exists
 if [ ! -f "/usr/local/atheme/etc/atheme.conf" ]; then
@@ -32,13 +32,6 @@ if [ ! -w "/usr/local/atheme/data" ]; then
     exit 1
 fi
 
-# Validate logs directory is writable
-if [ ! -w "/usr/local/atheme/logs" ]; then
-    echo "ERROR: Logs directory is not writable"
-    echo "Please check volume mount permissions"
-    exit 1
-fi
-
 # Check if this is first run (no database exists)
 if [ ! -f "/usr/local/atheme/data/services.db" ]; then
     echo "First run detected - creating initial database..."
@@ -52,6 +45,6 @@ fi
 echo "Starting Atheme services as user $(id -un) (UID: $(id -u))..."
 echo "Configuration: /usr/local/atheme/etc/atheme.conf"
 echo "Data directory: /usr/local/atheme/data"
-echo "Logs directory: /usr/local/atheme/logs"
+echo "Logging: stdout (Docker)"
 
 exec /usr/local/atheme/bin/atheme-services -n -c /usr/local/atheme/etc/atheme.conf -D /usr/local/atheme/data "$@"

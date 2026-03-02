@@ -111,10 +111,8 @@ ATHEME_SEND_PASSWORD=testpass
         # Check that required directories were created (canonical layout)
         expected_dirs = [
             "data/irc/data",
-            "data/irc/logs",
             "data/irc/webpanel-data",
             "data/atheme/data",
-            "data/atheme/logs",
             "data/xmpp/data",
             "data/xmpp/uploads",
             "data/certs",
@@ -182,9 +180,7 @@ ATHEME_SEND_PASSWORD=testpass
         # Verify directories were created (canonical layout)
         assert (temp_project / "data").exists()
         assert (temp_project / "data/irc/data").exists()
-        assert (temp_project / "data/irc/logs").exists()
         assert (temp_project / "data/atheme/data").exists()
-        assert (temp_project / "data/atheme/logs").exists()
         assert (temp_project / "data/certs").exists()
 
     @pytest.mark.integration
