@@ -1,0 +1,129 @@
+{
+  $schema: 'https://docs.renovatebot.com/renovate-schema.json',
+  extends: [
+    'config:best-practices', // includes helpers:pinGitHubActionDigests
+    ':semanticCommits',
+    ':separateMultipleMajorReleases',
+    ':prNotPending',
+    ':dependencyDashboard',
+    ':updateNotScheduled',
+    'schedule:earlyMondays',
+    'customManagers:githubActionsVersions',
+    'security:openssf-scorecard',
+  ],
+  timezone: 'America/New_York',
+  enabledManagers: ['npm', 'pep621', 'github-actions', 'docker-compose', 'dockerfile'],
+  dependencyDashboard: true,
+  dependencyDashboardOSVVulnerabilitySummary: 'unresolved',
+  osvVulnerabilityAlerts: true,
+  platformAutomerge: true,
+  rebaseWhen: 'conflicted',
+  fetchChangeLogs: 'pr',
+  commitBodyTable: true,
+  semanticCommitScope: 'deps',
+  minimumReleaseAge: '7 days',
+  internalChecksFilter: 'strict',
+  pinDigests: true,
+  prNotPendingHours: 24,
+  suppressNotifications: ['prIgnoreNotification'],
+  vulnerabilityAlerts: {
+    enabled: true,
+    labels: ['deps: security'],
+    automerge: false,
+  },
+  lockFileMaintenance: {
+    enabled: true,
+    automerge: true,
+    schedule: ['before 4am on Monday'],
+  },
+  ignorePaths: [
+    '**/node_modules/**',
+    '**/.venv/**',
+    '**/dist/**',
+    '**/build/**',
+  ],
+  prBodyColumns: ['Package', 'Update', 'Type', 'Change', 'Age', 'Confidence', 'References'],
+  packageRules: [
+    // Label major bumps as breaking
+    {
+      matchUpdateTypes: ['major'],
+      addLabels: ['breaking'],
+    },
+    // Patch updates — group and automerge silently
+    {
+      matchUpdateTypes: ['patch'],
+      groupName: 'patch',
+      automerge: true,
+      automergeType: 'branch',
+      minimumReleaseAge: '7 days',
+      addLabels: ['deps: patch'],
+    },
+    // Minor updates — group and automerge silently (skip 0.x — may have breaking changes)
+    {
+      matchUpdateTypes: ['minor'],
+      matchCurrentVersion: '!/^0/',
+      groupName: 'minor',
+      automerge: true,
+      automergeType: 'branch',
+      minimumReleaseAge: '7 days',
+      addLabels: ['deps: minor'],
+    },
+    // Major updates — no automerge, needs review
+    {
+      matchUpdateTypes: ['major'],
+      groupName: 'major',
+      automerge: false,
+      addLabels: ['deps: major', 'deps: needs-review'],
+    },
+    // GitHub Actions — group and automerge
+    {
+      matchManagers: ['github-actions'],
+      groupName: 'github-actions',
+      automerge: true,
+      automergeType: 'branch',
+      addLabels: ['deps: github-actions'],
+      commitMessageTopic: '{{depName}}',
+    },
+    // Docker — group and automerge
+    {
+      matchManagers: ['docker-compose', 'dockerfile'],
+      groupName: 'docker',
+      automerge: true,
+      automergeType: 'branch',
+      addLabels: ['deps: docker'],
+    },
+    // Python deps — update lockfile in place rather than bumping ranges
+    {
+      matchManagers: ['pep621'],
+      rangeStrategy: 'update-lockfile',
+    },
+    // Dev/lint tools — low priority, automerge
+    {
+      matchPackageNames: ['ruff', 'basedpyright', 'hypothesis'],
+      groupName: 'dev',
+      automerge: true,
+      automergeType: 'branch',
+      addLabels: ['deps: dev'],
+      prPriority: -1,
+    },
+    // Test deps — low priority, automerge
+    {
+      matchDepTypes: ['test'],
+      automerge: true,
+      automergeType: 'branch',
+      groupName: 'test',
+      addLabels: ['deps: test'],
+      prPriority: -1,
+    },
+    // Type stubs — low priority, monthly, automerge
+    {
+      matchPackageNames: ['/^types?-/', '/^typing-/', '/^@types\\//', '/-types$/', '/-stubs?$/'],
+      groupName: 'types',
+      automerge: true,
+      automergeType: 'branch',
+      addLabels: ['deps: types'],
+      schedule: ['before 4am on the first day of the month'],
+      prPriority: -2,
+    },
+  ],
+}
