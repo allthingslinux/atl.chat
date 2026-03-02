@@ -46,7 +46,7 @@ prepare_config() {
     exit 1
   fi
 
-  # Load .env (base) then .env.dev (overrides for just dev)
+  # Load .env (base), then .env.dev (overrides) only if in dev
   if [ -f "$PROJECT_ROOT/.env" ]; then
     log_info "Loading environment variables from .env"
     set -a
@@ -54,16 +54,17 @@ prepare_config() {
     source "$PROJECT_ROOT/.env"
     set +a
   fi
-  if [ -f "$PROJECT_ROOT/.env.dev" ]; then
-    log_info "Loading .env.dev overrides"
+  # Only load .env.dev if it exists AND ATL_ENVIRONMENT is dev.
+  # This prevents dev overrides from leaking into production config generation.
+  if [ -f "$PROJECT_ROOT/.env.dev" ] && [ "${ATL_ENVIRONMENT:-}" = "dev" ]; then
+    log_info "Loading .env.dev overrides (ATL_ENVIRONMENT=dev)"
     set -a
     # shellcheck disable=SC1091
     source "$PROJECT_ROOT/.env.dev"
     set +a
   fi
-  if [ -f "$PROJECT_ROOT/.env" ] || [ -f "$PROJECT_ROOT/.env.dev" ]; then
-    log_info "Environment variables loaded"
-  fi
+  log_info "Environment variables loaded"
+  export DOLLAR='$'
 
   # Ensure Atheme JSON-RPC port has a default (for existing .env without it)
   export ATHEME_HTTPD_PORT="${ATHEME_HTTPD_PORT:-8081}"
@@ -87,9 +88,6 @@ prepare_config() {
   # IRC cert paths: use shared data/certs (Let's Encrypt layout), matching Prosody
   export IRC_SSL_CERT_PATH="${IRC_SSL_CERT_PATH:-/home/unrealircd/unrealircd/certs/live/${IRC_DOMAIN:-irc.localhost}/fullchain.pem}"
   export IRC_SSL_KEY_PATH="${IRC_SSL_KEY_PATH:-/home/unrealircd/unrealircd/certs/live/${IRC_DOMAIN:-irc.localhost}/privkey.pem}"
-
-  # IRC log path: must match compose volume mount (data/irc/logs -> /home/unrealircd/unrealircd/logs)
-  export IRC_LOG_PATH="${IRC_LOG_PATH:-/home/unrealircd/unrealircd/logs}"
 
   # Cloak keys (fallback to example keys for dev if unset - regenerate for production)
   export IRC_CLOAK_KEY_1="${IRC_CLOAK_KEY_1:-daa0ad2a69ba7683a2cdb02499f2e98b0729423bb7578d1f1dfbcdfe015f1f8b554b13203289c83D}"

@@ -57,12 +57,9 @@ create_directories() {
     # Data directories (must match compose volume mounts)
     local data_dirs=(
         "$PROJECT_ROOT/data/irc/data"
-        "$PROJECT_ROOT/data/irc/logs"
         "$PROJECT_ROOT/data/irc/webpanel-data"
         "$PROJECT_ROOT/data/atheme/data"
-        "$PROJECT_ROOT/data/atheme/logs"
         "$PROJECT_ROOT/data/xmpp/data"
-        "$PROJECT_ROOT/data/xmpp/logs"
         "$PROJECT_ROOT/data/xmpp/uploads"
         "$PROJECT_ROOT/data/thelounge"
         "$PROJECT_ROOT/data/certs"
@@ -124,20 +121,6 @@ set_permissions() {
         chmod 755 "$PROJECT_ROOT/data/atheme"
         log_info "Set permissions for Atheme data directory"
   fi
-
-    # Set ownership for UnrealIRCd logs
-    if [ -d "$PROJECT_ROOT/data/irc/logs" ]; then
-        sudo chown -R "$current_uid:$current_gid" "$PROJECT_ROOT/data/irc/logs"
-        chmod 755 "$PROJECT_ROOT/data/irc/logs"
-        log_info "Set ownership for UnrealIRCd logs"
-    fi
-
-    # Set ownership for Atheme logs with correct UID
-    if [ -d "$PROJECT_ROOT/data/atheme/logs" ]; then
-        sudo chown -R "$atheme_uid:$atheme_gid" "$PROJECT_ROOT/data/atheme/logs"
-        chmod 755 "$PROJECT_ROOT/data/atheme/logs"
-        log_info "Set permissions for Atheme logs directory"
-    fi
 
     # Set permissions for SSL certificates
     if [ ! -d "$PROJECT_ROOT/apps/unrealircd/config/tls" ]; then

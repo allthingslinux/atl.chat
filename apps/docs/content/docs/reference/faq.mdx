@@ -1,0 +1,170 @@
+---
+title: FAQ
+description: Frequently asked questions about atl.chat, connecting to services, contributing, and day-to-day operations.
+---
+
+This page answers the most common questions about atl.chat — what it is, how to connect, how to contribute, and how to handle everyday operational tasks.
+
+## General
+
+### What is atl.chat?
+
+atl.chat is the unified chat infrastructure for the [All Things Linux](https://allthingslinux.org) community. It provides IRC (via [UnrealIRCd](/docs/services/irc) and [Atheme](/docs/services/atheme)), XMPP (via [Prosody](/docs/services/xmpp)), a Discord bridge, and web-based clients — all running as a single Docker Compose stack in one monorepo.
+
+### How do the services relate to each other?
+
+UnrealIRCd handles IRC connections and Atheme provides nickname/channel registration on top of it (they share a Docker network namespace). Prosody runs the XMPP side independently. The [Bridge](/docs/services/bridge) relays messages between Discord, IRC, and XMPP so users on any platform see the same conversations. [The Lounge](/docs/services/thelounge) and [Gamja](/docs/reference/glossary) are web IRC clients that connect to UnrealIRCd, and the [WebPanel](/docs/services/webpanel) gives operators a browser-based admin interface via UnrealIRCd's JSON-RPC API.
+
+### Is atl.chat open source?
+
+Yes. The entire monorepo — server configs, bridge code, web apps, documentation, and infrastructure — is open source. You can fork it, run your own instance, or contribute back via pull requests.
+
+## Connecting
+
+### How do I connect to IRC?
+
+You have several options:
+
+1. **Desktop IRC client** (HexChat, irssi, WeeChat) — connect to `irc.atl.tools` on port `6697` with TLS enabled.
+2. **The Lounge** — open the web client in your browser (port `9000` in dev, or the public URL in production). You need an account created by an operator (`just lounge add`).
+3. **Gamja** — a lightweight web client (planned, not yet active).
+
+See the [IRC overview](/docs/services/irc) for full connection details.
+
+### How do I connect to XMPP?
+
+Use any XMPP client (Conversations on Android, Gajim on desktop, Moxxy on iOS) and connect to the Prosody server on port `5222` with TLS. Browser-based access is available via BOSH (port `5280`) or WebSocket. See the [XMPP overview](/docs/services/xmpp) for details.
+
+### Can I use Discord instead?
+
+Yes. The [Bridge](/docs/services/bridge) relays messages between Discord, IRC, and XMPP channels automatically. You chat on Discord as usual and your messages appear on IRC/XMPP (and vice versa). No extra setup is needed on the user side.
+
+### How do I register my IRC nickname?
+
+After connecting, register with NickServ:
+
+```text
+/msg NickServ REGISTER <password> <email>
+```
+
+Then identify on future connections:
+
+```text
+/msg NickServ IDENTIFY <password>
+```
+
+Most modern clients support SASL authentication, which identifies you automatically at connect time. See the [Atheme operations page](/docs/services/atheme/operations) for more NickServ commands.
+
+## Contributing
+
+### How do I contribute to atl.chat?
+
+1. Fork the repository and clone it locally.
+2. Follow the [local development guide](/docs/getting-started/local-development) to get the stack running.
+3. Create a feature branch, make your changes, and open a pull request.
+
+The project uses [Conventional Commits](/docs/development/contributing), pre-commit hooks (`just lint`), and automated tests (`just test`). See the full [contributing guide](/docs/development/contributing) for branch naming, code style, and review expectations.
+
+### What languages and tools does the project use?
+
+| Area | Language / Tool |
+|---|---|
+| IRC server config | UnrealIRCd config format, Lua scripts |
+| IRC services | Atheme (C, configured via template) |
+| XMPP server | Prosody (Lua configuration) |
+| Bridge | Python |
+| Web app and docs | TypeScript, Next.js, MDX |
+| Infrastructure | Docker Compose, bash scripts, `just` |
+| Linting | ruff (Python), Biome (TypeScript), luacheck (Lua), shellcheck (bash) |
+
+See the [contributing page](/docs/development/contributing) for code style guides per language.
+
+### How do I run the tests?
+
+```bash
+# Unit tests (fast, no Docker needed)
+uv run pytest tests/unit/
+
+# Bridge tests (fast, no Docker needed)
+uv run pytest apps/bridge/tests/
+
+# All tests
+just test-all
+```
+
+See the [testing guide](/docs/development/testing) for the full test directory layout, fixtures, and CI integration.
+
+## Operations
+
+### How do I add a new user to The Lounge?
+
+```bash
+just lounge add <username>
+```
+
+You will be prompted for a password. The user can then log in to The Lounge web interface. See [The Lounge operations](/docs/services/thelounge/operations) for listing, resetting, and removing users.
+
+### How do I rotate secrets and passwords?
+
+Generate new values for sensitive environment variables (anything containing `PASSWORD`, `TOKEN`, `SECRET`, or `KEY` in `.env`), then restart the affected services:
+
+```bash
+# Generate a secure random value
+openssl rand -base64 32
+
+# After updating .env, restart the stack
+just prod
+```
+
+See the [security page](/docs/operations/security) for per-variable generation commands and the full credential rotation procedure.
+
+### How do I check if services are healthy?
+
+Quick health checks for each service:
+
+```bash
+# IRC — verify TLS connection
+openssl s_client -connect localhost:6697 -servername irc.localhost </dev/null 2>/dev/null | head -5
+
+# XMPP — check BOSH endpoint
+curl -sf http://localhost:5280/http-bind
+
+# The Lounge — HTTP health
+curl -sf http://localhost:9000
+
+# Container status
+just status
+```
+
+See the [monitoring page](/docs/operations/monitoring) for comprehensive health checks, log inspection patterns, and alerting strategies.
+
+### How do I update or upgrade services?
+
+1. Back up persistent data (`data/` directory) — see the [backups guide](/docs/operations/backups).
+2. Pull the latest changes: `git pull`.
+3. Rebuild and restart: `just build` then `just prod`.
+4. Verify services are running: `just status`.
+
+For TLS certificate renewal and post-renewal hooks (UnrealIRCd rehash, Prosody reload), see the [SSL/TLS page](/docs/operations/ssl-tls).
+
+### Where do I find logs?
+
+```bash
+# Follow all service logs
+just logs
+
+# Follow a specific service
+just logs unrealircd
+just logs prosody
+just logs bridge
+```
+
+Docker Compose logs are the primary source. In dev mode, [Dozzle](http://localhost:8082) provides a browser-based log viewer. See [monitoring](/docs/operations/monitoring) for log inspection patterns and filtering tips.
+
+
+## Related pages
+
+- [Glossary](/docs/reference/glossary) — definitions of project-specific terms and acronyms
+- [Getting Started](/docs/getting-started) — prerequisites and local development setup
+- [Environment Variables](/docs/reference/environment-variables) — complete variable reference
+- [Troubleshooting](/docs/operations/troubleshooting) — cross-service diagnostic commands and common issues

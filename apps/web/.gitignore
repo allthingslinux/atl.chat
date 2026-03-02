@@ -1,0 +1,14 @@
+# Next.js
+.next/
+out/
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Environment
+.env
+.env.*
+!.env.example

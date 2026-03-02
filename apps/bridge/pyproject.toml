@@ -44,11 +44,13 @@ test = [
   "pytest-randomly",
   "pytest-xdist",
   "pytest-html",
+  "hypothesis",
 ]
+lint = ["ruff"]
 types = ["types-pyyaml", "types-mock", "annotated-types"]
 
 [tool.uv]
-default-groups = ["test", "types"]
+default-groups = ["test", "lint", "types"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/bridge"]

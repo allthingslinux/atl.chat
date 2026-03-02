@@ -37,4 +37,4 @@ Env vars for dev: `NEXT_PUBLIC_IRC_WS_URL`, `NEXT_PUBLIC_XMPP_BOSH_URL` (set in 
 ## Related
 
 - [Monorepo AGENTS.md](../../AGENTS.md)
-- [docs/services/web/](../../docs/services/web/)
+- [docs-old/services/web/](../../docs-old/services/web/)

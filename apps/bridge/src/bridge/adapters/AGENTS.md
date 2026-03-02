@@ -49,7 +49,7 @@ Outbound events (`MessageOut`, `MessageDeleteOut`, `ReactionOut`, `TypingOut`) a
 
 ## IRC Adapter (`irc/`)
 
-Env: `BRIDGE_IRC_NICK` (default: `atl-bridge`).
+Env: `BRIDGE_IRC_NICK` (default: `bridge`).
 
 **client.py** — `IRCClient` (pydle.Client):
 

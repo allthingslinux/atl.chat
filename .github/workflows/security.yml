@@ -13,19 +13,21 @@ on:
 jobs:
   security:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd  # v5
         with:
           fetch-depth: 0
       - name: Run GitLeaks
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7  # v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
       - name: Build and Scan Image
         if: inputs.scan-image
         run: |-
           cd ${{ inputs.working-directory }}
-          docker build -t scan-target .
+          docker build -f Containerfile -t scan-target .
           docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
             -v "$PWD:/tmp/work" \
             ghcr.io/aquasecurity/trivy:latest image \

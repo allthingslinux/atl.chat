@@ -1,5 +1,5 @@
 # Setup phase
-FROM node:current-alpine3.22@sha256:3e843c608bb5232f39ecb2b25e41214b958b0795914707374c8acc28487dea17 AS base
+FROM node:22-alpine3.21 AS base
 
 LABEL maintainer="AllThingsLinux IRC Infrastructure" \
     description="Gamja - Lightweight IRC web client" \
@@ -27,7 +27,7 @@ RUN wget -q "https://codeberg.org/emersion/gamja/archive/v${GAMJA_VERSION}.tar.g
 
 WORKDIR /var/www/html/gamja
 
-RUN npm install --omit=dev
+RUN npm ci --omit=dev
 
 # Development server phase
 FROM base AS dev
@@ -37,4 +37,11 @@ COPY --chown=gamja:gamja ./config/config.json /var/www/html/gamja/config.json
 
 WORKDIR /var/www/html/gamja
 
+USER gamja:gamja
+
 EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:8080/ || exit 1
+
+CMD ["npm", "start"]

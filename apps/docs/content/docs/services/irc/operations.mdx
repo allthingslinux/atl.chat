@@ -1,0 +1,255 @@
+---
+title: IRC Operations
+description: Oper setup, Atheme bootstrap, config reload, and SSL certificate management for the IRC stack.
+---
+
+This page covers day-to-day and first-time operational tasks for the IRC stack: granting IRC operator access, initialising Atheme services, reloading configuration, and rotating SSL certificates.
+
+## Oper setup
+
+IRC operators are configured in the UnrealIRCd config template via `oper {}` blocks. The default admin oper block uses environment variables for the password and vhost.
+
+### Generating an oper password
+
+Oper passwords must be stored as argon2id hashes. Generate one using the UnrealIRCd container:
+
+```bash
+docker run --rm ghcr.io/allthingslinux/unrealircd \
+  ./unrealircd mkpasswd argon2 'your-secure-password-here'
+```
+
+This outputs a hash like `$argon2id$v=19$m=6144,t=2,p=2$...`. Set it in your `.env`:
+
+```bash
+IRC_OPER_PASSWORD='$argon2id$v=19$m=6144,t=2,p=2$...'
+```
+
+Then regenerate the config and reload:
+
+```bash
+scripts/prepare-config.sh
+just irc reload
+```
+
+### Default oper block
+
+The template defines an `admin` oper with these properties:
+
+| Property | Value | Notes |
+|---|---|---|
+| `class` | `opers` | Higher sendq/recvq limits |
+| `mask` | `*@172.16.0.0/12` | Restricted to Docker network |
+| `password` | `${IRC_OPER_PASSWORD}` | Argon2id hash from `.env` |
+| `operclass` | `netadmin-with-override` | Full admin privileges |
+| `vhost` | `${IRC_STAFF_VHOST}` | Custom hostname for opers |
+| `require-modes` | `z` | Must connect via TLS |
+
+### Becoming an operator
+
+Once connected to the IRC server via a TLS connection, authenticate with:
+
+```
+/OPER admin your-plaintext-password
+```
+
+You will receive modes `+xwsH` and be auto-joined to `#mod-chat`.
+
+### Bridge oper
+
+A separate `bridge` oper exists for the Discord-IRC bridge with minimal permissions (channel override and relaymsg only). Its password is set via `BRIDGE_IRC_OPER_PASSWORD` in `.env`.
+
+## Atheme bootstrap
+
+On first start, Atheme's database is empty. You need to register the first account and claim founder status.
+
+### First-run sequence
+
+1. Connect to the IRC server and register a nickname with NickServ:
+
+   ```
+   /MSG NickServ REGISTER your-password your-email@example.com
+   ```
+
+2. Check your email and confirm the registration (if email verification is enabled):
+
+   ```
+   /MSG NickServ VERIFY REGISTER yournick confirmation-code
+   ```
+
+3. Identify with your registered account:
+
+   ```
+   /MSG NickServ IDENTIFY your-password
+   ```
+
+4. OPER up to gain admin privileges:
+
+   ```
+   /OPER admin your-oper-password
+   ```
+
+5. Register the primary channel:
+
+   ```
+   /JOIN #your-channel
+   /MSG ChanServ REGISTER #your-channel
+   ```
+
+6. Set yourself as network administrator in Atheme (requires oper):
+
+   ```
+   /MSG OperServ SOPER yournick add SRA
+   ```
+
+   `SRA` (Services Root Administrator) gives full control over all Atheme services.
+
+### Atheme database
+
+Atheme stores its database in `data/atheme/data/`. The database is written periodically and on clean shutdown. If Atheme crashes, you may lose recent registrations since the last write.
+
+## Configuration reload
+
+UnrealIRCd supports live config reloads without disconnecting users. Atheme does not support live reloads and requires a restart.
+
+### Rehash vs restart
+
+| Action | Command | Effect | When to use |
+|---|---|---|---|
+| Rehash (reload) | `just irc reload` | Re-reads config without disconnecting users | Most config changes: set blocks, oper blocks, listen options, anti-flood, spamfilters |
+| Restart | `docker compose restart atl-irc-server` | Full process restart, disconnects all users | Module changes (loadmodule/unloadmodule), TLS library updates, binary upgrades |
+
+### What requires a restart
+
+These changes cannot be applied via rehash:
+
+- Adding or removing `loadmodule` directives
+- Changing the `me {}` block (server name, SID)
+- Upgrading the UnrealIRCd binary
+- Changes to listen block socket types (adding/removing Unix sockets)
+
+### What can be rehashed
+
+Most configuration changes take effect immediately after rehash:
+
+- `set {}` block changes (modes, anti-flood, connthrottle, etc.)
+- `oper {}` block changes (passwords, masks, permissions)
+- `allow {}` and `deny {}` blocks
+- `ban nick {}` and `except ban {}` blocks
+- `blacklist {}` (DNSBL) changes
+- `link {}` block changes
+- Spamfilter rules
+- TLS certificate paths (triggers automatic cert reload)
+
+### Performing a rehash
+
+```bash
+# Via just recipe (sends HUP signal)
+just irc reload
+
+# Or directly via docker
+docker compose -f compose.yaml -p atl-chat kill -s HUP atl-irc-server
+```
+
+Verify the rehash succeeded by checking logs:
+
+```bash
+docker compose -f compose.yaml -p atl-chat logs --tail=20 atl-irc-server
+```
+
+Look for `Configuration loaded` in the output.
+
+## SSL certificate rotation
+
+Certificates are managed by the cert-manager service (Lego/Let's Encrypt). When a certificate is renewed, UnrealIRCd needs to pick up the new cert.
+
+### How cert renewal works
+
+1. The cert-manager container runs Lego to obtain/renew certificates via DNS-01 challenge (Cloudflare)
+2. Certificates are written to `data/certs/live/<domain>/` (Let's Encrypt directory layout)
+3. UnrealIRCd mounts `data/certs/` at `/home/unrealircd/unrealircd/certs/`
+
+### Triggering a TLS reload
+
+After certificate renewal, signal UnrealIRCd to reload the new certificate:
+
+```bash
+# Rehash picks up new cert files automatically
+just irc reload
+```
+
+UnrealIRCd re-reads the certificate and key files on every rehash. No restart is needed.
+
+### Manual certificate check
+
+Verify the certificate currently in use:
+
+```bash
+# Check cert expiry from outside
+echo | openssl s_client -connect localhost:6697 -servername irc.atl.chat 2>/dev/null | \
+  openssl x509 -noout -dates
+
+# Check cert files on disk
+openssl x509 -in data/certs/live/irc.atl.chat/fullchain.pem -noout -dates
+```
+
+### Certificate expiry notifications
+
+UnrealIRCd has built-in certificate expiry monitoring (`certificate-expiry-notification yes` in the config). It warns IRC operators when the certificate is approaching expiry.
+
+## Health checks
+
+The UnrealIRCd container includes a health check that verifies the process is running.
+
+### Container health
+
+```bash
+# Check container health status
+docker inspect --format='{{.State.Health.Status}}' atl-irc-server
+
+# Check all IRC stack containers
+docker compose -f compose.yaml -p atl-chat ps
+```
+
+### Log inspection
+
+```bash
+# Follow UnrealIRCd logs
+docker compose -f compose.yaml -p atl-chat logs -f atl-irc-server
+
+# Follow Atheme logs
+docker compose -f compose.yaml -p atl-chat logs -f atl-irc-services
+
+# Check for errors in the last 50 lines
+docker compose -f compose.yaml -p atl-chat logs --tail=50 atl-irc-server | grep -i error
+```
+
+### Connectivity test
+
+```bash
+# Test TLS connection to IRC
+echo "QUIT" | openssl s_client -connect localhost:6697 -servername irc.atl.chat 2>/dev/null
+
+# Test WebSocket port
+curl -s -o /dev/null -w "%{http_code}" http://localhost:8000
+
+# Test RPC port
+curl -sk https://localhost:8600/api/server.list
+```
+
+### Common failure modes
+
+| Symptom | Likely cause | Resolution |
+|---|---|---|
+| Container exits immediately | Config syntax error | Check logs: `docker compose logs atl-irc-server` |
+| TLS handshake fails | Missing or expired certificate | Verify cert paths and expiry dates |
+| Atheme won't link | Wrong `IRC_SERVICES_PASSWORD` | Ensure password matches in both configs |
+| WebSocket 502 | Port 8000 not listening | Check UnrealIRCd started with websocket module loaded |
+| RPC auth fails | Wrong `WEBPANEL_RPC_PASSWORD` | Ensure password matches between WebPanel and UnrealIRCd |
+
+## Related pages
+
+- [Configuration](/docs/services/irc/configuration) — env vars, config templates, secrets
+- [Troubleshooting](/docs/services/irc/troubleshooting) — detailed diagnostic procedures
+- [Atheme Operations](/docs/services/atheme/operations) — NickServ, ChanServ, OperServ commands
+- [SSL/TLS](/docs/operations/ssl-tls) — cert-manager setup and renewal
+- [Monitoring](/docs/operations/monitoring) — health checks across all services

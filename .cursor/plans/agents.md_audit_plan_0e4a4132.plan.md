@@ -194,7 +194,7 @@ flowchart LR
 | [infra/compose/networks.yaml](infra/compose/networks.yaml)         | atl-chat network                                   | —        |
 | [infra/compose/irc.yaml](infra/compose/irc.yaml)                   | atl-irc-server, atl-irc-services, atl-irc-webpanel | —        |
 | [infra/compose/xmpp.yaml](infra/compose/xmpp.yaml)                 | atl-xmpp-server, xmpp-postgres                     | —        |
-| [infra/compose/bridge.yaml](infra/compose/bridge.yaml)             | atl-bridge                                         | —        |
+| [infra/compose/bridge.yaml](infra/compose/bridge.yaml)             | bridge                                         | —        |
 | [infra/compose/cert-manager.yaml](infra/compose/cert-manager.yaml) | cert-manager                                       | —        |
 | [compose.yaml](compose.yaml)                                       | dozzle                                             | dev      |
 

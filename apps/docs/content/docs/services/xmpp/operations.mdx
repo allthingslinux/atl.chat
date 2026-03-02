@@ -1,0 +1,129 @@
+---
+title: XMPP Operations
+description: prosodyctl commands, user management, database backup, and health checks for Prosody.
+---
+
+Day-to-day Prosody operations are performed via `prosodyctl` inside the container. This page covers user management, configuration reload, database backup, and health monitoring.
+
+## prosodyctl basics
+
+Open a shell in the Prosody container and run commands directly:
+
+```bash
+# Open a shell in the Prosody container
+docker exec -it atl-xmpp-server bash
+
+# Check Prosody status
+prosodyctl status
+
+# Reload configuration without restarting
+prosodyctl reload
+```
+
+You can also run commands without entering the container:
+
+```bash
+# Run prosodyctl from outside the container
+docker exec atl-xmpp-server prosodyctl status
+```
+
+Common `prosodyctl` commands:
+
+| Command | Description |
+|---|---|
+| `prosodyctl status` | Show whether Prosody is running |
+| `prosodyctl reload` | Reload configuration files |
+| `prosodyctl restart` | Restart the Prosody process |
+| `prosodyctl about` | Show version, paths, and loaded modules |
+| `prosodyctl check` | Run configuration and DNS checks |
+| `prosodyctl cert generate <domain>` | Generate a self-signed certificate |
+
+The `just xmpp` recipes provide shortcuts:
+
+```bash
+# Open a shell
+just xmpp shell
+
+# Reload configuration
+just xmpp reload
+
+# Add a user
+just xmpp adduser <user>
+```
+
+## User management
+
+```bash
+# Add a user (prompts for password)
+prosodyctl adduser user@atl.chat
+
+# Change a password
+prosodyctl passwd user@atl.chat
+
+# Delete a user
+prosodyctl deluser user@atl.chat
+```
+
+## Database backup
+
+Prosody stores data in `/var/lib/prosody` inside the container, which is mapped as a Docker volume to `data/xmpp/` on the host. Back up this directory:
+
+```bash
+# Create a backup archive
+docker exec atl-xmpp-server prosodyctl backup /backup/prosody-$(date +%Y%m%d).tar.gz
+```
+
+You can also back up the host-side data directory directly:
+
+```bash
+# Stop Prosody before backing up for consistency
+docker compose stop atl-xmpp-server
+tar czf backup-xmpp-$(date +%Y%m%d).tar.gz data/xmpp/
+docker compose start atl-xmpp-server
+```
+
+For automated backups, see the [Backups](/docs/operations/backups) page for retention policies and scheduling recommendations.
+
+## Health checks
+
+The Prosody container health check verifies the service is responsive:
+
+```bash
+docker inspect --format='{{.State.Health.Status}}' atl-xmpp-server
+# Expected: healthy
+```
+
+## Logs
+
+Prosody logs to stdout (console sink), captured by Docker's json-file logging driver. View them with:
+
+```bash
+# Follow Prosody container logs
+docker compose logs --follow atl-xmpp-server
+
+# Show last 100 lines
+docker compose logs --tail=100 atl-xmpp-server
+
+# Show recent error-level entries
+docker compose logs atl-xmpp-server 2>&1 | grep -i "error"
+```
+
+Common failure modes to watch for:
+
+| Log pattern | Meaning | Resolution |
+|---|---|---|
+| `error: Failed to open` | Certificate file missing or unreadable | Check cert paths and permissions |
+| `warn: No certificate` | TLS certificate not configured for a VirtualHost | Add certificate config to `prosody.cfg.lua` |
+| `error: component connection refused` | Bridge cannot connect as a component | Verify `component_interfaces` in Prosody config |
+| `warn: DNS resolution failed` | Cannot resolve federation targets | Check DNS records and network connectivity |
+
+
+
+## Related pages
+
+- [XMPP Overview](/docs/services/xmpp) — Prosody architecture and components
+- [XMPP Configuration](/docs/services/xmpp/configuration) — prosody.cfg.lua, env vars, VirtualHosts
+- [XMPP Modules](/docs/services/xmpp/modules) — community module management
+- [Backups](/docs/operations/backups) — cross-service backup and restore procedures
+- [Monitoring](/docs/operations/monitoring) — health checks and log inspection across all services
+- [Troubleshooting](/docs/operations/troubleshooting) — cross-service diagnostic commands

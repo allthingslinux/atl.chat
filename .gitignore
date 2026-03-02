@@ -136,6 +136,12 @@ atheme_logs/
 webpanel_data/
 webpanel_config/
 .turbo
+wrangler.jsonc
 apps/atheme/config/atheme.conf
 apps/unrealircd/config/unrealircd.conf
 .hypothesis
+references
+apps/docs/.open-next
+apps/docs/.alchemy
+apps/docs/.source/
+docs-old

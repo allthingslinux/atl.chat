@@ -20,6 +20,9 @@ config/
 └── prosody.cfg.lua    # Main Prosody config
 
 www/                   # Static assets
+├── index.html
+├── robots.txt
+└── security.txt
 Containerfile
 docker-entrypoint.sh
 justfile               # Loaded via: mod xmpp './apps/prosody'
@@ -48,4 +51,4 @@ modules.list
 ## Related
 
 - [Monorepo AGENTS.md](../../AGENTS.md)
-- [docs/services/xmpp/](../../docs/services/xmpp/)
+- [docs-old/services/xmpp/](../../docs-old/services/xmpp/)

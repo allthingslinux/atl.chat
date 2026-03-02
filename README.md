@@ -70,6 +70,14 @@ just dev
 just prod
 ```
 
+### First Boot: SRA Bootstrap
+
+After starting the production stack for the first time, you must manually bootstrap the Services Root Administrator (SRA) to avoid being locked out of IRC services:
+
+1. Connect to IRC using your admin account.
+2. In the terminal, run: `just irc sra-bootstrap <your_nick>`
+3. OperServ will then recognize you as a network administrator.
+
 ## Services
 
 ### IRC Stack
@@ -151,10 +159,8 @@ just --list        # All tasks
 # Orchestration
 just init          # One-time setup
 just dev           # Start dev stack
-just staging       # Start staging stack
 just prod          # Start prod stack
 just down          # Stop dev stack
-just down-staging  # Stop staging stack
 just down-prod     # Stop prod stack
 just logs [svc]    # Follow logs (optionally for a service)
 just status        # Container status
@@ -219,7 +225,6 @@ Config is generated via `scripts/prepare-config.sh` (run by `just init`). After 
 |-----------|-----------------------------------|
 | default   | Production-style (domains from .env) |
 | dev       | Dozzle, localhost domains, extra tools |
-| staging   | Staging environment               |
 | prod      | Production                        |
 
 ```bash

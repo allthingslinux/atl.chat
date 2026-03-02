@@ -24,10 +24,10 @@ jobs:
       contents: read
       issues: write
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd  # v5
         with:
           fetch-depth: 0
-      - uses: alstr/todo-to-issue-action@v5.1.14
+      - uses: alstr/todo-to-issue-action@64aca8fda7023259aada83ba44ad988c4c443657  # v5.1.14
         with:
           CLOSE_ISSUES: true
           INSERT_ISSUE_URLS: true

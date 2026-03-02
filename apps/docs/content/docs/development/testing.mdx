@@ -1,0 +1,421 @@
+---
+title: Testing
+description: Complete guide to the atl.chat test suite — directory layout, running tests, pytest fixtures, mocking patterns, and CI pipeline.
+---
+
+The atl.chat test suite uses pytest across two test roots: `tests/` at the monorepo root for IRC infrastructure, integration, and protocol tests, and `apps/bridge/tests/` for the bridge service. You run everything with `just test-all`, or target individual categories for faster feedback.
+
+## Quick reference
+
+| Command | What it runs | Docker needed? |
+|---|---|---|
+| `just test` | Root pytest suite (`tests/`) | Integration and e2e tests build images |
+| `just test-all` | Root suite + bridge tests | Same as above |
+| `just bridge test` | Bridge tests only (`apps/bridge/tests/`) | No |
+| `uv run pytest tests/unit/` | Unit tests only | No |
+| `uv run pytest tests/integration/` | Integration tests | Yes (builds images) |
+| `uv run pytest tests/e2e/` | End-to-end tests | Yes (builds images) |
+| `uv run pytest tests/protocol/` | IRC protocol message tests | No |
+| `uv run pytest apps/bridge/tests/` | All bridge tests | No |
+
+For day-to-day development, run unit and bridge tests — they complete in seconds without Docker:
+
+```bash
+# Fast feedback loop (no Docker required)
+uv run pytest tests/unit/
+uv run pytest apps/bridge/tests/
+```
+
+## Test directory layout
+
+```
+tests/                              # Root test suite (IRC infrastructure)
+├── conftest.py                     # Shared fixtures: Docker, IRC helpers, controllers
+├── unit/                           # Fast, no-Docker unit tests
+│   ├── test_configuration.py       # Config file validation
+│   ├── test_docker_client.py       # Docker client functionality
+│   ├── test_environment_validation.py  # Environment setup checks
+│   ├── test_env_registry_completeness.py  # Env var coverage
+│   ├── test_bridge_compose_env_coverage.py  # Bridge env coverage
+│   └── test_irc_server_mock.py     # IRC server mock tests
+├── integration/                    # Cross-service tests (require Docker)
+│   ├── test_protocol.py            # IRC protocol compliance (RFC 1459, RFC 2812)
+│   ├── test_clients.py             # Client library integration (pydle, python-irc)
+│   ├── test_services.py            # NickServ, ChanServ, Atheme integration
+│   ├── test_monitoring.py          # Server monitoring and RPC
+│   ├── test_performance.py         # Performance and load testing
+│   ├── test_infrastructure.py      # Infrastructure and deployment
+│   └── test_irc_functionality.py   # General IRC server functionality
+├── e2e/                            # End-to-end workflow tests (require Docker)
+│   └── test_e2e_workflow.py        # Full stack workflow validation
+├── protocol/                       # IRC message protocol tests (unit-level)
+│   └── test_messages.py            # IRC message parsing and formatting
+├── controllers/                    # IRC server controller classes
+│   ├── base_controllers.py         # Base controller interface
+│   ├── unrealircd_controller.py    # UnrealIRCd controller
+│   └── atheme_controller.py        # Atheme services controller
+├── fixtures/                       # Shared test data
+│   ├── docker_fixtures.py          # Docker container fixtures (pytest-docker-tools)
+│   ├── irc_test_data.py            # IRC messages, configs, command sequences
+│   └── sample_data.py              # Sample configs and log entries
+├── utils/                          # Test helpers and base classes
+│   ├── base_test_cases.py          # BaseServerTestCase (irctest-style)
+│   ├── irc_test_client.py          # IRC test client utilities
+│   ├── runner.py                   # Test runner utilities
+│   ├── specifications.py           # IRC specification definitions
+│   └── test_helpers.py             # General test helpers
+├── irc_utils/                      # IRC protocol utilities
+│   └── message_parser.py           # IRC message parsing
+└── legacy/                         # Deprecated tests (kept for reference, excluded from runs)
+    └── integration/                # Legacy integration tests
+
+apps/bridge/tests/                  # Bridge test suite (Python, no Docker)
+├── conftest.py                     # Bridge-specific fixtures
+├── mocks.py                        # MockAdapter, MockDiscordAdapter, MockIRCAdapter, MockXMPPAdapter
+├── harness.py                      # BridgeTestHarness — event bus + mock adapters
+├── test_bridge_flow.py             # Core message routing (Discord ↔ IRC ↔ XMPP)
+├── test_bus.py                     # Event bus publish/subscribe
+├── test_config.py                  # Bridge config loading and validation
+├── test_relay.py                   # Relay logic
+├── test_router.py                  # Channel mapping router
+├── test_events.py                  # Event creation and types
+├── test_formatting.py              # Message formatting
+├── test_message_formatting.py      # Extended formatting tests
+├── test_identity.py                # User identity mapping
+├── test_irc_adapter.py             # IRC adapter logic
+├── test_discord_adapter.py         # Discord adapter logic
+├── test_xmpp_adapter.py            # XMPP adapter logic
+├── test_xmpp_component.py          # XMPP component protocol
+├── test_error_handling.py          # Error handling paths
+├── test_retry_logic.py             # Retry and backoff
+├── test_edge_cases.py              # Edge cases
+├── test_property_based.py          # Property-based tests (Hypothesis)
+└── ...                             # Additional adapter and feature tests
+```
+
+## Running tests by category
+
+### Unit tests
+
+Unit tests validate configuration parsing, environment variables, and Docker client logic without starting any containers. They are the fastest tests to run.
+
+```bash
+uv run pytest tests/unit/ -v
+```
+
+### Integration tests
+
+Integration tests build Docker images and spin up real UnrealIRCd and Atheme containers using `pytest-docker-tools`. They test IRC protocol compliance, service integration, and monitoring.
+
+```bash
+# Run all integration tests (builds Docker images — can be slow)
+uv run pytest tests/integration/ -v
+
+# Run a specific integration test file
+uv run pytest tests/integration/test_protocol.py -v
+```
+
+> **Warning:** Integration tests build fresh Docker images on each run. In constrained environments (CI runners, VMs with limited resources), they may time out. Prefer `tests/unit/` for quick validation.
+
+### End-to-end tests
+
+E2E tests exercise full-stack workflows with real containers.
+
+```bash
+uv run pytest tests/e2e/ -v
+```
+
+### Protocol tests
+
+Protocol-level tests validate IRC message parsing and formatting without network connections.
+
+```bash
+uv run pytest tests/protocol/ -v
+```
+
+### Bridge tests
+
+Bridge tests mock at the adapter level — no real Discord, IRC, or XMPP connections are made. The `BridgeTestHarness` sets up the event bus, channel router, relay, and mock adapters so you can simulate messages and verify routing.
+
+```bash
+# All bridge tests
+uv run pytest apps/bridge/tests/ -v
+
+# Or via just
+just bridge test
+
+# Run a specific test file
+uv run pytest apps/bridge/tests/test_bridge_flow.py -v
+
+# Run with extra args
+just bridge test -k "test_discord_to_irc"
+```
+
+### Filtering by marker
+
+pytest markers let you select tests by category:
+
+```bash
+# Only Docker-dependent tests
+uv run pytest -m docker
+
+# Only slow tests
+uv run pytest -m slow
+
+# Exclude slow tests
+uv run pytest -m "not slow"
+
+# IRC protocol tests
+uv run pytest -m irc
+```
+
+Available markers are defined in `pyproject.toml` under `[tool.pytest.ini_options]`. Key markers include: `unit`, `integration`, `docker`, `irc`, `e2e`, `slow`, `network`, `atheme`, `webpanel`, `ssl`, `performance`, `protocol`, and various IRC specification markers (`RFC1459`, `RFC2812`, `IRCv3`).
+
+## Pytest fixtures
+
+Fixtures are defined in `tests/conftest.py` (root) and `apps/bridge/tests/conftest.py` (bridge). The root conftest provides a rich set of shared fixtures.
+
+### Session-scoped fixtures
+
+These are created once per test session:
+
+| Fixture | Description |
+|---|---|
+| `docker_client` | Docker API client (skips if Docker is unavailable) |
+| `project_root` / `repo_root` | Monorepo root `Path` |
+| `compose_file` | Path to root `compose.yaml` |
+| `setup_test_environment` | Sets `TESTING=true` and creates temp directories (autouse) |
+
+### Function-scoped fixtures
+
+These are created fresh for each test:
+
+| Fixture | Description |
+|---|---|
+| `prepared_config_dir` | Temp directory with copied UnrealIRCd config files |
+| `temp_dir` | Clean temporary directory (`tmp_path` alias) |
+| `sampl
+ `controller` | UnrealIRCd controller with Docker container support |
+| `mock_requests_get` | Patched `requests.get` returning `{"status": "ok"}` |
+| `cleanup_files` | Track and auto-cleanup files/dirs created during tests |
+| `test_config` | Parametrised fixture providing `"minimal"` and `"full"` configs |
+
+### Docker container fixtures
+
+The root conftest uses `pytest-docker-tools` to build and run containers:
+
+```python
+# Build UnrealIRCd image from apps/unrealircd/Containerfile
+unrealircd_image = build(
+    path="apps/unrealircd",
+    dockerfile="Containerfile",
+    tag="ircatlchat-unrealircd:latest",
+)
+
+# Run container with mapped ports and config volume
+unrealircd_container = container(
+    image="{unrealircd_image.id}",
+    ports={"6697/tcp": None, "8000/tcp": None},
+    volumes={"{prepared_config_dir}": {"bind": "/home/unrealircd/unrealircd/config", "mode": "rw"}},
+    command=["start"],
+)
+```
+
+Request `unrealircd_container` in your test to get a running UnrealIRCd instance with dynamically mapped ports.
+
+## Mocking patterns
+
+### Root test suite
+
+The root suite uses `pytest-mock` (the `mocker` fixture) for standard mocking:
+
+```python
+def test_docker_status(mock_docker_container):
+    """mock_docker_container is a pre-configured Mock with .name, .status, .logs()."""
+    assert mock_docker_container.status == "running"
+    assert mock_docker_container.logs() == [b"Test log output"]
+
+def test_http_call(mock_requests_get):
+    """mock_requests_get patches requests.get globally."""
+    import requests
+    resp = requests.get("http://example.com/health")
+    assert resp.status_code == 200
+```
+
+For IRC-specific testing, the `BaseServerTestCase` class (in `tests/utils/base_test_cases.py`) provides an irctest-style interface with `connectClient()`, `sendLine()`, `getMessage()`, and assertion helpers like `assertMessageMatch()`.
+
+### Bridge test suite
+
+The bridge uses a custom mock adapter pattern inspired by [dpytest](https://github.com/CraftSpider/dpytest). Instead of connecting to real services, mock adapters capture events through the same `accept_event`/`push_event` interface:
+
+```python
+# mocks.py — MockAdapter captures events without real connections
+class MockAdapter(AdapterBase):
+    def push_event(self, source: str, evt: object) -> None:
+        self.received_events.append((source, evt))
+
+# harness.py — BridgeTestHarness wires up bus + router + mock adapters
+harness = BridgeTestHarness(mappings=[...])
+await harness.start()
+
+# Simulate a Discord message and verify IRC received it
+harness.simulate_discord_message(
+    channel_id="123456789",
+    author_id="user123",
+    author_display="TestUser",
+    content="Hello from Discord!",
+)
+assert len(harness.irc.sent_messages) == 1
+assert harness.irc.sent_messages[0].content == "Hello from Discord!"
+```
+
+This approach is fast (no network), reliable (no flaky connections), and safe (never connects to real services).
+
+### Property-based testing
+
+The bridge includes property-based tests using [Hypothesis](https://hypothesis.readthedocs.io/). These live in `apps/bridge/tests/test_property_based.py` and verify properties like message formatting invariants across randomly generated inputs.
+
+The root `pyproject.toml` includes `hypothesis>=6.151.9` in dev dependencies.
+
+## Writing new tests
+
+### Adding a root test
+
+1. Create a file in the appropriate directory (`tests/unit/`, `tests/integration/`, etc.)
+2. Name it `test_*.py` so pytest discovers it
+3. Use fixtures from `tests/conftest.py` — request them as function parameters
+4. Add markers if the test has special requirements:
+
+```python
+import pytest
+
+@pytest.mark.unit
+def test_config_parsing(sample_config_data):
+    """Verify config data has expected structure."""
+    assert "irc_server" in sample_config_data
+    assert sample_config_data["irc_server"]["port"] == 6697
+```
+
+### Adding a bridge test
+
+1. Create a file in `apps/bridge/tests/`
+2. Use the `BridgeTestHarness` for message routing tests, or test components directly
+3. Bridge tests are async — use `@pytest.mark.asyncio`:
+
+```python
+import pytest
+from tests.harness import BridgeTestHarness
+
+@pytest.mark.asyncio
+async def test_message_routing(harness: BridgeTestHarness):
+    await harness.start()
+    harness.simulate_discord_message(
+        channel_id="123", author_id="u1",
+        author_display="User", content="test",
+    )
+    assert len(harness.irc.sent_messages) == 1
+    await harness.stop()
+```
+
+### Running a subset of tests
+
+```bash
+# By keyword match
+uv run pytest -k "test_config" tests/
+
+# By marker
+uv run pytest -m unit tests/
+
+# Single file
+uv run pytest tests/unit/test_configuration.py
+
+# Single test function
+uv run pytest tests/unit/test_configuration.py::test_specific_function -v
+
+# Show 10 slowest tests
+uv run pytest --durations=10 tests/
+```
+
+## CI pipeline integration
+
+The CI pipeline is defined in `.github/workflows/ci.yml`. It uses path-based filtering so only relevant jobs run when files change.
+
+### Pipeline structure
+
+The `changes` job uses `dorny/paths-filter` to detect which areas of the monorepo were modified, then triggers downstream jobs conditionally:
+
+| Job | Trigger paths | What it does |
+|---|---|---|
+| `lint-irc` | `apps/unrealircd/**`, `apps/atheme/**`, `tests/**`, `scripts/**` | Shell linting (shellcheck) |
+| `lint-xmpp` | `apps/prosody/**` | Lua linting (luacheck) |
+| `lint-bridge` | `apps/bridge/**` | `ruff check` + `ruff format --check` |
+| `test-bridge` | `apps/bridge/**` | `uv run pytest tests -v --tb=short` |
+| `lint-web` | `apps/web/**` | `pnpm run check` (Biome/ultracite) |
+| `build-web` | `apps/web/**` | `pnpm run build` (Next.js build) |
+| `security-global` | IRC or XMPP changes | Security scanning (Gitleaks, Trivy) |
+| `docker-irc` | `apps/unrealircd/**` | Docker image build for UnrealIRCd |
+| `docker-xmpp` | `apps/prosody/**` | Docker image build for Prosody |
+| `release` | Push to `main` only | Semantic release via `pnpm run release` |
+
+### What runs on every PR
+
+When you open a PR against `main` or `develop`, the pipeline:
+
+1. Detects changed paths
+2. Runs lint jobs for affected areas (shell, Lua, Python, TypeScript)
+3. Runs `test-bridge` if bridge code changed
+4. Builds Docker images if service Dockerfiles changed
+5. Builds the web app if web code changed
+
+### Running CI checks locally
+
+You can replicate most CI checks locally before pushing:
+
+```bash
+# Bridge lint + test (matches CI exactly)
+just bridge check
+
+# Root lint
+just lint
+
+# Bridge tests
+just bridge test
+
+# Web build
+cd apps/web && pnpm run build
+```
+
+## Pytest configuration
+
+All pytest settings live in `pyproject.toml` under `[tool.pytest.ini_options]`:
+
+- `testpaths = ["tests"]` — default test discovery root
+- `addopts` — strict markers, short tracebacks, verbose output, colour, duration reporting, auto async mode
+- `timeout = 300` — 5-minute timeout per test
+- `asyncio_mode = "auto"` — async tests run without explicit event loop setup
+- `norecursedirs` — excludes `.git`, `.venv`, `__pycache__`, `data`, and `tests/legacy/**`
+- `filterwarnings` — treats warnings as errors except `UserWarning` and `DeprecationWarning`
+
+### Key dev dependencies
+
+Test tooling is declared in `pyproject.toml` under `[dependency-groups] dev`:
+
+| Package | Purpose |
+|---|---|
+| `pytest` | Test framework |
+| `pytest-mock` | `mocker` fixture for patching |
+| `pytest-asyncio` | Async test support |
+| `pytest-docker` | Docker Compose integration |
+| `pytest-docker-tools` | Declarative Docker container fixtures |
+| `pytest-xdist` | Parallel test execution (`-n auto`) |
+| `pytest-timeout` | Per-test timeout enforcement |
+| `pytest-sugar` | Pretty test output |
+| `pytest-html` | HTML test reports |
+| `hypothesis` | Property-based testing |
+
+
+## Related pages
+
+- [Contributing](/docs/development/contributing) — PR workflow, commit conventions, and pre-commit hooks
+- [Adding a Service](/docs/development/adding-a-service) — checklist for adding a new service including test requirements
+- [Bridge Overview](/docs/services/bridge) — bridge architecture (the bridge has its own test suite)

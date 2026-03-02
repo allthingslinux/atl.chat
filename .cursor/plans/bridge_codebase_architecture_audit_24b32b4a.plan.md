@@ -211,7 +211,7 @@ How the bridge fits into the monorepo and config flow:
 
 | App            | Config                                                | Generation                         | Bridge Coupling                                                                                                       |
 | -------------- | ----------------------------------------------------- | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| **UnrealIRCd** | `config/unrealircd.conf.template` → `unrealircd.conf` | `envsubst` via `prepare-config.sh` | `relaymsg` hostmask `bridge@${IRC_DOMAIN}`; oper `atl-bridge` with `BRIDGE_IRC_OPER_PASSWORD`; WebIRC for The Lounge  |
+| **UnrealIRCd** | `config/unrealircd.conf.template` → `unrealircd.conf` | `envsubst` via `prepare-config.sh` | `relaymsg` hostmask `bridge@${IRC_DOMAIN}`; oper `bridge` with `BRIDGE_IRC_OPER_PASSWORD`; WebIRC for The Lounge  |
 | **Atheme**     | `config/atheme.conf.template` → `atheme.conf`         | `envsubst`                         | No direct bridge coupling                                                                                             |
 | **Prosody**    | `config/prosody.cfg.lua` (Lua, no template)           | Runtime `Lua.os.getenv()`          | Component `bridge.${domain}` with `BRIDGE_XMPP_COMPONENT_SECRET`; MUC `general@muc.${PROSODY_DOMAIN}`                 |
 | **Bridge**     | `config.template.yaml` → `config.yaml`                | `envsubst`                         | Consumes `IRC_BRIDGE_SERVER`, `PROSODY_DOMAIN`, `BRIDGE_DISCORD_CHANNEL_ID`, `IRC_TLS_VERIFY`, `XMPP_AVATAR_BASE_URL` |
@@ -229,7 +229,7 @@ How the bridge fits into the monorepo and config flow:
 1. **Config schema** — Bridge `Config` class reads YAML produced by `prepare-config.sh`. Any `config/schema.py` must validate the same structure (mappings, irc.*, xmpp_*, etc.) that the template produces.
 2. **Env vars** — Bridge also reads env at runtime (`BRIDGE_DISCORD_TOKEN`, `BRIDGE_PORTAL_*`, `BRIDGE_XMPP_*`, etc.). Config cleanup should document which keys come from YAML vs env.
 3. **Compose** — Bridge container mounts `config.yaml:ro`; depends on `atl-irc-server` and `atl-xmpp-server`. No shared volume with other apps.
-4. **Naming** — UnrealIRCd uses `atl-bridge` oper nick; Prosody uses `bridge.${domain}` component JID. Bridge should not hardcode these; they come from config/env.
+4. **Naming** — UnrealIRCd uses `bridge` oper nick; Prosody uses `bridge.${domain}` component JID. Bridge should not hardcode these; they come from config/env.
 5. **Consistency** — Other apps use `config/` dir. Bridge uses `config.yaml` at app root. Proposed `config/` package is internal Python layout; the YAML file stays at `apps/bridge/config.yaml` (or `config/config.yaml` if desired).
 
 ### 2.H Portal Audit (`~/dev/allthingslinux/portal`)

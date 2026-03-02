@@ -228,7 +228,7 @@ class XMPPComponent(ComponentXMPP):
         # Join all mapped MUCs so we receive groupchat_message events (XMPP → Discord/IRC)
         muc_plugin = self.plugin.get("xep_0045", None)
         if muc_plugin:
-            bridge_nick = "atl-bridge"
+            bridge_nick = "bridge"
             bridge_jid = f"bridge@{self._component_jid}"
             for mapping in self._router.all_mappings():
                 if mapping.xmpp:
@@ -334,7 +334,7 @@ class XMPPComponent(ComponentXMPP):
         if (room_jid, nick) in self._recent_sent_nicks:
             logger.debug("Echo from recent send {} in {} (jid lookup returned None); skipping", nick, room_jid)
             return
-        if nick == "atl-bridge":
+        if nick == "bridge":
             return  # Listener nick; we never send from it but skip for safety
 
         # Dedupe: MUC delivers same message to each occupant (listener + puppets)
@@ -486,7 +486,7 @@ class XMPPComponent(ComponentXMPP):
                 if sender_domain == our_domain:
                     logger.debug("Skipping XMPP reaction echo from our component ({})", nick)
                     return
-        if nick == "atl-bridge":
+        if nick == "bridge":
             return
 
         reactions = msg.get_plugin("reactions", check=True)
@@ -560,7 +560,7 @@ class XMPPComponent(ComponentXMPP):
                 if sender_domain == our_domain:
                     logger.trace("Skipping XMPP retraction echo from our component ({})", nick)
                     return
-        if nick == "atl-bridge":
+        if nick == "bridge":
             return
 
         retract = msg.get_plugin("retract", check=True)

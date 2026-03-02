@@ -1,19 +1,27 @@
-# hadolint ignore=DL3006
-FROM composer/composer AS builder
+FROM composer:2 AS builder
 
 WORKDIR /app
 
 # Clone the webpanel source and install dependencies
-RUN git clone --depth 1 https://github.com/unrealircd/unrealircd-webpanel.git . && \
+RUN git clone --depth 1 --branch 0.9.1 https://github.com/unrealircd/unrealircd-webpanel.git . && \
     composer install --no-dev --optimize-autoloader
 
-# hadolint ignore=DL3006
-FROM trafex/php-nginx
+FROM trafex/php-nginx:3.10.0
+
+LABEL org.opencontainers.image.source="https://github.com/allthingslinux/atl.chat" \
+    org.opencontainers.image.description="UnrealIRCd web administration panel for atl.chat" \
+    org.opencontainers.image.licenses="MIT" \
+    org.opencontainers.image.vendor="All Things Linux" \
+    org.opencontainers.image.title="atl-webpanel"
 
 USER root
 
 # hadolint ignore=DL3018
-RUN apk add --no-cache php84-sodium
+RUN apk add --no-cache \
+    php84-curl \
+    php84-mbstring \
+    php84-sodium \
+    php84-zip
 
 USER nobody
 
@@ -29,3 +37,8 @@ RUN chown -R nobody:nobody /var/www/html && \
     chmod -R 755 /var/www/html/data /var/www/html/config /var/www/html/logs
 
 USER nobody
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:8080/ || exit 1

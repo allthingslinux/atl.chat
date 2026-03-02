@@ -1,0 +1,112 @@
+---
+title: User Modes Reference
+description: Complete reference of UnrealIRCd user modes available on the atl.chat IRC network.
+---
+
+User modes control privacy, visibility, and behaviour for individual IRC connections. You can only set modes on yourself (not other users) using `/MODE yournick +modes`. Some modes are set automatically by the server or services.
+
+## Default modes
+
+New connections receive `+ixw` automatically (configured via `set::modes-on-connect`):
+
+- `+i` — invisible (hidden from `/WHO` and `/NAMES` for users outside your channels)
+- `+x` — cloaked hostname (real IP/hostname is hidden)
+- `+w` — receive wallops (network-wide operator announcements)
+
+Users cannot remove `+x` (cloaking) — this is enforced by `restrict-usermodes "x"` in the server config.
+
+## Mode reference
+
+The following modes are confirmed available on the current UnrealIRCd 6.x configuration. Modes are grouped by who can set them.
+
+### User-settable modes
+
+These modes can be set by any user on themselves.
+
+| Mode | Module | Description |
+|---|---|---|
+| `B` | `usermodes/bot` | Marks you as a bot. Adds a line to `/WHOIS` so others can identify bots. |
+| `I` | built-in | Hides your idle time in `/WHOIS`. Configure `set::hide-idle-time` to control server-side defaults. |
+| `d` | built-in | Deaf to channel messages except those prefixed with a command character (e.g. `!`). Useful for command-only bots. |
+| `D` | `usermodes/privdeaf` | Blocks private messages from everyone except IRC operators, servers, and services. |
+| `G` | `usermodes/censor` | Applies the server's bad-word filter to messages you receive. |
+| `i` | built-in | Invisible — hidden from `/WHO` and `/NAMES` queries by users outside your channels. Set by default. |
+| `p` | `usermodes/privacy` | Hides your channel list from `/WHOIS`. |
+| `R` | `usermodes/regonlymsg` | Only receive private messages from registered (identified) users. Effective anti-spam measure. |
+| `T` | `usermodes/noctcp` | Blocks incoming CTCP requests (VERSION, TIME, etc.). Recommended for bots or during CTCP floods. |
+| `w` | `usermodes/wallops` | Receive wallops messages (network announcements from operators). Set by default. |
+| `x` | built-in | Cloaked hostname — hides your real IP/hostname. Set by default and cannot be removed. |
+| `Z` | `usermodes/secureonlymsg` | Only communicate with users on TLS connections. You also cannot message non-TLS users. |
+
+### Server/services-set modes
+
+These modes are set automatically and cannot be changed manually.
+
+| Mode | Module | Description |
+|---|---|---|
+| `r` | built-in | Registered nick — set by NickServ when you identify. Used by `+R` filtering. |
+| `S` | `usermodes/servicebot` | Services bot — set on Atheme service bots (NickServ, ChanServ, etc.). Provides extra protection. |
+| `t` | built-in | Using a virtual host — set when you have an active `/VHOST` or oper vhost. |
+| `z` | built-in | Connected via TLS — set automatically when you connect on port 6697. |
+
+### IRC operator modes
+
+These modes require IRC operator status (`+o`).
+
+| Mode | Module | Description |
+|---|---|---|
+| `H` | built-in | Hide oper status — regular users cannot see you are an operator in `/WHOIS`. |
+| `o` | built-in | IRC operator — granted via the `/OPER` command with valid credentials. |
+| `q` | `usermodes/nokick` | Unkickable — only services (U-lines) can kick you. Use sparingly. |
+| `s` | built-in | Server notices — enables snomask-based server monitoring. Use `/MODE yournick +s +snomask`. |
+| `W` | `usermodes/showwhois` | Shows you when someone performs a `/WHOIS` on you. |
+
+## Operator modes on oper-up
+
+When you `/OPER` successfully, you receive `+xwsH` automatically (configured via `set::modes-on-oper`), plus snomasks `+bBcdfkqsSo` (configured via `set::snomask-on-oper`).
+
+## Recommended configurations
+
+### For regular users
+
+The defaults (`+ixw`) provide good privacy. Consider adding:
+
+- `+R` if you receive spam from unregistered users
+- `+T` if you experience CTCP floods
+
+```
+/MODE yournick +RT
+```
+
+### For bots
+
+```
+/MODE botname +Bd
+```
+
+- `+B` marks the connection as a bot (visible in `/WHOIS`)
+- `+d` reduces traffic by ignoring non-command channel messages
+
+### For staff accounts
+
+```
+/MODE staffnick +DRp
+```
+
+- `+D` blocks unsolicited private messages
+- `+R` allows PMs only from registered users
+- `+p` hides channel list from `/WHOIS`
+
+## Cloaking
+
+Cloaking (`+x`) replaces your real hostname with a hashed version like `atl-ABC123.users.atl.chat`. The `atl` prefix is set by `IRC_CLOAK_PREFIX` in `.env`.
+
+Cloaking uses SHA-256 with three secret cloak keys (`IRC_CLOAK_KEY_1/2/3`). Changing cloak keys changes all cloaked hostnames network-wide, which breaks existing bans based on cloaked hosts.
+
+All identified users also receive an automatic vhost matching the IRC domain (e.g. `irc.atl.chat`), which provides a clean hostname in `/WHOIS`.
+
+## Related pages
+
+- [Configuration](/docs/services/irc/configuration) — cloak keys, default modes, env vars
+- [Modules](/docs/services/irc/modules) — third-party module management
+- [Operations](/docs/services/irc/operations) — oper setup and authentication

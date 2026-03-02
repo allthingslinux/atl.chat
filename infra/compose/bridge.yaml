@@ -15,6 +15,10 @@ services:
     image: ghcr.io/allthingslinux/bridge:latest
     container_name: atl-bridge
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     depends_on:
       atl-irc-server:
         condition: service_healthy
@@ -41,12 +45,18 @@ services:
       - BRIDGE_RELAYMSG_CLEAN_NICKS
       - XMPP_AVATAR_BASE_URL
       - XMPP_UPLOAD_FETCH_URL
+    logging:
+      driver: json-file
+      options:
+        max-size: "${LOG_MAX_SIZE:-50m}"
+        max-file: "${LOG_MAX_FILES:-5}"
+        compress: "true"
     volumes:
       - ../../apps/bridge/config.yaml:/app/config.yaml:ro
     networks:
       - atl-chat
     healthcheck:
-      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
+      test: ["CMD", "pgrep", "-f", "bridge.__main__"]
       interval: 30s
       timeout: 10s
       retries: 3

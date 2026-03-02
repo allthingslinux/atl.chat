@@ -1,0 +1,12 @@
+{
+    "title": "IRC",
+    "pages": [
+        "index",
+        "configuration",
+        "dns",
+        "modules",
+        "operations",
+        "troubleshooting",
+        "user-modes"
+    ]
+}

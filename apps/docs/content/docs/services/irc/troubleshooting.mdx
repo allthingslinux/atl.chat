@@ -1,0 +1,224 @@
+---
+title: IRC Troubleshooting
+description: Diagnostic commands and solutions for common UnrealIRCd and Atheme issues.
+---
+
+This page covers common issues and diagnostic procedures for the IRC stack (UnrealIRCd and Atheme). For cross-service troubleshooting, see [Operations Troubleshooting](/docs/operations/troubleshooting).
+
+## Quick diagnosis
+
+Run these commands to get a fast overview of the IRC stack health:
+
+```bash
+# Check container status
+docker compose -f compose.yaml -p atl-chat ps
+
+# View recent UnrealIRCd logs
+docker compose -f compose.yaml -p atl-chat logs --tail=30 atl-irc-server
+
+# View recent Atheme logs
+docker compose -f compose.yaml -p atl-chat logs --tail=30 atl-irc-services
+
+# Check container health
+docker inspect --format='{{.State.Health.Status}}' atl-irc-server
+```
+
+## Common issues
+
+### Services won't start
+
+Containers fail to start or exit immediately after launch.
+
+```bash
+# Check exit code and status
+docker compose -f compose.yaml -p atl-chat ps -a
+
+# View startup logs for UnrealIRCd
+docker compose -f compose.yaml -p atl-chat logs atl-irc-server
+
+# View startup logs for Atheme
+docker compose -f compose.yaml -p atl-chat logs atl-irc-services
+```
+
+Common causes:
+- Config syntax error — look for `error` or `fatal` in the log output
+- Missing environment variables — ensure `.env` exists and has all required values
+- Port conflict — another process is using port 6697, 8000, or 8600
+
+To fix config issues, edit the template and regenerate:
+
+```bash
+# Regenerate config from templates
+scripts/prepare-config.sh
+
+# Restart the stack
+just dev
+```
+
+### SSL/TLS certificate issues
+
+TLS setup fails, clients get certificate errors, or certificates expire.
+
+```bash
+# Check certificate expiry on disk
+openssl x509 -in data/certs/live/irc.atl.chat/fullchain.pem -noout -dates 2>/dev/null || \
+  echo "No certificate found at expected path"
+
+# Test TLS connection
+echo "QUIT" | openssl s_client -connect localhost:6697 -servername irc.atl.chat 2>/dev/null | \
+  openssl x509 -noout -subject -dates
+
+# Check if cert files are readable by the container
+docker compose -f compose.yaml -p atl-chat exec atl-irc-server \
+  ls -la /home/unrealircd/unrealircd/certs/live/
+```
+
+For dev environments, `just init` generates self-signed certificates. For production, see [SSL/TLS](/docs/operations/ssl-tls).
+
+### Configuration issues
+
+Services start but don't behave as expected.
+
+```bash
+# Check the generated config (not the template)
+# Look for unsubstituted ${VARIABLES} which indicate missing env vars
+grep -n '${' apps/unrealircd/config/unrealircd.conf | head -20
+
+# Regenerate config
+scripts/prepare-config.sh
+
+# Reload without restart
+just irc reload
+```
+
+### Network connectivity issues
+
+Cannot connect to the IRC server from a client.
+
+```bash
+# Check if ports are listening
+ss -tlnp | grep -E "(6697|8000|8600)"
+
+# Test IRC TLS port
+echo "QUIT" | openssl s_client -connect localhost:6697 2>/dev/null
+
+# Test WebSocket port
+curl -s -o /dev/null -w "%{http_code}" http://localhost:8000
+
+# Check firewall (if applicable)
+sudo ufw status 2>/dev/null || sudo iptables -L -n 2>/dev/null | head -20
+```
+
+### Permission denied errors
+
+File permission issues with data directories or config files.
+
+```bash
+# Fix data directory ownership
+sudo chown -R "$(id -u):$(id -g)" data/irc/ data/atheme/
+
+# Check PUID/PGID match your host user
+echo "Host user: $(id -u):$(id -g)"
+grep -E "^PUID=|^PGID=" .env
+
+# Fix .env file permissions (contains secrets)
+chmod 600 .env
+```
+
+## Service-specific diagnostics
+
+### UnrealIRCd
+
+```bash
+# Access the UnrealIRCd container shell
+docker compose -f compose.yaml -p atl-chat exec atl-irc-server bash
+
+# Check UnrealIRCd process inside container
+docker compose -f compose.yaml -p atl-chat exec atl-irc-server pgrep unrealircd
+
+# View the active config (inside container)
+docker compose -f compose.yaml -p atl-chat exec atl-irc-server \
+  head -50 /home/unrealircd/unrealircd/config/unrealircd.conf
+
+# Check loaded modules (connect as oper, then)
+# /STATS m — shows loaded modules
+# /STATS u — shows server uptime
+```
+
+### Atheme
+
+```bash
+# Check Atheme process
+docker compose -f compose.yaml -p atl-chat exec atl-irc-services pgrep atheme-services
+
+# Check Atheme database
+ls -la data/atheme/data/
+
+# View Atheme logs
+docker compose -f compose.yaml -p atl-chat logs --tail=50 atl-irc-services
+
+# Check if Atheme is linked to UnrealIRCd (from an IRC client as oper)
+# /LINKS — should show services.atl.chat
+```
+
+### WebPanel
+
+```bash
+# Check WebPanel container
+docker compose -f compose.yaml -p atl-chat logs --tail=20 atl-webpanel
+
+# Test WebPanel HTTP access
+curl -sI http://localhost:8080
+
+# Test RPC connectivity from WebPanel to UnrealIRCd
+docker compose -f compose.yaml -p atl-chat exec atl-irc-server \
+  ls -la /home/unrealircd/unrealircd/data/rpc.socket
+```
+
+## Recovery procedures
+
+### Restart the IRC stack
+
+```bash
+# Graceful restart (preserves other services)
+docker compose -f compose.yaml -p atl-chat restart atl-irc-server atl-irc-services
+
+# Full stack restart
+just down
+just dev
+```
+
+### Reset to clean state
+
+> **Warning:** This destroys all IRC data including registered nicknames, channels, and Atheme database.
+
+```bash
+# Stop everything
+just down
+
+# Remove IRC data
+rm -rf data/irc/ data/atheme/
+
+# Reinitialise
+just init
+just dev
+```
+
+### Rebuild containers
+
+If you suspect a corrupted image or need to pick up Dockerfile changes:
+
+```bash
+# Rebuild IRC containers
+docker compose -f compose.yaml -p atl-chat build atl-irc-server atl-irc-services
+
+# Restart with rebuilt images
+docker compose -f compose.yaml -p atl-chat up -d atl-irc-server atl-irc-services
+```
+
+## Related pages
+
+- [Operations](/docs/services/irc/operations) — oper setup, config reload, cert rotation
+- [Configuration](/docs/services/irc/configuration) — env vars and config templates
+- [Operations Troubleshooting](/docs/operations/troubleshooting) — cross-service troubleshooting
+- [Monitoring](/docs/operations/monitoring) — health checks for all services

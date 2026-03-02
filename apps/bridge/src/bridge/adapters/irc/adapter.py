@@ -220,7 +220,7 @@ class IRCAdapter(AdapterBase):
         if not m.irc:
             return
 
-        nick = os.environ.get("BRIDGE_IRC_NICK", "atl-bridge")
+        nick = os.environ.get("BRIDGE_IRC_NICK", "bridge")
         channels = list({x.irc.channel for x in irc_mappings if x.irc and x.irc.channel})
 
         irc_kwargs: dict = {}

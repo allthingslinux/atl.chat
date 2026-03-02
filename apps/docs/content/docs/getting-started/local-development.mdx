@@ -1,0 +1,182 @@
+---
+title: Local Development
+description: Full walkthrough for bringing up the atl.chat stack on your local machine.
+---
+
+This guide walks you through cloning the repo, configuring environment variables, and starting all services with a single command.
+
+## Clone and install
+
+1. Clone the repository and install Node.js dependencies:
+
+   ```bash
+   git clone https://github.com/allthingslinux/atl.chat.git
+   cd atl.chat
+   pnpm install
+   ```
+
+2. Install Python dependencies with uv:
+
+   ```bash
+   # Install Python tooling (pytest, pre-commit, etc.)
+   uv sync
+   ```
+
+## Environment setup
+
+Copy the example env files and customise values for local development:
+
+```bash
+# Main environment file
+cp .env.example .env
+
+# Dev overlay (overrides domains to localhost)
+cp .env.dev.example .env.dev
+```
+
+Key variables to set for local development:
+
+| Variable | Description |
+|---|---|
+| `IRC_DOMAIN` | IRC server hostname (defaults to `irc.localhost` in `.env.dev`) |
+| `PROSODY_DOMAIN` | XMPP server domain (defaults to `xmpp.localhost` in `.env.dev`) |
+| `DISCORD_TOKEN` | Discord bot token for the bridge (optional for IRC/XMPP-only testing) |
+
+See the full [Environment Variables reference](/docs/reference/environment-variables) for all available options.
+
+## First-time initialisation
+
+Run the init recipe to create data directories, generate self-signed TLS certificates, and substitute config templates:
+
+```bash
+just init
+```
+
+This runs `scripts/init.sh`, which:
+- Creates all `data/` subdirectories for persistent storage
+- Generates self-signed TLS certificates for local development
+- Runs `envsubst` on config templates to produce final config files
+
+## Starting the stack
+
+```bash
+just dev
+```
+
+This starts all Docker Compose services with the dev profile. Verify the stack is running:
+
+```bash
+just status
+```
+
+## Starting the web app
+
+The Next.js web app runs outside Docker as a local Node process:
+
+```bash
+cd apps/web
+NEXT_PUBLIC_IRC_WS_URL="ws://localhost:8000" \
+NEXT_PUBLIC_XMPP_BOSH_URL="http://localhost:5280/http-bind" \
+pnpm dev
+```
+
+The web interface is available at `http://localhost:3000`.
+
+## Verification checklist
+
+After `just dev` completes, verify each service is running:
+
+1. Check container status:
+
+   ```bash
+   just status
+   ```
+
+2. Test IRC connectivity (TLS on port 6697):
+
+   ```bash
+   openssl s_client -connect localhost:6697 -servername irc.localhost </dev/null 2>/dev/null | head -5
+   ```
+
+3. Test XMPP connectivity (C2S on port 5222):
+
+   ```bash
+   curl -s http://localhost:5280/http-bind
+   ```
+
+4. Test The Lounge web client (port 9000):
+
+   ```bash
+   curl -s -o /dev/null -w "%{http_code}" http://localhost:9000
+   # Expected: 200
+   ```
+
+5. Test WebPanel (port 8080):
+
+   ```bash
+   curl -s -o /dev/null -w "%{http_code}" http://localhost:8080
+   # Expected: 200
+   ```
+
+## Useful just recipes
+
+| Recipe | Description |
+|---|---|
+| `just dev` | Start all services with dev profile |
+| `just down` | Stop the dev stack |
+| `just logs [service]` | Follow logs (optionally for a specific service) |
+| `just status` | Show container status |
+| `just lint` | Run all pre-commit hooks |
+| `just test` | Run unit tests |
+| `just test-all` | Run all tests including bridge tests |
+
+## Common first-run issues
+
+### Docker daemon not running
+
+If you see "Cannot connect to the Docker daemon", start Docker first:
+
+```bash
+sudo dockerd &>/tmp/dockerd.log &
+```
+
+### Port already in use
+
+If a port is already bound, identify the process and stop it:
+
+```bash
+# Find what is using port 6697
+sudo lsof -i :6697
+```
+
+### CLOUDFLARE_DNS_API_TOKEN warning
+
+Docker Compose emits a warning about this unset variable. You can safely ignore it in development — the cert-manager service is not needed locally.
+
+### pnpm install build scripts warning
+
+You may see warnings about blocked build scripts for esbuild, sharp, or workerd. These packages have fallback binaries and the warning is non-blocking.
+
+### pre-commit hooks fail to install
+
+If `core.hooksPath` is set by your environment, unset it first:
+
+```bash
+git config --unset-all core.hooksPath
+uv run pre-commit install
+```
+
+### The Lounge shows login page but no users exist
+
+The Lounge runs in private mode. You need to create a user before you can log in:
+
+```bash
+just lounge add <username>
+```
+
+## Related pages
+
+- [Getting Started](/docs/getting-started) — prerequisites, monorepo layout, and verification checklist
+- [Architecture Overview](/docs/architecture) — system diagram and design decisions
+- [Environment Variables](/docs/reference/environment-variables) — complete variable reference
+- [Troubleshooting](/docs/operations/troubleshooting) — cross-service diagnostic commands and common issues

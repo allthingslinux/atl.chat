@@ -1,0 +1,25 @@
+---
+title: XMPP Overview
+description: Overview of the atl.chat XMPP stack powered by Prosody.
+---
+
+atl.chat's XMPP service is provided by Prosody, a lightweight, extensible XMPP server written in Lua. It supports standard XMPP clients via STARTTLS/TLS, server-to-server federation, and BOSH/WebSocket transports for web clients.
+
+## Components
+
+### Prosody
+
+Prosody handles all XMPP traffic. It is configured via `prosody.cfg.lua` and environment variables, with modules managed through a `source/` directory (for compiled modules) and an `enabled/` directory (for active modules).
+
+### Bridge integration
+
+The bridge connects to Prosody via an XMPP component connection. The component interface allows the bridge to appear as a separate subdomain (e.g., `bridge.atl.chat`) within the XMPP network.
+
+> **Note:** The `component_interfaces` configuration may need adjustment if the bridge container cannot connect. If you experience connectivity issues, verify that the component interface binds to `0.0.0.0` (or the Docker network interface) rather than `127.0.0.1` in `prosody.cfg.lua`.
+
+## Related pages
+
+- [Configuration](/docs/services/xmpp/configuration) — prosody.cfg.lua, env vars, VirtualHosts
+- [DNS](/docs/services/xmpp/dns) — SRV records, subdomain layout, federation
+- [Modules](/docs/services/xmpp/modules) — source vs enabled dirs, community modules
+- [Operations](/docs/services/xmpp/operations) — prosodyctl, adduser, db-backup, health checks

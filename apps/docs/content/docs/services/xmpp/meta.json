@@ -1,0 +1,10 @@
+{
+    "title": "XMPP",
+    "pages": [
+        "index",
+        "configuration",
+        "dns",
+        "modules",
+        "operations"
+    ]
+}

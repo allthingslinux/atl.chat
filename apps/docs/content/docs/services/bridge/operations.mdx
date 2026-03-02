@@ -1,0 +1,92 @@
+---
+title: Bridge Operations
+description: Health monitoring, adapter debugging, and Portal identity management for the bridge.
+---
+
+This page covers operational tasks for the bridge: checking health, debugging adapter connections, and managing Portal identity integration.
+
+## Health check
+
+The bridge container uses `pgrep` to verify the Python process is running. Check the health status:
+
+```bash
+docker inspect --format='{{.State.Health.Status}}' atl-bridge
+# Expected: healthy
+```
+
+The underlying health check command is `pgrep -f "bridge.__main__"`.
+
+## Restarting the bridge
+
+```bash
+docker compose restart atl-bridge
+```
+
+After a restart, verify all adapters reconnect by inspecting logs:
+
+```bash
+docker logs --tail 50 atl-bridge
+```
+
+Look for connection confirmation messages from each adapter.
+
+## Debugging adapters
+
+Each adapter logs connection events and errors. Key log patterns to watch for:
+
+| Pattern | Meaning |
+|---|---|
+| `Discord: connected` | Discord adapter connected successfully |
+| `IRC: connected to <host>` | IRC adapter connected to the server |
+| `XMPP: session started` | XMPP adapter established a session |
+
+### Common error patterns
+
+| Pattern | Meaning | Resolution |
+|---|---|---|
+| `Discord: authentication failed` | Invalid or expired Discord token | Regenerate `DISCORD_TOKEN` in the Discord Developer Portal |
+| `IRC: connection refused` | IRC server unreachable | Verify UnrealIRCd is running with `just status` |
+| `XMPP: auth failed` | Wrong XMPP password | Check `XMPP_BRIDGE_PASSWORD` matches Prosody config |
+| `Router: no mapping for <origin>` | Message from an unmapped channel | Add the channel to the `mappings` list in config |
+
+### Viewing full logs
+
+```bash
+# Follow logs in real time
+docker logs --follow atl-bridge
+
+# Show last 200 lines
+docker logs --tail 200 atl-bridge
+
+# Filter for a specific adapter
+docker logs atl-bridge 2>&1 | grep "IRC:"
+```
+
+## Portal integration
+
+The bridge supports an optional Portal identity service for unified user profiles. When Portal is configured, the bridge resolves consistent nicknames across platforms.
+
+### Checking Portal connectivity
+
+If `BRIDGE_PORTAL_BASE_URL` and `BRIDGE_PORTAL_TOKEN` are set, the bridge logs Portal status at startup:
+
+```bash
+docker logs atl-bridge 2>&1 | grep -i "portal"
+```
+
+When Portal is not configured, you see:
+
+```text
+XMPP adapter running without Portal (dev mode): using fallback nicks
+```
+
+### Identity cache
+
+The Portal client caches identity lookups (default: 1024 entries with TTL expiry) to reduce API calls. The cache is in-memory and resets on bridge restart.
+
+## Related pages
+
+- [Configuration](/docs/services/bridge/configuration) — config.yaml format, channel mappings, environment variables
+- [Bridge Overview](/docs/services/bridge) — architecture and adapter design
+- [Troubleshooting](/docs/operations/troubleshooting) — cross-service diagnostic commands
+- [Monitoring](/docs/operations/monitoring) — health checks and log inspection across all services

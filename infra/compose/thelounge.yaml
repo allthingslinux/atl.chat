@@ -12,11 +12,15 @@ include:
 
 services:
   atl-thelounge:
-    image: ghcr.io/thelounge/thelounge:latest
+    image: ghcr.io/thelounge/thelounge:4.4.3
     container_name: atl-thelounge
     hostname: atl-thelounge
     restart: unless-stopped
     user: "${PUID:-1000}:${PGID:-1000}"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
 
     depends_on:
       atl-irc-server:
@@ -36,6 +40,20 @@ services:
         required: false
       - path: ../../.env.dev
         required: false
+
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "${LOG_MAX_SIZE:-50m}"
+        max-file: "${LOG_MAX_FILES:-5}"
+        compress: "true"
 
     command: >
       sh -c "thelounge install thelounge-plugin-janitor 2>/dev/null || true &&

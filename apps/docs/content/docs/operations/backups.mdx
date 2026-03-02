@@ -1,0 +1,456 @@
+---
+title: Backups
+description: Per-service backup and restore procedures for all atl.chat stateful services.
+---
+
+This page documents how to back up and restore every stateful service in the atl.chat stack, along with retention recommendations and a pre-upgrade checklist.
+
+## Services with persistent state
+
+All persistent data lives under the `data/` directory at the repository root, created by `scripts/init.sh`. Each subdirectory maps to Docker volume mounts in the compose files.
+
+| Service | Data location | What's stored |
+|---|---|---|
+| UnrealIRCd | `data/irc/data/` | Runtime data, RPC socket, persistent channel DB |
+| WebPanel | `data/irc/webpanel-data/` | WebPanel session and configuration data |
+| Atheme | `data/atheme/data/` | Services database (`services.db`) — NickServ, ChanServ registrations |
+| Prosody | `data/xmpp/data/` | XMPP user accounts, rosters, MUC history |
+| Prosody | `data/xmpp/uploads/` | HTTP file upload storage |
+| The Lounge | `data/thelounge/` | User configs, chat history, installed plugins |
+| TLS Certificates | `data/certs/` | Private keys and certificates (shared by IRC and XMPP) |
+
+> **Note:** All services log to stdout, captured by Docker's json-file logging driver. Logs are not stored in `data/` — use `docker compose logs <service>` to view them.
+
+> **Warning:** The `data/certs/` directory contains TLS private keys. Handle backups of this directory with the same care as any secret material.
+
+## What to back up
+
+### Critical (always back up)
+
+- **Atheme database** (`data/atheme/data/services.db`) — contains all user and channel registrations. Losing this means every NickServ and ChanServ registration is gone.
+- **TLS certificates** (`data/certs/`) — private keys and fullchain certificates for IRC and XMPP domains.
+- **Environment configuration** (`.env`) — all passwords, tokens, and domain settings.
+
+### Recommended
+
+- **Prosody data** (`data/xmpp/data/`) — XMPP user accounts and rosters.
+- **The Lounge data** (`data/thelounge/`) — user accounts and chat history.
+- **UnrealIRCd data** (`data/irc/data/`) — runtime data and persistent channel DB.
+- **WebPanel data** (`data/irc/webpanel-data/`) — session data.
+
+### Optional
+
+- **XMPP uploads** (`data/xmpp/uploads/`) — user-uploaded files; may be large.
+
+## Backup procedures
+
+### Full stack backup (recommended)
+
+Stop services first to ensure data consistency, then archive the entire `data/` directory:
+
+```bash
+# 1. Stop all services
+docker compose down
+
+# 2. Create a timestamped backup
+tar -czf "backup-$(date +%Y%m%d-%H%M%S).tar.gz" data/ .env
+
+# 3. Restart services
+just dev   # or: just prod
+```
+
+This captures every stateful directory in a single archive.
+
+### Live backup (no downtime)
+
+If you cannot afford downtime, back up individual directories while services are running. This is safe for most services but may produce inconsistent snapshots for Atheme if a write is in progress.
+
+```bash
+mkdir -p backup/$(date +%Y%m%d)
+
+# Atheme database (most critical)
+cp data/atheme/data/services.db "backup/$(date +%Y%m%d)/atheme-services.db"
+
+# TLS certificates
+cp -r data/certs "backup/$(date +%Y%m%d)/certs"
+
+# Environment config
+cp .env "backup/$(date +%Y%m%d)/.env"
+
+# Prosody data
+tar -czf "backup/$(date +%Y%m%d)/xmpp-data.tar.gz" data/xmpp/data/
+
+# The Lounge data
+tar -czf "backup/$(date +%Y%m%d)/thelounge.tar.gz" data/thelounge/
+
+# UnrealIRCd data
+tar -czf "backup/$(date +%Y%m%d)/irc-data.tar.gz" data/irc/data/
+```
+
+### Per-service backup commands
+
+#### Atheme (IRC services)
+
+The Atheme database at `data/atheme/data/services.db` is the single most critical file. Atheme writes to this file periodically and on shutdown.
+
+```bash
+# Safest: stop Atheme, copy, restart
+docker compose stop atl-irc-services
+cp data/atheme/data/services.db "atheme-backup-$(date +%Y%m%d).db"
+docker compose start atl-irc-services
+```
+
+For a live copy (slightly less safe):
+
+```bash
+cp data/atheme/data/services.db "atheme-backup-$(date +%Y%m%d).db"
+```
+
+#### Prosody (XMPP)
+
+Prosody stores data in flat files under `data/xmpp/data/`. A filesystem copy is sufficient:
+
+```bash
+tar -czf "prosody-backup-$(date +%Y%m%d).tar.gz" data/xmpp/data/
+```
+
+To include uploaded files:
+
+```bash
+tar -czf "prosody-full-backup-$(date +%Y%m%d).tar.gz" data/xmpp/data/ data/xmpp/uploads/
+```
+
+#### The Lounge
+
+The Lounge stores user configs and chat logs in `data/thelounge/`:
+
+```bash
+tar -czf "thelounge-backup-$(date +%Y%m%d).tar.gz" data/thelounge/
+```
+
+#### UnrealIRCd
+
+UnrealIRCd runtime data lives in `data/irc/data/`. Most state is ephemeral (connections, channels without persistent mode), but the directory may contain persistent channel DB files:
+
+```bash
+tar -czf "irc-backup-$(date +%Y%m%d).tar.gz" data/irc/data/
+```
+
+#### TLS certificates
+
+```bash
+tar -czf "certs-backup-$(date +%Y%m%d).tar.gz" data/certs/
+```
+
+> **Warning:** Store certificate backups securely — they contain private keys.
+
+#### WebPanel
+
+```bash
+tar -czf "webpanel-backup-$(date +%Y%m%d).tar.gz" data/irc/webpanel-data/
+```
+
+## Restore procedures
+
+### Full stack restore
+
+1. Stop all services:
+
+   ```bash
+   docker compose down
+   ```
+
+2. Extract the backup archive:
+
+   ```bash
+   tar -xzf backup-YYYYMMDD-HHMMSS.tar.gz
+   ```
+
+   This restores `data/` and `.env` to the repository root.
+
+3. Fix permissions (required after restoring from a different machine):
+
+   ```bash
+   # Re-run init to set correct ownership
+   bash scripts/init.sh
+   ```
+
+4. Start services:
+
+   ```bash
+   just dev   # or: just prod
+   ```
+
+5. Verify services are running:
+
+   ```bash
+   just status
+   ```
+
+### Per-service restore
+
+#### Atheme
+
+1. Stop Atheme:
+
+   ```bash
+   docker compose stop atl-irc-services
+   ```
+
+2. Replace the database file:
+
+   ```bash
+   cp atheme-backup-YYYYMMDD.db data/atheme/data/services.db
+   ```
+
+3. Fix ownership:
+
+   ```bash
+   sudo chown $(id -u):$(id -g) data/atheme/data/services.db
+   ```
+
+4. Start Atheme:
+
+   ```bash
+   docker compose start atl-irc-services
+   ```
+
+5. Verify Atheme is running:
+
+   ```bash
+   docker logs atl-irc-services --tail 20
+   ```
+
+   You should see Atheme loading the database and connecting to UnrealIRCd.
+
+#### Prosody
+
+1. Stop Prosody:
+
+   ```bash
+   docker compose stop atl-xmpp-server
+   ```
+
+2. Restore data:
+
+   ```bash
+   tar -xzf prosody-backup-YYYYMMDD.tar.gz
+   ```
+
+3. Start Prosody:
+
+   ```bash
+   docker compose start atl-xmpp-server
+   ```
+
+4. Verify:
+
+   ```bash
+   docker logs atl-xmpp-server --tail 20
+   ```
+
+#### The Lounge
+
+1. Stop The Lounge:
+
+   ```bash
+   docker compose stop atl-thelounge
+   ```
+
+2. Restore data:
+
+   ```bash
+   tar -xzf thelounge-backup-YYYYMMDD.tar.gz
+   ```
+
+3. Start The Lounge:
+
+   ```bash
+   docker compose start atl-thelounge
+   ```
+
+4. Verify by opening `http://localhost:9000` in your browser.
+
+#### TLS certificates
+
+1. Restore certificates:
+
+   ```bash
+   tar -xzf certs-backup-YYYYMMDD.tar.gz
+   ```
+
+2. Reload services that use TLS:
+
+   ```bash
+   # UnrealIRCd picks up certs on rehash
+   docker exec atl-irc-server unrealircd rehash
+
+   # Prosody reloads on SIGHUP
+   docker exec atl-xmpp-server prosodyctl reload
+   ```
+
+## Automated backup script
+
+Save this as `scripts/backup.sh` and run it via cron:
+
+```bash
+#!/bin/bash
+# atl.chat automated backup script
+set -e
+
+BACKUP_DIR="${BACKUP_DIR:-/var/backups/atl-chat}"
+TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+DEST="$BACKUP_DIR/$TIMESTAMP"
+
+mkdir -p "$DEST"
+
+# Critical data (always)
+cp data/atheme/data/services.db "$DEST/atheme-services.db"
+cp -r data/certs "$DEST/certs"
+cp .env "$DEST/.env"
+
+# Recommended data
+tar -czf "$DEST/xmpp-data.tar.gz" data/xmpp/data/
+tar -czf "$DEST/thelounge.tar.gz" data/thelounge/
+tar -czf "$DEST/irc-data.tar.gz" data/irc/data/
+
+echo "Backup completed: $DEST"
+```
+
+Schedule it with cron:
+
+```bash
+# Daily backup at 3:00 AM
+0 3 * * * cd /path/to/atl-chat && bash scripts/backup.sh
+```
+
+## Retention policy
+
+A recommended retention schedule balances storage cost with recovery flexibility:
+
+| Tier | Frequency | Retention | Purpose |
+|---|---|---|---|
+| Daily | Every day | Keep 7 days | Quick recovery from recent issues |
+| Weekly | Every Sunday | Keep 4 weeks | Recovery from issues noticed late |
+| Monthly | First of month | Keep 12 months | Long-term recovery, compliance |
+
+### Cleanup script
+
+Add this to your cron or run manually:
+
+```bash
+#!/bin/bash
+# Remove backups older than retention policy
+BACKUP_DIR="${BACKUP_DIR:-/var/backups/atl-chat}"
+
+# Keep daily backups for 7 days
+find "$BACKUP_DIR" -maxdepth 1 -type d -mtime +7 -exec rm -rf {} \;
+
+# For weekly/monthly, tag directories or use separate paths
+```
+
+> **Tip:** For production deployments, consider pushing backups to offsite storage (S3, B2, rsync to a remote host) so you are protected against host-level failures.
+
+### Test your restores
+
+Schedule a monthly restore test on a staging environment. A backup you have never tested restoring is not a backup — it is a hope.
+
+## Pre-upgrade backup checklist
+
+Run through this checklist before upgrading any service or running `docker compose pull`:
+
+1. **Check current service status:**
+
+   ```bash
+   just status
+   ```
+
+2. **Back up the full data directory:**
+
+   ```bash
+   tar -czf "pre-upgrade-$(date +%Y%m%d).tar.gz" data/ .env
+   ```
+
+3. **Record current image versions** (so you can roll back):
+
+   ```bash
+   docker compose images
+   ```
+
+4. **Back up compose and config files** in case templates change:
+
+   ```bash
+   tar -czf "pre-upgrade-config-$(date +%Y%m%d).tar.gz" \
+     apps/unrealircd/config/ \
+     apps/atheme/config/ \
+     apps/prosody/config/ \
+     infra/compose/
+   ```
+
+5. **Verify the backup is readable:**
+
+   ```bash
+   tar -tzf "pre-upgrade-$(date +%Y%m%d).tar.gz" | head -20
+   ```
+
+6. **Proceed with the upgrade.** If something goes wrong, restore from the archive and restart:
+
+   ```bash
+   docker compose down
+   tar -xzf "pre-upgrade-$(date +%Y%m%d).tar.gz"
+   bash scripts/init.sh
+   just dev   # or: just prod
+   ```
+
+## Troubleshooting
+
+### Backup archive is empty or incomplete
+
+Check disk space before creating backups:
+
+```bash
+df -h .
+du -sh data/
+```
+
+### Restored service fails to start
+
+Check file permissions. The `scripts/init.sh` script sets correct ownership:
+
+```bash
+bash scripts/init.sh
+```
+
+Then restart:
+
+```bash
+just dev
+```
+
+### Atheme database corruption
+
+If Atheme refuses to load a restored `services.db`, check the logs:
+
+```bash
+docker logs atl-irc-services --tail 50
+```
+
+Atheme creates periodic backups in `data/atheme/data/` with `.bak` extensions. Check if a `.bak` file is available as a fallback.
+
+### Verify backup integrity
+
+```bash
+# Check tar archive is valid
+tar -tzf backup-file.tar.gz > /dev/null && echo "Archive OK" || echo "Archive corrupt"
+```
+
+
+## Related pages
+
+- [Deployment](/docs/operations/deployment) — production deployment runbook
+- [Monitoring](/docs/operations/monitoring) — health checks and alerting
+- [Troubleshooting](/docs/operations/troubleshooting) — cross-service diagnostic commands
+- [Security](/docs/operations/security) — secret management and credential rotation
+- [SSL/TLS](/docs/operations/ssl-tls) — certificate backup and renewal
+- [Atheme Operations](/docs/services/atheme/operations) — Atheme database management
+- [Data Model](/docs/architecture/data-model) — persistent data locations and volume mounts

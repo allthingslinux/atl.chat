@@ -1,0 +1,151 @@
+---
+title: Bridge Configuration
+description: config.yaml format and channel mapping for the atl.chat bridge.
+---
+
+The bridge is configured via `apps/bridge/config.yaml`, which defines channel mappings and operational settings. Sensitive values (tokens, passwords) are injected via environment variables — they do not appear in `config.yaml`.
+
+`config.yaml` is generated from `apps/bridge/config.template.yaml` by `scripts/prepare-config.sh` (via `envsubst`) during `just init` or `just dev`/`just prod`.
+
+## config.yaml structure
+
+```yaml
+mappings:
+  - discord_channel_id: ${BRIDGE_DISCORD_CHANNEL_ID}
+    irc:
+      server: ${IRC_BRIDGE_SERVER}
+      port: ${IRC_TLS_PORT}
+      tls: true
+      channel: '#general'
+    xmpp:
+      muc_jid: general@muc.${PROSODY_DOMAIN}
+
+announce_joins_and_quits: true
+announce_extras: false
+
+identity_cache_ttl_seconds: 3600
+avatar_cache_ttl_seconds: 86400
+xmpp_avatar_base_url: ${XMPP_AVATAR_BASE_URL}
+irc_puppet_idle_timeout_hours: 24
+irc_puppet_postfix: ''
+
+irc_throttle_limit: 10
+irc_message_queue: 30
+irc_rejoin_delay: 5
+irc_auto_rejoin: true
+
+# Set false for dev with self-signed certs; true for production
+irc_tls_verify: ${IRC_TLS_VERIFY}
+
+irc_relaymsg_clean_nicks: false
+irc_redact_enabled: false
+
+irc_use_sasl: false
+irc_sasl_user: ''
+irc_sasl_password: ''
+```
+
+> **Warning:** `irc_tls_verify` defaults to `false` in development (self-signed certificates). You must set `BRIDGE_IRC_TLS_VERIFY=true` in `.env` before any public deployment.
+
+## Environment variables
+
+| Variable | Description | Required |
+|---|---|---|
+| `BRIDGE_DISCORD_TOKEN` | Discord bot token | Yes (if Discord adapter enabled) |
+| `BRIDGE_DISCORD_CHANNEL_ID` | Discord channel snowflake ID to bridge | Yes |
+| `IRC_BRIDGE_SERVER` | IRC server hostname (use Docker service name internally) | Yes |
+| `IRC_TLS_PORT` | IRC server port (default: `6697`) | No |
+| `BRIDGE_IRC_NICK` | IRC nick for the bridge bot | No |
+| `BRIDGE_IRC_OPER_PASSWORD` | IRC oper password for the bridge | No |
+| `BRIDGE_IRC_TLS_VERIFY` | Override `irc_tls_verify` (`true`/`false`) | No |
+| `BRIDGE_XMPP_COMPONENT_JID` | XMPP component JID (for component protocol) | Yes (if XMPP enabled) |
+| `BRIDGE_XMPP_COMPONENT_SECRET` | XMPP component secret | Yes (if XMPP enabled) |
+| `BRIDGE_XMPP_COMPONENT_SERVER` | XMPP server hostname for component connection | No |
+| `BRIDGE_XMPP_COMPONENT_PORT` | XMPP component port (default: `5347`) | No |
+| `BRIDGE_PORTAL_BASE_URL` | Portal API base URL for identity resolution | No |
+| `BRIDGE_PORTAL_TOKEN` | Portal API authentication token | No |
+
+## Portal integration
+
+The bridge supports an optional Portal identity service for unified user profiles across platforms. When configured, the bridge resolves user identities across Discord, IRC, and XMPP so that bridged messages display consistent nicknames.
+
+To enable Portal integration, set both environment variables:
+
+```bash
+BRIDGE_PORTAL_BASE_URL=https://portal.atl.tools
+BRIDGE_PORTAL_TOKEN=your-portal-api-token
+```
+
+When Portal is not configured, the bridge runs in dev mode with fallback nick resolution — bridged messages use the originating platform's display name with a platform suffix.
+
+The Portal client includes:
+- Automatic retries with exponential backoff (via tenacity)
+- TTL-based identity cache (default: 1024 entries) to reduce API calls
+- Lookup methods: `discord_to_irc`, `discord_to_xmpp`, `irc_to_discord`, `xmpp_to_discord`
+
+## Channel mapping format
+
+Channel mappings connect a Discord channel to an IRC channel and/or an XMPP MUC room. Each mapping is defined in the `mappings` list within the config:
+
+```yaml
+mappings:
+  - discord_channel_id: "123456789012345678"  # Discord channel snowflake ID
+    irc:
+      server: "irc.atl.chat"                  # IRC server hostname
+      port: 6697                               # IRC server port
+      tls: true                                # Use TLS connection
+      channel: "#general"                      # IRC channel name
+    xmpp:
+      muc_jid: "general@muc.atl.chat"  # XMPP MUC room JID
+```
+
+Each mapping requires a `discord_channel_id`. The `irc` and `xmpp` sections are optional — you can bridge Discord to IRC only, Discord to XMPP only, or all three platforms together.
+
+### IRC target fields
+
+| Field | Type | Description |
+|---|---|---|
+| `server` | string | IRC server hostname |
+| `port` | integer | IRC server port (default: `6667`) |
+| `tls` | boolean | Use TLS for the connection |
+| `channel` | string | IRC channel name (including `#` prefix) |
+
+### XMPP target fields
+
+| Field | Type | Description |
+|---|---|---|
+| `muc_jid` | string | Full JID of the XMPP MUC room |
+
+### Multiple mappings
+
+You can define multiple mappings to bridge several channels:
+
+```yaml
+mappings:
+  - discord_channel_id: "111111111111111111"
+    irc:
+      server: "irc.atl.chat"
+      port: 6697
+      tls: true
+      channel: "#general"
+    xmpp:
+      muc_jid: "general@muc.atl.chat"
+
+  - discord_channel_id: "222222222222222222"
+    irc:
+      server: "irc.atl.chat"
+      port: 6697
+      tls: true
+      channel: "#support"
+    # No XMPP target — this channel bridges Discord <-> IRC only
+```
+
+
+## Related pages
+
+- [Bridge Overview](/docs/services/bridge) — architecture, event bus, and adapter design
+- [Bridge Operations](/docs/services/bridge/operations) — health monitoring, adapter debugging, and Portal identity
+- [IRC Configuration](/docs/services/irc/configuration) — UnrealIRCd config including oper blocks for the bridge
+- [XMPP Configuration](/docs/services/xmpp/configuration) — Prosody component configuration for the bridge
+- [Environment Variables](/docs/reference/environment-variables) — complete variable reference including all `BRIDGE_*` variables
+- [Security](/docs/operations/security) — secret management for `BRIDGE_DISCORD_TOKEN` and other bridge credentials

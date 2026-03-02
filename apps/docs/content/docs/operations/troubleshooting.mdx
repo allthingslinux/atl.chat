@@ -1,0 +1,710 @@
+---
+title: Troubleshooting
+description: Cross-service diagnostic commands, common issues, and resolution steps for the atl.chat stack.
+---
+
+This page is your starting point for diagnosing problems across the atl.chat stack. Issues are organised by service so you can jump directly to the relevant section.
+
+For IRC-specific troubleshooting with deeper detail, see [IRC Troubleshooting](/docs/services/irc/troubleshooting).
+
+## Quick stack health check
+
+Run these commands first to get a fast overview of the entire stack:
+
+```bash
+# Show all container statuses and health
+just status
+
+# Check health of every atl-* container in one pass
+for c in atl-irc-server atl-irc-services atl-xmpp-server atl-xmpp-nginx atl-bridge atl-thelounge atl-irc-webpanel; do
+  status=$(docker inspect --format='{{.State.Health.Status}}' "$c" 2>/dev/null || echo "not found")
+  printf "%-22s %s\n" "$c" "$status"
+done
+
+# View recent logs across all services
+docker compose logs --tail=20
+```
+
+If a specific service shows `unhealthy` or `not found`, jump to that service's section below.
+
+## General diagnostic commands
+
+These commands apply to any service in the stack:
+
+```bash
+# View logs for a specific container (last 50 lines)
+docker compose logs --tail=50 <container-name>
+
+# Follow logs in real time
+docker compose logs --follow <container-name>
+
+# Filter logs by time range (last hour)
+docker compose logs --since=1h <container-name>
+
+# Search logs for errors
+docker compose logs <container-name> 2>&1 | grep -i error
+
+# Check container resource usage
+docker stats --no-stream --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}" | grep atl-
+
+# Inspect a container's full state
+docker inspect <container-name> | jq '.[0].State'
+
+# Check disk usage of data directories
+du -sh data/*/
+```
+
+## UnrealIRCd (IRC server)
+
+Container: `atl-irc-server` · Ports: 6697 (TLS), 8000 (WebSocket), 8600 (RPC)
+
+### Diagnostic commands
+
+```bash
+# Container health and status
+docker inspect --format='{{.State.Health.Status}}' atl-irc-server
+
+# Recent logs
+docker compose logs --tail=50 atl-irc-server
+
+# Test TLS connectivity
+echo "QUIT" | openssl s_client -connect localhost:6697 -servername irc.localhost 2>/dev/null | head -5
+
+# Test WebSocket port
+curl -s -o /dev/null -w "%{http_code}" http://localhost:8000
+
+# Test JSON-RPC endpoint
+curl -s http://localhost:8600/api/rpc.info | jq .
+
+# Check if ports are listening on the host
+ss -tlnp | grep -E "(6697|8000|8600)"
+
+# Shell into the container
+docker compose exec atl-irc-server bash
+```
+
+### Common issues
+
+#### 1. Container exits immediately on startup
+
+The most common cause is a configuration syntax error.
+
+```bash
+# Check the exit code
+docker compose ps -a | grep atl-irc-server
+
+# View startup logs for the error message
+docker compose logs atl-irc-server | head -40
+```
+
+Resolution: look for `error` or `fatal` in the output. Fix the config template in `apps/unrealircd/config/`, then regenerate and restart:
+
+```bash
+scripts/prepare-config.sh
+just dev
+```
+
+#### 2. TLS certificate errors
+
+Clients report certificate warnings or TLS handshake failures.
+
+```bash
+# Check certificate expiry
+openssl x509 -in data/certs/live/irc.localhost/fullchain.pem -noout -dates 2>/dev/null || \
+  echo "Certificate file not found"
+
+# Verify the certificate matches the expected domain
+openssl x509 -in data/certs/live/irc.localhost/fullchain.pem -noout -subject 2>/dev/null
+
+# Check cert files are readable inside the container
+docker compose exec atl-irc-server ls -la /home/unrealircd/unrealircd/certs/live/
+```
+
+Resolution: for dev environments, `just init` generates self-signed certificates. If certs are missing or expired, re-run `just init`. For production, see [SSL/TLS](/docs/operations/ssl-tls).
+
+#### 3. Port already in use
+
+Another process is binding to 6697, 8000, or 8600.
+
+```bash
+# Find what's using the port
+ss -tlnp | grep 6697
+```
+
+Resolution: stop the conflicting process, or change the port in `.env`:
+
+```bash
+# Override the port in .env
+IRC_TLS_PORT=6698
+```
+
+Then restart: `just dev`
+
+#### 4. Unsubstituted environment variables in config
+
+The generated config contains literal `${VARIABLE}` strings instead of values.
+
+```bash
+# Check for unsubstituted variables
+grep -n '${' apps/unrealircd/config/unrealircd.conf | head -20
+```
+
+Resolution: ensure `.env` exists and contains all required variables, then regenerate:
+
+```bash
+scripts/prepare-config.sh
+just irc reload
+```
+
+#### 5. Cannot connect from external clients
+
+The server is running but clients outside localhost cannot reach it.
+
+```bash
+# Check the bind address — 127.0.0.1 means localhost only
+grep ATL_CHAT_IP .env
+
+# Check firewall rules
+sudo ufw status 2>/dev/null || sudo iptables -L -n 2>/dev/null | head -20
+```
+
+Resolution: to allow external connections, set `ATL_CHAT_IP=0.0.0.0` in `.env` and restart. Ensure your firewall allows the relevant ports.
+
+## Atheme (IRC services)
+
+Container: `atl-irc-services` · Shares network with `atl-irc-server` (port 8081 for HTTP API)
+
+### Diagnostic commands
+
+```bash
+# Container health
+docker inspect --format='{{.State.Health.Status}}' atl-irc-services
+
+# Recent logs
+docker compose logs --tail=50 atl-irc-services
+
+# Check Atheme process is running
+docker compose exec atl-irc-server pgrep -f atheme-services
+
+# Check Atheme HTTP API responds
+curl -sf http://localhost:8081/ && echo "Atheme HTTP OK" || echo "Atheme HTTP not responding"
+
+# Check Atheme database file
+ls -la data/atheme/data/services.db
+
+# Verify Atheme is linked to UnrealIRCd (from an IRC client as oper)
+# /LINKS — should show services listed
+```
+
+### Common issues
+
+#### 1. Atheme won't start — waiting for UnrealIRCd
+
+Atheme depends on `atl-irc-server` being healthy before it starts.
+
+```bash
+# Check if UnrealIRCd is healthy
+docker inspect --format='{{.State.Health.Status}}' atl-irc-server
+```
+
+Resolution: fix UnrealIRCd first. Atheme starts automatically once UnrealIRCd is healthy.
+
+#### 2. Atheme starts but immediately exits
+
+Usually a config syntax error or missing database directory.
+
+```bash
+docker compose logs atl-irc-services | head -30
+```
+
+Resolution: check that `data/atheme/data/` exists and is writable. Re-run `just init` if directories are missing.
+
+#### 3. NickServ/ChanServ not responding
+
+Atheme is running but service bots do not respond to commands.
+
+```bash
+# Check if Atheme is linked to UnrealIRCd
+docker compose logs atl-irc-services 2>&1 | grep -i "link\|connect"
+```
+
+Resolution: Atheme connects to UnrealIRCd via a server link. Check that the link block credentials in the Atheme config match the UnrealIRCd config. Restart Atheme after fixing:
+
+```bash
+docker compose restart atl-irc-services
+```
+
+#### 4. Database corruption
+
+Atheme refuses to load `services.db` on startup.
+
+```bash
+docker compose logs atl-irc-services 2>&1 | grep -iE "database|corrupt|error"
+```
+
+Resolution: Atheme creates periodic `.bak` files in `data/atheme/data/`. Restore from the most recent backup:
+
+```bash
+docker compose stop atl-irc-services
+cp data/atheme/data/services.db.bak data/atheme/data/services.db
+docker compose start atl-irc-services
+```
+
+#### 5. Permission denied on data directory
+
+```bash
+ls -la data/atheme/data/
+```
+
+Resolution: fix ownership to match your host user:
+
+```bash
+sudo chown -R "$(id -u):$(id -g)" data/atheme/
+```
+
+## Prosody (XMPP server)
+
+Container: `atl-xmpp-server` · Ports: 5222 (C2S), 5280 (HTTP/BOSH), 5281 (HTTPS via nginx)
+
+### Diagnostic commands
+
+```bash
+# Container health
+docker inspect --format='{{.State.Health.Status}}' atl-xmpp-server
+
+# Recent logs
+docker compose logs --tail=50 atl-xmpp-server
+
+# HTTP status endpoint
+curl -sf http://localhost:5280/status && echo " — Prosody OK"
+
+# Test XMPP C2S port
+nc -zv localhost 5222
+
+# Test HTTPS proxy (nginx)
+curl -sk https://localhost:5281/health
+
+# Check nginx proxy health
+docker inspect --format='{{.State.Health.Status}}' atl-xmpp-nginx
+
+# Shell into the container
+docker compose exec atl-xmpp-server bash
+```
+
+### Common issues
+
+#### 1. Prosody fails to start
+
+```bash
+docker compose logs atl-xmpp-server | head -40
+```
+
+Common causes: missing or invalid TLS certificates, config syntax error, or port conflict.
+
+Resolution: check that `data/certs/` contains valid certificates for your XMPP domain. Re-run `just init` for dev certs. Check for config errors in `apps/prosody/config/prosody.cfg.lua`.
+
+#### 2. XMPP clients cannot authenticate
+
+Users get "authentication failed" errors.
+
+```bash
+# Check auth-related log entries
+docker compose logs atl-xmpp-server 2>&1 | grep -iE "auth.*fail|sasl|credential"
+```
+
+Resolution: verify the user account exists. Create or reset a user:
+
+```bash
+just xmpp adduser
+```
+
+#### 3. BOSH/WebSocket endpoint not responding
+
+Web clients cannot connect via `http://localhost:5280/http-bind`.
+
+```bash
+curl -sf http://localhost:5280/http-bind && echo "BOSH OK" || echo "BOSH not responding"
+```
+
+Resolution: ensure the `bosh` and `websocket` modules are enabled in the Prosody config. Check that port 5280 is mapped correctly in `.env`.
+
+#### 4. HTTPS proxy (nginx) returning 502
+
+The nginx sidecar at port 5281 returns a bad gateway error.
+
+```bash
+docker compose logs --tail=30 atl-xmpp-nginx
+```
+
+Resolution: nginx proxies to `atl-xmpp-server:5280`. Ensure Prosody is running and healthy before checking nginx. Restart both if needed:
+
+```bash
+docker compose restart atl-xmpp-server atl-xmpp-nginx
+```
+
+#### 5. Certificate mismatch for XMPP domain
+
+Clients report the certificate does not match the expected domain.
+
+```bash
+# Check which domain the cert covers
+openssl s_client -connect localhost:5222 -starttls xmpp </dev/null 2>/dev/null | \
+  openssl x509 -noout -subject -dates
+```
+
+Resolution: ensure `XMPP_DOMAIN` in `.env` matches the domain in your TLS certificate. For dev, re-run `just init` to regenerate certs matching the configured domain.
+
+## Bridge (Discord↔IRC↔XMPP)
+
+Container: `atl-bridge` · No exposed ports (connects outbound to IRC, XMPP, and Discord)
+
+### Diagnostic commands
+
+```bash
+# Container health
+docker inspect --format='{{.State.Health.Status}}' atl-bridge
+
+# Recent logs
+docker compose logs --tail=50 atl-bridge
+
+# Check bridge process is running
+docker exec atl-bridge pgrep -f "bridge.__main__" && echo "Bridge running"
+
+# Search for connection errors
+docker compose logs atl-bridge 2>&1 | grep -iE "error|disconnect|reconnect|refused"
+
+# Check bridge config is mounted
+docker exec atl-bridge cat /app/config.yaml | head -10
+```
+
+### Common issues
+
+#### 1. Bridge won't start — waiting for dependencies
+
+The bridge depends on both `atl-irc-server` and `atl-xmpp-server` being healthy.
+
+```bash
+docker inspect --format='{{.State.Health.Status}}' atl-irc-server
+docker inspect --format='{{.State.Health.Status}}' atl-xmpp-server
+```
+
+Resolution: fix the upstream service first. The bridge starts automatically once both are healthy.
+
+#### 2. Discord connection fails
+
+```bash
+docker compose logs atl-bridge 2>&1 | grep -i discord
+```
+
+Resolution: verify `BRIDGE_DISCORD_TOKEN` is set correctly in `.env`. The token must be a valid Discord bot token with the required intents enabled.
+
+#### 3. IRC connection refused
+
+The bridge cannot connect to UnrealIRCd.
+
+```bash
+docker compose logs atl-bridge 2>&1 | grep -iE "irc.*refused|irc.*error|irc.*timeout"
+```
+
+Resolution: check that `BRIDGE_IRC_NICK` and `BRIDGE_IRC_OPER_PASSWORD` are set in `.env` and match the UnrealIRCd oper block configuration.
+
+#### 4. XMPP component connection fails
+
+```bash
+docker compose logs atl-bridge 2>&1 | grep -iE "xmpp.*component|xmpp.*error"
+```
+
+Resolution: verify these variables in `.env` match the Prosody component configuration:
+
+- `BRIDGE_XMPP_COMPONENT_JID`
+- `BRIDGE_XMPP_COMPONENT_SECRET`
+- `BRIDGE_XMPP_COMPONENT_SERVER`
+- `BRIDGE_XMPP_COMPONENT_PORT`
+
+#### 5. Messages not relaying between protocols
+
+The bridge is running but messages do not appear on the other side.
+
+```bash
+# Check for relay errors
+docker compose logs atl-bridge 2>&1 | grep -iE "relay|forward|send.*fail"
+
+# Verify config.yaml channel mappings
+docker exec atl-bridge cat /app/config.yaml
+```
+
+Resolution: check that channel mappings in `apps/bridge/config.yaml` are correct. Ensure the bridge bot has the necessary permissions in each channel (IRC oper, Discord channel access, XMPP MUC membership).
+
+## The Lounge (web IRC client)
+
+Container: `atl-thelounge` · Port: 9000
+
+### Diagnostic commands
+
+```bash
+# Check container is running (no built-in health check)
+docker compose ps atl-thelounge
+
+# Recent logs
+docker compose logs --tail=50 atl-thelounge
+
+# Test HTTP connectivity
+curl -sf http://localhost:9000/ -o /dev/null && echo "The Lounge OK" || echo "The Lounge not responding"
+
+# List registered users
+just lounge list
+
+# Check data directory
+ls -la data/thelounge/
+```
+
+### Common issues
+
+#### 1. Cannot access the web interface
+
+Browser shows connection refused at `http://localhost:9000`.
+
+```bash
+docker compose ps atl-thelounge
+docker compose logs --tail=20 atl-thelounge
+```
+
+Resolution: check the container is running. If it exited, check logs for errors. Common cause: `data/thelounge/` directory does not exist or has wrong permissions.
+
+```bash
+# Ensure directory exists with correct ownership
+mkdir -p data/thelounge
+sudo chown -R "$(id -u):$(id -g)" data/thelounge/
+docker compose restart atl-thelounge
+```
+
+#### 2. Login page appears but no users exist
+
+The Lounge runs in private mode — you must create a user account first.
+
+```bash
+just lounge add
+```
+
+Follow the prompts to set a username and password.
+
+#### 3. Cannot connect to IRC server from The Lounge
+
+You can log in but The Lounge cannot reach UnrealIRCd.
+
+```bash
+# Check if UnrealIRCd is healthy
+docker inspect --format='{{.State.Health.Status}}' atl-irc-server
+
+# Check The Lounge logs for connection errors
+docker compose logs atl-thelounge 2>&1 | grep -iE "error|refused|timeout"
+```
+
+Resolution: The Lounge connects to UnrealIRCd over the Docker network. Ensure UnrealIRCd is running and the server address in The Lounge config points to `atl-irc-server` (the container hostname).
+
+#### 4. Plugin installation fails
+
+The janitor or giphy plugins fail to install on startup.
+
+```bash
+docker compose logs atl-thelounge 2>&1 | grep -i plugin
+```
+
+Resolution: plugin installation runs at container startup and requires network access. If running in an air-gapped environment, pre-install plugins into the `data/thelounge/` volume. Failures are non-fatal — The Lounge still starts without the plugins.
+
+#### 5. Chat history missing after restart
+
+The Lounge stores history in `data/thelounge/`. If the volume mount is misconfigured, data is lost on restart.
+
+```bash
+# Verify the volume mount
+docker inspect atl-thelounge | jq '.[0].Mounts'
+```
+
+Resolution: ensure `data/thelounge/` is bind-mounted to `/var/opt/thelounge` in the container. Check that the directory was not accidentally deleted. See [Backups](/docs/operations/backups) for restore procedures.
+
+## WebPanel (UnrealIRCd admin)
+
+Container: `atl-irc-webpanel` · Port: 8080
+
+### Diagnostic commands
+
+```bash
+# Check container is running (no built-in health check)
+docker compose ps atl-irc-webpanel
+
+# Recent logs
+docker compose logs --tail=30 atl-irc-webpanel
+
+# Test HTTP connectivity
+curl -sf http://localhost:8080/ -o /dev/null && echo "WebPanel OK" || echo "WebPanel not responding"
+
+# Check if the RPC connection to UnrealIRCd works
+docker compose exec atl-irc-server ls -la /home/unrealircd/unrealircd/data/rpc.socket
+```
+
+### Common issues
+
+#### 1. WebPanel returns 502 or blank page
+
+```bash
+docker compose logs --tail=30 atl-irc-webpanel
+```
+
+Resolution: the WebPanel connects to UnrealIRCd via JSON-RPC. Ensure UnrealIRCd is running and healthy:
+
+```bash
+docker inspect --format='{{.State.Health.Status}}' atl-irc-server
+```
+
+If UnrealIRCd is healthy but WebPanel still fails, restart the WebPanel container:
+
+```bash
+docker compose restart atl-irc-webpanel
+```
+
+#### 2. Cannot log in to WebPanel
+
+Authentication fails even with correct credentials.
+
+Resolution: WebPanel authenticates against UnrealIRCd's RPC interface. Verify the RPC credentials in `.env` match the UnrealIRCd configuration. Check that the RPC user block is configured in `apps/unrealircd/config/`.
+
+#### 3. WebPanel shows stale data
+
+The panel displays outdated server information.
+
+Resolution: WebPanel queries UnrealIRCd's RPC in real time. If data appears stale, the RPC connection may have dropped. Restart the WebPanel:
+
+```bash
+docker compose restart atl-irc-webpanel
+```
+
+#### 4. Port conflict on 8080
+
+Another service (commonly a local web server or proxy) is using port 8080.
+
+```bash
+ss -tlnp | grep 8080
+```
+
+Resolution: change the WebPanel port in `.env`:
+
+```bash
+WEBPANEL_PORT=8083
+```
+
+Then restart: `just dev`
+
+#### 5. WebPanel data directory permission errors
+
+```bash
+ls -la data/irc/webpanel-data/
+```
+
+Resolution: fix ownership:
+
+```bash
+sudo chown -R "$(id -u):$(id -g)" data/irc/webpanel-data/
+docker compose restart atl-irc-webpanel
+```
+
+## Cross-service issues
+
+These problems affect multiple services or the stack as a whole.
+
+### Docker Compose fails to start
+
+```bash
+# Validate compose configuration
+docker compose config --quiet && echo "Config OK" || echo "Config has errors"
+
+# Check for missing .env file
+test -f .env && echo ".env exists" || echo ".env missing — copy from .env.example"
+```
+
+Resolution: ensure `.env` exists. The `CLOUDFLARE_DNS_API_TOKEN` warning is safe to ignore in dev.
+
+### All services unhealthy after host reboot
+
+After a host reboot, Docker may not be running.
+
+```bash
+# Check if Docker daemon is running
+docker info >/dev/null 2>&1 && echo "Docker OK" || echo "Docker not running"
+```
+
+Resolution: start Docker and then the stack:
+
+```bash
+sudo dockerd &>/tmp/dockerd.log &
+just dev
+```
+
+### Network connectivity between containers
+
+Services cannot reach each other over the Docker network.
+
+```bash
+# Check the atl-chat network exists
+docker network ls | grep atl-chat
+
+# Inspect which containers are on the network
+docker network inspect atl-chat | jq '.[0].Containers | to_entries[] | {name: .value.Name, ip: .value.IPv4Address}'
+```
+
+Resolution: if the network is missing, recreate it by restarting the stack:
+
+```bash
+just down
+just dev
+```
+
+### Data directory missing or empty
+
+Services fail because `data/` subdirectories do not exist.
+
+```bash
+ls -la data/
+```
+
+Resolution: re-run the init script to create all required directories:
+
+```bash
+just init
+```
+
+### Config regeneration after .env changes
+
+After editing `.env`, services still use old values.
+
+Resolution: regenerate configs from templates and restart:
+
+```bash
+scripts/prepare-config.sh
+just down
+just dev
+```
+
+## Recovery quick reference
+
+| Scenario | Command |
+|---|---|
+| Restart a single service | `docker compose restart <container-name>` |
+| Restart the full stack | `just down && just dev` |
+| Regenerate configs | `scripts/prepare-config.sh` |
+| Recreate data directories | `just init` |
+| Rebuild all containers | `just build` |
+| Reset to clean state | `just down && rm -rf data/ && just init && just dev` |
+| View real-time logs | `docker compose logs --follow <container-name>` |
+| Check all container health | `just status` |
+
+> **Warning:** Resetting to clean state (`rm -rf data/`) destroys all persistent data including user registrations, chat history, and certificates. Back up first — see [Backups](/docs/operations/backups).
+
+## Related pages
+
+- [IRC Troubleshooting](/docs/services/irc/troubleshooting) — in-depth IRC-specific diagnostics
+- [Monitoring](/docs/operations/monitoring) — health checks, metrics, and alerting
+- [Backups](/docs/operations/backups) — backup and restore procedures
+- [SSL/TLS](/docs/operations/ssl-tls) — certificate management and renewal
+- [Deployment](/docs/operations/deployment) — production deployment runbook
+- [Environment Variables](/docs/reference/environment-variables) — complete variable reference

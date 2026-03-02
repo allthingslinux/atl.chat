@@ -33,10 +33,14 @@ globals = {
    "storage", "default_storage", "sql",
    "archive_expires_after", "default_archive_policy", "archive_compression",
    "archive_store", "max_archive_query_results", "mam_smart_enable",
+   "dont_archive_namespaces",
    -- Auth
    "authentication", "sasl_mechanisms",
    "user_account_management", "block_registrations_users", "block_registrations_require",
-   "allow_registration", "allow_unencrypted_plain_auth",
+   "allow_registration", "allow_unencrypted_plain_auth", "https_ssl",
+   "allowed_oauth2_grant_types", "allowed_oauth2_response_types",
+   "oauth2_access_token_ttl", "oauth2_refresh_token_ttl",
+   "oauth2_require_code_challenge", "oauth2_registration_key",
    -- Modules
    "modules_enabled", "modules_disabled",
    -- Lua/GC

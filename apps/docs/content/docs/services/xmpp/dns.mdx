@@ -1,0 +1,73 @@
+---
+title: XMPP DNS
+description: SRV records, subdomain layout, and federation DNS configuration for XMPP.
+---
+
+XMPP requires specific DNS SRV records for clients and federated servers to discover the service. The XMPP domain (realm) is `atl.chat` — this is what appears in JIDs (`user@atl.chat`) and what clients use for SRV lookups. `xmpp.atl.chat` is a public hostname for the BOSH/WebSocket HTTPS endpoint, not the realm.
+
+## Subdomain layout
+
+| Subdomain | Purpose |
+|---|---|
+| `atl.chat` | Primary XMPP domain (realm — used in JIDs) |
+| `xmpp.atl.chat` | Public hostname for BOSH/WebSocket HTTPS endpoint |
+| `muc.atl.chat` | Multi-User Chat (MUC) rooms |
+| `bridge.atl.chat` | Bridge component |
+
+## Client SRV records
+
+SRV records must be published under the XMPP domain (`atl.chat`), not the HTTPS hostname:
+
+```text
+_xmpp-client._tcp.atl.chat.  IN  SRV  5 0 5222  xmpp.atl.chat.
+```
+
+## Server federation SRV records
+
+```text
+_xmpp-server._tcp.atl.chat.  IN  SRV  5 0 5269  xmpp.atl.chat.
+```
+
+## XEP-0368: XMPP over TLS (Direct TLS)
+
+XEP-0368 allows clients and servers to connect directly over TLS without STARTTLS negotiation. Both client and server direct TLS listeners are enabled by default:
+
+```text
+_xmpps-client._tcp.atl.chat.  IN  SRV  5 0 5223  xmpp.atl.chat.
+_xmpps-server._tcp.atl.chat.  IN  SRV  5 0 5270  xmpp.atl.chat.
+```
+
+> **Note:** Direct TLS (ports 5223 for C2S and 5270 for S2S) is enabled in the default atl.chat Prosody configuration. Add both SRV records to allow clients and servers to discover and use direct TLS connections.
+
+## A and AAAA records
+
+Create A records for the service hostname and component subdomains:
+
+```text
+xmpp.atl.chat.  IN  A     <server-ip>
+muc.atl.chat.   IN  A     <server-ip>
+```
+
+If your server has an IPv6 address, add AAAA records:
+
+```text
+xmpp.atl.chat.  IN  AAAA  <server-ipv6>
+muc.atl.chat.   IN  AAAA  <server-ipv6>
+```
+
+Alternatively, use CNAME records if all subdomains resolve to the same server:
+
+```text
+muc.atl.chat.   IN  CNAME  xmpp.atl.chat.
+```
+
+## DNSSEC
+
+If your DNS provider supports DNSSEC, enable it for the `atl.chat` zone. DNSSEC protects against DNS spoofing attacks, which is particularly important for XMPP federation where servers discover each other via SRV records. Consult your DNS provider's documentation for enabling DNSSEC signing on your zone.
+
+## Related pages
+
+- [XMPP Overview](/docs/services/xmpp) — Prosody architecture and components
+- [XMPP Configuration](/docs/services/xmpp/configuration) — prosody.cfg.lua, VirtualHost blocks, and port settings
+- [IRC DNS](/docs/services/irc/dns) — IRC DNS records and STS configuration
+- [Networking](/docs/architecture/networking) — full port registry and DNS zone layout

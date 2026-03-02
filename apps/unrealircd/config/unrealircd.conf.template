@@ -3,9 +3,10 @@
  * ============================================================================
  * All modules and RPC config inlined here. On upgrade: diff against the new
  * release's modules.default.conf and modules.optional.conf to pick up changes.
+ * Docs: https://www.unrealircd.org/docs/Configuration
  * ============================================================================ */
 
-/* ---------- Core modules (from modules.default.conf) ---------- */
+/* ---------- Core user commands ---------- */
 loadmodule "admin";
 loadmodule "away";
 loadmodule "invite";
@@ -34,6 +35,8 @@ loadmodule "watch";
 loadmodule "whox";
 loadmodule "whois";
 loadmodule "whowas";
+
+/* ---------- Additional client features ---------- */
 loadmodule "botmotd";
 loadmodule "cap";
 loadmodule "cycle";
@@ -49,6 +52,8 @@ loadmodule "time";
 loadmodule "userip";
 loadmodule "vhost";
 loadmodule "history";
+
+/* ---------- IRCOp commands ---------- */
 loadmodule "addmotd";
 loadmodule "addomotd";
 loadmodule "chghost";
@@ -78,6 +83,8 @@ loadmodule "trace";
 loadmodule "tsctl";
 loadmodule "unsqline";
 loadmodule "jumpserver";
+
+/* ---------- Server-to-server protocol ---------- */
 loadmodule "eos";
 loadmodule "md";
 loadmodule "netinfo";
@@ -94,6 +101,8 @@ loadmodule "sreply";
 loadmodule "unreal_server_compat";
 loadmodule "sendsno";
 loadmodule "sendumode";
+
+/* ---------- Services protocol (SVS* commands) ---------- */
 loadmodule "svsjoin";
 loadmodule "svskill";
 loadmodule "svslusers";
@@ -109,6 +118,8 @@ loadmodule "svssno";
 loadmodule "svswatch";
 loadmodule "svso";
 loadmodule "svslogin";
+
+/* ---------- Channel modes ---------- */
 loadmodule "chanmodes/chanowner";
 loadmodule "chanmodes/chanadmin";
 loadmodule "chanmodes/chanop";
@@ -142,6 +153,8 @@ loadmodule "chanmodes/nokick";
 loadmodule "chanmodes/regonlyspeak";
 loadmodule "chanmodes/secureonly";
 loadmodule "chanmodes/history";
+
+/* ---------- User modes ---------- */
 loadmodule "usermodes/wallops";
 loadmodule "usermodes/bot";
 loadmodule "usermodes/servicebot";
@@ -153,6 +166,8 @@ loadmodule "usermodes/nokick";
 loadmodule "usermodes/regonlymsg";
 loadmodule "usermodes/secureonlymsg";
 loadmodule "usermodes/privdeaf";
+
+/* ---------- Extended bans ---------- */
 loadmodule "extbans/join";
 loadmodule "extbans/quiet";
 loadmodule "extbans/nickchange";
@@ -170,6 +185,8 @@ loadmodule "extbans/msgbypass";
 loadmodule "extbans/flood";
 loadmodule "extbans/asn";
 loadmodule "extbans/inherit";
+
+/* ---------- IRCv3 capabilities & message tags ---------- */
 loadmodule "account-notify";
 loadmodule "message-tags";
 loadmodule "batch";
@@ -183,6 +200,8 @@ loadmodule "typing-indicator";
 loadmodule "channel-context";
 loadmodule "reply-tag";
 loadmodule "clienttagdeny";
+
+/* ---------- Security & TLS policy ---------- */
 loadmodule "sts";
 loadmodule "link-security";
 loadmodule "plaintext-policy";
@@ -191,6 +210,8 @@ loadmodule "monitor";
 loadmodule "extended-monitor";
 loadmodule "standard-replies";
 loadmodule "no-implicit-names";
+
+/* ---------- JSON-RPC (remote management) ---------- */
 loadmodule "rpc/rpc";
 loadmodule "rpc/stats";
 loadmodule "rpc/user";
@@ -202,6 +223,8 @@ loadmodule "rpc/name_ban";
 loadmodule "rpc/spamfilter";
 loadmodule "rpc/log";
 loadmodule "rpc/whowas";
+
+/* ---------- Security & anti-abuse ---------- */
 loadmodule "ident_lookup";
 loadmodule "certfp";
 loadmodule "tls_cipher";
@@ -234,6 +257,8 @@ loadmodule "spamreport";
 loadmodule "crule";
 loadmodule "maxperip";
 loadmodule "utf8functions";
+
+/* ---------- GeoIP (classic MaxMind database, auto-refreshed) ---------- */
 loadmodule "geoip_classic";
 @if module-loaded("geoip_classic")
 set {
@@ -246,13 +271,16 @@ set {
 }
 @endif
 
-/* ---------- Optional modules (ircops, staff, websocket, antirandom, etc.) ---------- */
+/* ---------- Optional modules ---------- */
 loadmodule "ircops";
 loadmodule "staff";
 @if module-loaded("staff")
 set { staff-file "network.staff"; }
 @endif
 loadmodule "nocodes";
+
+/* antirandom: blocks connections with random-looking nick/ident/realname (bot detection).
+ * Thresholds are tuned conservatively; trusted IPs (Docker network) are exempt. */
 loadmodule "antirandom";
 @if module-loaded("antirandom")
 set {
@@ -265,13 +293,16 @@ set {
 		show-failedconnects yes;
 		except {
 			webirc yes;
-			ip { 192.168.*; 127.*; 172.17.*; }
+			ip { 192.168.*; 127.*; 172.16.0.0/12; }
 		}
 	}
 }
 @endif
+
 loadmodule "webserver";
 loadmodule "websocket";
+
+/* antimixedutf8: blocks messages mixing scripts (e.g. Latin+Cyrillic) used for spam/homoglyph attacks */
 loadmodule "antimixedutf8";
 @if module-loaded("antimixedutf8")
 set {
@@ -284,12 +315,14 @@ set {
 }
 @endif
 
-/* ---------- RPC: Unix socket + memory log + rpc-class ---------- */
+/* ---------- RPC Unix socket (for local management tools) ---------- */
 listen {
 	file "/home/unrealircd/unrealircd/data/rpc.socket";
 	mode 0770;
 	options { rpc; }
 }
+
+/* In-memory log buffer (accessible via JSON-RPC; excludes verbose join/part/kick events) */
 log {
 	source {
 		all;
@@ -308,9 +341,12 @@ log {
 		}
 	}
 }
+
+/* ---------- RPC permission classes ---------- */
 rpc-class full {
 	permissions { all; }
 }
+
 rpc-class read-only {
 	permissions {
 		rpc;
@@ -327,7 +363,6 @@ rpc-class read-only {
 	}
 }
 
-/* ---------- Includes (help, badwords, etc.) ---------- */
 include "help/help.conf";
 include "badwords.conf";
 include "spamfilter.conf";
@@ -335,7 +370,7 @@ include "dccallow.conf";
 include "operclass.default.conf";
 include "snomasks.default.conf";
 
-/* ---------- Project-specific ---------- */
+/* ---------- Third-party / custom modules ---------- */
 loadmodule "cloak_sha256";
 loadmodule "third/showwebirc";
 loadmodule "third/metadata";
@@ -366,13 +401,32 @@ me {
 	sid "001";
 }
 
-/* Support Proxy Protocol from NPM on the same network */
-webirc {
-	mask ${ATL_GATEWAY_IP}/32;
-	password "change_me_webirc_password";
+/* Proxy blocks - pass real client IPs to UnrealIRCd from web gateways and reverse proxies.
+ * Docs: https://www.unrealircd.org/docs/Proxy_block */
+
+/* NPM/gateway WEBIRC: passes real client IP via WEBIRC protocol.
+ * Used by web gateways (KiwiIRC, The Lounge, etc.) connecting through NPM. */
+proxy npm-webirc {
+	type webirc;
+	match { ip ${ATL_GATEWAY_IP}/32; }
+	password "${ATL_WEBIRC_PASSWORD}";
 }
 
-/* The Lounge web client - passes real user IP via WEBIRC */
+/* NPM WebSocket reverse proxy: trust X-Forwarded-For headers from NPM/Tailscale.
+ * When NPM proxies WebSocket connections (port 8000), it sends X-Forwarded-For
+ * with the real client IP. Hosts matching this are auto-exempted from connect
+ * floods and blacklist checks (UnrealIRCd 6.1.8+).
+ *
+ * NOTE: This does NOT help with raw TCP streams (port 6697). Direct IRC TLS
+ * clients through NPM TCP streams will appear as the proxy IP — UnrealIRCd
+ * does not support the HAProxy PROXY protocol. */
+proxy npm-x-forwarded {
+	type x-forwarded;
+	match { ip ${ATL_GATEWAY_IP}/32; ip 100.64.0.0/10; }
+}
+
+/* The Lounge web IRC client: passes real user IP via WEBIRC.
+ * Connects from the Docker network. */
 proxy thelounge {
 	type webirc;
 	match { ip 172.16.0.0/12; }
@@ -406,29 +460,36 @@ class servers {
 	recvq 8000;
 }
 
+/* Unix socket for Atheme services — shares network namespace with IRC server
+ * (atl-irc-services uses network_mode: service:atl-irc-server).
+ * Atheme connects here via 127.0.0.1 port 6901 as configured in atheme.conf. */
 listen {
 	file "/home/unrealircd/unrealircd/data/services.sock";
 	mode 0770;
-}  /* Unix socket for services - exempt from plaintext security */
+}
 
+/* Standard IRC over TLS — primary client connection port */
 listen {
 	ip *;
 	port 6697;
-	options { tls; }  /* Support direct TLS. Proxy Protocol handled via webirc block. */
+	options { tls; }
 }
 
+/* Server-to-server over TLS — used for linking remote IRC servers */
 listen {
 	ip *;
 	port 6900;
 	options { tls; serversonly; }
 }
 
+/* Server-to-server plaintext — used by Atheme services (localhost only via shared network namespace) */
 listen {
 	ip *;
 	port 6901;
 	options { serversonly; }
 }
 
+/* JSON-RPC over TLS — for webpanel and management tools */
 listen {
 	ip *;
 	port 8600;
@@ -439,11 +500,12 @@ listen {
 	}
 }
 
+/* WebSocket port — TLS terminated at NPM; UnrealIRCd receives plaintext WebSocket */
 listen {
 	ip *;
 	port 8000;
 	options {
-		/* tls; */ /* Disabled because SSL is terminated at NPM */
+		/* tls; */ /* Disabled: SSL is terminated at NPM */
 		websocket { type text; }
 	}
 	/* tls-options {
@@ -455,13 +517,6 @@ listen {
 	} */
 }
 
-/* ============================================================================
- * TLS/SSL CONFIGURATION - Enhanced Security Settings
- * ============================================================================
- * Based on UnrealIRCd 6.x security recommendations and Let's Encrypt best practices
- * See: https://www.unrealircd.org/docs/SSL/TLS
- * ============================================================================ */
-
 set {
 	tls {
 		/* Certificate configuration - data/certs mounted at certs/, live/<domain>/ layout */
@@ -470,98 +525,87 @@ set {
 		/* CA certificate bundle for certificate validation */
 		trusted-ca-file "/home/unrealircd/unrealircd/config/tls/curl-ca-bundle.crt";
 
-		/* Modern TLS protocols - TLS 1.2 and 1.3 only (no older insecure versions) */
+		/* TLS 1.2 and 1.3 only — matches UnrealIRCd 6.1.9+ defaults */
 		protocols "TLSv1.2,+TLSv1.3";
 
-		/* Strong TLS 1.2 ciphers with Forward Secrecy - ECDHE provides perfect forward secrecy */
+		/* TLS 1.2 cipher suites — ECDHE only (forward secrecy; matches UnrealIRCd 6.1.9+ defaults) */
 		ciphers "ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256";
 
-		/* TLS 1.3 cipher suites - modern, secure, and fast */
+		/* TLS 1.3 cipher suites (matches UnrealIRCd 6.1.9+ defaults) */
 		ciphersuites "TLS_CHACHA20_POLY1305_SHA256:TLS_AES_256_GCM_SHA384:TLS_AES_128_GCM_SHA256:TLS_AES_128_CCM_8_SHA256:TLS_AES_128_CCM_SHA256";
 
-		/* Modern ECDH curves for better security */
-		/* ECDH groups - updated for UnrealIRCd 6.2.0+ */
-		/* Note: ecdh-curves is deprecated, use 'groups' instead */
-		/* X25519MLKEM768: Post-quantum cryptography hybrid group (requires OpenSSL 3.5.0+) */
-		/* X25519: Standard curve used by most clients today */
+		/* Key exchange groups — includes post-quantum hybrid X25519MLKEM768 (UnrealIRCd 6.2.0+).
+		 * X25519MLKEM768 requires OpenSSL 3.5.0+; falls back gracefully on older builds.
+		 * Docs: https://www.unrealircd.org/docs/TLS_Ciphers_and_protocols */
 		groups "X25519MLKEM768:X25519:secp521r1:secp384r1:prime256v1";
-		/* Legacy setting for compatibility */
+		/* Legacy fallback for OpenSSL builds that don't support the 'groups' directive */
 		ecdh-curves "X25519:secp521r1:secp384r1:prime256v1";
 
-		/* Additional TLS options for enhanced security */
 		options {
-			/* Don't require client certificates by default */
 			no-client-certificate;
 		}
 
-		/* Strict Transport Security (STS) - Automatically redirect users to TLS */
+		/* Strict Transport Security (STS) — redirects clients to TLS automatically.
+		 * Clients cache this for 'duration' time; start low and increase gradually:
+		 *   1m -> 1d -> 30d -> 180d
+		 * WARNING: Cached by clients for the full duration period. */
 		sts-policy {
-			/* Redirect to secure port 6697 */
 			port 6697;
-			/* Conservative duration - start low and gradually increase
-			 * Recommended progression: 1m -> 1d -> 30d -> 180d
-			 * WARNING: Users cache this setting for 'duration' time!
-			 */
 			duration ${IRC_STS_DURATION};
-			/* Preload in client (optional, for advanced security) */
 			preload ${IRC_STS_PRELOAD};
 		}
 
-		/* Certificate expiry notifications */
 		certificate-expiry-notification yes;
 	}
 
-	/* Plaintext policy - control who can use non-TLS connections */
+	/* Plaintext policy — control who can use non-TLS connections.
+	 * Docs: https://www.unrealircd.org/docs/Set_block#set::plaintext-policy */
 	plaintext-policy {
-		/* Allow localhost server connections (Atheme) - localhost is exempt from link security */
+		/* Allow localhost server connections (Atheme) — localhost is exempt from link security */
 		server allow;
-		/* Allow users for now, but they'll be redirected to TLS via STS if client supports it */
+		/* Allow users for now; STS will redirect TLS-capable clients automatically */
 		user allow;
-		/* IRCOps should always use TLS for security */
+		/* IRCOps must always use TLS */
 		oper deny;
-		/* Helpful message for non-STS clients when we want to enforce TLS */
 		user-message "For security, please connect using TLS on port 6697. Your client will be automatically redirected if it supports STS.";
 		oper-message "IRCOps must use TLS connections. Please connect to port 6697 with SSL/TLS enabled.";
 	}
 
-	/* Outdated TLS policy - warn users about insecure TLS protocols/ciphers */
+	/* Outdated TLS policy — warn or block connections using old TLS protocols/ciphers */
 	outdated-tls-policy {
-		/* Warn users about outdated TLS (but still allow connection) */
 		user warn;
-		/* Deny IRCOps with outdated TLS */
 		oper deny;
-		/* Deny server links with outdated TLS */
 		server deny;
-		/* Custom messages for better user experience */
 		user-message "Your IRC client is using an outdated TLS protocol or cipher. Please update your IRC client for better security.";
 		oper-message "IRCOps must use modern TLS. Please update your IRC client.";
 	}
 }
 
-/* Link block for services - localhost connections are exempt from link security */
+/* Link block for Atheme services — restricted to Docker network and localhost */
 link ${IRC_SERVICES_SERVER} {
 	incoming {
-		/* Allow all connections for services - Docker shared network */
-		mask *;
+		mask 172.16.0.0/12;
+		mask 127.0.0.0/8;
 		password "${IRC_SERVICES_PASSWORD}";
 	}
 	password "${IRC_SERVICES_PASSWORD}";
 	class servers;
 }
 
-/* U-lines give services special privileges */
+/* U-lines give services special privileges (mode enforcement, nick protection, etc.) */
 ulines {
 	${IRC_SERVICES_SERVER};
 }
 
-/* Allow Configuration - Who can connect */
+/* Allow configuration — who can connect */
 allow {
 	mask *@*;
 	class clients;
 	maxperip 5;
 }
 
-/* Authentication Requirements - Uncomment and customize as needed */
+/* Authentication Requirements — uncomment and customize as needed.
+ * Docs: https://www.unrealircd.org/docs/Require_authentication_block */
 
 /* Example 1: Require authentication for users from specific ISPs/countries
 require authentication {
@@ -587,7 +631,7 @@ require authentication {
 };
 */
 
-/* Ban nicknames that are reserved for services */
+/* Ban nicknames reserved for services or system use */
 ban nick {
 	mask "*ChanServ*";
 	reason "Reserved for Services";
@@ -688,7 +732,8 @@ ban nick {
 	reason "Unknown user not allowed";
 }
 
-/* Blacklist configuration for security */
+/* DNSBL blacklists — block known proxies, drones, and TOR exit nodes.
+ * Docs: https://www.unrealircd.org/docs/Blacklist_block */
 blacklist dronebl {
 	dns {
 		name dnsbl.dronebl.org;
@@ -722,6 +767,14 @@ blacklist tornevall {
 	reason "Open proxy/relay detected. Check https://dnsbl.tornevall.org/ for details.";
 }
 
+/* Exempt internal Docker network from bans/blacklists.
+ * Covers bridge, services, and other containers on the atl-chat network.
+ * 172.16.0.0/12 spans all default Docker bridge subnets (172.16–31.*). */
+except ban {
+	mask *@172.16.0.0/12;
+	type { blacklist; connect-flood; maxperip; handshake-data-flood; }
+}
+
 /* Network configuration */
 set {
 	network-name 		"${IRC_NETWORK_NAME}";
@@ -730,38 +783,43 @@ set {
 	stats-server 		"${IRC_DOMAIN}";
 	sasl-server 		"${IRC_SERVICES_SERVER}";
 
-	/* Normal defaults */
 	help-channel 		"#support";
 	prefix-quit 		"quit";
 
-	/* Cloak keys - from .env; generate with: just irc gencloak */
+	/* Cloak keys — from .env; generate new keys with: just irc gencloak */
 	cloak-keys {
 		"${IRC_CLOAK_KEY_1}";
 		"${IRC_CLOAK_KEY_2}";
 		"${IRC_CLOAK_KEY_3}";
 	}
 
-	/* Hidden host prefix - must match cloak-prefix on all servers */
+	/* Hidden host prefix — must match cloak-prefix on all servers in the network */
 	hiddenhost-prefix "${IRC_CLOAK_PREFIX}";
 
-	/* Cloaking method - use IP style for better privacy (optional but recommended) */
+	/* Cloak method: "ip" hashes the full IP address for better privacy */
 	cloak-method ip;
 }
 
-/* Operator Configuration */
-oper admin {
-	class opers;
-	mask *@*;
-	password "${IRC_OPER_PASSWORD}";
-	operclass netadmin-with-override;
-	swhois "is the Network Administrator";
-	vhost "${IRC_STAFF_VHOST}";
-	require-modes "";
+/* Die/Restart password: protects /DIE and /RESTART from accidental or unauthorized use */
+drpass {
+	restart "${IRC_DRPASS}";
+	die "${IRC_DRPASS}";
 }
 
-/* Bridge oper: creates channels and sets +P (permanent) so they persist when empty.
- * Needs channel override so IRCOp can set +P without being chanop.
- * relaymsg: allows RELAYMSG for stateless bridging (third/relaymsg-atl, atl.chat fork). */
+/* Staff oper block — network staff with full privileges and vhost */
+oper staff {
+	class opers;
+	mask *;
+	password "${IRC_OPER_PASSWORD}";
+	operclass netadmin-with-override;
+	swhois "is a member of the Network Staff";
+	vhost "${DOLLAR}account@${IRC_STAFF_VHOST}";
+	require-modes "z";
+}
+
+/* Bridge operclass — minimal privileges needed for the bridge bot:
+ * - channel override: allows setting +P (permanent) without being chanop
+ * - relaymsg: allows RELAYMSG for stateless bridging (third/relaymsg-atl) */
 operclass bridge-oper {
 	parent locop;
 	permissions {
@@ -770,32 +828,33 @@ operclass bridge-oper {
 	}
 }
 
-oper atl-bridge {
+oper bridge {
 	class opers;
-	mask *@*atl-bridge*;
+	mask *@*bridge*;
 	password "${BRIDGE_IRC_OPER_PASSWORD}";
 	operclass bridge-oper;
+	vhost "bridge@bridge.atl.chat";
 }
 
-/* RPC Configuration for Webpanel */
+/* RPC user for webpanel — restricted to Docker network and localhost */
 rpc-user "${WEBPANEL_RPC_USER}" {
-	match { ip *; }
+	match { ip 172.16.0.0/12; ip 127.0.0.0/8; }
 	rpc-class full;
 	password "${WEBPANEL_RPC_PASSWORD}";
 }
 
-/* Automatic vhost for registered users */
+/* Automatic vhost for registered users — applied at login via services */
 vhost {
 	auto-login yes;
 	mask {
 		identified yes;
 	}
-	vhost ${IRC_DOMAIN};
+	vhost "${DOLLAR}account@${IRC_ROOT_DOMAIN}";
 }
 
-/* Logging Configuration */
-
-/* Traditional text logging - human readable */
+/* Log to stdout (JSON) — captured by Docker json-file driver with rotation.
+ * No file-based logging; use `docker compose logs atl-irc-server` to read.
+ * Verbose join/part/kick events excluded to reduce noise. */
 log {
 	source {
 		all;
@@ -808,70 +867,73 @@ log {
 		!kick.REMOTE_CLIENT_KICK;
 	}
 	destination {
-		file "${IRC_LOG_PATH}/ircd.log" { maxsize 100M; }
+		file "/dev/stdout" { type json; }
 	}
 }
 
-/* JSON logging - machine readable with detailed information */
-log {
-	source {
-		all;
-		!debug;
-		!join.LOCAL_CLIENT_JOIN;
-		!join.REMOTE_CLIENT_JOIN;
-		!part.LOCAL_CLIENT_PART;
-		!part.REMOTE_CLIENT_PART;
-		!kick.LOCAL_CLIENT_KICK;
-		!kick.REMOTE_CLIENT_KICK;
-	}
-	destination {
-		file "${IRC_LOG_PATH}/ircd.json.log" { maxsize 250M; type json; }
-	}
-}
-
-/* Server specific configuration */
 set {
 	kline-address '${IRC_ADMIN_EMAIL}'; /* e-mail or URL shown when a user is banned */
+	gline-address '${IRC_ADMIN_EMAIL}'; /* e-mail shown on G-lines */
 
-	modes-on-connect "+ixw"; /* when users connect, they will get these user modes */
-	modes-on-oper "+xws"; /* when someone becomes IRCOp they'll get these modes */
-	modes-on-join "+nt"; /* default channel modes when a new channel is created */
+	modes-on-connect "+ixw"; /* user modes set automatically on connect */
+	modes-on-oper "+xwsH"; /* additional modes set when someone becomes IRCOp */
+	snomask-on-oper "+bBcdfkqsSo"; /* server notice mask for opers */
+	modes-on-join "+nt"; /* default channel modes for newly created channels */
 
-	/* Restrict user modes - prevent users from disabling cloaking for security */
-	restrict-usermodes "x"; /* Users cannot remove +x (cloaking) */
+	/* Prevent users from disabling their cloak (+x) for privacy */
+	restrict-usermodes "x";
 
-	/* Configure who can see webirc and websocket information in WHOIS */
+	/* Control WHOIS visibility of webirc/websocket metadata */
 	whois-details {
 		webirc { everyone none; self full; oper full; };
 		websocket { everyone none; self full; oper full; };
 	}
-	oper-auto-join "#mod-chat"; /* IRCOps are auto-joined to this channel */
+	oper-auto-join "#mod-chat"; /* IRCOps are auto-joined to this channel on oper-up */
 	options {
 		hide-ulines; /* hide U-lines in /MAP and /LINKS */
 		show-connect-info; /* show "looking up your hostname" messages on connect */
 	}
 
-	/* Authentication prompt is enabled by default via the authprompt module */
+	/* Authentication prompt enabled by default via the authprompt module */
 
 	maxchannelsperuser 10; /* maximum number of channels a user may /JOIN */
 
-	/* The minimum time a user must be connected before being allowed to
-	 * use a QUIT message. This will hopefully help stop spam.
-	 */
+	/* Restrict /STATS to safe statistics for regular users; everything else is oper-only */
+	allow-user-stats "kMp";
+
+	/* Spamfilter global defaults */
+	spamfilter {
+		ban-time 1d;
+		ban-reason "Spam/Advertising";
+		virus-help-channel "#help";
+	}
+
+	/* Connection throttling: limits new connections during attacks.
+	 * Exempts identified users and those with established reputation.
+	 * Docs: https://www.unrealircd.org/docs/Connthrottle */
+	connthrottle {
+		except { reputation-score 24; identified yes; }
+		new-users {
+			local-throttle 20:60;
+			global-throttle 30:60;
+		}
+		disabled-when {
+			reputation-gathering 1w;
+			start-delay 3m;
+		}
+	}
+
 	anti-spam-quit-message-time 10s;
 
-	/* Channel history configuration - enables history playback for channels
-	 * The defaults are already good for most setups. This enables the feature.
-	 * Users can set +H on channels to store history (e.g. /MODE #channel +H 50:1d)
-	 * See: https://www.unrealircd.org/docs/Channel_history
-	 */
 	history {
 		channel {
-			/* Use defaults - 200 lines max, 31 days retention */
+			/* Use defaults — 200 lines max, 31 days retention */
 		}
 	};
 
-	/* Restrict commands for new users (security hardening) */
+	/* restrict-commands: delay certain commands for new/untrusted users.
+	 * Identified users and those with reputation score ≥24 are exempt.
+	 * Docs: https://www.unrealircd.org/docs/Set_block#set::restrict-commands */
 	restrict-commands {
 		list {
 			except { identified yes; reputation-score 24; }
@@ -881,36 +943,47 @@ set {
 			except { identified yes; reputation-score 24; }
 			connect-delay 120s;
 		}
+		private-message {
+			except { identified yes; webirc yes; reputation-score 24; }
+			connect-delay 120s;
+		}
+		private-notice {
+			except { identified yes; webirc yes; reputation-score 24; }
+			connect-delay 120s;
+		}
 	}
 
-	/* Anti-flood settings for enhanced security */
+	/* Anti-flood settings — controls flood protection for channels and users.
+	 * 'known-users' = identified to services OR IP connected for >2h in past X days.
+	 * 'unknown-users' = everyone else (stricter limits).
+	 * Docs: https://www.unrealircd.org/docs/Anti-flood_settings */
 	anti-flood {
-		/* Channel anti-flood protection (UnrealIRCd 6.2.0+) */
+		/* Channel flood profiles — used with channel mode +F.
+		 * Format: [c#C<cooldown>,j#R<rejoin>,k#K<kick>,m#M<msg>,n#N<nick>]:<seconds> */
 		channel {
-			/* Default profile for all channels - can be overridden with +F mode */
 			default-profile normal;
 
-			/* Custom profiles - these override the built-in ones if needed */
 			profile very-strict { flood-mode "[7c#C15,10j#R10,10k#K15,30m#M10,10n#N15]:15"; }
-			profile strict { flood-mode "[7c#C15,15j#R10,10k#K15,40m#M10,10n#N15]:15"; }
-			profile normal { flood-mode "[7c#C15,30j#R10,10k#K15,40m#M10,10n#N15]:15"; }
-			profile relaxed { flood-mode "[7c#C15,45j#R10,10k#K15,60m#M10,10n#N15]:15"; }
+			profile strict      { flood-mode "[7c#C15,15j#R10,10k#K15,40m#M10,10n#N15]:15"; }
+			profile normal      { flood-mode "[7c#C15,30j#R10,10k#K15,40m#M10,10n#N15]:15"; }
+			profile relaxed     { flood-mode "[7c#C15,45j#R10,10k#K15,60m#M10,10n#N15]:15"; }
 			profile very-relaxed { flood-mode "[7c#C15,60j#R10,10k#K15,90m#M10,10n#N15]:15"; }
 		}
 
-		/* Settings that apply to everyone */
+		/* Settings that apply to all users regardless of group */
 		everyone {
-			/* Connection flood protection - relaxed for testing: 20 connections per 10 seconds per IP */
-			connect-flood 20:10;
+			connect-flood 5:60; /* max 5 connection attempts per IP per 60 seconds */
 
-			/* Handshake data flood protection */
+			/* Handshake data flood — blocks clients sending >4k during IRC handshake */
 			handshake-data-flood {
 				amount 4k;
 				ban-action zline;
 				ban-time 10m;
 			}
 
-			/* Target flood protection - prevents high-rate flooding of channels/users */
+			/* Target flood — limits total message rate to a channel/user.
+			 * This is NOT per-sender; it limits the aggregate rate to the target.
+			 * Drop (not kill) is used because innocent users may send the Nth message. */
 			target-flood {
 				channel-privmsg 45:5;
 				channel-notice 15:5;
@@ -921,242 +994,36 @@ set {
 			}
 		}
 
-		/* Settings for known users (registered/trusted users) */
+		/* Known users (identified/trusted) — higher limits and lower lag penalties */
 		known-users {
-			nick-flood 4:60;        /* 4 nick changes per 60 seconds */
-			join-flood 4:90;        /* 4 rejoins to same channel per 90 seconds */
-			away-flood 4:120;       /* 4 away changes per 120 seconds */
-			invite-flood 5:60;      /* 5 invites per 60 seconds */
-			knock-flood 4:120;      /* 4 knocks per 120 seconds */
-			vhost-flood 3:90;       /* 3 vhost changes per 90 seconds */
+			nick-flood 4:60;
+			join-flood 4:90;
+			away-flood 4:120;
+			invite-flood 5:60;
+			knock-flood 4:120;
+			vhost-flood 3:90;
 			max-concurrent-conversations {
-				users 12;               /* Can message 12 different users */
-				new-user-every 10s;     /* Then 1 new user every 10 seconds */
+				users 12;           /* can message 12 different users before rate limiting */
+				new-user-every 10s; /* then 1 new conversation target every 10 seconds */
 			}
-			lag-penalty 600;        /* Lower lag penalty for trusted users */
-			lag-penalty-bytes 200;  /* More bytes allowed before extra penalty */
+			lag-penalty 600;        /* fake lag per command (ms); lower = more permissive */
+			lag-penalty-bytes 200;  /* bytes before extra lag penalty; higher = more permissive */
 		}
 
-		/* Settings for unknown users (new/untrusted users) */
+		/* Unknown users (new/untrusted) — stricter limits */
 		unknown-users {
-			nick-flood 2:60;        /* 2 nick changes per 60 seconds */
-			join-flood 2:90;        /* 2 rejoins to same channel per 90 seconds */
-			away-flood 3:120;       /* 3 away changes per 120 seconds */
-			invite-flood 2:60;      /* 2 invites per 60 seconds */
-			knock-flood 2:120;      /* 2 knocks per 120 seconds */
-			vhost-flood 2:90;       /* 2 vhost changes per 90 seconds */
+			nick-flood 2:60;
+			join-flood 2:90;
+			away-flood 3:120;
+			invite-flood 2:60;
+			knock-flood 2:120;
+			vhost-flood 2:90;
 			max-concurrent-conversations {
-				users 4;                /* Can message 4 different users */
-				new-user-every 20s;     /* Then 1 new user every 20 seconds */
+				users 4;            /* can message 4 different users before rate limiting */
+				new-user-every 20s; /* then 1 new conversation target every 20 seconds */
 			}
-			lag-penalty 1200;       /* Higher lag penalty for unknown users */
-			lag-penalty-bytes 80;   /* Fewer bytes allowed before extra penalty */
+			lag-penalty 1200;       /* higher fake lag penalty for unknown users */
+			lag-penalty-bytes 80;   /* stricter byte threshold before extra lag penalty */
 		}
 	}
 }
-
-/*
- * ANTI-FLOOD PROTECTION OVERVIEW
- * ===============================
- *
- * The anti-flood settings above provide comprehensive protection against various types of flooding:
- *
- * CONNECTION FLOOD PROTECTION:
- * - Limits connections per IP address to prevent connection bombing
- * - Default: 3 connections per 60 seconds per IP
- *
- * HANDSHAKE DATA FLOOD PROTECTION:
- * - Prevents abuse during IRC protocol handshake
- * - Blocks excessive data during connection establishment
- * - Results in 10-minute Z-line for violators
- *
- * TARGET FLOOD PROTECTION:
- * - Prevents high-rate flooding of channels and users
- * - Limits total messages to any target (channel/user) regardless of source count
- * - Protects against coordinated flooding attacks
- *
- * USER-BASED FLOOD PROTECTION:
- * - Different limits for known-users vs unknown-users
- * - Known users: Registered with services OR reputation score 25+
- * - Unknown users: New/unregistered users with lower trust
- *
- * COMMAND RATE LIMITING:
- * - Nick changes, channel joins, away messages, invites, knocks
- * - Private message conversation limits to prevent spam bots
- * - Lag penalty system prevents command flooding
- *
- * CHANNEL ANTI-FLOOD PROTECTION (UnrealIRCd 6.2.0+):
- * - Default "normal" profile applied to all channels automatically
- * - Channel operators can override with MODE +F <profile>:
- *   +F normal    - Standard protection (default)
- *   +F relaxed   - For busy channels with lots of activity
- *   +F strict    - For channels needing extra protection
- *   +F off       - Disable channel anti-flood (not recommended)
- * - Use MODE #channel F to see current effective settings
- * - Protection covers: messages, notices, joins, parts, nick changes, kicks, CTCPs
- *
- * SECURITY PHILOSOPHY:
- * - Balanced approach: Strict enough to prevent abuse, lenient enough for normal use
- * - Graduated penalties: Unknown users have stricter limits than known users
- * - Multiple protection layers: Per-IP, per-user, per-target, and per-channel limits
- */
-
-/*
- * STRICT TRANSPORT SECURITY (STS) SECURITY PROGRESSION
- * ====================================================
- *
- * STS automatically redirects capable clients from plaintext (port 6667) to TLS (port 6697).
- *
- * PHASE 1 - TESTING (First week):
- * - IRC_STS_DURATION=1m (1 minute cache)
- * - IRC_STS_PRELOAD=no
- * - plaintext-policy user=allow (users can still use plaintext if STS fails)
- *
- * PHASE 2 - GRADUAL ROLLOUT (After 1 week):
- * - IRC_STS_DURATION=1d (1 day cache)
- * - Monitor for any user connection issues
- *
- * PHASE 3 - MATURE NETWORK (After 1 month):
- * - IRC_STS_DURATION=30d (30 days cache)
- * - Consider IRC_STS_PRELOAD=yes for advanced security
- *
- * PHASE 4 - MAXIMUM SECURITY (After 6 months):
- * - IRC_STS_DURATION=180d (6 months cache)
- * - Optional: Set plaintext-policy user=deny to force TLS for all users
- * - Optional: Remove port 6667 listen block entirely
- *
- * SUPPORTED CLIENTS: mIRC, AdiIRC, IRCCloud, The Lounge, Ambassador, GLirc,
- * CoreIRC, BitBot, Limnoria, and many others.
- *
- * NON-STS CLIENTS: Will continue using plaintext unless plaintext-policy denies them.
- */
-
-/*
- * CHANNEL ANTI-FLOOD RECOMMENDATIONS
- * ==================================
- *
- * Operators can use channel mode +f for automatic flood protection:
- *
- * Recommended for large channels (50+ users):
- * /MODE #channel +f [50j#i10,75m#m10,7c#C15,10n#N15,30k#K10]:15
- *
- * Recommended for medium channels (10-50 users):
- * /MODE #channel +f [30j#i10,40m#m10,7c#C15,10n#N15,30k#K10]:15
- *
- * Recommended for small channels (<10 users):
- * /MODE #channel +f [15j#i5,20m#m5,5c#C10,7n#N10,15k#K5]:15
- *
- * Format explanation:
- * - 30j#i10 = 30 joins per 15 seconds, set +i for 10 minutes if exceeded
- * - 40m#m10 = 40 messages per 15 seconds, set +m for 10 minutes if exceeded
- * - 7c#C15 = 7 CTCPs per 15 seconds, set +C for 15 minutes if exceeded
- * - 10n#N15 = 10 nick changes per 15 seconds, set +N for 15 minutes if exceeded
- * - 30k#K10 = 30 knocks per 15 seconds, set +K for 10 minutes if exceeded
- *
- * Emergency flood protection modes for operators:
- * - +M = Only registered users can talk
- * - +N = No nick changes allowed
- * - +C = No CTCPs allowed
- * - +K = No /KNOCK allowed
- * - +i = Invite only
- * - +m = Moderated (only voiced+ can talk)
- */
-
-/*
- * SASL AUTHENTICATION GUIDE
- * =========================
- *
- * SASL allows users to authenticate to services before they are fully online.
- * This configuration enables SASL support with modern SCRAM-SHA-256 authentication.
- *
- * BENEFITS:
- * - Universal identification method (no need for /NS IDENTIFY)
- * - Early authentication receives proper vhost and modes
- * - Can join registered-only channels immediately
- * - Works during connection throttling attacks
- * - Enables selective authentication requirements
- *
- * CLIENT SETUP EXAMPLES:
- *
- * mIRC:
- * - File -> Select Server -> Edit -> Login Method: SASL (/CAP)
- * - Enter your services password
- *
- * irssi:
- * - /NETWORK ADD -sasl_username yourname -sasl_password yourpass -sasl_mechanism SCRAM-SHA-256 NetworkName
- *
- * HexChat:
- * - Network List -> Edit -> Login method: SASL (username + password)
- * - Enter your services username and password
- *
- * TESTING SASL:
- * - Connect to server and run: /QUOTE CAP LS
- * - Look for 'sasl' in the capability list
- * - If present, SASL is working correctly
- *
- * SOFT BANS (Dynamic Authentication Requirements):
- * IRCOps can require authentication dynamically using soft bans:
- * - /GLINE %*@*.suspicious-domain.com 0 Please authenticate to access this server
- * - /KLINE %*@192.168.1.* 0 Authentication required from your IP range
- * The % prefix makes the ban only affect unauthenticated users.
- *
- * AUTHENTICATION TYPES SUPPORTED:
- * - SCRAM-SHA-256 (most secure, recommended)
- * - SCRAM-SHA-1 (legacy compatibility)
- * - PLAIN (basic, use only over TLS)
- *
- * SECURITY NOTES:
- * - Always use TLS when possible to protect credentials
- * - SCRAM mechanisms are much more secure than PLAIN
- * - Consider requiring authentication for proxy/VPN users
- * - Monitor for authentication bypass attempts
- */
-
-/*
- * CHANNEL HISTORY GUIDE
- * =====================
- *
- * Channel history allows users to see previous messages when joining channels.
- * This server supports multiple methods for retrieving channel history.
- *
- * ENABLING HISTORY:
- * To enable history for a channel, set channel mode +H:
- * - /MODE #channel +H 50:1d (store 50 lines for 1 day)
- * - /MODE #channel +H 100:7d (store 100 lines for 7 days)
- * - /MODE #channel +H 1000:31d (store 1000 lines for 31 days)
- *
- * HISTORY RETRIEVAL METHODS:
- * 1. ON-JOIN PLAYBACK: Automatic history shown when joining (max 15 lines)
- * 2. HISTORY COMMAND: Manual retrieval via /HISTORY #channel [lines]
- * 3. CHATHISTORY (IRCv3): Advanced client-driven history fetching
- *
- * CLIENT SUPPORT:
- *
- * FULL CHATHISTORY SUPPORT (unlimited history):
- * - KiwiIRC, Gamja, Goguma, Senpai
- *
- * PARTIAL SUPPORT (on-join + HISTORY command):
- * - AdiIRC, Colloquy, HexChat, IceChat, irssi (1.2.3+)
- * - Konversation, KVIrc, mIRC (7.34+), Quassel
- * - Textual, WeeChat (3.3+), Swirc, Glirc
- * - IRCCloud, The Lounge
- *
- * NO SUPPORT:
- * - LimeChat, Mibbit
- *
- * REQUIREMENTS:
- * - Client must support IRCv3 'server-time' capability
- * - Channel must have +H mode set by channel operators
- * - History is lost on server restart (stored in memory only)
- *
- * USAGE EXAMPLES:
- * - /MODE #general +H 50:1d     # Store 50 lines for 1 day
- * - /HISTORY #general           # Get recent history
- * - /HISTORY #general 25        # Get last 25 lines
- *
- * OPERATOR NOTES:
- * - History can prevent bots from re-triggering on old messages
- * - Use +P (permanent) mode to prevent history loss when channel empties
- * - Consider privacy implications when enabling history
- * - History storage limits are configured server-wide
- */
