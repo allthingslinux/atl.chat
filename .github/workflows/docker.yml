@@ -23,4 +23,4 @@ jobs:
           docker build -f Containerfile -t ${{ inputs.image-name }}:test .
       - name: Smoke Test
         run: |-
-          docker run --rm ${{ inputs.image-name }}:test echo "Smoke test passed"
+          docker run --rm --entrypoint echo ${{ inputs.image-name }}:test "Smoke test passed"
