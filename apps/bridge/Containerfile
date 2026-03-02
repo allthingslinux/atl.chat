@@ -76,6 +76,6 @@ RUN mkdir -p /data && chown nonroot:nonroot /data
 USER nonroot
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
-    CMD pgrep -f "bridge.__main__" > /dev/null || exit 1
+    CMD pgrep -f "bridge --config" > /dev/null || exit 1
 
 CMD ["bridge", "--config", "/app/config.yaml"]
