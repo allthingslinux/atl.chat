@@ -1,6 +1,6 @@
 {
   "name": "atl.chat",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "private": true,
   "packageManager": "pnpm@10.28.2",
   "scripts": {
@@ -28,7 +28,11 @@
     "apps/*"
   ],
   "pnpm": {
-    "onlyBuiltDependencies": ["esbuild", "sharp", "workerd"],
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "sharp",
+      "workerd"
+    ],
     "overrides": {
       "esbuild": "^0.24.0"
     }
