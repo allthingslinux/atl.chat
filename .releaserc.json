@@ -8,13 +8,13 @@
     [
       "@semantic-release/exec",
       {
-        "prepareCmd": "sed -i 's/^version = .*/version = \"${nextRelease.version}\"/' pyproject.toml && uv lock && git add pyproject.toml uv.lock"
+        "prepareCmd": "sed -i 's/^version = .*/version = \"${nextRelease.version}\"/' pyproject.toml && sed -i 's/^version = .*/version = \"${nextRelease.version}\"/' apps/bridge/pyproject.toml && node -e \"['package.json','apps/web/package.json'].forEach(f=>{const fs=require('fs');const p=JSON.parse(fs.readFileSync(f,'utf8'));p.version='${nextRelease.version}';fs.writeFileSync(f,JSON.stringify(p,null,2)+'\\n');});\" && uv lock && git add package.json pyproject.toml apps/bridge/pyproject.toml apps/web/package.json uv.lock"
       }
     ],
     [
       "@semantic-release/git",
       {
-        "assets": ["CHANGELOG.md", "pyproject.toml", "uv.lock"],
+        "assets": ["CHANGELOG.md", "package.json", "pyproject.toml", "apps/bridge/pyproject.toml", "apps/web/package.json", "uv.lock"],
         "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
       }
     ],

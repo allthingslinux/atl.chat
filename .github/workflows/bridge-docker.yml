@@ -124,7 +124,7 @@ jobs:
       - name: Extract version from pyproject.toml
         id: version
         run: |
-          VERSION=$(grep '^version = ' pyproject.toml | head -1 | sed 's/version = "\(.*\)"/\1/')
+          VERSION=$(grep '^version = ' ${{ env.BRIDGE_DIR }}/pyproject.toml | head -1 | sed 's/version = "\(.*\)"/\1/')
           MAJOR_MINOR=$(echo "$VERSION" | cut -d. -f1,2)
           SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-${{ env.SHA_PREFIX_LENGTH }})
           {

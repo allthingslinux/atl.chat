@@ -1,6 +1,6 @@
 [project]
 name = "atl.chat"
-version = "0.1.0"
+version = "0.0.0"
 requires-python = ">=3.11"
 description = "Monorepo for atl.chat ecosystem (IRC, XMPP, Web)"
 readme = "README.md"
