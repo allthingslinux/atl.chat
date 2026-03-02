@@ -12,10 +12,14 @@ include:
 
 services:
   cert-manager:
-    image: goacme/lego:latest
+    image: goacme/lego:v4.32.0
     container_name: atl-cert-manager
     hostname: atl-cert-manager
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     entrypoint: /scripts/run.sh
 
     environment:
@@ -23,6 +27,13 @@ services:
       - LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL}
       - IRC_ROOT_DOMAIN=${IRC_ROOT_DOMAIN:-atl.chat}
       - SSL_DOMAIN=${SSL_DOMAIN:-}
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "${LOG_MAX_SIZE:-50m}"
+        max-file: "${LOG_MAX_FILES:-5}"
+        compress: "true"
 
     volumes:
       - ../../data/certs:/data

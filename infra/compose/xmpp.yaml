@@ -38,6 +38,11 @@ services:
     security_opt:
       - no-new-privileges:true
       - apparmor:docker-default
+    cap_drop:
+      - ALL
+    cap_add:
+      - SETUID
+      - SETGID
 
     logging:
       driver: json-file
@@ -59,7 +64,6 @@ services:
       - ../../apps/prosody/scripts:/opt/prosody/scripts:ro
       - ../../apps/prosody/www:/usr/share/prosody/www:ro
       - ../../data/xmpp/data:/var/lib/prosody/data
-      - ../../data/xmpp/logs:/var/lib/prosody/logs
       - ../../data/xmpp/uploads:/var/lib/prosody/uploads
       - ../../data/certs:/etc/prosody/certs
 
@@ -81,12 +85,26 @@ services:
     container_name: atl-xmpp-nginx
     hostname: atl-xmpp-nginx
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - SETUID
+      - SETGID
     depends_on:
       - atl-xmpp-server
 
     environment:
       - XMPP_DOMAIN=${XMPP_DOMAIN:-xmpp.localhost}
       - CERT_DIR=/etc/nginx/certs
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "${LOG_MAX_SIZE:-50m}"
+        max-file: "${LOG_MAX_FILES:-5}"
+        compress: "true"
 
     ports:
       - "${PROSODY_HTTPS_PORT:-5281}:5281"
