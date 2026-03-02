@@ -12,22 +12,23 @@ on:
 jobs:
   lint:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd  # v5
       - name: Shell Lint
         if: inputs.language == 'shell'
-        uses: luizm/action-sh-checker@master
+        uses: luizm/action-sh-checker@883217215b11c1fabbf00eb1a9a041f62d74c744  # master
         with:
           sh_checker_comment: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Lua Lint
         if: inputs.language == 'lua'
-        uses: lunarmodules/luacheck@v1
+        uses: lunarmodules/luacheck@cc089e3f65acdd1ef8716cc73a3eca24a6b845e4  # v1
         with:
           args: ${{ inputs.working-directory }}
       - name: YAML/JSON Lint
         if: inputs.language == 'yaml' || inputs.language == 'json'
-        uses: ibiqlik/action-yamllint@v3
+        uses: ibiqlik/action-yamllint@2576378a8e339169678f9939646ee3ee325e845c  # v3
         with:
           file_or_dir: ${{ inputs.working-directory }}
