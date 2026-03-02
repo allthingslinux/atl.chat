@@ -33,7 +33,6 @@ infra/
 scripts/            # init.sh, prepare-config.sh, gencloak-update-env.sh
 tests/              # Root pytest suite (IRC, integration, e2e, protocol)
 docs/               # Static assets (curl-ca-bundle.crt)
-docs-old/           # Legacy docs (architecture, services, onboarding, bridges)
 ```
 
 ## Key Commands (Root)
@@ -80,7 +79,6 @@ docs-old/           # Legacy docs (architecture, services, onboarding, bridges)
 - [apps/web/AGENTS.md](apps/web/AGENTS.md)
 - [apps/webpanel/AGENTS.md](apps/webpanel/AGENTS.md)
 - [apps/docs/AGENTS.md](apps/docs/AGENTS.md)
-- [docs-old/AGENTS.md](docs-old/AGENTS.md)
 - [infra/AGENTS.md](infra/AGENTS.md)
 - [scripts/AGENTS.md](scripts/AGENTS.md)
 - [tests/AGENTS.md](tests/AGENTS.md)
