@@ -96,7 +96,7 @@ Dozzle is configured with `DOZZLE_FILTER=name=atl-*` so it only shows atl.chat c
 
 ### Per-service log destinations
 
-All services log to stdout/stderr, captured by Docker's json-file logging driver. Use `docker compose logs` to view them:
+Most services log to stdout/stderr, captured by Docker's json-file logging driver. Use `docker compose logs` to view them. The Lounge is an exception — it writes logs to files under `/var/opt/thelounge/` (bind-mounted to `data/thelounge/` on the host):
 
 | Service | Log destination | Notes |
 |---|---|---|
