@@ -59,6 +59,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.irc == 'true' || needs.changes.outputs.xmpp == 'true'
     uses: ./.github/workflows/security.yml
+    secrets: inherit
     with:
       working-directory: .
       scan-image: false
