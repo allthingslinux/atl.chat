@@ -88,7 +88,8 @@ The compose configuration mounts three volumes into the Atheme container:
 |---|---|---|
 | `apps/atheme/config/` | `/usr/local/atheme/etc` | Configuration (read-only at runtime after generation) |
 | `data/atheme/data/` | `/usr/local/atheme/data` | Database file (`services.db`) — persistent |
-| `data/atheme/logs/` | `/usr/local/atheme/logs` | Log files (`atheme.log`) — persistent |
+
+> **Note:** Atheme logs to stdout via `/dev/stdout`. Logs are captured by Docker's json-file driver — use `docker compose logs atl-irc-services` to view them.
 
 ## Related pages
 

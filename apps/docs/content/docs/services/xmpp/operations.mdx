@@ -95,17 +95,17 @@ docker inspect --format='{{.State.Health.Status}}' atl-xmpp-server
 
 ## Logs
 
-Prosody logs are written to `/var/lib/prosody/logs/` inside the container (mapped to `data/xmpp/logs/` on the host). View them with:
+Prosody logs to stdout (console sink), captured by Docker's json-file logging driver. View them with:
 
 ```bash
 # Follow Prosody container logs
-docker logs --follow atl-xmpp-server
+docker compose logs --follow atl-xmpp-server
 
-# View Prosody's own log file
-docker exec atl-xmpp-server cat /var/lib/prosody/logs/prosody.log
+# Show last 100 lines
+docker compose logs --tail=100 atl-xmpp-server
 
 # Show recent error-level entries
-docker exec atl-xmpp-server grep "error" /var/lib/prosody/logs/prosody.log
+docker compose logs atl-xmpp-server 2>&1 | grep -i "error"
 ```
 
 Common failure modes to watch for:

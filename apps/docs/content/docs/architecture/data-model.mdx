@@ -18,18 +18,15 @@ graph TD
   subgraph data["data/"]
     subgraph irc["irc/"]
       ircData["data/\nrpc.socket, services.sock,\nruntime data"]
-      ircLogs["logs/\nUnrealIRCd log files"]
       ircWebpanel["webpanel-data/\nWebPanel persistent state"]
     end
 
     subgraph atheme["atheme/"]
       athemeData["data/\nservices.db (SQLite)"]
-      athemeLogs["logs/\natheme.log"]
     end
 
     subgraph xmpp["xmpp/"]
       xmppData["data/\nprosody.sqlite"]
-      xmppLogs["logs/\nProsody log files"]
       xmppUploads["uploads/\nHTTP Upload files"]
     end
 
@@ -49,14 +46,11 @@ The canonical layout on disk:
 data/
 ├── irc/
 │   ├── data/              # UnrealIRCd: rpc.socket, services.sock, runtime data
-│   ├── logs/              # UnrealIRCd log files
 │   └── webpanel-data/     # WebPanel persistent state
 ├── atheme/
-│   ├── data/              # Atheme SQLite database (services.db)
-│   └── logs/              # Atheme logs (atheme.log)
+│   └── data/              # Atheme SQLite database (services.db)
 ├── xmpp/
 │   ├── data/              # Prosody SQLite database (prosody.sqlite)
-│   ├── logs/              # Prosody log files
 │   └── uploads/           # Prosody HTTP Upload files
 ├── thelounge/             # The Lounge home: config.js, users/, packages/
 └── certs/
@@ -74,13 +68,10 @@ Every bind-mount is defined in the compose fragments under `infra/compose/`. Pat
 | Host path | Container mount | Service | Compose file |
 |---|---|---|---|
 | `data/irc/data` | `/home/unrealircd/unrealircd/data` | UnrealIRCd | `irc.yaml` |
-| `data/irc/logs` | `/home/unrealircd/unrealircd/logs` | UnrealIRCd | `irc.yaml` |
 | `data/certs` | `/home/unrealircd/unrealircd/certs` (ro) | UnrealIRCd | `irc.yaml` |
 | `data/atheme/data` | `/usr/local/atheme/data` | Atheme | `irc.yaml` |
-| `data/atheme/logs` | `/usr/local/atheme/logs` | Atheme | `irc.yaml` |
 | `data/irc/webpanel-data` | `/var/www/html/unrealircd-webpanel/data` | WebPanel | `irc.yaml` |
 | `data/xmpp/data` | `/var/lib/prosody/data` | Prosody | `xmpp.yaml` |
-| `data/xmpp/logs` | `/var/lib/prosody/logs` | Prosody | `xmpp.yaml` |
 | `data/xmpp/uploads` | `/var/lib/prosody/uploads` | Prosody | `xmpp.yaml` |
 | `data/certs` | `/etc/prosody/certs` | Prosody | `xmpp.yaml` |
 | `data/certs` | `/etc/nginx/certs` (ro) | XMPP Nginx | `xmpp.yaml` |
@@ -129,13 +120,16 @@ Older documentation and setups may reference paths that no longer exist. If you 
 | `data/unrealircd/` | `data/irc/data/` |
 | `data/letsencrypt/` | `data/certs/` |
 | `data/atheme/atheme.db` | `data/atheme/data/services.db` |
-| `logs/atheme/` | `data/atheme/logs/` |
-| `logs/atl-irc-server/` | `data/irc/logs/` |
+| `logs/atheme/` | Removed — logs go to stdout (Docker) |
+| `logs/atl-irc-server/` | Removed — logs go to stdout (Docker) |
+| `data/irc/logs/` | Removed — logs go to stdout (Docker) |
+| `data/atheme/logs/` | Removed — logs go to stdout (Docker) |
+| `data/xmpp/logs/` | Removed — logs go to stdout (Docker) |
 | `data/docs/` | Not used — remove if present |
 
 ```bash
 # Clean up obsolete directories (safe to run; skips if not present)
-rm -rf data/unrealircd data/letsencrypt data/docs logs/atheme logs/atl-irc-server
+rm -rf data/unrealircd data/letsencrypt data/docs logs/atheme logs/atl-irc-server data/irc/logs data/atheme/logs data/xmpp/logs
 ```
 
 ## Related pages

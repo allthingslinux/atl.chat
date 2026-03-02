@@ -12,15 +12,14 @@ All persistent data lives under the `data/` directory at the repository root, cr
 | Service | Data location | What's stored |
 |---|---|---|
 | UnrealIRCd | `data/irc/data/` | Runtime data, RPC socket, persistent channel DB |
-| UnrealIRCd | `data/irc/logs/` | IRC server logs |
 | WebPanel | `data/irc/webpanel-data/` | WebPanel session and configuration data |
 | Atheme | `data/atheme/data/` | Services database (`services.db`) — NickServ, ChanServ registrations |
-| Atheme | `data/atheme/logs/` | Atheme service logs |
 | Prosody | `data/xmpp/data/` | XMPP user accounts, rosters, MUC history |
-| Prosody | `data/xmpp/logs/` | XMPP server logs |
 | Prosody | `data/xmpp/uploads/` | HTTP file upload storage |
 | The Lounge | `data/thelounge/` | User configs, chat history, installed plugins |
 | TLS Certificates | `data/certs/` | Private keys and certificates (shared by IRC and XMPP) |
+
+> **Note:** All services log to stdout, captured by Docker's json-file logging driver. Logs are not stored in `data/` — use `docker compose logs <service>` to view them.
 
 > **Warning:** The `data/certs/` directory contains TLS private keys. Handle backups of this directory with the same care as any secret material.
 
@@ -41,7 +40,6 @@ All persistent data lives under the `data/` directory at the repository root, cr
 
 ### Optional
 
-- **Logs** (`data/irc/logs/`, `data/atheme/logs/`, `data/xmpp/logs/`) — useful for auditing but can be regenerated.
 - **XMPP uploads** (`data/xmpp/uploads/`) — user-uploaded files; may be large.
 
 ## Backup procedures

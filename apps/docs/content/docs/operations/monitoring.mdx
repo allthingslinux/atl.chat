@@ -94,18 +94,18 @@ In the dev profile, [Dozzle](https://dozzle.dev/) runs on port 8082 and provides
 
 Dozzle is configured with `DOZZLE_FILTER=name=atl-*` so it only shows atl.chat containers. It is not included in the production profile.
 
-### Per-service log locations
+### Per-service log destinations
 
-Inside containers, logs are also written to files mounted under `data/`:
+All services log to stdout/stderr, captured by Docker's json-file logging driver. Use `docker compose logs` to view them:
 
-| Service | Container log path | Host bind-mount |
+| Service | Log destination | Notes |
 |---|---|---|
-| UnrealIRCd | `/home/unrealircd/unrealircd/logs/` | `data/irc/logs/` |
-| Atheme | `/usr/local/atheme/logs/` | `data/atheme/logs/` |
-| Prosody | `/var/lib/prosody/logs/prosody.log` | `data/xmpp/logs/` |
-| Bridge | stdout/stderr only | _(use `docker compose logs`)_ |
+| UnrealIRCd | stdout (JSON format via `/dev/stdout`) | `docker compose logs atl-irc-server` |
+| Atheme | stdout (via `/dev/stdout` logfile) | `docker compose logs atl-irc-services` |
+| Prosody | stdout (console sink) | `docker compose logs atl-xmpp-server` |
+| Bridge | stderr (loguru) | `docker compose logs atl-bridge` |
 | The Lounge | `/var/opt/thelounge/` | `data/thelounge/` |
-| WebPanel | nginx access/error logs | _(use `docker compose logs`)_ |
+| WebPanel | nginx access/error logs | `docker compose logs atl-irc-webpanel` |
 
 ### Common log patterns to watch for
 

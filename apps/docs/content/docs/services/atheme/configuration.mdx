@@ -265,15 +265,15 @@ Notable defaults: ChanServ guards (joins) all registered channels, user emails a
 
 ## Logging
 
-Atheme uses a single comprehensive log file that captures all log levels:
+Atheme logs to stdout via the `/dev/stdout` path, so all output is captured by Docker's json-file logging driver:
 
 ```c
-logfile "logs/atheme.log" { debug; };
+logfile "/dev/stdout" { debug; };
 ```
 
-The log file is written to `data/atheme/logs/atheme.log` on the host (mounted as `/usr/local/atheme/logs/` in the container). The `debug` level captures everything — admin actions, errors, info, network events, wallops, and registrations.
+View logs with `docker compose logs atl-irc-services`. The `debug` level captures everything — admin actions, errors, info, network events, wallops, and registrations.
 
-> **Note:** The `ATHEME_LOG_LEVEL` variable is defined in `.env.example` but is not actually consumed by the config template. The log level is hardcoded to `debug` in the template. To change the log level, you need to edit the `logfile` directive in `atheme.conf.template` directly.
+> **Note:** The `ATHEME_LOG_LEVEL` variable is defined in `.env.example` but is not actually consumed by the config template. The log level is hardcoded to `debug` in the template. To change the log level, edit the `logfile` directive in `atheme.conf.template` directly.
 
 Optional IRC channel logging is available but commented out:
 

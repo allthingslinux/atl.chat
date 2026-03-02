@@ -348,7 +348,8 @@ cp data/atheme/data/services.db "backups/atheme-$(date +%Y%m%d-%H%M%S).db"
 | Host path | Container path | Contents |
 |---|---|---|
 | `data/atheme/data/services.db` | `/usr/local/atheme/data/services.db` | All registered nicknames, channels, access lists, memos, and settings |
-| `data/atheme/logs/atheme.log` | `/usr/local/atheme/logs/atheme.log` | Service log (all levels, including debug) |
+
+> **Note:** Atheme logs to stdout via `/dev/stdout`. Use `docker compose logs atl-irc-services` to view logs.
 
 ## Container operations
 
@@ -362,9 +363,6 @@ docker compose logs -f atl-irc-services
 
 # Last 100 lines
 docker compose logs --tail 100 atl-irc-services
-
-# Or read the log file directly
-tail -f data/atheme/logs/atheme.log
 ```
 
 ### Restarting the service
@@ -425,7 +423,7 @@ If service bots are visible on IRC but not responding:
 docker compose exec atl-irc-services pgrep -f atheme-services
 
 # Check for errors in the log
-grep -i "error\|fatal\|warning" data/atheme/logs/atheme.log | tail -20
+docker compose logs atl-irc-services 2>&1 | grep -iE "error|fatal|warning" | tail -20
 ```
 
 ### Database corruption
