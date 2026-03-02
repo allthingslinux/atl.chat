@@ -39,6 +39,8 @@ Core variables control the overall environment, Docker user mapping, host networ
 | `ATL_CHAT_IP` | Chat server IP address (Tailscale IP for prod, `127.0.0.1` for dev) | Yes | `100.64.7.0` |
 | `LETSENCRYPT_EMAIL` | Email address for Let's Encrypt certificate registration | Yes | `admin@allthingslinux.org` |
 | `CLOUDFLARE_DNS_API_TOKEN` | Cloudflare API token for DNS-01 challenge (cert-manager) | Prod only | _(empty)_ |
+| `LOG_MAX_SIZE` | Maximum container log file size before rotation (Docker json-file driver) | No | `50m` |
+| `LOG_MAX_FILES` | Number of rotated log files to retain per container | No | `5` |
 
 > **Warning:** `CLOUDFLARE_DNS_API_TOKEN` is a sensitive credential that grants DNS modification access. Store it securely and never commit it to version control. In dev, this variable can be left empty — Docker Compose emits a warning about it being unset, which is safe to ignore.
 
@@ -131,8 +133,9 @@ Core variables control the overall environment, Docker user mapping, host networ
 |---|---|---|---|
 | `ATHEME_NETNAME` | Network name used by Atheme | Yes | `atl.chat` |
 | `ATHEME_ADMIN_NAME` | Atheme admin display name | Yes | `All Things Linux` |
-| `ATHEME_ADMIN_EMAIL` | Atheme admin contact email | Yes | `admin@allthingslinux.org` |
+| `ATHEME_ADMIN_EMAIL` | Atheme admin contact email (used in atheme.conf) | Yes | `admin@allthingslinux.org` |
 | `ATHEME_REGISTER_EMAIL` | From address for registration emails | Yes | `noreply@allthingslinux.org` |
+| `ATHEME_SRA_BOOTSTRAP_ACCOUNT` | IRC nick to grant SRA (Services Root Admin) on first run | No | `admin` |
 | `ATHEME_HIDEHOST_SUFFIX` | Suffix for hidden hostnames | Yes | `users.atl.chat` |
 | `ATHEME_HELP_CHANNEL` | Default help channel | No | `#help` |
 | `ATHEME_HELP_URL` | URL for additional help | No | `https://discord.gg/linux` |
@@ -398,8 +401,23 @@ The full variable names follow the pattern: `ATHEME_NICKSERV_NICK=NickServ`, `AT
 | `BRIDGE_IRC_NICK` | IRC nickname used by the bridge bot | Yes | `bridge` |
 | `BRIDGE_IRC_OPER_PASSWORD` | IRC oper password for the bridge bot | Yes | `change_me_bridge_oper` |
 | `IRC_BRIDGE_SERVER` | IRC server hostname (Docker service name) | Yes | `atl-irc-server` |
+| `BRIDGE_IRC_TLS_VERIFY` | Verify IRC TLS certificate (`true`/`false`) — set `false` for dev self-signed certs | No | `true` (prod), `false` (dev) |
 
 > **Warning:** `BRIDGE_IRC_OPER_PASSWORD` grants IRC operator privileges to the bridge bot. Use a strong, unique password.
+
+### Relay and media
+
+| Variable | Description | Required | Default |
+|---|---|---|---|
+| `BRIDGE_RELAYMSG_CLEAN_NICKS` | Use clean nicks in RELAYMSG (no `/d` suffix); requires UnrealIRCd `require-separator no` | No | `false` |
+| `XMPP_AVATAR_BASE_URL` | Internal base URL for XMPP avatar HEAD-checks (Docker hostname, not public) | No | _(empty)_ |
+| `XMPP_UPLOAD_FETCH_URL` | Internal base URL for rewriting XMPP upload URLs when fetching media for Discord | No | _(empty)_ |
+
+### Logging
+
+| Variable | Description | Required | Default |
+|---|---|---|---|
+| `LOG_LEVEL` | Bridge log verbosity (`DEBUG`, `INFO`, `WARNING`, `ERROR`) | No | `INFO` |
 
 ## Web Frontend (Next.js)
 
