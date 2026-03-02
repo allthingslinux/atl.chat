@@ -18,13 +18,14 @@ README.md        # User docs, access, troubleshooting
 
 ## Key Facts
 
-- **Upstream:** [unrealircd/unrealircd-webpanel](https://github.com/unrealircd/unrealircd-webpanel)
+- **Upstream:** [unrealircd/unrealircd-webpanel](https://github.com/unrealircd/unrealircd-webpanel) — pinned to branch `0.9.1`
 - **Access:** <http://localhost:8080> (dev)
 - **RPC:** UnrealIRCd JSON-RPC on port 8600
-- **Data:** `data/irc/webpanel-data` → `/var/www/html/unrealircd-webpanel/data`
+- **Data:** `data/irc/webpanel-data` → `/var/www/html/data`
+- **Security:** `cap_drop: ALL` + `cap_add: SETUID, SETGID` in compose
 
 ## Related
 
 - [Monorepo AGENTS.md](../../AGENTS.md)
 - [apps/unrealircd/AGENTS.md](../unrealircd/AGENTS.md)
-- [docs/services/irc/WEBPANEL.md](../../docs/services/irc/WEBPANEL.md)
+- [docs-old/services/irc/WEBPANEL.md](../../docs-old/services/irc/WEBPANEL.md)

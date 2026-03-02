@@ -6,7 +6,7 @@ Unified chat infrastructure for All Things Linux: IRC, XMPP, web, and protocol b
 
 ## Quick Facts
 
-- **Layout:** Monorepo with `apps/*` (UnrealIRCd, Atheme, Prosody, WebPanel, Web, Bridge, The Lounge, Gamja)
+- **Layout:** Monorepo with `apps/*` (UnrealIRCd, Atheme, Prosody, WebPanel, Web, Docs, Bridge, The Lounge, Gamja)
 - **Orchestration:** Docker Compose (root `compose.yaml` includes `infra/compose/*.yaml`)
 - **Task Runner:** just (root + per-app via `mod`)
 - **Key Commands:** `just init`, `just dev`, `just prod`, `just test`, `just test-all`
@@ -22,7 +22,8 @@ apps/
 ├── web/            # Next.js web application
 ├── bridge/         # Discord↔IRC↔XMPP bridge (Python, in-repo)
 ├── thelounge/      # Web IRC client (private mode, WebIRC, janitor/giphy plugins)
-└── gamja/          # IRC web client (planned)
+├── gamja/          # IRC web client (planned)
+└── docs/           # Fumadocs documentation site (Next.js)
 
 infra/
 ├── compose/        # Compose fragments: irc, xmpp, bridge, cert-manager, networks
@@ -31,7 +32,8 @@ infra/
 
 scripts/            # init.sh, prepare-config.sh, gencloak-update-env.sh
 tests/              # Root pytest suite (IRC, integration, e2e, protocol)
-docs/               # Architecture, services, onboarding, bridges
+docs/               # Static assets (curl-ca-bundle.crt)
+docs-old/           # Legacy docs (architecture, services, onboarding, bridges)
 ```
 
 ## Key Commands (Root)
@@ -77,7 +79,8 @@ docs/               # Architecture, services, onboarding, bridges
 - [apps/unrealircd/AGENTS.md](apps/unrealircd/AGENTS.md)
 - [apps/web/AGENTS.md](apps/web/AGENTS.md)
 - [apps/webpanel/AGENTS.md](apps/webpanel/AGENTS.md)
-- [docs/AGENTS.md](docs/AGENTS.md)
+- [apps/docs/AGENTS.md](apps/docs/AGENTS.md)
+- [docs-old/AGENTS.md](docs-old/AGENTS.md)
 - [infra/AGENTS.md](infra/AGENTS.md)
 - [scripts/AGENTS.md](scripts/AGENTS.md)
 - [tests/AGENTS.md](tests/AGENTS.md)
@@ -121,7 +124,7 @@ Docker daemon must be started manually: `sudo dockerd &>/tmp/dockerd.log &`. For
 
 ### Running lint
 
-`uv run pre-commit run --all-files` (equivalent to `just lint`). Requires Python 3.11 on PATH (installed by snapshot as `/usr/local/bin/python3.11`). Pre-existing lint warnings: shellcheck SC2016 in `infra/nginx/docker-entrypoint.sh` and luacheck warning in `apps/prosody/config/prosody.cfg.lua`.
+`uv run pre-commit run --all-files` (equivalent to `just lint`). Requires Python 3.11 on PATH (installed by snapshot as `/usr/local/bin/python3.11`). Pre-existing lint warnings: luacheck warning in `apps/prosody/config/prosody.cfg.lua`.
 
 ### Gotchas
 

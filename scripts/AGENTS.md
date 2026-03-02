@@ -11,7 +11,8 @@ Orchestration and config-generation scripts. Run via `just init` or manually.
 | `init.sh` | Create data/ dirs, run prepare-config, generate dev certs |
 | `prepare-config.sh` | Substitute `.env` into config templates (UnrealIRCd, Atheme, Bridge) |
 | `gencloak-update-env.sh` | Generate cloak keys, update .env |
-| `cert-manager/` | Lego/cert-manager helpers |
+| `download_references.py` | Download reference documentation for offline use |
+| `cert-manager/run.sh` | Lego/cert-manager helper script |
 
 ## Usage
 
@@ -22,4 +23,4 @@ Orchestration and config-generation scripts. Run via `just init` or manually.
 ## Related
 
 - [Monorepo AGENTS.md](../AGENTS.md)
-- [docs/infra/](../docs/infra/)
+- [docs-old/infra/](../docs-old/infra/)

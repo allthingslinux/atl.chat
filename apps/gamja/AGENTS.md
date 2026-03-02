@@ -6,7 +6,7 @@ Gamja — lightweight IRC web client. Currently planned; Containerfile and confi
 
 ## Tech Stack
 
-Gamja · Node.js · Docker
+Gamja · Node.js 22 · Docker
 
 ## Repository Structure
 
@@ -17,7 +17,7 @@ config/
 default/
 └── config.json        # Default config template
 
-Containerfile          # Multi-stage: node-alpine, npm install
+Containerfile          # Multi-stage: node:22-alpine3.21, npm ci (non-root gamja:gamja user)
 ```
 
 ## Related
