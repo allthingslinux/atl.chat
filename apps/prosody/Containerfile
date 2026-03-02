@@ -116,8 +116,17 @@ RUN hg clone https://hg.prosody.im/prosody-modules/ prosody-modules && \
 RUN mkdir -p prosody-modules-enabled/lib/luarocks/rocks && \
     printf '%s\n' 'commands = {}' 'dependencies = {}' 'modules = {}' 'repository = {}' > prosody-modules-enabled/lib/luarocks/rocks/manifest
 
+# Strip mercurial metadata — not needed in runtime image (saves ~10 MB)
+RUN rm -rf prosody-modules/.hg prosody-modules/.hgignore prosody-modules/.hgtags
+
 # --- 3. Runtime stage: Minimal image ---
 FROM debian:bookworm-slim
+
+LABEL org.opencontainers.image.source="https://github.com/allthingslinux/atl.chat" \
+    org.opencontainers.image.description="Prosody XMPP server for atl.chat" \
+    org.opencontainers.image.licenses="MIT" \
+    org.opencontainers.image.vendor="All Things Linux" \
+    org.opencontainers.image.title="atl-prosody"
 
 # Set shell options for better error handling
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
@@ -168,18 +177,14 @@ RUN groupadd -r prosody && \
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
-# Copy prepared community modules from builder
-COPY --from=builder /usr/local/lib/prosody/prosody-modules /usr/local/lib/prosody/prosody-modules
-COPY --from=builder /usr/local/lib/prosody/prosody-modules-enabled /usr/local/lib/prosody/prosody-modules-enabled
+# prosody-modules and prosody-modules-enabled are already included via
+# COPY --from=builder /usr/local /usr/local above — no separate copy needed
 
 # --- Expose all relevant ports ---
 EXPOSE 5222 5223 5269 5270 5280 5281 5347 5000
 
 # --- Healthcheck, volumes, and final setup ---
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 CMD curl -sf http://localhost:5280/status || exit 1
-
-# Create volumes for persistent data
-VOLUME ["/var/lib/prosody", "/var/log/prosody", "/certs"]
 
 # Set Lua paths for modules and C libraries
 ENV LUA_PATH="/usr/local/lib/prosody/?.lua;/usr/local/lib/prosody/?/init.lua;/usr/local/lib/prosody/prosody-modules-enabled/?.lua;/usr/local/lib/prosody/prosody-modules-enabled/?/init.lua;/var/lib/prosody/custom_plugins/?.lua;/var/lib/prosody/custom_plugins/?/init.lua;;" \
