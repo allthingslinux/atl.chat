@@ -47,6 +47,12 @@ FROM alpine:3.23@sha256:51183f2cfa6320055da30872f211093f9ff1d3cf06f39a0bdb212314
 ARG UID=1000
 ARG GID=1000
 
+LABEL org.opencontainers.image.source="https://github.com/allthingslinux/atl.chat" \
+    org.opencontainers.image.description="Atheme IRC services for atl.chat" \
+    org.opencontainers.image.licenses="MIT" \
+    org.opencontainers.image.vendor="All Things Linux" \
+    org.opencontainers.image.title="atl-atheme"
+
 # Install runtime dependencies
 # hadolint ignore=DL3018
 RUN apk add --no-cache \
@@ -59,16 +65,16 @@ RUN apk add --no-cache \
 RUN addgroup -g ${GID} -S atheme && \
     adduser -u ${UID} -D -S -G atheme atheme
 
-# Copy built application from builder stage
-COPY --from=builder /usr/local/atheme /usr/local/atheme
+# Copy built application from builder stage; set ownership in one step (no extra chown layer)
+COPY --from=builder --chown=atheme:atheme /usr/local/atheme /usr/local/atheme
 
-# Create directory structure with proper permissions
-# etc=config (mounted), data=DB (mounted), logs=log files (mounted), var=PID file
+# Create runtime directories (not present in builder); chown only these new dirs
+# etc=config (mounted), data=DB (mounted), var=PID file
+# Logging goes to stdout (/dev/stdout) — no logs directory needed
 RUN mkdir -p /usr/local/atheme/etc \
     /usr/local/atheme/data \
-    /usr/local/atheme/logs \
     /usr/local/atheme/var && \
-    chown -R atheme:atheme /usr/local/atheme
+    chown atheme:atheme /usr/local/atheme/etc /usr/local/atheme/data /usr/local/atheme/var
 
 # Copy entrypoint script
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
