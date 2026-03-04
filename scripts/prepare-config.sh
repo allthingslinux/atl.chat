@@ -85,6 +85,8 @@ prepare_config() {
   export IRC_TLS_VERIFY="${BRIDGE_IRC_TLS_VERIFY:-${IRC_TLS_VERIFY:-$([ "${ATL_ENVIRONMENT:-}" = "dev" ] && echo "false" || echo "true")}}"
   # XMPP avatar: bridge needs internal URL to HEAD-check (Docker cannot reach xmpp.localhost)
   export XMPP_AVATAR_BASE_URL="${XMPP_AVATAR_BASE_URL:-}"
+  # XMPP avatar: public URL that Discord can fetch (e.g. https://xmpp.atl.chat)
+  export XMPP_AVATAR_PUBLIC_URL="${XMPP_AVATAR_PUBLIC_URL:-}"
   # IRC cert paths: use shared data/certs (Let's Encrypt layout), matching Prosody
   export IRC_SSL_CERT_PATH="${IRC_SSL_CERT_PATH:-/home/unrealircd/unrealircd/certs/live/${IRC_DOMAIN:-irc.localhost}/fullchain.pem}"
   export IRC_SSL_KEY_PATH="${IRC_SSL_KEY_PATH:-/home/unrealircd/unrealircd/certs/live/${IRC_DOMAIN:-irc.localhost}/privkey.pem}"
