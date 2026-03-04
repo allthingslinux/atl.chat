@@ -90,8 +90,8 @@ RUN hg clone https://hg.prosody.im/prosody-modules/ prosody-modules && \
     # Strip unneeded modules to reduce image size (keep only modules.list)
     KEEP_MODULES=$(grep -v '^#' modules.list | grep -v '^$' | tr '\n' ' ') && \
     for dir in prosody-modules/*/; do \
-        m=$(basename "$dir"); \
-        echo "$KEEP_MODULES" | grep -qw "$m" || rm -rf "prosody-modules/$m"; \
+    m=$(basename "$dir"); \
+    echo "$KEEP_MODULES" | grep -qw "$m" || rm -rf "prosody-modules/$m"; \
     done && \
     while IFS= read -r module || [[ -n "$module" ]]; do \
     # Skip empty lines and comments \
@@ -176,6 +176,9 @@ RUN groupadd -r prosody && \
 # Copy entrypoint
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+# Copy custom plugins (e.g. mod_pep_open_avatars)
+COPY custom_plugins/ /var/lib/prosody/custom_plugins/
 
 # prosody-modules and prosody-modules-enabled are already included via
 # COPY --from=builder /usr/local /usr/local above — no separate copy needed

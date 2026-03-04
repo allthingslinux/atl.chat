@@ -43,6 +43,9 @@ services:
     cap_add:
       - SETUID
       - SETGID
+      - CHOWN
+      - FOWNER
+      - DAC_OVERRIDE
 
     logging:
       driver: json-file
@@ -63,6 +66,7 @@ services:
       - ../../apps/prosody/config:/etc/prosody/config:ro
       - ../../apps/prosody/scripts:/opt/prosody/scripts:ro
       - ../../apps/prosody/www:/usr/share/prosody/www:ro
+      - ../../apps/prosody/custom_plugins:/var/lib/prosody/custom_plugins:ro
       - ../../data/xmpp/data:/var/lib/prosody/data
       - ../../data/xmpp/uploads:/var/lib/prosody/uploads
       - ../../data/certs:/etc/prosody/certs
@@ -90,8 +94,10 @@ services:
     cap_drop:
       - ALL
     cap_add:
+      - CHOWN
       - SETUID
       - SETGID
+      - DAC_READ_SEARCH
     depends_on:
       - atl-xmpp-server
 
@@ -113,7 +119,16 @@ services:
       - ../../data/certs:/etc/nginx/certs:ro
 
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "-", "--no-check-certificate", "https://localhost:5281/health"]
+      test:
+        [
+          "CMD",
+          "wget",
+          "-q",
+          "-O",
+          "-",
+          "--no-check-certificate",
+          "https://localhost:5281/health",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3

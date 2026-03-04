@@ -96,6 +96,7 @@ modules_enabled = {
     "http",          -- HTTP server functionality
     "http_avatar",   -- Serve vCard avatars at /avatar/<username>
     "http_pep_avatar", -- Serve PEP avatars at /pep_avatar/<username> (bridge; works with mod_pep)
+    "pep_open_avatars", -- Auto-set PEP avatar nodes to open access (required by mod_http_pep_avatar)
     "bosh",          -- BOSH (HTTP binding) for web clients (XEP-0124, XEP-0206)
     "websocket",     -- WebSocket connections for web clients (RFC 7395)
     "http_files",    -- Static file serving over HTTP
@@ -116,7 +117,10 @@ modules_enabled = {
     -- MONITORING & METRICS
     -- ===============================================
     "http_openmetrics", -- Prometheus-compatible metrics endpoint
-    "measure_modules"  -- Module status as OpenMetrics (gauge 0=ok, 1=info, 2=warn, 3=error)
+    "measure_modules",  -- Module status as OpenMetrics (gauge 0=ok, 1=info, 2=warn, 3=error)
+    "account_activity",       -- Record last login/logout timestamps (built-in Prosody 13+; required by mod_measure_active_users)
+    "measure_active_users",   -- DAU/WAU/MAU as OpenMetrics gauges (community; reads mod_account_activity data)
+    "http_user_count"         -- Live online user/session count at /user_count/users (community; plain text HTTP)
 
     -- Note: MUC (multi-user chat) is loaded as a component in 30-vhosts-components.cfg.lua
     -- Note: HTTP file sharing is handled by dedicated upload component
@@ -382,7 +386,8 @@ http_paths = {
 }
 
 -- Restrict status endpoint to Docker network and localhost
-http_status_allow_cidr = { "172.16.0.0/12", "127.0.0.0/8", "::1" }
+http_status_allow_cidr = "172.16.0.0/12"
+http_status_allow_ips = { "127.0.0.1", "::1" }
 
 -- ===============================================
 -- TURN/STUN EXTERNAL SERVICES (XEP-0215)
@@ -422,9 +427,13 @@ statistics = Lua.os.getenv("PROSODY_STATISTICS") or "internal"
 statistics_interval = Lua.os.getenv("PROSODY_STATISTICS_INTERVAL") or "manual"
 
 -- Restrict to loopback by default; allow-list is expanded via CIDR below
-openmetrics_allow_ips = {
-	Lua.os.getenv("PROSODY_OPENMETRICS_IP") or "127.0.0.1",
-}
+-- Support multiple IPs via comma-separated PROSODY_OPENMETRICS_IP (e.g. "127.0.0.1,172.22.0.1")
+local __openmetrics_ips = {}
+local __raw_ips = Lua.os.getenv("PROSODY_OPENMETRICS_IP") or "127.0.0.1"
+for ip in __raw_ips:gmatch("[^,]+") do
+	__openmetrics_ips[#__openmetrics_ips + 1] = ip:match("^%s*(.-)%s*$")
+end
+openmetrics_allow_ips = __openmetrics_ips
 
 -- Fixed CIDR allow-list for internal scraping (Docker network range)
 openmetrics_allow_cidr = Lua.os.getenv("PROSODY_OPENMETRICS_CIDR") or "172.16.0.0/12"

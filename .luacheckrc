@@ -24,7 +24,7 @@ globals = {
    "http_files_dir", "trusted_proxies", "http_cors_override", "http_headers",
    "http_file_share_size_limit", "http_file_share_daily_quota",
    "http_file_share_expire_after", "http_file_share_global_quota",
-   "http_paths", "http_status_allow_cidr",
+   "http_paths", "http_status_allow_cidr", "http_status_allow_ips",
    -- BOSH/WebSocket
    "bosh_max_inactivity", "bosh_max_polling", "bosh_max_requests",
    "bosh_max_wait", "bosh_session_timeout", "bosh_hold_timeout", "bosh_window",
@@ -85,5 +85,8 @@ globals = {
 files = {
    ["apps/prosody/config/prosody.cfg.lua"] = {
       unused = false,  -- Prosody config uses env vars; some locals reserved for future use
+   },
+   ["apps/prosody/custom_plugins/*.lua"] = {
+      globals = { "module" },  -- Prosody module API global
    },
 }
