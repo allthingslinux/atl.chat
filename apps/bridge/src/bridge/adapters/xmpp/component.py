@@ -8,9 +8,9 @@ import re
 import time
 import uuid
 from typing import TYPE_CHECKING, Any
+from xml.etree import ElementTree as ET
 
 import aiohttp
-import httpx
 from cachetools import TTLCache
 from loguru import logger
 from slixmpp import JID
@@ -18,7 +18,6 @@ from slixmpp.componentxmpp import ComponentXMPP
 from slixmpp.exceptions import XMPPError
 
 from bridge.adapters.xmpp.msgid import XMPPMessageIDTracker
-from bridge.config import cfg
 from bridge.events import message_in
 from bridge.gateway import Bus, ChannelRouter
 
@@ -161,19 +160,23 @@ class XMPPComponent(ComponentXMPP):
         self._avatar_cache: TTLCache[str, str] = TTLCache(
             maxsize=1000, ttl=86400
         )  # discord_id -> avatar_hash (24h TTL)
-        self._avatar_url_resolve_cache: TTLCache[tuple[str, str], str | None] = TTLCache(
-            maxsize=500, ttl=cfg.avatar_cache_ttl_seconds
-        )  # (base_domain, node) -> resolved URL or None
         self._session: aiohttp.ClientSession | None = None
         self._ibb_streams: dict[str, asyncio.Task] = {}  # sid -> handler task
         self._msgid_tracker = XMPPMessageIDTracker()  # Track message IDs for edits
         self._puppets_joined: set[tuple[str, str]] = set()  # (muc_jid, user_jid) — avoid re-join
+        # Track which (muc_jid, user_jid) pairs have had their avatar hash broadcast
+        # so we don't re-broadcast on every message.  Cleared when avatar changes.
+        self._avatar_broadcast_done: set[tuple[str, str]] = set()
         # Dedupe: MUC delivers same message to each occupant (listener + puppets) — process once
         self._seen_msg_ids: TTLCache[tuple[str, str], None] = TTLCache(maxsize=500, ttl=60)
         # Fallback echo detection when get_jid_property returns None (MUC may not expose real JID)
         self._recent_sent_nicks: TTLCache[tuple[str, str], None] = TTLCache(maxsize=200, ttl=10)
         # XEP-0444: track per-user reaction sets to detect removals (full set sent each update)
         self._reactions_by_user: TTLCache[tuple[str, str], frozenset[str]] = TTLCache(maxsize=2000, ttl=3600)
+        # Dedupe moderation: MUC delivers to each occupant + multiple handlers fire per stanza
+        self._seen_moderation_ids: TTLCache[str, None] = TTLCache(maxsize=200, ttl=60)
+        # Dedupe retractions: MUC echo + multiple occupant copies
+        self._seen_retraction_ids: TTLCache[str, None] = TTLCache(maxsize=200, ttl=60)
 
         # Register XEPs
         self.register_plugin("xep_0030")  # Service Discovery
@@ -193,6 +196,8 @@ class XMPPComponent(ComponentXMPP):
         self.register_plugin("xep_0382")  # Spoiler Messages
         self.register_plugin("xep_0422")  # Message Fastening
         self.register_plugin("xep_0424")  # Message Retraction
+        self.register_plugin("xep_0421")  # Anonymous unique occupant identifiers (dep of 0425)
+        self.register_plugin("xep_0425")  # Message Moderation (moderator retraction)
         self.register_plugin("xep_0444")  # Message Reactions
         self.register_plugin("xep_0461")  # Message Replies
         self.register_plugin("xep_0106")  # JID Escaping
@@ -215,10 +220,34 @@ class XMPPComponent(ComponentXMPP):
         self.add_event_handler("groupchat_message", self._on_groupchat_message)
         self.add_event_handler("reactions", self._on_reactions)
         self.add_event_handler("message_retract", self._on_retraction)
+        self.add_event_handler("moderated_message", self._on_moderated_message)
         self.add_event_handler("ibb_stream_start", self._on_ibb_stream_start)
         self.add_event_handler("ibb_stream_end", self._on_ibb_stream_end)
         self.add_event_handler("session_start", self._on_session_start)
         self.add_event_handler("disconnected", self._on_disconnected)
+
+        # XEP-0425 moderation: Prosody sends moderation announcements as
+        # <message type="groupchat" from="room@muc"> with <apply-to> (v0)
+        # and <retract><moderated> (v1) but NO <body>.  slixmpp's MUC handler
+        # requires <body/> so groupchat_message never fires, and the XEP-0424
+        # handler may not match due to component namespace rewriting.
+        # Register a raw handler that catches ALL groupchat messages to
+        # intercept moderation announcements.
+        from slixmpp.xmlstream.handler import Callback as _Callback
+        from slixmpp.xmlstream.matcher import MatchXMLMask as _MatchXMLMask
+
+        self.register_handler(
+            _Callback(
+                "MUCModeration",
+                _MatchXMLMask(f"<message xmlns='{self.default_ns}' type='groupchat'/>"),
+                self._on_raw_groupchat,
+            )
+        )
+
+        logger.debug(
+            "MUCModeration handler registered (default_ns={})",
+            self.default_ns,
+        )
 
     async def _on_session_start(self, event: Any) -> None:
         """Initialize HTTP session and join MUCs for receiving messages."""
@@ -252,27 +281,9 @@ class XMPPComponent(ComponentXMPP):
 
     def _resolve_avatar_url(self, base_domain: str, node: str) -> str | None:
         """Resolve avatar URL: try /pep_avatar/ first, then /avatar/ (vCard) as fallback. Cached."""
-        cache_key = (base_domain, node)
-        if cache_key in self._avatar_url_resolve_cache:
-            return self._avatar_url_resolve_cache[cache_key]
-        base = cfg.xmpp_avatar_base_url
-        if base:
-            base = base.rstrip("/")
-            pep_url = f"{base}/pep_avatar/{node}"
-            vcard_url = f"{base}/avatar/{node}"
-        else:
-            pep_url = f"https://{base_domain}/pep_avatar/{node}"
-            vcard_url = f"https://{base_domain}/avatar/{node}"
-        for url in (pep_url, vcard_url):
-            try:
-                r = httpx.head(url, follow_redirects=True, timeout=1.5)
-                if r.status_code == 200:
-                    self._avatar_url_resolve_cache[cache_key] = url
-                    return url
-            except Exception:
-                continue
-        self._avatar_url_resolve_cache[cache_key] = None
-        return None
+        from bridge.avatar import resolve_xmpp_avatar_url
+
+        return resolve_xmpp_avatar_url(base_domain, node)
 
     def _on_groupchat_message(self, msg: Any) -> None:
         """Handle MUC message; emit MessageIn."""
@@ -332,7 +343,10 @@ class XMPPComponent(ComponentXMPP):
                     return
         # Fallback: get_jid_property may return None (MUC may not expose real JID to all occupants)
         if (room_jid, nick) in self._recent_sent_nicks:
-            logger.debug("Echo from recent send {} in {} (jid lookup returned None); skipping", nick, room_jid)
+            logger.debug(
+                "Echo from recent send {} in {} (jid lookup returned None); capturing stanza-id", nick, room_jid
+            )
+            _capture_stanza_id_from_echo(self._msgid_tracker, msg, room_jid)
             return
         if nick == "bridge":
             return  # Listener nick; we never send from it but skip for safety
@@ -543,6 +557,11 @@ class XMPPComponent(ComponentXMPP):
             room_jid = from_jid.split("/")[0]
             nick = from_jid.split("/")[1]
         else:
+            # Bare room JID — likely a XEP-0425 moderation announcement
+            room_jid = from_jid
+            mapping = self._router.get_mapping_for_xmpp(room_jid)
+            if mapping:
+                self._try_handle_moderation(msg, room_jid)
             return
 
         mapping = self._router.get_mapping_for_xmpp(room_jid)
@@ -560,6 +579,10 @@ class XMPPComponent(ComponentXMPP):
                 if sender_domain == our_domain:
                     logger.trace("Skipping XMPP retraction echo from our component ({})", nick)
                     return
+        # Fallback: get_jid_property may return None (MUC may not expose real JID)
+        if (room_jid, nick) in self._recent_sent_nicks:
+            logger.debug("Skipping retraction echo from recent puppet {} in {}", nick, room_jid)
+            return
         if nick == "bridge":
             return
 
@@ -568,6 +591,12 @@ class XMPPComponent(ComponentXMPP):
             return
 
         target_msg_id = retract.get("id")
+
+        # Dedupe: MUC delivers to each occupant (listener + puppets)
+        dedupe_key = f"{room_jid}:{target_msg_id}"
+        if dedupe_key in self._seen_retraction_ids:
+            return
+        self._seen_retraction_ids[dedupe_key] = None
 
         discord_id = self._msgid_tracker.get_discord_id(target_msg_id)
         if not discord_id:
@@ -585,6 +614,152 @@ class XMPPComponent(ComponentXMPP):
         )
         logger.info("XMPP retraction bridged: room={} author={} message={}", room_jid, nick, target_msg_id)
         self._bus.publish("xmpp", evt)
+
+    def _on_moderated_message(self, msg: Any) -> None:
+        """Handle XEP-0425 moderator retraction; emit delete to bus."""
+        from_jid = str(msg["from"]) if msg["from"] else ""
+        # Moderation messages come from the bare room JID (no nick resource)
+        room_jid = from_jid.split("/")[0] if "/" in from_jid else from_jid
+        if not room_jid:
+            return
+
+        mapping = self._router.get_mapping_for_xmpp(room_jid)
+        if not mapping:
+            return
+
+        retract = msg.get_plugin("retract", check=True)
+        if not retract:
+            return
+
+        target_msg_id = retract.get("id")
+        if not target_msg_id:
+            logger.debug("XEP-0425 moderation missing retract id; skip")
+            return
+
+        # Dedupe: multiple handlers and MUC occupant copies fire for the same moderation
+        dedupe_key = f"{room_jid}:{target_msg_id}"
+        if dedupe_key in self._seen_moderation_ids:
+            return
+        self._seen_moderation_ids[dedupe_key] = None
+
+        discord_id = self._msgid_tracker.get_discord_id(target_msg_id)
+        if not discord_id:
+            logger.debug("No Discord msgid for moderated retraction {}; skip", target_msg_id)
+            return
+
+        # Extract moderator info from <moderated by="..."/>
+        moderated = retract.get_plugin("moderated", check=True)
+        moderator = str(moderated["by"]) if moderated else "moderator"
+
+        from bridge.events import message_delete
+
+        _, evt = message_delete(
+            origin="xmpp",
+            channel_id=room_jid,
+            message_id=discord_id,
+            author_id=moderator,
+            author_display=moderator,
+        )
+        logger.info("XMPP moderation bridged: room={} moderator={} message={}", room_jid, moderator, target_msg_id)
+        self._bus.publish("xmpp", evt)
+
+    def _try_handle_moderation(self, msg: Any, room_jid: str) -> None:
+        """Check if a retraction message is actually a XEP-0425 moderation and bridge it."""
+        xml = msg.xml if hasattr(msg, "xml") else None
+        if xml is None:
+            return
+
+        target_msg_id: str | None = None
+        moderator: str = "moderator"
+
+        # Try v1 first: <retract xmlns="urn:xmpp:message-retract:1" id="..."><moderated .../>
+        for retract_el in xml.findall("{urn:xmpp:message-retract:1}retract"):
+            mod_el = retract_el.find("{urn:xmpp:message-moderate:1}moderated")
+            if mod_el is not None:
+                target_msg_id = retract_el.get("id")
+                moderator = mod_el.get("by", "moderator")
+                break
+
+        # Fallback to v0: <apply-to xmlns="urn:xmpp:fasten:0" id="..."><moderated .../>
+        if not target_msg_id:
+            for apply_el in xml.findall("{urn:xmpp:fasten:0}apply-to"):
+                mod_el = apply_el.find("{urn:xmpp:message-moderate:0}moderated")
+                if mod_el is not None:
+                    target_msg_id = apply_el.get("id")
+                    moderator = mod_el.get("by", "moderator")
+                    break
+
+        if not target_msg_id:
+            return
+
+        # Dedupe: MUC delivers to each occupant and multiple handlers fire per stanza
+        dedupe_key = f"{room_jid}:{target_msg_id}"
+        if dedupe_key in self._seen_moderation_ids:
+            return
+        self._seen_moderation_ids[dedupe_key] = None
+
+        discord_id = self._msgid_tracker.get_discord_id(target_msg_id)
+        if not discord_id:
+            logger.debug(
+                "No Discord msgid for moderated retraction {}; skip",
+                target_msg_id,
+            )
+            return
+
+        from bridge.events import message_delete
+
+        _, evt = message_delete(
+            origin="xmpp",
+            channel_id=room_jid,
+            message_id=discord_id,
+            author_id=moderator,
+            author_display=moderator,
+        )
+        logger.info("XMPP moderation bridged: room={} moderator={} target={}", room_jid, moderator, target_msg_id)
+        self._bus.publish("xmpp", evt)
+
+    def _on_raw_groupchat(self, msg: Any) -> None:
+        """Catch ALL groupchat stanzas to intercept bodyless moderation announcements."""
+        xml = msg.xml if hasattr(msg, "xml") else None
+        if xml is None:
+            return
+
+        # If the message has a <body>, the normal groupchat_message handler
+        # will fire — skip to avoid double-processing.
+        body_el = xml.find("{jabber:component:accept}body")
+        if body_el is None:
+            body_el = xml.find("{jabber:client}body")
+        if body_el is None:
+            body_el = xml.find("body")
+        if body_el is not None and (body_el.text or "").strip():
+            return
+
+        # Check for moderation elements (v0 or v1)
+        has_moderation = False
+        for _el in xml.findall("{urn:xmpp:message-retract:1}retract"):
+            if _el.find("{urn:xmpp:message-moderate:1}moderated") is not None:
+                has_moderation = True
+                break
+        if not has_moderation:
+            for _el in xml.findall("{urn:xmpp:fasten:0}apply-to"):
+                if _el.find("{urn:xmpp:message-moderate:0}moderated") is not None:
+                    has_moderation = True
+                    break
+
+        if not has_moderation:
+            return
+
+        from_jid = msg["from"] if hasattr(msg, "__getitem__") else xml.get("from", "")
+        room_jid = str(from_jid).split("/")[0] if from_jid else ""
+        if not room_jid:
+            return
+
+        mapping = self._router.get_mapping_for_xmpp(room_jid)
+        if not mapping:
+            return
+
+        logger.debug("Raw groupchat moderation detected in {}", room_jid)
+        self._try_handle_moderation(msg, room_jid)
 
     def _on_ibb_stream_start(self, stream: Any) -> None:
         """Handle incoming IBB stream; log for now."""
@@ -938,6 +1113,7 @@ class XMPPComponent(ComponentXMPP):
         """Send message retraction from a specific Discord user's JID."""
         escaped_nick = _escape_jid_node(nick)
         user_jid = f"{escaped_nick}@{self._component_jid}"
+        self._recent_sent_nicks[(muc_jid, nick)] = None
         await self._ensure_puppet_joined(muc_jid, user_jid, nick)
 
         retraction_plugin = self.plugin.get("xep_0424", None)
@@ -1061,10 +1237,17 @@ class XMPPComponent(ComponentXMPP):
             logger.exception("Error fetching avatar from {}: {}", avatar_url, exc)
         return None
 
-    async def set_avatar_for_user(self, discord_id: str, nick: str, avatar_url: str | None) -> None:
-        """Set vCard avatar for Discord user's puppet JID."""
+    async def set_avatar_for_user(self, discord_id: str, nick: str, avatar_url: str | None) -> str | None:
+        """Set vCard avatar for Discord user's puppet JID.
+
+        Returns the avatar SHA-1 hash (from cache or freshly published) so the
+        caller can broadcast it via ``_broadcast_avatar_presence`` *after* the
+        puppet has joined the target MUC(s).  Returns ``None`` only when there
+        is no avatar to set.
+        """
         if not avatar_url:
-            return
+            logger.debug("set_avatar_for_user: no avatar_url for {}", nick)
+            return None
 
         escaped_nick = _escape_jid_node(nick)
         user_jid = f"{escaped_nick}@{self._component_jid}"
@@ -1072,18 +1255,21 @@ class XMPPComponent(ComponentXMPP):
         # Download avatar
         avatar_bytes = await self._fetch_avatar_bytes(avatar_url)
         if not avatar_bytes:
-            return
+            logger.info("Avatar download failed for {} (url: {})", nick, avatar_url[:80])
+            return None
 
         # Check if avatar changed
         avatar_hash = hashlib.sha1(avatar_bytes).hexdigest()
         if self._avatar_cache.get(discord_id) == avatar_hash:
-            return  # Avatar unchanged
+            # vCard already published — return hash so caller can still
+            # broadcast presence (e.g. after a fresh MUC join).
+            return avatar_hash
 
         # Set vCard photo directly via XEP-0054
         vcard_plugin = self.plugin.get("xep_0054", None)
         if not vcard_plugin:
             logger.error("XEP-0054 plugin not available")
-            return
+            return None
 
         try:
             vcard = vcard_plugin.make_vcard()  # type: ignore[misc]
@@ -1096,6 +1282,39 @@ class XMPPComponent(ComponentXMPP):
             )
 
             self._avatar_cache[discord_id] = avatar_hash
-            logger.debug("Set avatar for {} (hash: {})", user_jid, avatar_hash[:8])
+            # Avatar changed — clear broadcast tracker so all MUCs get the new hash
+            self._avatar_broadcast_done = {k for k in self._avatar_broadcast_done if k[1] != user_jid}
+            logger.info("Set vCard avatar for {} (hash: {})", user_jid, avatar_hash[:8])
+            return avatar_hash
         except Exception as exc:
             logger.exception("Failed to set avatar for {}: {}", user_jid, exc)
+            return None
+
+    async def _broadcast_avatar_presence(self, user_jid: str, avatar_hash: str) -> None:
+        """Send updated presence with XEP-0153 vCard avatar hash to all MUCs the puppet is in."""
+        matched = False
+        for muc_jid, joined_jid in list(self._puppets_joined):
+            if joined_jid != user_jid:
+                continue
+            matched = True
+            try:
+                # Build nick from user_jid localpart (the escaped nick)
+                nick_str = user_jid.split("@", maxsplit=1)[0]
+
+                presence = self.make_presence(
+                    pto=JID(f"{muc_jid}/{nick_str}"),
+                    pfrom=JID(user_jid),
+                )
+                # Add XEP-0153 vcard-temp:x:update with photo hash
+                x_update = ET.SubElement(presence.xml, "{vcard-temp:x:update}x")
+                ET.SubElement(x_update, "photo").text = avatar_hash
+                presence.send()
+                logger.info("Broadcast avatar hash {} to {} for {}", avatar_hash[:8], muc_jid, user_jid)
+            except Exception as exc:
+                logger.warning("Failed to broadcast avatar presence to {}: {}", muc_jid, exc)
+        if not matched:
+            logger.warning(
+                "No MUC entries in _puppets_joined for {} (total entries: {})",
+                user_jid,
+                len(self._puppets_joined),
+            )

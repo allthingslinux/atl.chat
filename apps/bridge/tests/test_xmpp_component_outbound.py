@@ -59,6 +59,9 @@ def make_component(router=None, bus=None) -> Any:
     # Router.all_mappings() returns [] so _on_session_start MUC join loop is empty
     if isinstance(comp._router, MagicMock):
         comp._router.all_mappings.return_value = []
+    # Prevent PytestUnraisableExceptionWarning from slixmpp's XMLStream.__del__
+    # which checks _run_out_filters (never set because we bypass __init__).
+    comp._run_out_filters = None
     return comp
 
 
@@ -661,9 +664,9 @@ class TestIbbStreamHandlers:
     async def test_handle_ibb_stream_exception_is_logged(self):
         # Arrange
         comp = make_component()
-        stream = AsyncMock()
+        stream = MagicMock()
         stream.sid = "sid-err"
-        stream.gather.side_effect = RuntimeError("read error")
+        stream.gather = AsyncMock(side_effect=RuntimeError("read error"))
 
         # Act / Assert — must not raise
         await comp._handle_ibb_stream(stream)

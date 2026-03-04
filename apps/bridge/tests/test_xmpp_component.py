@@ -25,13 +25,17 @@ def make_component(router=None, bus=None):
     comp._component_jid = "bridge.example.com"
     comp._session = None
     comp._avatar_cache = TTLCache(maxsize=10, ttl=60)
-    comp._avatar_url_resolve_cache = TTLCache(maxsize=500, ttl=3600)
     comp._ibb_streams = {}
     comp._msgid_tracker = XMPPMessageIDTracker()
     comp._puppets_joined = set()
     comp._seen_msg_ids = TTLCache(maxsize=500, ttl=60)
     comp._recent_sent_nicks = TTLCache(maxsize=200, ttl=10)
     comp._reactions_by_user = TTLCache(maxsize=2000, ttl=3600)
+    comp._seen_moderation_ids = TTLCache(maxsize=200, ttl=60)
+    comp._seen_retraction_ids = TTLCache(maxsize=200, ttl=60)
+    # Prevent PytestUnraisableExceptionWarning from slixmpp's XMLStream.__del__
+    # which checks _run_out_filters (never set because we bypass __init__).
+    comp._run_out_filters = None
     return comp
 
 
@@ -330,38 +334,22 @@ class TestOnGroupchatMessage:
     def test_resolve_avatar_url_tries_pep_then_vcard(self):
         """_resolve_avatar_url tries pep_avatar first, then avatar (vCard) as fallback."""
         comp = make_component()
-        comp._avatar_url_resolve_cache.clear()
 
-        with patch("httpx.head") as mock_head:
-            # pep returns 404, vcard returns 200
-            mock_head.side_effect = [
-                MagicMock(status_code=404),
-                MagicMock(status_code=200),
-            ]
+        with patch("bridge.avatar.resolve_xmpp_avatar_url") as mock_resolve:
+            mock_resolve.return_value = "https://atl.chat/avatar/alice"
             url = comp._resolve_avatar_url("atl.chat", "alice")
             assert url == "https://atl.chat/avatar/alice"
-            assert mock_head.call_count == 2
-            mock_head.assert_any_call(
-                "https://atl.chat/pep_avatar/alice",
-                follow_redirects=True,
-                timeout=1.5,
-            )
-            mock_head.assert_any_call(
-                "https://atl.chat/avatar/alice",
-                follow_redirects=True,
-                timeout=1.5,
-            )
+            mock_resolve.assert_called_once_with("atl.chat", "alice")
 
     def test_resolve_avatar_url_returns_none_when_both_fail(self):
         """_resolve_avatar_url returns None when both URLs return non-200."""
         comp = make_component()
-        comp._avatar_url_resolve_cache.clear()
 
-        with patch("httpx.head") as mock_head:
-            mock_head.return_value = MagicMock(status_code=404)
+        with patch("bridge.avatar.resolve_xmpp_avatar_url") as mock_resolve:
+            mock_resolve.return_value = None
             url = comp._resolve_avatar_url("atl.chat", "alice")
             assert url is None
-            assert mock_head.call_count == 2
+            mock_resolve.assert_called_once_with("atl.chat", "alice")
 
 
 # ---------------------------------------------------------------------------
