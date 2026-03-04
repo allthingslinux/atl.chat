@@ -172,6 +172,7 @@ just test-all      # Root tests + bridge tests
 just lint          # pre-commit run --all-files
 just scan          # Security scans (Gitleaks, Trivy)
 just clean         # Prune unused Docker resources
+just prosody-token # Generate Prosody admin API Bearer token
 ```
 
 ## Data Layout

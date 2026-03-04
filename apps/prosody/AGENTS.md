@@ -52,3 +52,40 @@ modules.list
 
 - [Monorepo AGENTS.md](../../AGENTS.md)
 - [docs-old/services/xmpp/](../../docs-old/services/xmpp/)
+
+## Portal Integration (mod_http_admin_api)
+
+The [Portal](https://github.com/allthingslinux/portal) provisions XMPP accounts via `mod_http_admin_api`, which requires a Bearer token from `mod_tokenauth`.
+
+### Generating a token
+
+From the monorepo root:
+
+```bash
+just prosody-token
+```
+
+This uses `prosodyctl shell` to call `mod_tokenauth.create_grant()` + `create_token()` directly in Lua, bypassing the OAuth2 flow entirely. The token is non-expiring (grant and token both have nil TTL).
+
+Set the output as `PROSODY_REST_TOKEN` in the portal's `.env`.
+
+### How it works
+
+`mod_http_admin_api` only accepts `Bearer` tokens — no Basic auth, no API keys. Prosody's `mod_http_oauth2` is the standard way to obtain tokens (via authorization_code or device_code grants), but for service-to-service auth the `prosodyctl shell` approach is simpler:
+
+```
+>local tk = prosody.hosts["xmpp.localhost"].modules.tokenauth
+>local grant = tk.create_grant("admin@xmpp.localhost", "admin@xmpp.localhost", nil, {})
+>local token = tk.create_token("admin@xmpp.localhost", grant, "prosody:operator", nil, "portal-api")
+>print(token)
+```
+
+The `>` prefix escapes the prosodyctl shell sandbox to access the running server's Lua state.
+
+### Portal env vars
+
+| Variable | Example | Purpose |
+|----------|---------|---------|
+| `PROSODY_REST_URL` | `http://localhost:5280` | Prosody HTTP endpoint (host network) |
+| `PROSODY_REST_TOKEN` | `secret-token:...` | Bearer token from `just prosody-token` |
+| `XMPP_DOMAIN` | `xmpp.localhost` | XMPP domain for JID construction |

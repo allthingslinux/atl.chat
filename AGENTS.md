@@ -52,6 +52,7 @@ docs/               # Static assets (curl-ca-bundle.crt)
 | `just scan` | Security scans (Gitleaks, Trivy) — placeholder |
 | `just build` | docker compose build |
 | `just clean` | Prune unused Docker resources and volumes |
+| `just prosody-token` | Generate a non-expiring Prosody admin API Bearer token |
 
 ## Environment
 
