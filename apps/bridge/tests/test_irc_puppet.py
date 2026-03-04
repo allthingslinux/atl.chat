@@ -8,6 +8,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from bridge.adapters.irc import IRCPuppet, IRCPuppetManager, MessageIDTracker
+from hypothesis import given
+from hypothesis import strategies as st
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -175,6 +177,83 @@ class TestGetOrCreatePuppet:
 
         assert result is None
         assert "d1" not in manager._puppets
+
+
+class TestConnectPuppetWithBackoff:
+    """Tests for _connect_puppet_with_backoff retry logic."""
+
+    @pytest.mark.asyncio
+    async def test_succeeds_after_n_failures(self):
+        """Fail N times then succeed — verify correct number of attempts."""
+        manager = _make_manager()
+        puppet = _mock_puppet()
+        # Fail twice, then succeed on third attempt
+        puppet.connect = AsyncMock(side_effect=[OSError("fail1"), OSError("fail2"), None])
+
+        with patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
+            result = await manager._connect_puppet_with_backoff(puppet, max_attempts=5)
+
+        assert result is True
+        assert puppet.connect.await_count == 3
+        # Two sleeps between the two failures and the success
+        assert mock_sleep.await_count == 2
+
+    @pytest.mark.asyncio
+    async def test_all_attempts_fail_returns_false(self):
+        """All attempts fail — verify max_attempts respected and returns False."""
+        manager = _make_manager()
+        puppet = _mock_puppet()
+        puppet.connect = AsyncMock(side_effect=OSError("refused"))
+
+        with patch("asyncio.sleep", new_callable=AsyncMock):
+            result = await manager._connect_puppet_with_backoff(puppet, max_attempts=4)
+
+        assert result is False
+        assert puppet.connect.await_count == 4
+
+    @pytest.mark.asyncio
+    async def test_puppet_not_stored_on_failure(self):
+        """Puppet is not stored in _puppets when all connect attempts fail."""
+        manager = _make_manager(irc_nick="failnick")
+        mock_p = _mock_puppet()
+        mock_p.connect = AsyncMock(side_effect=OSError("refused"))
+
+        with (
+            patch("bridge.adapters.irc.puppet.IRCPuppet", return_value=mock_p),
+            patch("asyncio.sleep", new_callable=AsyncMock),
+        ):
+            result = await manager.get_or_create_puppet("d_fail")
+
+        assert result is None
+        assert "d_fail" not in manager._puppets
+
+    @pytest.mark.asyncio
+    async def test_succeeds_on_first_attempt_no_sleep(self):
+        """Immediate success — no sleep calls, returns True."""
+        manager = _make_manager()
+        puppet = _mock_puppet()
+        puppet.connect = AsyncMock()  # succeeds immediately
+
+        with patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
+            result = await manager._connect_puppet_with_backoff(puppet)
+
+        assert result is True
+        assert puppet.connect.await_count == 1
+        mock_sleep.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_single_max_attempt_no_retry(self):
+        """With max_attempts=1, a single failure returns False with no sleep."""
+        manager = _make_manager()
+        puppet = _mock_puppet()
+        puppet.connect = AsyncMock(side_effect=OSError("fail"))
+
+        with patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
+            result = await manager._connect_puppet_with_backoff(puppet, max_attempts=1)
+
+        assert result is False
+        assert puppet.connect.await_count == 1
+        mock_sleep.assert_not_awaited()
 
 
 # ---------------------------------------------------------------------------
@@ -515,3 +594,116 @@ class TestPuppetEdgeCases:
         bucket = TokenBucket(limit=1, refill_rate=1.0)
         assert bucket.use_token() is True
         assert bucket.use_token() is False
+
+
+# ---------------------------------------------------------------------------
+# Property-based tests (hypothesis)
+# ---------------------------------------------------------------------------
+
+
+class TestPuppetRetryConvergenceProperty:
+    """**Validates: Requirements 4.1, 4.4**
+
+    Property 5: Puppet retry convergence
+    For any max_attempts in [1, 10] and any attempt k at which connection
+    succeeds, exactly k attempts are made and True is returned; if all fail,
+    exactly max_attempts attempts and False.
+    """
+
+    @pytest.mark.asyncio
+    @given(
+        max_attempts=st.integers(min_value=1, max_value=10),
+        data=st.data(),
+    )
+    async def test_puppet_retry_convergence(self, max_attempts: int, data):
+        """**Validates: Requirements 4.1, 4.4**"""
+        # Draw success_at: either an attempt in [1, max_attempts] or None (all fail)
+        success_at = data.draw(
+            st.one_of(
+                st.integers(min_value=1, max_value=max_attempts),
+                st.none(),
+            ),
+            label="success_at",
+        )
+
+        manager = _make_manager()
+        puppet = _mock_puppet()
+
+        # Build side effects: fail (k-1) times then succeed at attempt k,
+        # or always fail if success_at is None.
+        if success_at is not None:
+            effects: list = [OSError(f"fail-{i + 1}") for i in range(success_at - 1)]
+            effects.append(None)  # success on attempt k
+            puppet.connect = AsyncMock(side_effect=effects)
+        else:
+            puppet.connect = AsyncMock(side_effect=OSError("always-fail"))
+
+        with patch("asyncio.sleep", new_callable=AsyncMock):
+            result = await manager._connect_puppet_with_backoff(puppet, max_attempts=max_attempts)
+
+        if success_at is not None:
+            # Should succeed after exactly k attempts
+            assert result is True, f"Expected True for success_at={success_at}, max_attempts={max_attempts}"
+            assert puppet.connect.await_count == success_at, (
+                f"Expected {success_at} attempts, got {puppet.connect.await_count}"
+            )
+        else:
+            # All attempts fail
+            assert result is False, f"Expected False when all {max_attempts} attempts fail"
+            assert puppet.connect.await_count == max_attempts, (
+                f"Expected {max_attempts} attempts, got {puppet.connect.await_count}"
+            )
+
+
+class TestPuppetBackoffDelayBoundsProperty:
+    """**Validates: Requirement 4.2**
+
+    Property 6: Puppet backoff delay bounds
+    For any attempt i in [0, max_attempts), base delay equals
+    min(backoff_max, backoff_min * 2^i) and actual delay with jitter
+    falls within [base * 0.5, base * 1.5].
+    """
+
+    @pytest.mark.asyncio
+    @given(
+        max_attempts=st.integers(min_value=2, max_value=10),
+        backoff_min=st.floats(min_value=0.5, max_value=5.0),
+        backoff_max=st.floats(min_value=5.0, max_value=60.0),
+    )
+    async def test_puppet_backoff_delay_bounds(self, max_attempts: int, backoff_min: float, backoff_max: float):
+        """**Validates: Requirement 4.2**"""
+        manager = _make_manager()
+        puppet = _mock_puppet()
+
+        # Always fail so all attempts are made and all delays captured
+        puppet.connect = AsyncMock(side_effect=OSError("always-fail"))
+
+        captured_delays: list[float] = []
+
+        async def capture_sleep(delay: float) -> None:
+            captured_delays.append(delay)
+
+        with patch("asyncio.sleep", side_effect=capture_sleep):
+            result = await manager._connect_puppet_with_backoff(
+                puppet,
+                max_attempts=max_attempts,
+                backoff_min=backoff_min,
+                backoff_max=backoff_max,
+            )
+
+        assert result is False
+
+        # Sleep is called between attempts, so (max_attempts - 1) sleeps
+        assert len(captured_delays) == max_attempts - 1, (
+            f"Expected {max_attempts - 1} sleeps, got {len(captured_delays)}"
+        )
+
+        for i, delay in enumerate(captured_delays):
+            base = min(backoff_max, backoff_min * (2**i))
+            lo = base * 0.5
+            hi = base * 1.5
+            assert lo <= delay <= hi, (
+                f"Attempt {i}: delay {delay:.4f} outside "
+                f"[{lo:.4f}, {hi:.4f}] (base={base:.4f}, "
+                f"backoff_min={backoff_min}, backoff_max={backoff_max})"
+            )

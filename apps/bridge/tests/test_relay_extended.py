@@ -16,7 +16,12 @@ from bridge.events import (
     typing_in,
 )
 from bridge.gateway.bus import Bus
-from bridge.gateway.relay import Relay, _content_matches_filter, _transform_content
+from bridge.gateway.relay import (
+    Relay,
+    _build_content_filters,
+    _content_matches_filter,
+    _transform_content,
+)
 from bridge.gateway.router import ChannelRouter
 
 # ---------------------------------------------------------------------------
@@ -104,33 +109,27 @@ class TestTransformContent:
 
 class TestContentMatchesFilter:
     def test_no_patterns_returns_false(self):
-        with patch("bridge.gateway.relay.cfg") as mock_cfg:
-            mock_cfg.content_filter_regex = []
+        with patch("bridge.gateway.relay._compiled_filters", []):
             assert _content_matches_filter("anything") is False
 
     def test_matching_pattern_returns_true(self):
-        with patch("bridge.gateway.relay.cfg") as mock_cfg:
-            mock_cfg.content_filter_regex = [r"spam"]
+        with patch("bridge.gateway.relay._compiled_filters", _build_content_filters([r"spam"])):
             assert _content_matches_filter("this is spam") is True
 
     def test_non_matching_pattern_returns_false(self):
-        with patch("bridge.gateway.relay.cfg") as mock_cfg:
-            mock_cfg.content_filter_regex = [r"spam"]
+        with patch("bridge.gateway.relay._compiled_filters", _build_content_filters([r"spam"])):
             assert _content_matches_filter("clean message") is False
 
     def test_second_pattern_matches(self):
-        with patch("bridge.gateway.relay.cfg") as mock_cfg:
-            mock_cfg.content_filter_regex = [r"spam", r"blocked"]
+        with patch("bridge.gateway.relay._compiled_filters", _build_content_filters([r"spam", r"blocked"])):
             assert _content_matches_filter("this is blocked") is True
 
     def test_invalid_regex_skipped_no_crash(self):
-        with patch("bridge.gateway.relay.cfg") as mock_cfg:
-            mock_cfg.content_filter_regex = [r"[invalid", r"spam"]
+        with patch("bridge.gateway.relay._compiled_filters", _build_content_filters([r"[invalid", r"spam"])):
             assert _content_matches_filter("spam") is True  # second pattern still works
 
     def test_empty_content_no_match(self):
-        with patch("bridge.gateway.relay.cfg") as mock_cfg:
-            mock_cfg.content_filter_regex = [r"spam"]
+        with patch("bridge.gateway.relay._compiled_filters", _build_content_filters([r"spam"])):
             assert _content_matches_filter("") is False
 
 
@@ -390,8 +389,7 @@ class TestIRCOnlyMapping:
 class TestContentFilter:
     def test_filtered_message_not_relayed(self):
         bus, _discord, irc, xmpp = _setup()
-        with patch("bridge.gateway.relay.cfg") as mock_cfg:
-            mock_cfg.content_filter_regex = [r"^!"]
+        with patch("bridge.gateway.relay._compiled_filters", _build_content_filters([r"^!"])):
             _, evt = message_in("discord", "123", "u1", "User", "!command", "m1")
             bus.publish("discord", evt)
         assert len(irc.events) == 0
@@ -399,8 +397,7 @@ class TestContentFilter:
 
     def test_non_filtered_message_is_relayed(self):
         bus, _discord, irc, _xmpp = _setup()
-        with patch("bridge.gateway.relay.cfg") as mock_cfg:
-            mock_cfg.content_filter_regex = [r"^!"]
+        with patch("bridge.gateway.relay._compiled_filters", _build_content_filters([r"^!"])):
             _, evt = message_in("discord", "123", "u1", "User", "hello", "m1")
             bus.publish("discord", evt)
         assert len(irc.events) == 1

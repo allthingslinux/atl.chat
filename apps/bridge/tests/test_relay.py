@@ -17,7 +17,7 @@ from bridge.events import (
     typing_in,
 )
 from bridge.gateway.bus import Bus
-from bridge.gateway.relay import Relay
+from bridge.gateway.relay import Relay, _build_content_filters
 from bridge.gateway.router import ChannelRouter
 
 
@@ -467,16 +467,14 @@ class TestRelay:
         bus.register(relay)
         bus.register(irc_adapter)
 
-        with patch("bridge.gateway.relay.cfg") as mock_cfg:
-            mock_cfg.content_filter_regex = [r"spam", r"\bblocked\b"]
+        with patch("bridge.gateway.relay._compiled_filters", _build_content_filters([r"spam", r"\bblocked\b"])):
             _, evt = message_in("discord", "123", "u1", "User", "this is spam", "msg1")
             bus.publish("discord", evt)
 
         assert len(irc_adapter.received_events) == 0
 
     def test_content_filter_allows_non_matching_messages(self):
-        with patch("bridge.gateway.relay.cfg") as mock_cfg:
-            mock_cfg.content_filter_regex = [r"spam"]
+        with patch("bridge.gateway.relay._compiled_filters", _build_content_filters([r"spam"])):
             bus = Bus()
             router = ChannelRouter()
             router.load_from_config(

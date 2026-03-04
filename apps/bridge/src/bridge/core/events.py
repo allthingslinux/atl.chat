@@ -397,12 +397,21 @@ class Dispatcher:
 
     def dispatch(self, source: str, evt: object) -> None:
         """Dispatch event to all targets that accept it."""
+        import time
+
         from loguru import logger
 
         for target in self._targets:
             try:
                 if target.accept_event(source, evt):
+                    t0 = time.perf_counter()
                     target.push_event(source, evt)
+                    elapsed = time.perf_counter() - t0
+                    logger.debug(
+                        "Dispatched event to {target} in {elapsed:.4f}s",
+                        target=target,
+                        elapsed=elapsed,
+                    )
             except Exception as exc:
                 logger.exception("Failed to pass event to target {}: {}", target, exc)
 

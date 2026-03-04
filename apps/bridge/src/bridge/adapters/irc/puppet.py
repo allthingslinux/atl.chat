@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import hashlib
+import random
 import time
 from typing import TYPE_CHECKING
 
@@ -115,29 +116,61 @@ class IRCPuppetManager:
             logger.debug("No IRC nick for Discord user {}", discord_id)
             return None
 
-        # Create and connect puppet
+        # Create and connect puppet with backoff retry
         puppet = IRCPuppet(
             nick,
             discord_id,
             ping_interval=self._ping_interval,
             prejoin_commands=self._prejoin_commands,
         )
-        self._puppets[discord_id] = puppet
 
-        try:
-            await puppet.connect(
-                hostname=self._server,
-                port=self._port,
-                tls=self._tls,
-                tls_verify=self._tls_verify,
-            )
+        if await self._connect_puppet_with_backoff(puppet):
+            self._puppets[discord_id] = puppet
             puppet.touch()
             logger.info("Created IRC puppet {} for Discord user {}", nick, discord_id)
             return puppet
-        except Exception as exc:
-            logger.exception("Failed to connect IRC puppet {}: {}", nick, exc)
-            del self._puppets[discord_id]
-            return None
+
+        return None
+
+    async def _connect_puppet_with_backoff(
+        self,
+        puppet: IRCPuppet,
+        *,
+        max_attempts: int = 3,
+        backoff_min: float = 2.0,
+        backoff_max: float = 30.0,
+    ) -> bool:
+        """Connect puppet with exponential backoff. Returns True on success."""
+        for attempt in range(max_attempts):
+            try:
+                await puppet.connect(
+                    hostname=self._server,
+                    port=self._port,
+                    tls=self._tls,
+                    tls_verify=self._tls_verify,
+                )
+                return True
+            except Exception as exc:
+                if attempt == max_attempts - 1:
+                    logger.exception(
+                        "Puppet {} connect failed after {} attempts: {}",
+                        puppet.nickname,
+                        max_attempts,
+                        exc,
+                    )
+                    return False
+                delay = min(backoff_max, backoff_min * (2**attempt))
+                jitter = random.uniform(0.5, 1.5)
+                wait = delay * jitter
+                logger.warning(
+                    "Puppet {} connect attempt {} failed: {}, retrying in {:.1f}s",
+                    puppet.nickname,
+                    attempt + 1,
+                    exc,
+                    wait,
+                )
+                await asyncio.sleep(wait)
+        return False
 
     def get_puppet_nicks(self) -> set[str]:
         """Return set of current puppet nicks (for echo detection on main connection)."""

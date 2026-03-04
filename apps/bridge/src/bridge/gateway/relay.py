@@ -34,18 +34,29 @@ def _transform_content(content: str, origin: str, target: str) -> str:
     return content
 
 
-def _content_matches_filter(content: str) -> bool:
-    """Return True if content matches any content_filter_regex pattern."""
-    patterns = cfg.content_filter_regex
-    if not patterns:
-        return False
+_compiled_filters: list[re.Pattern[str]] = []
+
+
+def _build_content_filters(patterns: list[str]) -> list[re.Pattern[str]]:
+    """Pre-compile regex patterns. Invalid patterns are logged and skipped."""
+    compiled = []
     for pat in patterns:
         try:
-            if re.search(pat, content):
-                return True
-        except re.error:
-            continue
-    return False
+            compiled.append(re.compile(pat))
+        except re.error as exc:
+            logger.warning("Invalid content_filter_regex '{}': {}", pat, exc)
+    return compiled
+
+
+def rebuild_content_filters() -> None:
+    """Rebuild compiled content filters from config. Called on config load/reload."""
+    global _compiled_filters  # noqa: PLW0603
+    _compiled_filters = _build_content_filters(cfg.content_filter_regex)
+
+
+def _content_matches_filter(content: str) -> bool:
+    """Return True if content matches any pre-compiled content_filter_regex pattern."""
+    return any(pat.search(content) for pat in _compiled_filters)
 
 
 class Relay:
@@ -56,6 +67,7 @@ class Relay:
     def __init__(self, bus: Bus, router: ChannelRouter) -> None:
         self._bus = bus
         self._router = router
+        rebuild_content_filters()
 
     def _get_mapping_for_origin(
         self, origin: str, channel_id: str, *, fallback_discord: bool = False
