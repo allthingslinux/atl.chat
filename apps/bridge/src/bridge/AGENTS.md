@@ -9,9 +9,11 @@ The `bridge` Python package. Entry point, config, events, and identity live here
 | File | Purpose |
 |------|---------|
 | `__main__.py` | Arg parsing, logging setup, SIGHUP reload, uvloop/asyncio run, adapter wiring |
+| `avatar.py` | Avatar URL caching and resolution |
 | `events.py` | Re-export from `core.events` — event dataclasses, factories, `Dispatcher`, `EventTarget` protocol |
 | `errors.py` | Re-export from `core.errors` |
 | `config/` | `loader.py` (load_config, load_config_with_env), `schema.py` (Config, cfg singleton) |
+| `core/` | `constants.py` (ProtocolOrigin, ORIGINS), `events.py` (event dataclasses, Dispatcher), `errors.py` (BridgeError) |
 | `identity/` | `portal.py` (PortalClient, IdentityResolver), `dev.py` (DevIdentityResolver) |
 
 ## Startup Sequence

@@ -17,15 +17,24 @@ Prosody · Lua config · Docker · PostgreSQL (optional, for storage)
 
 ```
 config/
-└── prosody.cfg.lua    # Main Prosody config
+└── prosody.cfg.lua        # Main Prosody config
 
-www/                   # Static assets
+custom_plugins/
+└── mod_pep_open_avatars.lua  # PEP avatar access control plugin
+
+scripts/                   # (empty — reserved for future helpers)
+
+www/                       # Static assets
 ├── index.html
 ├── robots.txt
-└── security.txt
+├── security.txt
+└── .well-known/
+    ├── index.html
+    └── security.txt
+
 Containerfile
 docker-entrypoint.sh
-justfile               # Loaded via: mod xmpp './apps/prosody'
+justfile                   # Loaded via: mod xmpp './apps/prosody'
 modules.list
 ```
 
@@ -51,7 +60,6 @@ modules.list
 ## Related
 
 - [Monorepo AGENTS.md](../../AGENTS.md)
-- [docs-old/services/xmpp/](../../docs-old/services/xmpp/)
 
 ## Portal Integration (mod_http_admin_api)
 

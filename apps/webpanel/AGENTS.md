@@ -12,7 +12,6 @@ UnrealIRCd WebPanel · PHP 8.4 · Nginx · Docker (multi-stage: composer + trafe
 
 ```
 Containerfile     # Multi-stage: clone upstream, composer install, php-nginx
-nginx.conf       # Nginx proxy config (root, logs)
 README.md        # User docs, access, troubleshooting
 ```
 
@@ -28,4 +27,3 @@ README.md        # User docs, access, troubleshooting
 
 - [Monorepo AGENTS.md](../../AGENTS.md)
 - [apps/unrealircd/AGENTS.md](../unrealircd/AGENTS.md)
-- [docs-old/services/irc/WEBPANEL.md](../../docs-old/services/irc/WEBPANEL.md)

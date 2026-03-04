@@ -32,7 +32,7 @@ infra/
 
 scripts/            # init.sh, prepare-config.sh, gencloak-update-env.sh
 tests/              # Root pytest suite (IRC, integration, e2e, protocol)
-docs/               # Static assets (curl-ca-bundle.crt)
+docs/               # Static assets (examples/unrealircd/tls/)
 ```
 
 ## Key Commands (Root)

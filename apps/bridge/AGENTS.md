@@ -35,6 +35,7 @@ XMPP Adapter     ──┘
 ```
 src/bridge/
 ├── __main__.py          # Entry point + signal handling
+├── avatar.py            # Avatar URL caching and resolution
 ├── events.py            # Re-export from core.events
 ├── errors.py            # Re-export from core.errors
 ├── config/              # YAML config + env overlay
@@ -63,7 +64,7 @@ src/bridge/
     ├── discord/        # DiscordAdapter, handlers, webhook
     ├── irc/            # IRCAdapter, IRCClient, puppet, msgid, throttle
     └── xmpp/           # XMPPAdapter, XMPPComponent, msgid
-tests/                  # pytest suite (819 tests)
+tests/                  # pytest suite (859 tests)
 ```
 
 ## Common Tasks
@@ -78,7 +79,7 @@ tests/                  # pytest suite (819 tests)
 - `just bridge lint` — ruff check (from root)
 - `just bridge format` — ruff format
 - `just bridge typecheck` — basedpyright
-- `just bridge test` — pytest (819 tests)
+- `just bridge test` — pytest (859 tests)
 - `just bridge test -k foo` — run matching tests
 - `just bridge check` — all of the above in sequence
 

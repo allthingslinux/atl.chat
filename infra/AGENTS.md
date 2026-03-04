@@ -16,6 +16,7 @@ Docker Compose fragments and TURN server. Root `compose.yaml` includes `infra/co
 | `compose/networks.yaml` | Shared `atl-chat` network |
 | `nginx/` | Nginx config for Prosody HTTPS (docker-entrypoint, Dockerfile, prosody-https.conf.template) |
 | `turn-standalone/` | Standalone TURN/STUN for edge deployment |
+| `README.md` | Infrastructure overview |
 
 ## Security
 
@@ -29,4 +30,3 @@ All services use `cap_drop: ALL` + `security_opt: no-new-privileges:true`. Servi
 ## Related
 
 - [Monorepo AGENTS.md](../AGENTS.md)
-- [docs-old/infra/](../docs-old/infra/) — Containerization, networking, SSL docs

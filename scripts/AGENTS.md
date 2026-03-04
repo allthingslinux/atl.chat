@@ -23,4 +23,3 @@ Orchestration and config-generation scripts. Run via `just init` or manually.
 ## Related
 
 - [Monorepo AGENTS.md](../AGENTS.md)
-- [docs-old/infra/](../docs-old/infra/)

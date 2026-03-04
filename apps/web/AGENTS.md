@@ -13,12 +13,17 @@ Next.js 14 · React 18 · TypeScript · Tailwind CSS · shadcn/ui · Cloudflare 
 ```
 app/
 ├── layout.tsx, page.tsx
-└── globals.css
+├── globals.css
+├── favicon.ico
+└── fonts/
 
 components/
 └── ui/               # button, card, badge (shadcn)
 lib/
 └── utils.ts
+
+biome.jsonc            # Biome linter/formatter config
+wrangler.toml          # Cloudflare Pages deployment config
 ```
 
 ## Key Commands
@@ -37,4 +42,3 @@ Env vars for dev: `NEXT_PUBLIC_IRC_WS_URL`, `NEXT_PUBLIC_XMPP_BOSH_URL` (set in 
 ## Related
 
 - [Monorepo AGENTS.md](../../AGENTS.md)
-- [docs-old/services/web/](../../docs-old/services/web/)

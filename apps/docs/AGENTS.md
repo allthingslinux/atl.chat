@@ -33,6 +33,7 @@ content/docs/           # MDX documentation content
 
 lib/                    # Utilities (cn, layout, source)
 scripts/lint.ts         # Link validation script
+types/env.d.ts          # Environment type declarations
 source.config.ts        # Fumadocs source config
 alchemy.run.ts          # Alchemy IaC deployment script
 wrangler.jsonc          # Cloudflare Workers config
@@ -52,5 +53,4 @@ wrangler.jsonc          # Cloudflare Workers config
 ## Related
 
 - [Monorepo AGENTS.md](../../AGENTS.md)
-- [docs-old/AGENTS.md](../../docs-old/AGENTS.md) — Legacy docs (pre-Fumadocs)
 - [apps/web/AGENTS.md](../web/AGENTS.md)

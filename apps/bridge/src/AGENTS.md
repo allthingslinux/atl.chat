@@ -9,6 +9,7 @@ Contains the single installable package: `bridge`.
 ```
 src/bridge/          # The bridge package (entry point: __main__.py)
 ├── __main__.py      # Entry point + signal handling
+├── avatar.py        # Avatar URL caching and resolution
 ├── events.py        # Re-export from core.events
 ├── errors.py        # Re-export from core.errors
 ├── config/          # YAML config + env overlay (loader, schema)
