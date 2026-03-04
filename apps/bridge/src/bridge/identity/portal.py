@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from typing import Any
 
 import httpx
@@ -15,8 +16,8 @@ from tenacity import (
 )
 
 DEFAULT_RETRY = retry(
-    stop=stop_after_attempt(5),
-    wait=wait_exponential(multiplier=1, min=2, max=30),
+    stop=stop_after_attempt(2),
+    wait=wait_exponential(multiplier=0.5, min=0.5, max=2),
     retry=retry_if_exception_type(
         (
             httpx.ConnectError,
@@ -32,20 +33,66 @@ DEFAULT_RETRY = retry(
     reraise=True,
 )
 
+# ---------------------------------------------------------------------------
+# Circuit breaker: skip requests when Portal is known to be unreachable
+# ---------------------------------------------------------------------------
+_CIRCUIT_FAIL_THRESHOLD = 3  # consecutive failures before opening
+_CIRCUIT_COOLDOWN = 60.0  # seconds to wait before probing again
+
 
 class PortalClient:
-    """Async client for Portal Bridge API. Uses tenacity for retries."""
+    """Async client for Portal Bridge API. Uses tenacity for retries.
+
+    Maintains a shared ``httpx.AsyncClient`` with connection pooling.
+    Call ``aopen()`` before use and ``aclose()`` on shutdown, or use as
+    an async context manager::
+
+        async with PortalClient(url, token=tok) as portal:
+            await portal.get_identity_by_discord("123")
+    """
 
     def __init__(
         self,
         base_url: str,
         *,
         token: str | None = None,
-        timeout: float = 10.0,
+        timeout: float = 5.0,
     ) -> None:
         self._base_url = base_url.rstrip("/")
         self._token = token
         self._timeout = timeout
+        self._client: httpx.AsyncClient | None = None
+        # Circuit breaker state
+        self._consecutive_failures: int = 0
+        self._circuit_open_until: float = 0.0
+
+    # -- lifecycle -----------------------------------------------------------
+
+    async def aopen(self) -> None:
+        """Create the shared ``httpx.AsyncClient`` with pool limits and transport retries."""
+        transport = httpx.AsyncHTTPTransport(retries=1)
+        self._client = httpx.AsyncClient(
+            timeout=self._timeout,
+            headers=self._headers(),
+            limits=httpx.Limits(max_keepalive_connections=5, max_connections=10),
+            transport=transport,
+            http2=True,
+        )
+
+    async def aclose(self) -> None:
+        """Close the shared client and release pooled connections."""
+        if self._client is not None:
+            await self._client.aclose()
+            self._client = None
+
+    async def __aenter__(self) -> PortalClient:
+        await self.aopen()
+        return self
+
+    async def __aexit__(self, *exc: object) -> None:
+        await self.aclose()
+
+    # -- helpers -------------------------------------------------------------
 
     def _headers(self) -> dict[str, str]:
         h: dict[str, str] = {"Accept": "application/json"}
@@ -60,45 +107,65 @@ class PortalClient:
             return data.get("identity") if data.get("ok") else None
         return data
 
-    @DEFAULT_RETRY
-    async def get_identity_by_discord(self, discord_id: str) -> dict[str, Any] | None:
-        url = f"{self._base_url}/api/bridge/identity"
-        params = {"discordId": discord_id}
-        async with httpx.AsyncClient(timeout=self._timeout) as client:
-            resp = await client.get(url, params=params, headers=self._headers())
-            if resp.status_code == 404:
-                return None
-            resp.raise_for_status()
-            return self._extract(resp.json())
+    # -- unified request -----------------------------------------------------
 
     @DEFAULT_RETRY
+    async def _request(self, params: dict[str, str]) -> dict[str, Any] | None:
+        """Unified GET to ``/api/bridge/identity`` using the shared client.
+
+        Includes a circuit breaker: after ``_CIRCUIT_FAIL_THRESHOLD`` consecutive
+        connection failures, further requests are short-circuited for
+        ``_CIRCUIT_COOLDOWN`` seconds to avoid blocking message delivery.
+        """
+        assert self._client is not None, "call aopen() first"
+
+        # Circuit breaker: skip if Portal is known to be down
+        now = time.monotonic()
+        if self._consecutive_failures >= _CIRCUIT_FAIL_THRESHOLD:
+            if now < self._circuit_open_until:
+                return None
+            # Cooldown expired — allow one probe request through
+            logger.debug("Portal circuit breaker: probing after cooldown")
+
+        url = f"{self._base_url}/api/bridge/identity"
+        try:
+            resp = await self._client.get(url, params=params)
+        except (httpx.ConnectError, httpx.ConnectTimeout) as exc:
+            self._consecutive_failures += 1
+            if self._consecutive_failures == _CIRCUIT_FAIL_THRESHOLD:
+                self._circuit_open_until = time.monotonic() + _CIRCUIT_COOLDOWN
+                logger.warning(
+                    "Portal unreachable ({} consecutive failures); circuit breaker open for {}s",
+                    self._consecutive_failures,
+                    _CIRCUIT_COOLDOWN,
+                )
+            raise exc
+
+        # Success or non-connection error — reset breaker
+        self._consecutive_failures = 0
+        if resp.status_code == 404:
+            return None
+        resp.raise_for_status()
+        return self._extract(resp.json())
+
+    # -- public API (unchanged signatures) -----------------------------------
+
+    async def get_identity_by_discord(self, discord_id: str) -> dict[str, Any] | None:
+        return await self._request({"discordId": discord_id})
+
     async def get_identity_by_irc_nick(
         self,
         nick: str,
         *,
         server: str | None = None,
     ) -> dict[str, Any] | None:
-        url = f"{self._base_url}/api/bridge/identity"
         params: dict[str, str] = {"ircNick": nick}
         if server:
             params["ircServer"] = server
-        async with httpx.AsyncClient(timeout=self._timeout) as client:
-            resp = await client.get(url, params=params, headers=self._headers())
-            if resp.status_code == 404:
-                return None
-            resp.raise_for_status()
-            return self._extract(resp.json())
+        return await self._request(params)
 
-    @DEFAULT_RETRY
     async def get_identity_by_xmpp_jid(self, jid: str) -> dict[str, Any] | None:
-        url = f"{self._base_url}/api/bridge/identity"
-        params = {"xmppJid": jid}
-        async with httpx.AsyncClient(timeout=self._timeout) as client:
-            resp = await client.get(url, params=params, headers=self._headers())
-            if resp.status_code == 404:
-                return None
-            resp.raise_for_status()
-            return self._extract(resp.json())
+        return await self._request({"xmppJid": jid})
 
 
 class IdentityResolver:

@@ -3,6 +3,9 @@
 import os
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import httpx
+import hypothesis
+import hypothesis.strategies
 import pytest
 from bridge.identity import DevIdentityResolver, IdentityResolver, PortalClient
 
@@ -139,6 +142,84 @@ class TestPortalClientHeaders:
         assert headers["Accept"] == "application/json"
 
 
+class TestPortalClientLifecycle:
+    """Test PortalClient shared httpx.AsyncClient lifecycle.
+
+    Requirements: 1.1, 1.2, 1.3, 1.4, 1.6
+    """
+
+    @pytest.mark.asyncio
+    async def test_aopen_creates_client(self):
+        portal = PortalClient("http://portal", token="t")
+        assert portal._client is None
+        await portal.aopen()
+        try:
+            assert portal._client is not None
+            assert isinstance(portal._client, httpx.AsyncClient)
+        finally:
+            await portal.aclose()
+
+    @pytest.mark.asyncio
+    async def test_aclose_closes_and_nils_client(self):
+        portal = PortalClient("http://portal", token="t")
+        await portal.aopen()
+        assert portal._client is not None
+        await portal.aclose()
+        assert portal._client is None
+
+    @pytest.mark.asyncio
+    async def test_aclose_is_idempotent(self):
+        portal = PortalClient("http://portal", token="t")
+        await portal.aopen()
+        await portal.aclose()
+        await portal.aclose()  # should not raise
+        assert portal._client is None
+
+    @pytest.mark.asyncio
+    async def test_request_raises_before_aopen(self):
+        portal = PortalClient("http://portal", token="t")
+        with pytest.raises(AssertionError, match="call aopen"):
+            await portal._request({"discordId": "123"})
+
+    @pytest.mark.asyncio
+    async def test_get_identity_methods_reuse_same_client(self):
+        """All get_identity_by_* calls use the same httpx.AsyncClient instance."""
+        portal = PortalClient("http://portal", token="t")
+        resp = MagicMock()
+        resp.status_code = 200
+        resp.json.return_value = {"irc_nick": "user"}
+        resp.raise_for_status.return_value = None
+
+        mock_http = AsyncMock()
+        mock_http.get = AsyncMock(return_value=resp)
+        mock_http.aclose = AsyncMock()
+        portal._client = mock_http
+
+        client_before = portal._client
+        await portal.get_identity_by_discord("123")
+        assert portal._client is client_before
+        await portal.get_identity_by_irc_nick("nick")
+        assert portal._client is client_before
+        await portal.get_identity_by_xmpp_jid("user@example.com")
+        assert portal._client is client_before
+
+    @pytest.mark.asyncio
+    async def test_async_context_manager_opens_and_closes(self):
+        async with PortalClient("http://portal", token="t") as portal:
+            assert portal._client is not None
+            assert isinstance(portal._client, httpx.AsyncClient)
+        assert portal._client is None
+
+    @pytest.mark.asyncio
+    async def test_async_context_manager_closes_on_exception(self):
+        portal = PortalClient("http://portal", token="t")
+        with pytest.raises(RuntimeError):
+            async with portal:
+                assert portal._client is not None
+                raise RuntimeError("boom")
+        assert portal._client is None
+
+
 # ---------------------------------------------------------------------------
 # PortalClient direct HTTP behaviour
 # ---------------------------------------------------------------------------
@@ -157,87 +238,77 @@ class TestPortalClient:
             resp.raise_for_status.return_value = None
         return resp
 
+    async def _make_client(self, resp):
+        """Create a PortalClient with aopen() and a mocked shared httpx client."""
+        client = PortalClient(base_url="http://portal", token="t")
+        mock_http = AsyncMock()
+        mock_http.get = AsyncMock(return_value=resp)
+        mock_http.aclose = AsyncMock()
+        client._client = mock_http
+        return client, mock_http
+
     @pytest.mark.asyncio
     async def test_get_by_discord_404_returns_none(self):
-        client = PortalClient(base_url="http://portal", token="t")
         resp = self._mock_response(404)
-        with patch("httpx.AsyncClient") as mock_cls:
-            mock_cls.return_value.__aenter__.return_value.get = AsyncMock(return_value=resp)
-            result = await client.get_identity_by_discord("u1")
+        client, _ = await self._make_client(resp)
+        result = await client.get_identity_by_discord("u1")
         assert result is None
 
     @pytest.mark.asyncio
     async def test_get_by_discord_non_dict_returns_none(self):
-        client = PortalClient(base_url="http://portal", token="t")
         resp = self._mock_response(200, json_data=["list", "not", "dict"])
-        with patch("httpx.AsyncClient") as mock_cls:
-            mock_cls.return_value.__aenter__.return_value.get = AsyncMock(return_value=resp)
-            result = await client.get_identity_by_discord("u1")
+        client, _ = await self._make_client(resp)
+        result = await client.get_identity_by_discord("u1")
         assert result is None
 
     @pytest.mark.asyncio
     async def test_get_by_discord_dict_returns_data(self):
-        client = PortalClient(base_url="http://portal", token="t")
         resp = self._mock_response(200, json_data={"discord_id": "u1", "irc_nick": "user"})
-        with patch("httpx.AsyncClient") as mock_cls:
-            mock_cls.return_value.__aenter__.return_value.get = AsyncMock(return_value=resp)
-            result = await client.get_identity_by_discord("u1")
+        client, _ = await self._make_client(resp)
+        result = await client.get_identity_by_discord("u1")
         assert result == {"discord_id": "u1", "irc_nick": "user"}
 
     @pytest.mark.asyncio
     async def test_get_by_irc_nick_404_returns_none(self):
-        client = PortalClient(base_url="http://portal", token="t")
         resp = self._mock_response(404)
-        with patch("httpx.AsyncClient") as mock_cls:
-            mock_cls.return_value.__aenter__.return_value.get = AsyncMock(return_value=resp)
-            result = await client.get_identity_by_irc_nick("nick")
+        client, _ = await self._make_client(resp)
+        result = await client.get_identity_by_irc_nick("nick")
         assert result is None
 
     @pytest.mark.asyncio
     async def test_get_by_irc_nick_non_dict_returns_none(self):
-        client = PortalClient(base_url="http://portal", token="t")
         resp = self._mock_response(200, json_data=42)
-        with patch("httpx.AsyncClient") as mock_cls:
-            mock_cls.return_value.__aenter__.return_value.get = AsyncMock(return_value=resp)
-            result = await client.get_identity_by_irc_nick("nick")
+        client, _ = await self._make_client(resp)
+        result = await client.get_identity_by_irc_nick("nick")
         assert result is None
 
     @pytest.mark.asyncio
     async def test_get_by_irc_nick_with_server_passes_param(self):
-        client = PortalClient(base_url="http://portal", token="t")
         resp = self._mock_response(200, json_data={"irc_nick": "nick"})
-        with patch("httpx.AsyncClient") as mock_cls:
-            get_mock = AsyncMock(return_value=resp)
-            mock_cls.return_value.__aenter__.return_value.get = get_mock
-            await client.get_identity_by_irc_nick("nick", server="irc.libera.chat")
-        _, kwargs = get_mock.call_args
+        client, mock_http = await self._make_client(resp)
+        await client.get_identity_by_irc_nick("nick", server="irc.libera.chat")
+        _, kwargs = mock_http.get.call_args
         assert kwargs["params"]["ircServer"] == "irc.libera.chat"
 
     @pytest.mark.asyncio
     async def test_get_by_xmpp_jid_404_returns_none(self):
-        client = PortalClient(base_url="http://portal", token="t")
         resp = self._mock_response(404)
-        with patch("httpx.AsyncClient") as mock_cls:
-            mock_cls.return_value.__aenter__.return_value.get = AsyncMock(return_value=resp)
-            result = await client.get_identity_by_xmpp_jid("user@xmpp.example.com")
+        client, _ = await self._make_client(resp)
+        result = await client.get_identity_by_xmpp_jid("user@xmpp.example.com")
         assert result is None
 
     @pytest.mark.asyncio
     async def test_get_by_xmpp_jid_non_dict_returns_none(self):
-        client = PortalClient(base_url="http://portal", token="t")
         resp = self._mock_response(200, json_data=None)
-        with patch("httpx.AsyncClient") as mock_cls:
-            mock_cls.return_value.__aenter__.return_value.get = AsyncMock(return_value=resp)
-            result = await client.get_identity_by_xmpp_jid("user@xmpp.example.com")
+        client, _ = await self._make_client(resp)
+        result = await client.get_identity_by_xmpp_jid("user@xmpp.example.com")
         assert result is None
 
     @pytest.mark.asyncio
     async def test_get_by_xmpp_jid_dict_returns_data(self):
-        client = PortalClient(base_url="http://portal", token="t")
         resp = self._mock_response(200, json_data={"xmpp_jid": "user@xmpp.example.com"})
-        with patch("httpx.AsyncClient") as mock_cls:
-            mock_cls.return_value.__aenter__.return_value.get = AsyncMock(return_value=resp)
-            result = await client.get_identity_by_xmpp_jid("user@xmpp.example.com")
+        client, _ = await self._make_client(resp)
+        result = await client.get_identity_by_xmpp_jid("user@xmpp.example.com")
         assert result == {"xmpp_jid": "user@xmpp.example.com"}
 
 
@@ -291,3 +362,54 @@ class TestDevIdentityResolver:
         with patch.dict(os.environ, {}, clear=False):
             resolver = DevIdentityResolver()
         assert await resolver.has_xmpp("any") is False
+
+
+# ---------------------------------------------------------------------------
+# Property-based tests
+# ---------------------------------------------------------------------------
+
+
+class TestPortalClientSharedInstanceProperty:
+    """Property 2: PortalClient shared instance reuse.
+
+    For any sequence of get_identity_by_* calls after aopen(), all calls
+    use the same httpx.AsyncClient instance.
+
+    **Validates: Requirements 1.2**
+    """
+
+    METHOD_CHOICES = [
+        ("get_identity_by_discord", {"discord_id": "123"}),
+        ("get_identity_by_irc_nick", {"nick": "user"}),
+        ("get_identity_by_irc_nick", {"nick": "user", "server": "irc.example.com"}),
+        ("get_identity_by_xmpp_jid", {"jid": "user@example.com"}),
+    ]
+
+    @pytest.mark.asyncio
+    @hypothesis.given(
+        call_indices=hypothesis.strategies.lists(
+            hypothesis.strategies.sampled_from(range(4)),
+            min_size=1,
+            max_size=20,
+        )
+    )
+    async def test_all_calls_reuse_same_client(self, call_indices: list[int]) -> None:
+        """Any sequence of get_identity_by_* calls shares one httpx.AsyncClient."""
+        portal = PortalClient("http://portal", token="t")
+
+        resp = MagicMock()
+        resp.status_code = 200
+        resp.json.return_value = {"ok": True, "identity": {"irc_nick": "u"}}
+        resp.raise_for_status.return_value = None
+
+        mock_http = AsyncMock()
+        mock_http.get = AsyncMock(return_value=resp)
+        mock_http.aclose = AsyncMock()
+        portal._client = mock_http
+
+        original_client = portal._client
+
+        for idx in call_indices:
+            method_name, kwargs = self.METHOD_CHOICES[idx]
+            await getattr(portal, method_name)(**kwargs)
+            assert portal._client is original_client, f"Client changed after {method_name}() call"

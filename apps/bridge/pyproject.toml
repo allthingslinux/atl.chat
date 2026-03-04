@@ -14,7 +14,7 @@ authors = [{ name = "All Things Linux", email = "admin@allthingslinux.org" }]
 dependencies = [
   "discord.py",
   "slixmpp",
-  "httpx",
+  "httpx[http2]",
   "pyyaml",
   "python-dotenv",
   "cachetools",
@@ -73,7 +73,11 @@ addopts = [
 asyncio_mode = "auto"
 timeout = 60
 minversion = "8.0"
-filterwarnings = ["ignore::DeprecationWarning"]
+filterwarnings = [
+  "ignore::DeprecationWarning",
+  "ignore:coroutine '.*AsyncMockMixin.*' was never awaited:RuntimeWarning",
+  "ignore:coroutine '.*wrapper' was never awaited:RuntimeWarning",
+]
 pythonpath = ["src"]
 norecursedirs = [
   ".git",

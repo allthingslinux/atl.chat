@@ -195,8 +195,15 @@ class IRCAdapter(AdapterBase):
         if not mapping or not mapping.irc:
             return
 
-        # Check if user has IRC identity
-        has_irc = await self._identity.has_irc(evt.author_id)
+        # Check if user has IRC identity; fall back to main connection on Portal failure
+        try:
+            has_irc = await self._identity.has_irc(evt.author_id)
+        except Exception as exc:
+            logger.warning("Identity lookup failed for {}: {}; falling back to main connection", evt.author_id, exc)
+            if self._client:
+                self._client.queue_message(evt)
+            return
+
         if has_irc:
             await self._puppet_manager.send_message(
                 evt.author_id,

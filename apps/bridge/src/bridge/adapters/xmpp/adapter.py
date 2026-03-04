@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 from loguru import logger
 
 from bridge.adapters.base import AdapterBase
-from bridge.adapters.xmpp.component import XMPPComponent
+from bridge.adapters.xmpp.component import XMPPComponent, _escape_jid_node
 from bridge.events import MessageDeleteOut, MessageOut, ReactionOut
 from bridge.gateway import Bus, ChannelRouter
 
@@ -114,9 +114,16 @@ class XMPPAdapter(AdapterBase):
     async def _resolve_nick_async(self, evt: MessageOut | MessageDeleteOut | ReactionOut) -> str:
         """Resolve XMPP nick from identity or fallback (dev mode without Portal)."""
         if self._identity and getattr(evt, "author_id", None):
-            nick = await self._identity.discord_to_xmpp(evt.author_id)
-            if nick:
-                return nick
+            try:
+                nick = await self._identity.discord_to_xmpp(evt.author_id)
+                if nick:
+                    return nick
+            except Exception as exc:
+                logger.warning(
+                    "Identity lookup failed for {}: {}; falling back to display name",
+                    evt.author_id,
+                    exc,
+                )
         return self._resolve_nick(evt)
 
     async def _outbound_consumer(self) -> None:
@@ -144,9 +151,12 @@ class XMPPAdapter(AdapterBase):
                         # Resolve XMPP nick (identity or fallback for dev without Portal)
                         nick = await self._resolve_nick_async(evt)
 
-                        # Set avatar if provided
+                        # Publish vCard avatar if provided (returns hash when changed).
+                        # Broadcast happens AFTER the message send because
+                        # send_message_as_user calls _ensure_puppet_joined first.
+                        avatar_hash: str | None = None
                         if evt.avatar_url:
-                            await self._component.set_avatar_for_user(evt.author_id, nick, evt.avatar_url)
+                            avatar_hash = await self._component.set_avatar_for_user(evt.author_id, nick, evt.avatar_url)
 
                         # Check if this is an edit
                         is_edit = evt.raw.get("is_edit", False)
@@ -215,6 +225,17 @@ class XMPPAdapter(AdapterBase):
                                     evt.message_id,
                                     xmpp_msg_id,
                                 )
+
+                        # Broadcast avatar hash AFTER message send — the puppet is
+                        # now guaranteed to be in the MUC (send_message_as_user
+                        # calls _ensure_puppet_joined internally).
+                        if avatar_hash:
+                            escaped = _escape_jid_node(nick)
+                            user_jid = f"{escaped}@{self._component._component_jid}"
+                            bcast_key = (muc_jid, user_jid)
+                            if bcast_key not in self._component._avatar_broadcast_done:
+                                await self._component._broadcast_avatar_presence(user_jid, avatar_hash)
+                                self._component._avatar_broadcast_done.add(bcast_key)
 
                 await asyncio.sleep(0.25)
             except asyncio.CancelledError:

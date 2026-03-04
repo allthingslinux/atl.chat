@@ -220,8 +220,9 @@ class TestMain:
         mock_router = MagicMock()
         mock_router.all_mappings.return_value = []
 
-        async def _fake_run(*args):
-            pass
+        # Use a plain coroutine object so _run's return value is awaitable
+        # but won't trigger "coroutine never awaited" on GC.
+        _sentinel = object()
 
         # Act / Assert — should not raise
         with (
@@ -232,7 +233,7 @@ class TestMain:
             patch("bridge.__main__.Bus"),
             patch("bridge.__main__.Relay"),
             patch("bridge.__main__._get_portal_url", return_value=None),
-            patch("bridge.__main__._run", return_value=_fake_run()),
+            patch("bridge.__main__._run", return_value=_sentinel),
             patch("asyncio.run"),
         ):
             main()
@@ -249,7 +250,7 @@ class TestMain:
         mock_config.identity_cache_ttl_seconds = 3600
         captured_identity: list = []
 
-        async def _capture_run(bus, router, identity):
+        async def _capture_run(bus, router, identity, portal_client=None):
             captured_identity.append(identity)
 
         loop = asyncio.new_event_loop()
@@ -289,10 +290,10 @@ class TestMain:
         mock_config = MagicMock()
         mock_config.raw = {}
         mock_config.identity_cache_ttl_seconds = 3600
-        captured_identity: list = []
+        captured_args: list = []
 
-        async def _capture_run(bus, router, identity):
-            captured_identity.append(identity)
+        async def _capture_run(bus, router, identity, portal_client=None):
+            captured_args.append((identity, portal_client))
 
         loop = asyncio.new_event_loop()
         try:
@@ -324,6 +325,9 @@ class TestMain:
         # Assert
         mock_pc.assert_called_once()
         mock_ir.assert_called_once()
+        # Verify portal_client is passed to _run
+        assert len(captured_args) == 1
+        assert captured_args[0][1] is mock_pc.return_value
 
     def test_main_creates_dev_identity_when_dev_irc_puppets_enabled(self, tmp_path):
         """main() creates DevIdentityResolver when Portal absent and BRIDGE_DEV_IRC_PUPPETS=true."""
@@ -337,7 +341,7 @@ class TestMain:
         mock_config.identity_cache_ttl_seconds = 3600
         captured_identity: list = []
 
-        async def _capture_run(bus, router, identity):
+        async def _capture_run(bus, router, identity, portal_client=None):
             captured_identity.append(identity)
 
         loop = asyncio.new_event_loop()

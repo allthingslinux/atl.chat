@@ -21,6 +21,7 @@ from bridge.config import Config, cfg, load_config_with_env
 from bridge.events import config_reload
 from bridge.gateway import Bus, ChannelRouter, Relay
 from bridge.gateway.msgid_resolver import DefaultMessageIDResolver
+from bridge.gateway.relay import rebuild_content_filters
 from bridge.identity import DevIdentityResolver, IdentityResolver, PortalClient
 
 
@@ -149,6 +150,7 @@ def main() -> None:
     def on_sighup(*a: object, **kw: object) -> None:
         config = reload_config(args.config)
         router.load_from_config(config.raw)
+        rebuild_content_filters()
         _, evt = config_reload()
         bus.publish("main", evt)
         logger.info("Config reloaded (SIGHUP)")
@@ -161,11 +163,12 @@ def main() -> None:
 
     # Portal client + identity resolver (when Portal URL available)
     portal_url = _get_portal_url()
+    portal_client: PortalClient | None = None
     identity_resolver: IdentityResolver | DevIdentityResolver | None = None
     if portal_url:
-        client = PortalClient(portal_url, token=_get_portal_token())
+        portal_client = PortalClient(portal_url, token=_get_portal_token())
         identity_resolver = IdentityResolver(
-            client,
+            portal_client,
             ttl=config.identity_cache_ttl_seconds,
         )
         logger.info("Portal identity client configured: {}", portal_url)
@@ -184,9 +187,9 @@ def main() -> None:
     try:
         import uvloop
 
-        uvloop.run(_run(bus, router, identity_resolver))
+        uvloop.run(_run(bus, router, identity_resolver, portal_client))
     except ImportError:
-        asyncio.run(_run(bus, router, identity_resolver))
+        asyncio.run(_run(bus, router, identity_resolver, portal_client))
 
 
 def _get_portal_url() -> str | None:
@@ -214,8 +217,14 @@ async def _run(
     bus: Bus,
     router: ChannelRouter,
     identity_resolver: IdentityResolver | None,
+    portal_client: PortalClient | None = None,
 ) -> None:
     """Async run loop. Start adapters and wait."""
+    # Open shared HTTP connection pool before any identity lookups
+    if portal_client is not None:
+        await portal_client.aopen()
+        logger.info("Portal HTTP connection pool opened")
+
     msgid_resolver = DefaultMessageIDResolver()
     adapters: list[Adapter] = []
     discord_adapter = DiscordAdapter(bus, router, identity_resolver, msgid_resolver)
@@ -237,6 +246,10 @@ async def _run(
             name = getattr(adapter, "name", adapter.__class__.__name__)
             logger.info("Stopping {} adapter", name)
             await adapter.stop()
+        # Close shared HTTP connection pool
+        if portal_client is not None:
+            await portal_client.aclose()
+            logger.info("Portal HTTP connection pool closed")
 
 
 if __name__ == "__main__":
