@@ -74,7 +74,7 @@ class DiscordAdapter(AdapterBase):
         self._msgid_resolver = msgid_resolver
         self._queue: asyncio.Queue[MessageOut] = asyncio.Queue()
         self._webhook_cache: TTLCache[str, Webhook] = TTLCache(maxsize=100, ttl=86400)
-        self._send_lock = asyncio.Lock()
+        self._channel_locks: dict[str, asyncio.Lock] = {}
         self._bot: commands.Bot | None = None
         self._session: aiohttp.ClientSession | None = None
         self._consumer_task: asyncio.Task | None = None
@@ -109,6 +109,12 @@ class DiscordAdapter(AdapterBase):
             return
         if isinstance(evt, MessageOut):
             self._queue.put_nowait(evt)
+
+    def _get_channel_lock(self, channel_id: str) -> asyncio.Lock:
+        """Get or create a per-channel send lock."""
+        if channel_id not in self._channel_locks:
+            self._channel_locks[channel_id] = asyncio.Lock()
+        return self._channel_locks[channel_id]
 
     def _extract_filename_from_url(self, url: str) -> str:
         """Extract filename from URL path or return fallback."""
@@ -199,8 +205,28 @@ class DiscordAdapter(AdapterBase):
                     os.unlink(path)
             return None
 
+    async def _prepare_media(self, content: str) -> tuple[str, File | None, str | None]:
+        """Probe URL and fetch media if applicable. Returns (content, file, temp_path).
+
+        - Non-media URL: ``(content, None, None)``
+        - Successful media fetch: ``("", File(...), temp_path)``
+        - Failed media fetch: ``(content, None, None)`` (graceful fallback)
+        """
+        content_trimmed = (content or "").strip()
+        is_media = bool(_MEDIA_URL_PATTERN.match(content_trimmed))
+        if not is_media and content_trimmed.startswith(("http://", "https://")):
+            is_media = await self._probe_is_image(content_trimmed)
+        if not is_media:
+            return (content, None, None)
+        temp_path = await self._fetch_media_to_temp(content_trimmed)
+        if temp_path:
+            filename = self._extract_filename_from_url(content_trimmed)
+            file_obj = File(temp_path, filename=filename)
+            return ("", file_obj, temp_path)
+        return (content, None, None)
+
     async def _get_or_create_webhook(self, channel_id: str) -> Webhook | None:
-        """Get or create one webhook per channel (matterbridge pattern). Caller must hold _send_lock."""
+        """Get or create one webhook per channel (matterbridge pattern). Caller must hold per-channel lock."""
         if not self._bot:
             return None
         return await discord_webhook.get_or_create_webhook(self._bot, channel_id, self._webhook_cache)
@@ -272,6 +298,26 @@ class DiscordAdapter(AdapterBase):
         """Delete Discord message when IRC REDACT or XMPP retraction received."""
         await discord_handlers.handle_delete_out(self._bot, evt)
 
+    def _resolve_xmpp_avatar_fallback(self, evt: MessageOut) -> str | None:
+        """Try to resolve an XMPP avatar for IRC-origin messages with no avatar.
+
+        Uses the IRC nick as the XMPP node (localpart) and probes Prosody's
+        PEP/vCard avatar endpoints. Only applies when the channel mapping has
+        an XMPP target so we can derive the domain.
+        """
+        origin = (evt.raw or {}).get("origin", "")
+        if origin != "irc":
+            return None
+        mapping = self._router.get_mapping_for_discord(evt.channel_id)
+        if not mapping or not mapping.xmpp:
+            return None
+        from bridge.avatar import resolve_xmpp_avatar_url, xmpp_domain_from_muc_jid
+
+        base_domain = xmpp_domain_from_muc_jid(mapping.xmpp.muc_jid)
+        # Use IRC nick (author_display) as XMPP node — common for users on both protocols
+        node = evt.author_display.lower()
+        return resolve_xmpp_avatar_url(base_domain, node)
+
     async def _handle_reaction_out(self, evt: ReactionOut) -> None:
         """Add or remove reaction on Discord message when IRC/XMPP reaction received."""
         await discord_handlers.handle_reaction_out(self._bot, evt)
@@ -301,7 +347,7 @@ class DiscordAdapter(AdapterBase):
                             guild = getattr(channel, "guild", None) if channel else None
                             if guild:
                                 edit_content = resolve_mentions(edit_content, guild)
-                        async with self._send_lock:
+                        async with self._get_channel_lock(evt.channel_id):
                             edited = await self._webhook_edit(
                                 evt.channel_id,
                                 int(resolved),
@@ -324,21 +370,7 @@ class DiscordAdapter(AdapterBase):
                         guild = getattr(channel, "guild", None) if channel else None
                         if guild:
                             content = resolve_mentions(content, guild)
-                    content_trimmed = (content or "").strip()
-                    file_obj: File | None = None
-                    temp_path: str | None = None
-                    # Media-only URL: fetch and send as File for reliable Discord embed.
-                    # First check by extension (fast); then probe Content-Type for
-                    # extensionless image URLs (e.g. GitHub avatar links).
-                    is_media = bool(_MEDIA_URL_PATTERN.match(content_trimmed))
-                    if not is_media and content_trimmed.startswith(("http://", "https://")):
-                        is_media = await self._probe_is_image(content_trimmed)
-                    if is_media:
-                        temp_path = await self._fetch_media_to_temp(content_trimmed)
-                        if temp_path:
-                            filename = self._extract_filename_from_url(content_trimmed)
-                            file_obj = File(temp_path, filename=filename)
-                            content = ""  # Send file alone for embed
+                    content, file_obj, temp_path = await self._prepare_media(content)
                     # Resolve reply_to_id: XMPP tracker may have IRC msgid when original was from IRC
                     reply_to_discord_id = evt.reply_to_id
                     if reply_to_discord_id and not reply_to_discord_id.isdigit():
@@ -351,12 +383,13 @@ class DiscordAdapter(AdapterBase):
                         reply_author, reply_content = await self._fetch_reply_context(
                             evt.channel_id, reply_to_discord_id
                         )
-                    async with self._send_lock:
+                    async with self._get_channel_lock(evt.channel_id):
+                        avatar_url = evt.avatar_url or self._resolve_xmpp_avatar_fallback(evt)
                         discord_msg_id = await self._webhook_send(
                             evt.channel_id,
                             evt.author_display,
                             content,
-                            avatar_url=evt.avatar_url,
+                            avatar_url=avatar_url,
                             reply_to_id=reply_to_discord_id,
                             reply_author=reply_author,
                             reply_content=reply_content,
@@ -841,3 +874,4 @@ class DiscordAdapter(AdapterBase):
         self._bot = None
         self._session = None
         self._bot_task = None
+        self._channel_locks.clear()

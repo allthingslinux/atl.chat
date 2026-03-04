@@ -124,6 +124,14 @@ class Config:
         return None
 
     @property
+    def xmpp_avatar_public_url(self) -> str | None:
+        """Public base URL for XMPP avatars (what Discord fetches). Falls back to xmpp_avatar_base_url."""
+        val = self._data.get("xmpp_avatar_public_url")
+        if val and isinstance(val, str) and val.strip():
+            return val.strip()
+        return None
+
+    @property
     def irc_puppet_idle_timeout_hours(self) -> int:
         return int(self._data.get("irc_puppet_idle_timeout_hours", 24))
 

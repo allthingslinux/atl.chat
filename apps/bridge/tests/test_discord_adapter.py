@@ -16,6 +16,8 @@ from bridge.events import (
     TypingOut,
 )
 from bridge.gateway import Bus, ChannelRouter
+from hypothesis import given
+from hypothesis import strategies as st
 
 
 @pytest.fixture
@@ -848,3 +850,102 @@ async def test_cmd_bridge_status_no_guild_returns_early(bus: Bus, router: Channe
     await adapter._cmd_bridge_status(ctx)
 
     ctx.reply.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# Task 7.5 – Per-channel locks and media preparation
+# ---------------------------------------------------------------------------
+
+
+def test_get_channel_lock_same_instance(bus: Bus, router: ChannelRouter) -> None:
+    """_get_channel_lock returns the same Lock for the same channel ID."""
+    from bridge.adapters.discord import DiscordAdapter
+
+    adapter = DiscordAdapter(bus, router, identity_resolver=None)
+    lock_a1 = adapter._get_channel_lock("A")
+    lock_a2 = adapter._get_channel_lock("A")
+    assert lock_a1 is lock_a2
+
+
+def test_get_channel_lock_different_instances(bus: Bus, router: ChannelRouter) -> None:
+    """_get_channel_lock returns independent Locks for different channel IDs."""
+    from bridge.adapters.discord import DiscordAdapter
+
+    adapter = DiscordAdapter(bus, router, identity_resolver=None)
+    lock_a = adapter._get_channel_lock("A")
+    lock_b = adapter._get_channel_lock("B")
+    assert lock_a is not lock_b
+
+
+@pytest.mark.asyncio
+async def test_prepare_media_non_media_content(bus: Bus, router: ChannelRouter) -> None:
+    """_prepare_media returns (content, None, None) for non-media text."""
+    from bridge.adapters.discord import DiscordAdapter
+
+    adapter = DiscordAdapter(bus, router, identity_resolver=None)
+    content = "just a regular message, no URL"
+    result = await adapter._prepare_media(content)
+    assert result == (content, None, None)
+
+
+@pytest.mark.asyncio
+async def test_prepare_media_fallback_on_fetch_failure(bus: Bus, router: ChannelRouter) -> None:
+    """_prepare_media falls back to (content, None, None) when media fetch fails."""
+    from bridge.adapters.discord import DiscordAdapter
+
+    adapter = DiscordAdapter(bus, router, identity_resolver=None)
+    adapter._fetch_media_to_temp = AsyncMock(return_value=None)
+
+    url = "https://example.com/photo.png"
+    result = await adapter._prepare_media(url)
+    assert result == (url, None, None)
+
+
+# ---------------------------------------------------------------------------
+# Task 7.6 – Property test: per-channel lock isolation
+# ---------------------------------------------------------------------------
+
+
+class TestChannelLockIsolationProperty:
+    """Property 4: Per-channel lock isolation.
+
+    **Validates: Requirements 5.4, 5.5**
+
+    For any two distinct channel IDs a and b, _get_channel_lock(a) is not
+    _get_channel_lock(b).  For any channel ID c, repeated calls return the
+    same asyncio.Lock instance.
+    """
+
+    @staticmethod
+    def _make_adapter():
+        from bridge.adapters.discord import DiscordAdapter
+
+        bus = Bus()
+        router = ChannelRouter()
+        router.load_from_config({"mappings": []})
+        return DiscordAdapter(bus, router, identity_resolver=None)
+
+    @given(channel_id=st.text(min_size=1))
+    def test_same_id_returns_same_lock(self, channel_id: str) -> None:
+        """Repeated calls with the same channel ID return the identical Lock."""
+        adapter = self._make_adapter()
+        lock1 = adapter._get_channel_lock(channel_id)
+        lock2 = adapter._get_channel_lock(channel_id)
+        assert lock1 is lock2
+        assert isinstance(lock1, asyncio.Lock)
+
+    @given(data=st.data())
+    def test_distinct_ids_return_different_locks(self, data: st.DataObject) -> None:
+        """Two distinct channel IDs always yield independent Lock instances."""
+        a = data.draw(st.text(min_size=1), label="channel_a")
+        b = data.draw(st.text(min_size=1).filter(lambda x: x != a), label="channel_b")
+        adapter = self._make_adapter()
+        assert adapter._get_channel_lock(a) is not adapter._get_channel_lock(b)
+
+    @given(channel_id=st.text(min_size=1), n=st.integers(min_value=2, max_value=20))
+    def test_repeated_calls_always_same_instance(self, channel_id: str, n: int) -> None:
+        """Calling _get_channel_lock N times for the same ID always returns one Lock."""
+        adapter = self._make_adapter()
+        first = adapter._get_channel_lock(channel_id)
+        for _ in range(n - 1):
+            assert adapter._get_channel_lock(channel_id) is first

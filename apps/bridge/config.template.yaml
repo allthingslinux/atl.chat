@@ -21,6 +21,8 @@ identity_cache_ttl_seconds: 3600
 avatar_cache_ttl_seconds: 86400
 # XMPP avatar: base URL for bridge to HEAD-check (required in Docker; use internal hostname)
 xmpp_avatar_base_url: ${XMPP_AVATAR_BASE_URL}
+# XMPP avatar: public URL that Discord can fetch (e.g. https://xmpp.atl.chat)
+xmpp_avatar_public_url: ${XMPP_AVATAR_PUBLIC_URL}
 irc_puppet_idle_timeout_hours: 24
 irc_puppet_postfix: ''
 
