@@ -1,3 +1,17 @@
+# [1.1.0](https://github.com/allthingslinux/atl.chat/compare/v1.0.0...v1.1.0) (2026-03-04)
+
+
+### Bug Fixes
+
+* **bridge:** handle Portal ConnectError gracefully with circuit breaker ([28cf734](https://github.com/allthingslinux/atl.chat/commit/28cf734801185d21466d711e9c74fa51c197f585))
+* **bridge:** xep-0425 muc moderation to discord delete bridging ([19aa2e7](https://github.com/allthingslinux/atl.chat/commit/19aa2e7f9d8e58c5112b449b66f57d63d568c943))
+
+
+### Features
+
+* **bridge:** add XMPP avatar fallback for Discord webhooks ([a97e441](https://github.com/allthingslinux/atl.chat/commit/a97e44117feb445b8114d44a5d54059e8725220a))
+* **prosody:** add mod_pep_open_avatars for public avatar access ([89f6e0d](https://github.com/allthingslinux/atl.chat/commit/89f6e0d10e89832fe8a859da64c960e7aeb43625))
+
 # 1.0.0 (2026-03-02)
 
 ### Bug Fixes
