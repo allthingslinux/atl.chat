@@ -90,6 +90,12 @@ test-all:
     uv run pytest tests/
     just bridge test
 
+# Generate a non-expiring Prosody admin API token (mod_http_admin_api Bearer auth)
+# Prints the token to stdout. Pipe to your portal .env as PROSODY_REST_TOKEN=<token>
+[group('Maintenance')]
+prosody-token:
+    @docker exec -i atl-xmpp-server prosodyctl shell <<< '>local tk = prosody.hosts["xmpp.localhost"].modules.tokenauth; local grant = tk.create_grant("admin@xmpp.localhost", "admin@xmpp.localhost", nil, {}); local token = tk.create_token("admin@xmpp.localhost", grant, "prosody:operator", nil, "portal-api"); print(token)' 2>&1 | grep -oP 'secret-token:\S+'
+
 # Clean up unused Docker resources
 [group('Maintenance')]
 clean:
