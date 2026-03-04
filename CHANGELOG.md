@@ -1,6 +1,5 @@
 # 1.0.0 (2026-03-02)
 
-
 ### Bug Fixes
 
 * **.gitignore:** add cerbot's certs/ dir mount to gitignore ([9c9ce0a](https://github.com/allthingslinux/atl.chat/commit/9c9ce0adc497affb43b3981d15052f7e7a83b1cc))
@@ -210,7 +209,7 @@
 * update IRC port and improve health check script ([a000a54](https://github.com/allthingslinux/atl.chat/commit/a000a5452d6484e58c5f90f7a49a0d4cc9958d5a))
 * update IRC server port in deployment script and improve connectivity testing ([6978244](https://github.com/allthingslinux/atl.chat/commit/69782440d001e90241a47e1fcc9dd4f8a729e475))
 * update IRC service port references from 6667 to 6697 for enhanced security ([cefc6b5](https://github.com/allthingslinux/atl.chat/commit/cefc6b5d12afa4ea4f62ab77dc59cb44e88eb719))
-* update Let's Encrypt email to admin@allthingslinux.org ([651e09b](https://github.com/allthingslinux/atl.chat/commit/651e09bef8f87a4d6ec6f5816d9a737ea688e875))
+* update Let's Encrypt email to <admin@allthingslinux.org> ([651e09b](https://github.com/allthingslinux/atl.chat/commit/651e09bef8f87a4d6ec6f5816d9a737ea688e875))
 * Update LICENSE ([afee623](https://github.com/allthingslinux/atl.chat/commit/afee623c6725d0878c27cb23e14e3de4d9e5388a))
 * update permissions for private key in init script ([d833f39](https://github.com/allthingslinux/atl.chat/commit/d833f393f9fa865420e749bb5a4b81bf789feffc))
 * update remaining certbot service references to xmpp-certbot ([f43aab0](https://github.com/allthingslinux/atl.chat/commit/f43aab0412ad64f009c77397dc8c0456338cee42))
@@ -226,28 +225,23 @@
 * **xmpp_component:** add type ignore comments for pyright in message sending and MUC joining methods ([85e054e](https://github.com/allthingslinux/atl.chat/commit/85e054ee4b0aea12a88bdb2018c5a926f0af2219))
 * **yaml:** lint yaml according to yamllint ([fbf402c](https://github.com/allthingslinux/atl.chat/commit/fbf402c0fc8358eedf8d19a17b5b34689fec55c5))
 
-
 ### chore
 
 * centralize tooling configurations to root ([7915b82](https://github.com/allthingslinux/atl.chat/commit/7915b82160b73949a4c571156fe321ec571ca7d0))
-
 
 ### Code Refactoring
 
 * modularize prosody configuration into focused components ([8d53f55](https://github.com/allthingslinux/atl.chat/commit/8d53f55f617287bf04c78625b12a63a760e8831a))
 * **xmpp:** flatten config directory structure ([7b3b3db](https://github.com/allthingslinux/atl.chat/commit/7b3b3db6368ab82ad99643b4a5687b37b44be32a))
 
-
 ### Continuous Integration
 
 * consolidate GitHub Actions workflows ([8fba756](https://github.com/allthingslinux/atl.chat/commit/8fba756b351e4fe5ecf38f149db163723868e31c))
-
 
 ### Documentation
 
 * centralize documentation to root docs/ directory ([e285a82](https://github.com/allthingslinux/atl.chat/commit/e285a82034c5fc9eec5ae6f1a37b23ac959682ec))
 * restructure documentation after major refactor ([2ebc170](https://github.com/allthingslinux/atl.chat/commit/2ebc170bf51bb82511d6ede7059e5efe1a69a6fc))
-
 
 ### Features
 
@@ -385,8 +379,8 @@
 * **Containerfile:** add libidn support for SCRAM-SHA authentication ([c0b61b3](https://github.com/allthingslinux/atl.chat/commit/c0b61b30f83edcef8f36f9e37af64a5b7aa19ee1))
 * **converse:** add dedicated nginx-based converse web service and proxy; disable mod_conversejs in Prosody ([9d2d8df](https://github.com/allthingslinux/atl.chat/commit/9d2d8df2ed4f75d55f1b89a896fdb70a1833c2af))
 * **conversejs:** add rocks plugin path and ensure certs/plugins dirs exist at build ([c91238a](https://github.com/allthingslinux/atl.chat/commit/c91238a1bdd04b5c26b36ad0b25e92b6bf2075bb))
-* **conversejs:** integrate mod_conversejs web client\n\n- Enable mod_conversejs in Prosody modules\n- Install community module in image build\n- Add Nginx and Apache proxy for /conversejs\n- Relax CSP to allow Converse CDN and XMPP endpoints\n- Document module in reference with links to docs\n\nRefs: https://modules.prosody.im/mod_conversejs.html https://conversejs.org/ ([77f9fc6](https://github.com/allthingslinux/atl.chat/commit/77f9fc69031d20120268009cf1612551685cc310))
-* **converse:** load Converse 11.0.1 from CDN and initialize fullscreen with Prosody endpoints\n\nDocs: https://conversejs.org/docs/html/quickstart.html https://conversejs.org/docs/html/configuration.html https://github.com/conversejs/converse.js/releases ([d29cb11](https://github.com/allthingslinux/atl.chat/commit/d29cb11d8bcbe05252982be5d14e2b4be008884e))
+* **conversejs:** integrate mod_conversejs web client\n\n- Enable mod_conversejs in Prosody modules\n- Install community module in image build\n- Add Nginx and Apache proxy for /conversejs\n- Relax CSP to allow Converse CDN and XMPP endpoints\n- Document module in reference with links to docs\n\nRefs: <https://modules.prosody.im/mod_conversejs.html> <https://conversejs.org/> ([77f9fc6](https://github.com/allthingslinux/atl.chat/commit/77f9fc69031d20120268009cf1612551685cc310))
+* **converse:** load Converse 11.0.1 from CDN and initialize fullscreen with Prosody endpoints\n\nDocs: <https://conversejs.org/docs/html/quickstart.html> <https://conversejs.org/docs/html/configuration.html> <https://github.com/conversejs/converse.js/releases> ([d29cb11](https://github.com/allthingslinux/atl.chat/commit/d29cb11d8bcbe05252982be5d14e2b4be008884e))
 * **core:** introduce core domain primitives for event handling and error management ([cc0c207](https://github.com/allthingslinux/atl.chat/commit/cc0c207406093e30d3f02327252fb3bf769c0c03))
 * **coturn:** add dedicated COTURN configuration file for improved management ([6243d4c](https://github.com/allthingslinux/atl.chat/commit/6243d4c7f91a3e35600bbf248f9f002a7fbc2231))
 * **dccallow.conf:** implement comprehensive DCC security policy ([31fae1a](https://github.com/allthingslinux/atl.chat/commit/31fae1af54bf72f5cc5e2f61f89ae53c40446e96))
@@ -460,7 +454,7 @@
 * **gateway:** introduce Gateway module for event bus, channel routing, and relay integration ([af66452](https://github.com/allthingslinux/atl.chat/commit/af664528ab261f0001c609c499bf29853d4cc6df))
 * **http-host:** allow separate HTTP host via PROSODY_HTTP_HOST for BOSH/WebSocket/admin/metrics; update cloudflared example to route xmpp. ([2e3fbda](https://github.com/allthingslinux/atl.chat/commit/2e3fbdad8ebb04e75ca4fb7322e28c2479924957))
 * **http:** modernize HTTP server configuration to align with official Prosody documentation ([32171be](https://github.com/allthingslinux/atl.chat/commit/32171be881ae48da7037da90338a8a2245dcc1b6))
-* **identity:** add __init__.py for identity module ([0f251dd](https://github.com/allthingslinux/atl.chat/commit/0f251ddaff45f2542a01bd4c9d82b708d06d7a20))
+* **identity:** add **init**.py for identity module ([0f251dd](https://github.com/allthingslinux/atl.chat/commit/0f251ddaff45f2542a01bd4c9d82b708d06d7a20))
 * **identity:** add DevIdentityResolver for IRC nick mapping ([d69c701](https://github.com/allthingslinux/atl.chat/commit/d69c701ad99c723525456bc5a874eb9924c29f7c))
 * **identity:** enhance DevIdentityResolver with IRC nickname mapping and sanitization ([0a5bf62](https://github.com/allthingslinux/atl.chat/commit/0a5bf62d13b2fdd6f90134b37820abd38cb14575))
 * **identity:** implement PortalClient and IdentityResolver for identity management ([e8cb889](https://github.com/allthingslinux/atl.chat/commit/e8cb889e044723886476f5a285686ae182035173))
@@ -643,18 +637,16 @@
 * **xmpp:** add mod_http_oauth2 for Bearer token auth ([0239b22](https://github.com/allthingslinux/atl.chat/commit/0239b2291b31ad2c9dcb3e796d81cd5839e39d09))
 * **xmpp:** add XMPP component for multi-presence bridging ([75d3ad8](https://github.com/allthingslinux/atl.chat/commit/75d3ad8e9bc12f061a91e1657ec3063f77dc77a2))
 * **xmpp:** consolidate compose files using profiles ([e457ced](https://github.com/allthingslinux/atl.chat/commit/e457cedf0c00c87ddd042698659a791f3b534284))
-* **xmpp:** dedicate clean subdomains for XMPP services\n\n- Add Component upload. (mod_http_file_share) and advertise via disco (XEP-0363)\n- Keep JIDs at user@atl.chat with main VirtualHost atl.chat\n- Nginx: add vhosts for upload.atl.chat (HTTP->HTTPS redirect, HTTPS proxy to /upload)\n- Remove http_file_share from main VirtualHost modules; serve only on component\n- Ensure muc. continues as component (XEP-0045); proxy65 at proxy. (XEP-0065)\n\nRefs: XEP-0156, XEP-0045, XEP-0363, XEP-0065 ([33009d1](https://github.com/allthingslinux/atl.chat/commit/33009d1aa2edfd947271faa294256df6eb874303))
+* **xmpp:** dedicate clean subdomains for XMPP services\n\n- Add Component upload. (mod_http_file_share) and advertise via disco (XEP-0363)\n- Keep JIDs at <user@atl.chat> with main VirtualHost atl.chat\n- Nginx: add vhosts for upload.atl.chat (HTTP->HTTPS redirect, HTTPS proxy to /upload)\n- Remove http_file_share from main VirtualHost modules; serve only on component\n- Ensure muc. continues as component (XEP-0045); proxy65 at proxy. (XEP-0065)\n\nRefs: XEP-0156, XEP-0045, XEP-0363, XEP-0065 ([33009d1](https://github.com/allthingslinux/atl.chat/commit/33009d1aa2edfd947271faa294256df6eb874303))
 * **xmpp:** enhance XMPPMessageIDTracker with alias and stanza ID handling ([1240555](https://github.com/allthingslinux/atl.chat/commit/1240555975833d638b9615250f7b984def35ab6f))
 * **xmpp:** implement async nick resolution and improve message handling ([edae23c](https://github.com/allthingslinux/atl.chat/commit/edae23c76baf83c7bc3994ee6c98a0f5f83c9329))
 * **xmpp:** implement JID node escaping and enhance MUC handling ([34af353](https://github.com/allthingslinux/atl.chat/commit/34af35393db0d8e37fb17270e113897bbe651ed4))
 * **xmpp:** implement XMPP adapter with multi-presence and outbound queue ([497e09d](https://github.com/allthingslinux/atl.chat/commit/497e09d938d073fb8e5f944cf26e1e4dd31744a9))
 * **xmpp:** implement XMPP message ID tracking with TTL cache ([b42f1e1](https://github.com/allthingslinux/atl.chat/commit/b42f1e188b3700ec87eb3769699a37a8f764e988))
 
-
 ### Performance Improvements
 
 * **network:** switch Prosody to libevent backend (network_backend="event") ([80db398](https://github.com/allthingslinux/atl.chat/commit/80db398d7e504cb5a070772a75e608b5067f1fe8))
-
 
 ### BREAKING CHANGES
 
@@ -668,37 +660,39 @@
 * Documentation now reflects single configuration approach
 * Removed multiple compose files in favor of single deployment
 
-- Merged docker-compose.monitoring.yml and docker-compose.turn.yml into main file
-- Removed separate compose files - now single docker-compose.yml includes:
+* Merged docker-compose.monitoring.yml and docker-compose.turn.yml into main file
+* Removed separate compose files - now single docker-compose.yml includes:
   * Prosody XMPP server + PostgreSQL database
   * Monitoring stack (Prometheus, Grafana, Node Exporter)
   * TURN/STUN server (Coturn) for voice/video calls
-- Updated env.example with all service configuration options
-- Added flexible deployment modes: minimal, full, or custom service selection
-- Updated README with simplified deployment instructions
+* Updated env.example with all service configuration options
+* Added flexible deployment modes: minimal, full, or custom service selection
+* Updated README with simplified deployment instructions
 
 Result: Single comprehensive docker-compose.yml file with all services.
 Users can deploy all services or select specific ones as needed.
+
 * Removed complex multi-profile Docker setup
 
-- Consolidated docker-compose.yml with production-ready defaults
-- Removed docker-compose.production.yml (merged into main compose file)
-- Eliminated complex feature flags and profiles system
-- Simplified environment variables to essential ones only
-- Production defaults: PostgreSQL, enhanced security, performance optimization
-- Added Direct TLS ports (5223/5270) for modern XMPP clients
-- Enhanced resource limits and sysctls for production deployment
+* Consolidated docker-compose.yml with production-ready defaults
+* Removed docker-compose.production.yml (merged into main compose file)
+* Eliminated complex feature flags and profiles system
+* Simplified environment variables to essential ones only
+* Production defaults: PostgreSQL, enhanced security, performance optimization
+* Added Direct TLS ports (5223/5270) for modern XMPP clients
+* Enhanced resource limits and sysctls for production deployment
 
 Environment variables reduced from 30+ to 12 essential ones.
 Result: Single production-ready deployment replacing complex profiles.
+
 * Removed entire layer-based configuration system
 
-- Removed config/stack/ (32 layer files across 8 layers)
-- Removed config/environments/ (3 environment-specific configs)
-- Removed config/policies/ (9 security/performance/compliance policies)
-- Removed config/tools/ (11 configuration management tools)
-- Removed config/domains/ (8 domain configuration files)
-- Removed config/firewall/ (1 firewall configuration)
+* Removed config/stack/ (32 layer files across 8 layers)
+* Removed config/environments/ (3 environment-specific configs)
+* Removed config/policies/ (9 security/performance/compliance policies)
+* Removed config/tools/ (11 configuration management tools)
+* Removed config/domains/ (8 domain configuration files)
+* Removed config/firewall/ (1 firewall configuration)
 
 All valuable configurations consolidated into single prosody.cfg.lua:
 ✅ All 120+ modules from layers preserved and properly configured
@@ -709,33 +703,36 @@ All valuable configurations consolidated into single prosody.cfg.lua:
 ✅ Complete XEP compliance with proper documentation
 
 Result: Single opinionated production-ready configuration replacing 65+ files.
+
 * Split monolithic prosody.cfg.lua into modular configuration
 
-- Split 442-line monolithic config into 7 focused modules
-- Create global.cfg.lua for basic settings and performance
-- Create security.cfg.lua for TLS, authentication, and security policies
-- Create database.cfg.lua for storage backend configuration
-- Create modules.cfg.lua for module management and loading logic
-- Create vhosts.cfg.lua for virtual host definitions
-- Create components.cfg.lua for XMPP components (MUC, PubSub, etc.)
-- Reduce main prosody.cfg.lua to ~80 lines with includes and validation
-- Add comprehensive README documenting modular structure
-- Maintain 100% compatibility with existing configuration
-- Improve maintainability, debugging, and team collaboration
-- Enable easier environment-specific customization
+* Split 442-line monolithic config into 7 focused modules
+* Create global.cfg.lua for basic settings and performance
+* Create security.cfg.lua for TLS, authentication, and security policies
+* Create database.cfg.lua for storage backend configuration
+* Create modules.cfg.lua for module management and loading logic
+* Create vhosts.cfg.lua for virtual host definitions
+* Create components.cfg.lua for XMPP components (MUC, PubSub, etc.)
+* Reduce main prosody.cfg.lua to ~80 lines with includes and validation
+* Add comprehensive README documenting modular structure
+* Maintain 100% compatibility with existing configuration
+* Improve maintainability, debugging, and team collaboration
+* Enable easier environment-specific customization
 
 Benefits:
-- Better separation of concerns and single responsibility
-- Easier troubleshooting with isolated configuration modules
-- Simplified customization for different deployment needs
-- Enhanced security through focused security configuration
-- Improved scalability and team collaboration workflows
+
+* Better separation of concerns and single responsibility
+* Easier troubleshooting with isolated configuration modules
+* Simplified customization for different deployment needs
+* Enhanced security through focused security configuration
+* Improved scalability and team collaboration workflows
+
 * Module organization changed from stability-based to official status-based
-- PROSODY_ENABLE_MODERN removed (integrated into PROSODY_ENABLE_OFFICIAL)
-- PROSODY_ENABLE_HTTP removed (integrated into official modules)
-- PROSODY_ENABLE_ADMIN removed (integrated into official modules)
-- PROSODY_ENABLE_BETA now defaults to false (was true)
-- Directory structure changed from modules.d/{stable,beta,alpha} to modules.d/{official,community/{stable,beta,alpha}}
+* PROSODY_ENABLE_MODERN removed (integrated into PROSODY_ENABLE_OFFICIAL)
+* PROSODY_ENABLE_HTTP removed (integrated into official modules)
+* PROSODY_ENABLE_ADMIN removed (integrated into official modules)
+* PROSODY_ENABLE_BETA now defaults to false (was true)
+* Directory structure changed from modules.d/{stable,beta,alpha} to modules.d/{official,community/{stable,beta,alpha}}
 
 # Changelog
 
