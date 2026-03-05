@@ -22,6 +22,7 @@ dependencies = [
   "tenacity",
   "pydle>=1.1.0",
   "uvloop>=0.22.1; sys_platform != 'win32'",
+  "privatebin",
 ]
 
 [project.urls]
