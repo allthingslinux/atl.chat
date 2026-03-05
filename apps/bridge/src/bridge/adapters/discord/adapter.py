@@ -331,6 +331,12 @@ class DiscordAdapter(AdapterBase):
         while True:
             try:
                 evt = await self._queue.get()
+                logger.debug(
+                    "Discord: dequeued MessageOut discord_id={} channel={} author={}",
+                    evt.message_id,
+                    evt.channel_id,
+                    evt.author_display,
+                )
 
                 # Check if this is an edit (XMPP correction or IRC edit)
                 is_edit = evt.raw.get("is_edit", False)
@@ -340,6 +346,9 @@ class DiscordAdapter(AdapterBase):
                 discord_msg_id: int | None = None
                 if is_edit and replace_id and self._bot:
                     resolved = self._resolve_discord_message_id(replace_id, origin)
+                    logger.debug(
+                        "Discord: edit resolve replace_id={} origin={} -> discord_id={}", replace_id, origin, resolved
+                    )
                     if resolved:
                         edit_content = evt.content
                         if edit_content:
@@ -355,15 +364,23 @@ class DiscordAdapter(AdapterBase):
                             )
                         if edited:
                             discord_msg_id = int(resolved)
-                            logger.debug(
-                                "Edited Discord message {} (replace_id: {})",
+                            logger.info(
+                                "Discord: edited message {} via webhook (replace_id={})",
                                 resolved,
                                 replace_id,
                             )
+                        else:
+                            logger.warning("Discord: webhook edit failed for message {}", resolved)
 
                 # Send as new message if not edited
                 if discord_msg_id is None:
                     content = evt.content  # Relay already strips reply fallback for discord target
+                    logger.debug(
+                        "Discord: sending new message channel={} author={} content={!r}",
+                        evt.channel_id,
+                        evt.author_display,
+                        content[:80],
+                    )
                     # Resolve @nick to Discord mention before send
                     if self._bot and content:
                         channel = self._bot.get_channel(int(evt.channel_id))
@@ -394,6 +411,19 @@ class DiscordAdapter(AdapterBase):
                             reply_author=reply_author,
                             reply_content=reply_content,
                             file=file_obj,
+                        )
+                    if discord_msg_id:
+                        logger.info(
+                            "Discord: sent webhook message {} channel={} author={}",
+                            discord_msg_id,
+                            evt.channel_id,
+                            evt.author_display,
+                        )
+                    else:
+                        logger.warning(
+                            "Discord: webhook send returned no message id channel={} author={}",
+                            evt.channel_id,
+                            evt.author_display,
                         )
                     # Clean up temp file after send (File reads during send)
                     if temp_path and os.path.exists(temp_path):
@@ -541,6 +571,12 @@ class DiscordAdapter(AdapterBase):
             if ref_author:
                 raw["reply_quoted_author"] = ref_author
 
+        # Detect Discord /me action: message starting with "/me "
+        is_action = False
+        if content.startswith("/me "):
+            is_action = True
+            content = content[4:]  # strip "/me " prefix; relay will format for each target
+
         _, evt = message_in(
             origin="discord",
             channel_id=channel_id,
@@ -550,7 +586,7 @@ class DiscordAdapter(AdapterBase):
             message_id=str(message.id),
             reply_to_id=str(message.reference.message_id) if message.reference else None,
             is_edit=False,
-            is_action=False,
+            is_action=is_action,
             avatar_url=avatar_url,
             raw=raw,
         )
