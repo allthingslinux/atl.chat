@@ -2,6 +2,71 @@
 
 from __future__ import annotations
 
+import re
+from dataclasses import dataclass, field
+
+# Matches fenced code blocks: ```[lang]\n...\n``` (multiline)
+# Lang is optional and only recognized when followed by a newline (Discord convention).
+# Inline fences (no newline after opener) have no lang — full content between fences.
+_FENCED_CODE_RE = re.compile(r"```(\w+)?\n(.*?)```|```(.*?)```", re.DOTALL)
+
+
+@dataclass
+class CodeBlock:
+    lang: str
+    content: str
+
+
+@dataclass
+class ProcessedContent:
+    """Content with code blocks extracted and replaced by placeholders."""
+
+    text: str  # message text with code blocks replaced by {PASTE_N} tokens
+    blocks: list[CodeBlock] = field(default_factory=list)  # extracted blocks in order
+
+
+def extract_code_blocks(content: str) -> ProcessedContent:
+    """Extract fenced code blocks from content, replacing each with a {PASTE_N} token.
+
+    Returns ProcessedContent with the cleaned text and the list of extracted blocks.
+    If there are no code blocks, .blocks is empty and .text == content.
+    """
+    blocks: list[CodeBlock] = []
+
+    def _replace(m: re.Match) -> str:
+        if m.group(3) is not None:
+            # Inline fence: ```content``` (no newline after opener)
+            lang = ""
+            body = m.group(3)
+        else:
+            # Block fence: ```[lang]\ncontent```
+            lang = (m.group(1) or "").strip()
+            body = m.group(2)
+        # Strip a single trailing newline from block content (artifact of the closing ```)
+        if body.endswith("\n"):
+            body = body[:-1]
+        blocks.append(CodeBlock(lang=lang, content=body))
+        return f"{{PASTE_{len(blocks) - 1}}}"
+
+    text = _FENCED_CODE_RE.sub(_replace, content)
+    return ProcessedContent(text=text, blocks=blocks)
+
+
+def split_irc_lines(content: str, max_bytes: int = 450) -> list[str]:
+    """Split content on newlines first, then byte-split each line.
+
+    This preserves multi-line Discord messages as separate IRC messages
+    rather than collapsing them into a single mangled line.
+    Empty lines are skipped — blank-only messages are noise on IRC.
+    """
+    lines = content.splitlines() or [""]
+    result: list[str] = []
+    for line in lines:
+        if not line.strip():
+            continue
+        result.extend(split_irc_message(line, max_bytes=max_bytes))
+    return result or [""]
+
 
 def split_irc_message(content: str, max_bytes: int = 450) -> list[str]:
     """Split content into chunks at word boundaries, each <= max_bytes.
