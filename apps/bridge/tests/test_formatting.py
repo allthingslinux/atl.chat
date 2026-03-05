@@ -16,6 +16,8 @@ _B = "\x02"  # bold
 _I = "\x1d"  # italic
 _U = "\x1f"  # underline
 _R = "\x0f"  # reset
+_S = "\x1e"  # strikethrough
+_M = "\x11"  # monospace
 
 
 # ---------------------------------------------------------------------------
@@ -842,3 +844,337 @@ class TestCtcpActionFormatting:
         assert ctcp.startswith("\x01ACTION ")
         assert ctcp.endswith("\x01")
         assert "dances around" in ctcp
+
+
+# ---------------------------------------------------------------------------
+# Edge cases / quirks / gotchas
+# ---------------------------------------------------------------------------
+
+
+class TestIrcToDiscordEdgeCases:
+    """Edge cases for IRC → Discord conversion."""
+
+    # --- interleaved / overlapping spans ---
+
+    def test_interleaved_bold_italic(self):
+        # Bold opens, italic opens, bold closes, italic closes.
+        # IRC allows this; Discord markdown does not nest cleanly.
+        # We document the current output so regressions are caught.
+        result = irc_to_discord(f"{_B}bold{_I}both{_B}italic{_I}")
+        assert result == "**bold*both**italic*"
+
+    def test_nested_same_type_bold(self):
+        # Bold toggled on/off/on/off — each toggle emits ** so output alternates.
+        result = irc_to_discord(f"{_B}a{_B}b{_B}c{_B}")
+        assert result == "**a**b**c**"
+
+    # --- double-toggle (on then immediately off) ---
+
+    def test_double_toggle_bold_emits_empty_markers(self):
+        # \x02\x02 = bold on then bold off immediately → **** before text.
+        # Discord renders **** as bold+italic opener — known quirk.
+        result = irc_to_discord(f"{_B}{_B}text")
+        assert result == "****text"
+
+    def test_double_toggle_italic_emits_empty_markers(self):
+        # \x1d\x1d = italic on then off → ** before text (same as bold in Discord).
+        result = irc_to_discord(f"{_I}{_I}text")
+        assert result == "**text"
+
+    # --- only formatting codes, no text ---
+
+    def test_only_formatting_codes(self):
+        # Bold + italic + reset with no text → six asterisks then nothing.
+        result = irc_to_discord(f"{_B}{_I}{_R}")
+        assert result == "******"
+
+    # --- reset edge cases ---
+
+    def test_reset_with_nothing_open(self):
+        result = irc_to_discord(f"{_R}text")
+        assert result == "text"
+
+    def test_double_reset(self):
+        result = irc_to_discord(f"{_B}bold{_R}{_R}text")
+        assert result == "**bold**text"
+
+    # --- monospace containing other formatting codes ---
+
+    def test_bold_code_inside_monospace_stripped(self):
+        result = irc_to_discord(f"{_M}{_B}not bold{_B}{_M}")
+        assert result == "`not bold`"
+
+    def test_italic_code_inside_monospace_stripped(self):
+        result = irc_to_discord(f"{_M}{_I}not italic{_I}{_M}")
+        assert result == "`not italic`"
+
+    def test_monospace_with_backtick_in_content(self):
+        # A literal backtick inside IRC monospace breaks Discord's ` delimiters.
+        # Current behaviour: the backtick splits the span — document it.
+        result = irc_to_discord(f"{_M}has`backtick{_M}")
+        assert result == "`has`backtick`"
+
+    # --- color code parsing ---
+
+    def test_bare_color_reset_stripped(self):
+        # \x03 with no digits = color reset
+        assert irc_to_discord("\x03text") == "text"
+
+    def test_fg_color_only_stripped(self):
+        assert irc_to_discord("\x0302blue\x03") == "blue"
+
+    def test_color_comma_no_bg_comma_is_literal(self):
+        # \x0304, with no bg digits — comma is literal text per IRC spec
+        assert irc_to_discord("\x0304,hello\x03") == ",hello"
+
+    # --- spoiler with formatting inside ---
+
+    def test_bold_inside_spoiler(self):
+        result = irc_to_discord(f"\x0301,01{_B}bold{_B}\x03")
+        assert result == "||**bold**||"
+
+    def test_italic_inside_spoiler(self):
+        result = irc_to_discord(f"\x0301,01{_I}italic{_I}\x03")
+        assert result == "||*italic*||"
+
+    # --- ANSI and zero-width space ---
+
+    def test_ansi_escape_stripped(self):
+        assert irc_to_discord("\x1b[32mgreen\x1b[0m") == "green"
+
+    def test_zero_width_space_stripped(self):
+        assert irc_to_discord("hel\u200blo") == "hello"
+
+
+class TestIrcToXmppEdgeCases:
+    """Edge cases for IRC → XEP-0393 conversion."""
+
+    # --- interleaved / overlapping spans ---
+
+    def test_interleaved_bold_italic(self):
+        # Bold opens, italic opens, bold closes, italic closes.
+        # XEP-0393 cannot represent this cleanly; document current output.
+        result = irc_to_xmpp(f"{_B}bold{_I}both{_B}italic{_I}")
+        assert result == "*bold_both*italic_"
+
+    def test_nested_same_type_bold(self):
+        result = irc_to_xmpp(f"{_B}a{_B}b{_B}c{_B}")
+        assert result == "*a*b*c*"
+
+    # --- double-toggle ---
+
+    def test_double_toggle_bold_produces_no_span(self):
+        # \x02\x02 = on then off immediately → no markers, text passes through
+        assert irc_to_xmpp(f"{_B}{_B}text") == "text"
+
+    # --- only formatting codes ---
+
+    def test_only_formatting_codes(self):
+        # Bold + italic + reset with no text → empty spans emitted
+        result = irc_to_xmpp(f"{_B}{_I}{_R}")
+        assert result == "*_*_"
+
+    # --- reset closes multiple open spans ---
+
+    def test_reset_closes_bold_and_italic(self):
+        # Reset emits closers in bold-first order (bold opened first)
+        result = irc_to_xmpp(f"{_B}{_I}both{_R}plain")
+        assert result == "*_both*_plain"
+
+    def test_unclosed_bold_and_italic(self):
+        result = irc_to_xmpp(f"{_B}{_I}unclosed")
+        assert result == "*_unclosed*_"
+
+    # --- XEP-0393 delimiter ambiguity ---
+
+    def test_bold_with_asterisk_in_content(self):
+        # IRC bold containing a literal * — the output *hello *world* has an
+        # ambiguous second * that XEP-0393 parsers will treat as a closer.
+        # Current behaviour documented; content after the stray * is lost.
+        result = irc_to_xmpp(f"{_B}hello *world*{_B}")
+        assert result == "*hello *world"
+
+    def test_italic_with_underscore_in_content(self):
+        # IRC italic containing a literal _ — _hello_world_ has an ambiguous
+        # middle _ that XEP-0393 parsers will treat as a closer.
+        result = irc_to_xmpp(f"{_I}hello_world{_I}")
+        assert result == "_hello_world_"
+
+    # --- whitespace at span boundaries (XEP-0393 §6.2) ---
+
+    def test_italic_leading_trailing_space_moved_outside(self):
+        result = irc_to_xmpp(f"{_I} italic {_I}")
+        assert result == " _italic_ "
+
+    def test_bold_leading_trailing_space_moved_outside(self):
+        result = irc_to_xmpp(f"{_B} bold {_B}")
+        assert result == " *bold* "
+
+    def test_italic_only_whitespace_delimiters_stripped(self):
+        # Span containing only whitespace → delimiters removed, space preserved
+        result = irc_to_xmpp(f"{_I} {_I}")
+        assert result == " "
+
+    def test_bold_only_whitespace_delimiters_stripped(self):
+        result = irc_to_xmpp(f"{_B} {_B}")
+        assert result == " "
+
+    # --- monospace contents are opaque ---
+
+    def test_mono_with_xep0393_markup_inside_passthrough(self):
+        result = irc_to_xmpp(f"{_M}*bold* _italic_{_M}")
+        assert result == "`*bold* _italic_`"
+
+    # --- stripping ---
+
+    def test_color_stripped(self):
+        assert irc_to_xmpp("\x0312colored\x03") == "colored"
+
+    def test_ansi_stripped(self):
+        assert irc_to_xmpp("\x1b[32mgreen\x1b[0m") == "green"
+
+    def test_zero_width_space_stripped(self):
+        assert irc_to_xmpp("hel\u200blo") == "hello"
+
+    def test_underline_stripped(self):
+        assert irc_to_xmpp(f"{_U}under{_U}") == "under"
+
+    def test_reverse_stripped(self):
+        assert irc_to_xmpp("\x16text\x16") == "text"
+
+
+class TestDiscordToIrcEdgeCases:
+    """Edge cases for Discord → IRC conversion."""
+
+    def test_italic_containing_bold(self):
+        result = discord_to_irc("*italic **bold** italic*")
+        assert result == f"{_I}italic {_B}bold{_B} italic{_I}"
+
+    def test_empty_bold_markers_unchanged(self):
+        # **** has no inner content — no IRC codes emitted
+        assert discord_to_irc("****") == "****"
+
+    def test_lone_double_star_unchanged(self):
+        assert discord_to_irc("**") == "**"
+
+    def test_lone_single_star_unchanged(self):
+        assert discord_to_irc("*") == "*"
+
+    def test_spoiler_with_newline(self):
+        # Newline inside spoiler — the whole span including newline is wrapped
+        result = discord_to_irc("||line1\nline2||")
+        assert result == "\x0301,01line1\nline2\x03"
+
+    def test_multiple_spoilers(self):
+        result = discord_to_irc("||a|| and ||b||")
+        assert result == "\x0301,01a\x03 and \x0301,01b\x03"
+
+    def test_underline_with_underscore_inside_unchanged(self):
+        # __hello_world__ — the inner _ breaks the __ pattern; no conversion
+        assert discord_to_irc("__hello_world__") == "__hello_world__"
+
+    def test_bold_inside_blockquote(self):
+        result = discord_to_irc("> **bold quote**")
+        assert result == f"\u201c{_B}bold quote{_B}\u201d"
+
+    def test_bold_inside_header(self):
+        result = discord_to_irc("# **bold header**")
+        assert result == f"{_B}bold header{_B}"
+
+    def test_escaped_underscore_not_italic(self):
+        assert discord_to_irc("\\_not italic\\_") == "_not italic_"
+
+    def test_escaped_asterisk_not_bold(self):
+        assert discord_to_irc("\\*not italic\\*") == "*not italic*"
+
+    def test_strikethrough_with_tilde_inside(self):
+        # ~~a~b~~ — inner ~ breaks the [^~]+ pattern, so no conversion
+        result = discord_to_irc("~~a~b~~")
+        assert result == "~~a~b~~"
+
+    def test_code_inside_bold(self):
+        # **bold `code` bold** — backtick inside bold span
+        result = discord_to_irc("**bold `code` bold**")
+        assert result == f"{_B}bold \x11code\x11 bold{_B}"
+
+    def test_empty_string(self):
+        assert discord_to_irc("") == ""
+
+    def test_whitespace_only(self):
+        assert discord_to_irc("   ") == "   "
+
+
+class TestXmppToDiscordEdgeCases:
+    """Edge cases for XEP-0393 → Discord conversion."""
+
+    def test_emphasis_with_underscore_in_content(self):
+        # _hello_world_ — the middle _ closes the span early; known XEP-0393 ambiguity
+        result = xmpp_to_discord("_hello_world_")
+        assert result == "*hello*world_"
+
+    def test_bold_with_asterisk_in_content(self):
+        # *hello*world* — the middle * closes the span early
+        result = xmpp_to_discord("*hello*world*")
+        assert result == "**hello**world*"
+
+    def test_span_does_not_cross_newline(self):
+        # XEP-0393 spans must not cross newlines
+        result = xmpp_to_discord("*line1\nline2*")
+        assert result == "*line1\nline2*"
+
+    def test_empty_bold_markers_unchanged(self):
+        assert xmpp_to_discord("**") == "**"
+
+    def test_empty_italic_markers_unchanged(self):
+        assert xmpp_to_discord("__") == "__"
+
+    def test_multiple_bold_spans_on_one_line(self):
+        assert xmpp_to_discord("*a* *b* *c*") == "**a** **b** **c**"
+
+    def test_bold_in_quote_block_converted(self):
+        # > is passed through; inline spans inside are still converted
+        result = xmpp_to_discord("> *bold in quote*")
+        assert result == "> **bold in quote**"
+
+    def test_pre_block_no_conversion(self):
+        pre = "```\n*not bold*\n```"
+        assert xmpp_to_discord(pre) == pre
+
+    def test_opener_followed_by_space_not_matched(self):
+        assert xmpp_to_discord("* not bold*") == "* not bold*"
+
+    def test_closer_preceded_by_space_not_matched(self):
+        assert xmpp_to_discord("*not bold *") == "*not bold *"
+
+
+class TestXmppToIrcEdgeCases:
+    """Edge cases for XEP-0393 → IRC conversion."""
+
+    _B = "\x02"
+    _I = "\x1d"
+    _S = "\x1e"
+    _M = "\x11"
+    _U = "\x1f"
+
+    def test_span_does_not_cross_newline(self):
+        result = xmpp_to_irc("*line1\nline2*")
+        assert result == "*line1\nline2*"
+
+    def test_multiple_bold_spans(self):
+        result = xmpp_to_irc("*a* and *b*")
+        assert result == f"{self._B}a{self._B} and {self._B}b{self._B}"
+
+    def test_bold_italic_combined(self):
+        result = xmpp_to_irc("*_bold italic_*")
+        assert result == f"{self._B}{self._I}bold italic{self._I}{self._B}"
+
+    def test_pre_block_no_conversion(self):
+        pre = "```\n*not bold*\n```"
+        assert xmpp_to_irc(pre) == pre
+
+    def test_bold_in_blockquote_converted(self):
+        result = xmpp_to_irc("> *bold*")
+        assert result == f"\u201c{self._B}bold{self._B}\u201d"
+
+    def test_empty(self):
+        assert xmpp_to_irc("") == ""
