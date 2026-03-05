@@ -1,3 +1,30 @@
+# [1.2.0](https://github.com/allthingslinux/atl.chat/compare/v1.1.0...v1.2.0) (2026-03-05)
+
+
+### Bug Fixes
+
+* discord_to_irc blockquote, spoiler, emoji and mention handling ([4a60b8f](https://github.com/allthingslinux/atl.chat/commit/4a60b8fa0d6d545614142c413d78016d2808db5e))
+* irc_to_discord spoiler round-trip, pass-through asterisks and underscores ([f795c45](https://github.com/allthingslinux/atl.chat/commit/f795c4561f53f3a406de428b6a02b13ee8e52854))
+* irc_to_xmpp color trailing comma and ANSI stripping ([1d2a5d5](https://github.com/allthingslinux/atl.chat/commit/1d2a5d5e629c8081636a15fc36c5a0e47be7b11d))
+* relay strip xmpp reply fallback before format conversion ([a3f5b8a](https://github.com/allthingslinux/atl.chat/commit/a3f5b8ad6ee95090ffb8e4270e095dccd4bc15e6))
+* update bridge entrypoint ([6f1703c](https://github.com/allthingslinux/atl.chat/commit/6f1703cb4ef2a72238ddd597c3dc1c947cc5aa4e))
+* update config schema ([8bc1285](https://github.com/allthingslinux/atl.chat/commit/8bc1285dbfe636d71411e277d27a09068930f21f))
+* update core events ([d63b50f](https://github.com/allthingslinux/atl.chat/commit/d63b50ff68e96c0f464872dd51132c23365be81f))
+* update discord adapter ([556cbec](https://github.com/allthingslinux/atl.chat/commit/556cbec497b1d07f080ad7a5fd7294f34c2379c8))
+* update irc client ([257b268](https://github.com/allthingslinux/atl.chat/commit/257b268ebe0e68520ec0e12645dc246a1523e2c1))
+* update irc message split formatting ([c783619](https://github.com/allthingslinux/atl.chat/commit/c783619b8e3a3ba77f8bd9e49fdffb6fd87e638e))
+* update irc puppet ([13f0fdd](https://github.com/allthingslinux/atl.chat/commit/13f0fdd46bfa052da545f71cfeb3fc17e755a134))
+* update xmpp adapter ([7716b2f](https://github.com/allthingslinux/atl.chat/commit/7716b2f008f61174a5b6c6341b0feb24daee01ba))
+* xmpp component reaction echo suppression and spoiler handling ([be1db5d](https://github.com/allthingslinux/atl.chat/commit/be1db5d685a03b9bd50ef9c5c9f7af2e9e39cb11))
+* xmpp_to_discord double asterisk bold+italic regression ([3d8846f](https://github.com/allthingslinux/atl.chat/commit/3d8846f5a4660eabc8224e63927525e38508b65f))
+* xmpp_to_irc blockquote, double asterisk/underscore, Discord-style bold/underline ([cb4e3e0](https://github.com/allthingslinux/atl.chat/commit/cb4e3e0b567485e49781292f5bdf62279f74c244))
+
+
+### Features
+
+* add discord to xmpp formatting module ([e44a17a](https://github.com/allthingslinux/atl.chat/commit/e44a17a465de9c47089471daa7b28533b065bb69))
+* add paste formatting utility ([4d0a8f3](https://github.com/allthingslinux/atl.chat/commit/4d0a8f3dfa6dab76c42e3c2b0463b2bbf14e5f6d))
+
 # [1.1.0](https://github.com/allthingslinux/atl.chat/compare/v1.0.0...v1.1.0) (2026-03-04)
 
 
