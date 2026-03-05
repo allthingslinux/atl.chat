@@ -204,6 +204,14 @@ class Config:
         return []
 
     @property
+    def paste_service_url(self) -> str | None:
+        """URL of paste service for code block uploads (must accept plain-text POST, return URL as text)."""
+        val = self._data.get("paste_service_url")
+        if val and isinstance(val, str) and val.strip():
+            return val.strip()
+        return None
+
+    @property
     def content_filter_regex(self) -> list[str]:
         val = self._data.get("content_filter_regex")
         if isinstance(val, list):
