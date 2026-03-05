@@ -406,6 +406,8 @@ class TestOutboundConsumer:
             "xmpp_nick",
             reply_to_id=None,
             discord_message_id="m1",
+            is_media=False,
+            markup_spans=None,
         )
 
     @pytest.mark.asyncio
@@ -453,6 +455,8 @@ class TestOutboundConsumer:
             "U",
             reply_to_id=None,
             discord_message_id="m1",
+            is_media=False,
+            markup_spans=None,
         )
 
     @pytest.mark.asyncio
@@ -524,6 +528,8 @@ class TestOutboundConsumer:
             "xmpp_nick",
             reply_to_id="xmpp-reply-target",
             discord_message_id="m2",
+            is_media=False,
+            markup_spans=None,
         )
 
     @pytest.mark.asyncio
@@ -949,4 +955,6 @@ class TestConsumerGuardConditions:
             "U",
             reply_to_id=None,
             discord_message_id="m1",
+            is_media=False,
+            markup_spans=None,
         )
