@@ -935,6 +935,12 @@ set {
 	 * Identified users and those with reputation score ≥24 are exempt.
 	 * Docs: https://www.unrealircd.org/docs/Set_block#set::restrict-commands */
 	restrict-commands {
+		/* Disable NICK changes for all regular users.
+		 * Nicks are managed exclusively via the Portal — users register once and
+		 * their nick is fixed. IRCOps and the bridge oper are exempt so services
+		 * and admin tooling (SVSNICK, forced renames) still work. */
+		nick {
+		}
 		list {
 			except { identified yes; reputation-score 24; }
 			connect-delay 60s;
@@ -1006,8 +1012,8 @@ set {
 				users 12;           /* can message 12 different users before rate limiting */
 				new-user-every 10s; /* then 1 new conversation target every 10 seconds */
 			}
-			lag-penalty 600;        /* fake lag per command (ms); lower = more permissive */
-			lag-penalty-bytes 200;  /* bytes before extra lag penalty; higher = more permissive */
+			lag-penalty 3000;       /* 1 message per 3 seconds sustained rate */
+			lag-penalty-bytes 512;  /* bytes before extra lag penalty kicks in */
 		}
 
 		/* Unknown users (new/untrusted) — stricter limits */
