@@ -123,4 +123,27 @@ def irc_to_xmpp(content: str) -> str:
     if mono:
         result.append("`")
 
-    return "".join(result)
+    return _fix_xep0393_whitespace("".join(result))
+
+
+# XEP-0393 §6.2: opener must not be followed by whitespace,
+# closer must not be preceded by whitespace.
+# Fix spans like "_  hello _" → "  _hello_ " and "* hi *" → " *hi* ".
+_XEP0393_WS_FIX_RE = re.compile(
+    r"([*_~`])([ \t]+)(.*?)([ \t]+)(\1)",
+    re.DOTALL,
+)
+# Spans containing only whitespace (e.g. "_ _") — strip delimiters entirely.
+_XEP0393_EMPTY_SPAN_RE = re.compile(r"([*_~`])([ \t]*)(\1)")
+
+
+def _fix_xep0393_whitespace(text: str) -> str:
+    """Move leading/trailing whitespace outside XEP-0393 span delimiters."""
+    # First strip spans that contain only whitespace (no valid content)
+    text = _XEP0393_EMPTY_SPAN_RE.sub(r"\2", text)
+    # Then move leading/trailing whitespace outside remaining spans
+    prev = None
+    while prev != text:
+        prev = text
+        text = _XEP0393_WS_FIX_RE.sub(r"\2\1\3\1\4", text)
+    return text
