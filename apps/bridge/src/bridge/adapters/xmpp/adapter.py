@@ -132,10 +132,12 @@ class XMPPAdapter(AdapterBase):
             try:
                 evt = await self._outbound.get()
                 if isinstance(evt, MessageDeleteOut):
+                    logger.debug("XMPP: dequeued MessageDeleteOut discord_id={}", evt.message_id)
                     await self._handle_delete_out(evt)
                     await asyncio.sleep(0.25)
                     continue
                 if isinstance(evt, ReactionOut):
+                    logger.debug("XMPP: dequeued ReactionOut discord_id={} emoji={}", evt.message_id, evt.emoji)
                     await self._handle_reaction_out(evt)
                     await asyncio.sleep(0.25)
                     continue
@@ -147,6 +149,7 @@ class XMPPAdapter(AdapterBase):
                 else:
                     async with self._send_lock:
                         muc_jid = mapping.xmpp.muc_jid
+                        logger.debug("XMPP: processing MessageOut discord_id={} -> {}", evt.message_id, muc_jid)
 
                         # Resolve XMPP nick (identity or fallback for dev without Portal)
                         nick = await self._resolve_nick_async(evt)
@@ -167,7 +170,7 @@ class XMPPAdapter(AdapterBase):
                                 self._component._msgid_tracker.get_xmpp_id(lookup_id) if lookup_id else None
                             )
                             logger.debug(
-                                "Discord edit lookup: discord_msg_id={} lookup_id={} -> xmpp_id={}",
+                                "XMPP: edit lookup discord_msg_id={} lookup_id={} -> xmpp_id={}",
                                 evt.message_id,
                                 lookup_id,
                                 original_xmpp_id,
@@ -177,13 +180,13 @@ class XMPPAdapter(AdapterBase):
                                     evt.author_id, muc_jid, evt.content, nick, original_xmpp_id
                                 )
                                 logger.info(
-                                    "Sent XMPP correction for Discord msg {} -> xmpp id {}",
+                                    "XMPP: sent correction for Discord msg {} -> xmpp id {}",
                                     evt.message_id,
                                     original_xmpp_id,
                                 )
                             else:
                                 logger.warning(
-                                    "Cannot send XMPP correction: Discord message {} not in tracker "
+                                    "XMPP: cannot send correction: Discord message {} not in tracker "
                                     "(original may have been sent before bridge started or mapping expired)",
                                     evt.message_id,
                                 )
@@ -201,14 +204,58 @@ class XMPPAdapter(AdapterBase):
                             # MUC echo can update it (required for Discord→XMPP edits)
                             content = evt.content
 
+                            # Extract fenced code blocks and upload to paste service
+                            from bridge.formatting.discord_to_xmpp import discord_to_xmpp
+                            from bridge.formatting.irc_message_split import extract_code_blocks
+                            from bridge.formatting.paste import upload_paste
+
+                            processed = extract_code_blocks(content)
+                            had_paste = False
+                            if processed.blocks:
+                                logger.debug("XMPP: found {} code block(s), uploading to paste", len(processed.blocks))
+                                for i, block in enumerate(processed.blocks):
+                                    url = await upload_paste(block.content, lang=block.lang)
+                                    if url:
+                                        label = url
+                                        had_paste = True
+                                        logger.debug("XMPP: paste block {} uploaded -> {}", i, url)
+                                    else:
+                                        snippet = block.content.replace("\n", " ").strip()[:80]
+                                        label = f"[code] (paste failed) {snippet}…"
+                                        logger.warning("XMPP: paste block {} upload failed, using inline snippet", i)
+                                    processed.text = processed.text.replace(f"{{PASTE_{i}}}", label)
+                                content = processed.text
+                                logger.debug("XMPP: paste replaced content -> {!r}", content[:120])
+                            else:
+                                content = processed.text
+
+                            # Parse Discord markdown -> XEP-0393 styled body + XEP-0394 spans.
+                            # Send the XEP-0393 styled body (e.g. *bold*, _italic_) so that
+                            # both Gajim (XEP-0393 only) and Dino (XEP-0393 + XEP-0394) render
+                            # formatting correctly. XEP-0394 spans reference body offsets, so
+                            # we only attach them when the body is the plain (stripped) version.
+                            xmpp_markup = discord_to_xmpp(content)
+                            if xmpp_markup.styled_body is not None:
+                                # Use XEP-0393 styled body; skip XEP-0394 spans (offsets mismatch)
+                                content = xmpp_markup.styled_body
+                                markup_spans = None
+                            else:
+                                content = xmpp_markup.body
+                                markup_spans = xmpp_markup.spans if xmpp_markup.has_markup else None
+
                             # Re-upload extensionless image URLs so XMPP clients
                             # render them inline (they rely on URL file extension).
-                            if content and content.strip().startswith(("http://", "https://")):
+                            # Skip if content came from a paste upload — it's not an image.
+                            is_media = False
+                            if not had_paste and content and content.strip().startswith(("http://", "https://")):
+                                logger.debug("XMPP: probing bare URL for image reupload: {}", content.strip()[:80])
                                 new_url = await self._component.reupload_extensionless_image(
                                     content.strip(),
                                 )
                                 if new_url:
+                                    logger.info("XMPP: reuploaded extensionless image -> {}", new_url)
                                     content = new_url
+                                    is_media = True
 
                             xmpp_msg_id = await self._component.send_message_as_user(
                                 evt.author_id,
@@ -217,6 +264,8 @@ class XMPPAdapter(AdapterBase):
                                 nick,
                                 reply_to_id=reply_to_xmpp_id,
                                 discord_message_id=evt.message_id,
+                                is_media=is_media,
+                                markup_spans=markup_spans,
                             )
                             if xmpp_msg_id:
                                 logger.info("XMPP: sent message to {} as {}", muc_jid, nick)
