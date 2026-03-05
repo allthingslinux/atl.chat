@@ -69,6 +69,25 @@ def _intercept_logging(level: str) -> None:
         lib_logger.propagate = False
         lib_logger.setLevel(level)
 
+    # Silence noisy libraries regardless of global log level.
+    # slixmpp floods at DEBUG with raw XML stanzas; httpx/httpcore log every TCP step;
+    # discord.py logs gateway heartbeats and HTTP calls at DEBUG/INFO.
+    for noisy in (
+        "slixmpp",
+        "slixmpp.xmlstream",
+        "slixmpp.plugins",
+        "slixmpp.plugins.xep_0045",
+        "discord",
+        "discord.client",
+        "discord.gateway",
+        "discord.http",
+        "httpx",
+        "httpcore",
+        "httpcore.connection",
+        "httpcore.http11",
+    ):
+        logging.getLogger(noisy).setLevel(logging.WARNING)
+
 
 def _safe_message_filter(record: Any) -> bool:
     """Escape braces/angles in log messages to prevent format/tag errors."""
