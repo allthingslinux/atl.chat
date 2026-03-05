@@ -20,7 +20,10 @@ from bridge.events import (
 )
 from bridge.formatting.discord_to_irc import discord_to_irc
 from bridge.formatting.irc_to_discord import irc_to_discord
+from bridge.formatting.irc_to_xmpp import irc_to_xmpp
 from bridge.formatting.reply_fallback import add_reply_fallback, strip_reply_fallback
+from bridge.formatting.xmpp_to_discord import xmpp_to_discord
+from bridge.formatting.xmpp_to_irc import xmpp_to_irc
 from bridge.gateway.bus import Bus
 from bridge.gateway.router import ChannelMapping, ChannelRouter
 
@@ -31,6 +34,14 @@ def _transform_content(content: str, origin: str, target: str) -> str:
         return discord_to_irc(content)
     if target == "discord" and origin == "irc":
         return irc_to_discord(content)
+    if target == "discord" and origin == "xmpp":
+        return xmpp_to_discord(content)
+    if target == "xmpp" and origin == "irc":
+        return irc_to_xmpp(content)
+    if target == "irc" and origin == "xmpp":
+        return xmpp_to_irc(content)
+    # XMPP: raw Discord markdown passes through; discord_to_xmpp() in the XMPP adapter
+    # strips syntax and attaches XEP-0394 markup spans before sending.
     return content
 
 
@@ -140,9 +151,13 @@ class Relay:
 
         def emit_message(target: str) -> object:
             logger.info("Relay: {} -> {} channel={}", evt.origin, target, channel_id)
-            content = _transform_content(evt.content, evt.origin, target)
-            if evt.reply_to_id and evt.origin in ("xmpp", "irc") and target == "discord":
-                content = strip_reply_fallback(content)
+            # Strip XEP-0461 reply fallback lines (> quoted) from raw content BEFORE
+            # format conversion — otherwise xmpp_to_irc converts > to curly quotes first,
+            # making strip_reply_fallback unable to find them.
+            raw_content = evt.content
+            if evt.reply_to_id and evt.origin in ("xmpp", "irc") and target in ("discord", "irc"):
+                raw_content = strip_reply_fallback(raw_content)
+            content = _transform_content(raw_content, evt.origin, target)
             out_raw = {
                 "is_edit": evt.is_edit,
                 "replace_id": evt.raw.get("replace_id"),
@@ -163,8 +178,15 @@ class Relay:
                 content=content,
                 message_id=evt.message_id,
                 reply_to_id=evt.reply_to_id,
+                is_action=evt.is_action,
                 avatar_url=evt.avatar_url,
                 raw=out_raw,
+            )
+            logger.debug(
+                "Relay: emitting MessageOut target={} author={} content={!r}",
+                target,
+                evt.author_display,
+                content[:80],
             )
             return out_evt
 
@@ -178,6 +200,9 @@ class Relay:
             return
 
         def emit(target: str) -> object:
+            logger.debug(
+                "Relay: reaction {} -> {} emoji={} author={}", evt.origin, target, evt.emoji, evt.author_display
+            )
             _, out_evt = reaction_out(
                 target_origin=target,
                 channel_id=mapping.discord_channel_id,
@@ -210,7 +235,10 @@ class Relay:
             logger.debug("Relay: no mapping for delete from {} channel {}", evt.origin, evt.channel_id)
             return
 
+        logger.info("Relay: delete {} -> all targets message_id={}", evt.origin, evt.message_id)
+
         def emit(target: str) -> object:
+            logger.debug("Relay: emitting MessageDeleteOut target={} message_id={}", target, evt.message_id)
             _, out_evt = message_delete_out(
                 target_origin=target,
                 channel_id=mapping.discord_channel_id,
