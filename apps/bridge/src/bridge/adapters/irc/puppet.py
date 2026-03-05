@@ -51,6 +51,16 @@ class IRCPuppet(pydle.Client):
         """Update last activity timestamp."""
         self.last_activity = time.time()
 
+    async def on_nick(self, old: str, new: str) -> None:
+        """Revert any nick change forced onto this puppet (e.g. NickServ enforcement)."""
+        await super().on_nick(old, new)
+        if old.lower() == self._initial_nick.lower():
+            logger.warning("IRC puppet: nick changed {} -> {}; reverting", old, new)
+            try:
+                await self.set_nick(self._initial_nick)
+            except Exception as exc:
+                logger.exception("IRC puppet: failed to revert nick change: {}", exc)
+
     async def on_connect(self):
         """Handle connection: send pre-join commands and start pinger."""
         await super().on_connect()
