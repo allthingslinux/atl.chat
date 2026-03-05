@@ -35,6 +35,7 @@ class MessageOut:
     content: str
     message_id: str
     reply_to_id: str | None = None
+    is_action: bool = False  # True for CTCP ACTION (/me) messages
     avatar_url: str | None = None  # For avatar sync
     raw: dict[str, Any] = field(default_factory=dict)
 
@@ -196,6 +197,7 @@ def message_out(
     message_id: str,
     *,
     reply_to_id: str | None = None,
+    is_action: bool = False,
     avatar_url: str | None = None,
     raw: dict[str, Any] | None = None,
 ) -> MessageOut:
@@ -207,6 +209,7 @@ def message_out(
         content=content,
         message_id=message_id,
         reply_to_id=reply_to_id,
+        is_action=is_action,
         avatar_url=avatar_url,
         raw=raw or {},
     )
@@ -401,6 +404,7 @@ class Dispatcher:
 
         from loguru import logger
 
+        evt_type = type(evt).__name__
         for target in self._targets:
             try:
                 if target.accept_event(source, evt):
@@ -408,12 +412,14 @@ class Dispatcher:
                     target.push_event(source, evt)
                     elapsed = time.perf_counter() - t0
                     logger.debug(
-                        "Dispatched event to {target} in {elapsed:.4f}s",
+                        "Bus: dispatched {evt_type} from {source} -> {target} in {elapsed:.4f}s",
+                        evt_type=evt_type,
+                        source=source,
                         target=target,
                         elapsed=elapsed,
                     )
             except Exception as exc:
-                logger.exception("Failed to pass event to target {}: {}", target, exc)
+                logger.exception("Bus: failed to dispatch {} from {} to {}: {}", evt_type, source, target, exc)
 
 
 dispatcher = Dispatcher()
