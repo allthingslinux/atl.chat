@@ -79,7 +79,7 @@ def _setup(config=None):
 class TestTransformContent:
     def test_discord_to_irc_strips_markdown(self):
         result = _transform_content("**bold**", "discord", "irc")
-        assert result == "bold"
+        assert result == "\x02bold\x02"
 
     def test_irc_to_discord_converts_bold(self):
         result = _transform_content("\x02bold\x02", "irc", "discord")
@@ -89,17 +89,34 @@ class TestTransformContent:
         result = _transform_content("hello", "xmpp", "discord")
         assert result == "hello"
 
+    def test_irc_to_xmpp_bold(self):
+        assert _transform_content("\x02bold\x02", "irc", "xmpp") == "*bold*"
+
+    def test_irc_to_xmpp_monospace(self):
+        assert _transform_content("\x11mono\x11", "irc", "xmpp") == "`mono`"
+
+    def test_irc_to_xmpp_plain(self):
+        assert _transform_content("hello", "irc", "xmpp") == "hello"
+
+    def test_xmpp_to_irc_bold(self):
+        assert _transform_content("*bold*", "xmpp", "irc") == "\x02bold\x02"
+
+    def test_xmpp_to_irc_mono(self):
+        assert _transform_content("`mono`", "xmpp", "irc") == "\x11mono\x11"
+
+    def test_xmpp_to_irc_plain(self):
+        assert _transform_content("hello", "xmpp", "irc") == "hello"
+
     def test_discord_to_xmpp_passthrough(self):
         result = _transform_content("**bold**", "discord", "xmpp")
         assert result == "**bold**"
 
     def test_irc_to_xmpp_passthrough(self):
         result = _transform_content("\x02bold\x02", "irc", "xmpp")
-        assert result == "\x02bold\x02"
+        assert result == "*bold*"
 
     def test_xmpp_to_irc_passthrough(self):
-        result = _transform_content("hello", "xmpp", "irc")
-        assert result == "hello"
+        assert _transform_content("hello", "xmpp", "irc") == "hello"
 
 
 # ---------------------------------------------------------------------------
