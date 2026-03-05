@@ -299,7 +299,7 @@ class TestRelay:
         assert out_evt.reply_to_id == "msg0"
 
     def test_relay_strips_discord_markdown_for_irc(self):
-        """Discord -> IRC: strip **bold** and *italic* to plain text."""
+        """Discord -> IRC: convert **bold** and *italic* to IRC formatting codes."""
         bus = Bus()
         router = ChannelRouter()
         config = {
@@ -325,7 +325,7 @@ class TestRelay:
         bus.publish("discord", evt)
 
         _, out_evt = irc_adapter.received_events[0]
-        assert out_evt.content == "bold and italic"
+        assert out_evt.content == "\x02bold\x02 and \x1ditalic\x1d"
 
     def test_relay_adds_quote_fallback_for_discord_to_irc_reply(self):
         """Discord -> IRC reply: add > quote when reply_quoted_content in raw."""
@@ -394,6 +394,44 @@ class TestRelay:
 
         _, out_evt = irc_adapter.received_events[0]
         assert out_evt.content == "kaizen: > hi | ok"
+
+    def test_relay_strips_xmpp_reply_fallback_for_irc(self):
+        """XMPP -> IRC reply: strip > quoted lines from body (Gajim sends them as fallback)."""
+        bus = Bus()
+        router = ChannelRouter()
+        config = {
+            "mappings": [
+                {
+                    "discord_channel_id": "123",
+                    "irc": {"server": "irc.libera.chat", "channel": "#test", "port": 6667, "tls": False},
+                    "xmpp": {"muc_jid": "test@muc.example.com"},
+                }
+            ]
+        }
+        router.load_from_config(config)
+        relay = Relay(bus, router)
+        irc_adapter = MockAdapter("irc")
+        bus.register(relay)
+        bus.register(irc_adapter)
+
+        # Gajim sends reply as two-line body: > original\nactual reply
+        _, evt = message_in(
+            "xmpp",
+            "test@muc.example.com",
+            "admin",
+            "admin",
+            "> reply from discord to xmpp msg\nreply from gajim",
+            "msg2",
+            reply_to_id="msg1",
+            raw={"reply_quoted_content": "reply from discord to xmpp msg"},
+        )
+        bus.publish("xmpp", evt)
+
+        _, out_evt = irc_adapter.received_events[0]
+        # Should be single line with > quote | reply format, not split into two messages
+        assert "\n" not in out_evt.content
+        assert "reply from gajim" in out_evt.content
+        assert "> reply from discord to xmpp msg" in out_evt.content
 
     def test_relay_converts_irc_codes_for_discord(self):
         """IRC -> Discord: convert IRC bold to **markdown**."""
