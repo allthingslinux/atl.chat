@@ -411,33 +411,40 @@ class TestSendMessage:
     @pytest.mark.asyncio
     async def test_sends_without_reply_tag(self):
         client, _, router = _make_client()
+        client._capabilities = {"draft/relaymsg": True}
         irc_target = MagicMock()
         irc_target.channel = "#test"
         router.get_mapping_for_discord.return_value = MagicMock(irc=irc_target)
-        client.message = AsyncMock()
+        client.rawmsg = AsyncMock()
 
         evt = MagicMock()
         evt.channel_id = "111"
         evt.content = "hello"
         evt.message_id = "discord-1"
         evt.reply_to_id = None
+        evt.author_display = "testuser"
+        evt.author_id = "testuser"
+        evt.is_action = False
 
         await client._send_message(evt)
-        client.message.assert_awaited_once_with("#test", "hello")
+        client.rawmsg.assert_awaited_once_with("RELAYMSG", "#test", "testuser/d", "hello")
 
     @pytest.mark.asyncio
     async def test_queues_pending_send_for_echo(self):
         client, _, router = _make_client()
+        client._capabilities = {"draft/relaymsg": True}
         irc_target = MagicMock()
         irc_target.channel = "#test"
         router.get_mapping_for_discord.return_value = MagicMock(irc=irc_target)
-        client.message = AsyncMock()
+        client.rawmsg = AsyncMock()
 
         evt = MagicMock()
         evt.channel_id = "111"
         evt.content = "hello"
         evt.message_id = "discord-1"
         evt.reply_to_id = None
+        evt.author_display = "testuser"
+        evt.author_id = "testuser"
 
         await client._send_message(evt)
         assert client._pending_sends.get_nowait() == "discord-1"
@@ -461,6 +468,7 @@ class TestSendMessage:
             evt.reply_to_id = None
             evt.author_display = "Alice"
             evt.author_id = "123"
+            evt.is_action = False
 
             await client._send_message(evt)
             client.rawmsg.assert_awaited_once_with("RELAYMSG", "#test", "Alice/d", "hello")
@@ -484,6 +492,7 @@ class TestSendMessage:
             evt.reply_to_id = None
             evt.author_display = "Alice"
             evt.author_id = "123"
+            evt.is_action = False
 
             await client._send_message(evt)
             client.rawmsg.assert_awaited_once_with("RELAYMSG", "#test", "Alice", "hello")
@@ -550,20 +559,24 @@ class TestIRCClientEdgeCases:
     @pytest.mark.asyncio
     async def test_send_message_reply_to_id_not_found_sends_without_tag(self):
         client, _, router = _make_client()
+        client._capabilities = {"draft/relaymsg": True}
         irc_target = MagicMock()
         irc_target.channel = "#test"
         router.get_mapping_for_discord.return_value = MagicMock(irc=irc_target)
-        client.message = AsyncMock()
+        client.rawmsg = AsyncMock()
 
         evt = MagicMock()
         evt.channel_id = "111"
         evt.content = "reply"
         evt.message_id = "discord-new"
         evt.reply_to_id = "discord-orig"  # not in tracker
+        evt.author_display = "testuser"
+        evt.author_id = "testuser"
+        evt.is_action = False
 
         await client._send_message(evt)
-        # Falls back to plain message (no rawmsg with tags)
-        client.message.assert_awaited_once_with("#test", "reply")
+        # Falls back to plain RELAYMSG (no reply tag since irc_msgid not found)
+        client.rawmsg.assert_awaited_once_with("RELAYMSG", "#test", "testuser/d", "reply")
 
     # --- on_message: no _message_tags attribute (older pydle) ---
 
