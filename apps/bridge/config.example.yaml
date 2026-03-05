@@ -40,6 +40,10 @@ irc_relaymsg_clean_nicks: true
 # IRC REDACT: set true when UnrealIRCd third/redact segfault is fixed
 irc_redact_enabled: false
 
+# Paste service for code block uploads (Discord -> IRC/XMPP)
+# PrivateBin instance URL. Defaults to https://paste.atl.tools/
+# paste_service_url: https://paste.atl.tools/
+
 # IRC SASL (optional)
 irc_use_sasl: false
 irc_sasl_user: ''
