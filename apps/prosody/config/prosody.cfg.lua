@@ -648,8 +648,25 @@ modules_enabled = {
     "muc_mam_markers", -- XEP-0333: Archive chat markers (displayed/received) in MUC MAM per spec (modules.prosody.im/mod_muc_mam_markers)
     "muc_markers",     -- Rewrites message id to stanza-id for XEP-0333; helps XEP-0444 reactions match (modules.prosody.im/mod_muc_markers)
     "muc_defaults",     -- Create MUCs with default config on startup (modules.prosody.im/mod_muc_defaults)
-    "muc_slow_mode"    -- Per-user rate limit: room owners set seconds between messages (draft XEP; rooms config form)
+    "muc_slow_mode",    -- Per-user rate limit: room owners set seconds between messages (draft XEP; rooms config form)
+    "muc_webchat_url",  -- Advertise web chat URL in room disco#info (modules.prosody.im/mod_muc_webchat_url)
+    "muc_inject_mentions", -- Inject XEP-0372 mention references for clients that don't send them (modules.prosody.im/mod_muc_inject_mentions)
+    "muc_mention_notifications", -- Notify users mentioned via XEP-0372 even if not present in the room (modules.prosody.im/mod_muc_mention_notifications)
+    "muc_local_only",  -- Restrict MUC rooms to local users only; deny federated access (modules.prosody.im/mod_muc_local_only)
 }
+
+-- mod_muc_webchat_url: advertise Converse.js deep-link in room disco#info
+-- {node} is substituted with the room's local part (e.g. "general")
+muc_webchat_baseurl = "https://" .. __http_host .. "/conversejs#converse/room?jid={jid}"
+
+-- mod_muc_local_only: restrict listed rooms to local users only (deny federated access)
+muc_local_only = { "general@muc." .. domain }
+
+-- mod_muc_inject_mentions: inject XEP-0372 mention references server-side for clients
+-- (and bridge messages) that send plain @nick text without proper reference stanzas.
+muc_inject_mentions_prefixes = { "@" }
+muc_inject_mentions_suffixes = { ":", ",", "!", ".", "?" }
+muc_inject_mentions_reserved_nicks = true  -- also match nicks of offline/registered users
 
 -- mod_muc_defaults: rooms created at Prosody startup
 local admin_jid_muc = Lua.os.getenv("PROSODY_ADMIN_JID") or ("admin@" .. domain)
@@ -658,7 +675,6 @@ default_mucs = {
         jid_node = "general",
         affiliations = {
             owner = { admin_jid_muc },
-            admin = { admin_jid_muc },
         },
         config = {
             name = "General",
@@ -673,6 +689,7 @@ default_mucs = {
             persistent = true,
             public = true,
             public_jids = true,
+            slow_mode_duration = 3,
         },
     },
 }
@@ -697,6 +714,7 @@ muc_max_archive_query_results = Lua.tonumber(Lua.os.getenv("PROSODY_MUC_MAX_ARCH
 muc_log_store = Lua.os.getenv("PROSODY_MUC_LOG_STORE") or "muc_log"
 muc_log_compression = Lua.os.getenv("PROSODY_MUC_LOG_COMPRESSION") ~= "false"
 muc_mam_smart_enable = Lua.os.getenv("PROSODY_MUC_MAM_SMART_ENABLE") == "true"
+enforce_registered_nickname = true
 
 -- Pastebin settings (mod_pastebin; pastes at /paste)
 pastebin_threshold = 800

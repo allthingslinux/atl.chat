@@ -68,8 +68,11 @@ globals = {
    "muc_max_archive_query_results", "muc_log_store", "muc_log_compression", "muc_mam_smart_enable",
    "muc_event_rate", "muc_burst_factor", "muc_max_nick_length", "muc_max_char_count",
    "muc_max_line_count", "muc_limit_base_cost", "muc_line_count_multiplier",
+   "muc_webchat_baseurl", "muc_local_only",
+   "muc_inject_mentions_prefixes", "muc_inject_mentions_suffixes", "muc_inject_mentions_reserved_nicks",
+   "enforce_registered_nickname",
    "default_mucs",
-  "default_bookmarks",
+   "default_bookmarks",
    -- Misc
    "name", "domain", "contact_info", "server_info", "account_cleanup", "component_secret",
    "conversejs_options",  -- mod_conversejs
