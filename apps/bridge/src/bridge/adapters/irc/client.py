@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import hashlib
 import os
 import random
 from collections.abc import Callable
@@ -17,8 +18,19 @@ from bridge.adapters.irc.msgid import MessageIDTracker, ReactionTracker
 from bridge.adapters.irc.throttle import TokenBucket
 from bridge.config import cfg
 from bridge.events import MessageOut, message_in
-from bridge.formatting.irc_message_split import split_irc_message
+from bridge.formatting.irc_message_split import extract_code_blocks, split_irc_lines
 from bridge.gateway import Bus, ChannelRouter
+
+# IRC color codes (Mirc color palette indices 2-13; skip 0=white, 1=black for readability)
+_IRC_NICK_COLORS = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
+
+
+def _nick_color(nick: str) -> str:
+    """Wrap nick in a deterministic IRC color based on a hash of the nick."""
+    idx = int(hashlib.md5(nick.encode(), usedforsecurity=False).hexdigest(), 16) % len(_IRC_NICK_COLORS)
+    code = _IRC_NICK_COLORS[idx]
+    return f"\x03{code:02d}{nick}\x03"
+
 
 # Backoff: min 2s, max 60s, jitter (exported for tests)
 _BACKOFF_MIN = 2
@@ -137,7 +149,7 @@ class IRCClient(pydle.Client):
         asyncio.create_task(self._ready_fallback())  # noqa: RUF006
 
     async def _ensure_channels_permanent(self) -> None:
-        """OPER up and set +P (permanent) on bridged channels so they persist when empty."""
+        """OPER up, set +B (bot mode), and set +P (permanent) on bridged channels."""
         oper_password = os.environ.get("BRIDGE_IRC_OPER_PASSWORD", "").strip()
         if not oper_password:
             return
@@ -145,6 +157,9 @@ class IRCClient(pydle.Client):
         try:
             await self.rawmsg("OPER", oper_name, oper_password)
             await asyncio.sleep(1)  # Allow server to process OPER
+            # Set bot mode on ourselves so we appear as a bot to IRC users
+            await self.rawmsg("MODE", self.nickname, "+B")
+            logger.info("IRC: set +B (bot mode) on {}", self.nickname)
             for channel in self._channels:
                 await self.rawmsg("MODE", channel, "+P")
                 await self.rawmsg("MODE", channel, "+H", "50:1d")  # Required for REDACT (chathistory)
@@ -217,6 +232,22 @@ class IRCClient(pydle.Client):
         await asyncio.sleep(self._rejoin_delay)
         await self.join(channel)
         logger.info("Rejoined {} after KICK", channel)
+
+    async def on_nick(self, old: str, new: str) -> None:
+        """Revert any nick change on the main bridge connection.
+
+        Nick changes are disabled at the server level via restrict-commands, but
+        services (SVSNICK) or a race condition could still rename us. Force our
+        nick back immediately so the bridge identity stays consistent.
+        """
+        await super().on_nick(old, new)
+        if old.lower() == self.nickname.lower():
+            # Our own nick was changed — revert it
+            logger.warning("IRC: main connection nick changed {} -> {}; reverting", old, new)
+            try:
+                await self.set_nick(old)
+            except Exception as exc:
+                logger.exception("IRC: failed to revert nick change: {}", exc)
 
     async def on_disconnect(self, expected: bool) -> None:
         """Handle disconnect; rejoin channels on reconnect."""
@@ -323,6 +354,14 @@ class IRCClient(pydle.Client):
         )
         logger.info("IRC action bridged: channel={} author={}", target, by)
         self._bus.publish("irc", evt)
+
+    async def on_ctcp_version(self, by, target, contents):
+        """Respond to CTCP VERSION queries with bridge info."""
+        await self.ctcp_reply(by, "VERSION", "ATL Bridge (Discord\u2194IRC\u2194XMPP) https://atl.chat")
+
+    async def on_ctcp_source(self, by, target, contents):
+        """Respond to CTCP SOURCE queries with the project URL."""
+        await self.ctcp_reply(by, "SOURCE", "https://github.com/allthingslinux/atl.chat")
 
     async def on_raw_tagmsg(self, message) -> None:
         """Handle IRC TAGMSG with +draft/react, +draft/unreact, or +typing; publish for Relay."""
@@ -538,9 +577,11 @@ class IRCClient(pydle.Client):
         while True:
             try:
                 evt = await self._outbound.get()
+                logger.debug("IRC: dequeued message discord_id={} channel={}", evt.message_id, evt.channel_id)
                 # Wait for token before sending (flood control)
                 wait = self._throttle.acquire()
                 if wait > 0:
+                    logger.debug("IRC: throttle wait {:.2f}s for channel={}", wait, evt.channel_id)
                     await asyncio.sleep(wait)
                 self._throttle.use_token()  # Consume (guaranteed after acquire wait)
                 await self._send_message(evt)
@@ -558,6 +599,7 @@ class IRCClient(pydle.Client):
 
         target = mapping.irc.channel
         content = evt.content
+        logger.debug("IRC: _send_message start target={} content={!r}", target, content[:80])
 
         # Add reply tag if replying and we have irc_msgid
         reply_tags = None
@@ -565,38 +607,82 @@ class IRCClient(pydle.Client):
             irc_msgid = self._msgid_tracker.get_irc_msgid(evt.reply_to_id)
             if irc_msgid:
                 reply_tags = {"+draft/reply": irc_msgid}
+                logger.debug("IRC: reply tag set for irc_msgid={}", irc_msgid)
+            else:
+                logger.debug("IRC: reply_to_id={} has no irc_msgid in tracker", evt.reply_to_id)
                 # Do NOT strip > quote fallback: server denies +draft/reply (CLIENTTAGDENY),
                 # so IRC clients ignore the tag. Keep the quote so users see reply context.
 
-        # IRC forbids \r, \n, \0 in message payload
-        content = content.replace("\r", " ").replace("\n", " ").replace("\x00", " ")
+        # Extract fenced code blocks and upload them to a paste service
+        processed = extract_code_blocks(content)
+        if processed.blocks:
+            logger.debug("IRC: found {} code block(s), uploading to paste", len(processed.blocks))
+            from bridge.formatting.paste import upload_paste
 
-        chunks = split_irc_message(content, max_bytes=450)
+            for i, block in enumerate(processed.blocks):
+                url = await upload_paste(block.content, lang=block.lang)
+                if url:
+                    label = url
+                    logger.debug("IRC: paste block {} uploaded -> {}", i, url)
+                else:
+                    # Upload failed — inline a truncated snippet so nothing is silently lost
+                    snippet = block.content.replace("\n", " ").strip()[:80]
+                    label = f"[code] (paste failed) {snippet}…"
+                    logger.warning("IRC: paste block {} upload failed, using inline snippet", i)
+                processed.text = processed.text.replace(f"{{PASTE_{i}}}", label)
+            content = processed.text
+            logger.info("IRC: paste replaced content -> {!r}", content[:120])
+        else:
+            content = processed.text
+
+        # IRC forbids \r, \0 in message payload; newlines are split into separate messages
+        content = content.replace("\r", "").replace("\x00", "")
+
+        chunks = split_irc_lines(content, max_bytes=450)
+        logger.debug("IRC: split into {} chunk(s) for {}", len(chunks), target)
 
         # Spoofed nick for RELAYMSG: display/discord (Valware requires '/' in nick)
-        display = (evt.author_display or evt.author_id or "user").strip()
+        display = str(evt.author_display or evt.author_id or "user").strip()
         spoofed_nick = self._sanitize_relaymsg_nick(display)
 
         use_relaymsg = self._has_relaymsg()
+        is_action = getattr(evt, "is_action", False)
+        logger.debug("IRC: use_relaymsg={} spoofed_nick={} is_action={}", use_relaymsg, spoofed_nick, is_action)
 
         for i, chunk in enumerate(chunks):
-            if use_relaymsg:
+            logger.debug("IRC: sending chunk {}/{} to {} -> {!r}", i + 1, len(chunks), target, chunk[:80])
+            if is_action:
+                # CTCP ACTION (/me): wrap in \x01ACTION ...\x01
+                # RELAYMSG doesn't support CTCP, fall back to PRIVMSG with colored prefix
+                action_text = f"\x01ACTION {chunk}\x01"
+                colored_prefix = f"{_nick_color(display)} "
+                prefixed = colored_prefix + action_text if i == 0 else action_text
+                tags = reply_tags if i == 0 else None
+                if tags:
+                    await self.rawmsg("PRIVMSG", target, prefixed, tags=tags)
+                else:
+                    await self.message(target, prefixed)
+                if i == 0:
+                    logger.info("IRC: sent CTCP ACTION to {} as {}", target, spoofed_nick)
+            elif use_relaymsg:
                 # RELAYMSG #channel spoofed_nick :message
                 if reply_tags and i == 0:
                     await self.rawmsg("RELAYMSG", target, spoofed_nick, chunk, tags=reply_tags)
                 else:
                     await self.rawmsg("RELAYMSG", target, spoofed_nick, chunk)
-            else:
-                tags = reply_tags if i == 0 else None
-                if tags:
-                    await self.rawmsg("PRIVMSG", target, chunk, tags=tags)
-                else:
-                    await self.message(target, chunk)
-            if i == 0:
-                if use_relaymsg:
+                if i == 0:
                     logger.info("IRC: sent RELAYMSG to {} as {}", target, spoofed_nick)
                     self._recent_relaymsg_sends[(self._server, target, spoofed_nick)] = None
+            else:
+                # PRIVMSG fallback: prefix message with color-coded <Nick>
+                colored_prefix = f"{_nick_color(display)} "
+                prefixed = colored_prefix + chunk if i == 0 else chunk
+                tags = reply_tags if i == 0 else None
+                if tags:
+                    await self.rawmsg("PRIVMSG", target, prefixed, tags=tags)
                 else:
+                    await self.message(target, prefixed)
+                if i == 0:
                     logger.info("IRC: sent PRIVMSG to {} as {}", target, spoofed_nick)
             # Only store mapping for first chunk (echo will have msgid)
             if i == 0:
