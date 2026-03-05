@@ -201,6 +201,7 @@ class XMPPComponent(ComponentXMPP):
         self.register_plugin("xep_0444")  # Message Reactions
         self.register_plugin("xep_0461")  # Message Replies
         self.register_plugin("xep_0106")  # JID Escaping
+        self.register_plugin("xep_0394")  # Message Markup (bold/italic/code spans)
 
         # Enable stream resumption for network resilience
         self.plugin["xep_0198"].allow_resume = True
@@ -501,6 +502,10 @@ class XMPPComponent(ComponentXMPP):
                     logger.debug("Skipping XMPP reaction echo from our component ({})", nick)
                     return
         if nick == "bridge":
+            return
+        # Fallback: get_jid_property may return None (MUC may not expose real JID)
+        if (room_jid, nick) in self._recent_sent_nicks:
+            logger.debug("Skipping reaction echo from recent puppet {} in {}", nick, room_jid)
             return
 
         reactions = msg.get_plugin("reactions", check=True)
@@ -887,7 +892,7 @@ class XMPPComponent(ComponentXMPP):
             logger.info("Uploaded {} bytes to {}", len(data), url)
 
             # Send URL as message from user
-            await self.send_message_as_user(discord_id, muc_jid, url, nick)
+            await self.send_message_as_user(discord_id, muc_jid, url, nick, is_media=True)
         except Exception as exc:
             logger.exception("Failed to upload file via HTTP: {}", exc)
 
@@ -986,6 +991,8 @@ class XMPPComponent(ComponentXMPP):
         reply_to_id: str | None = None,
         *,
         discord_message_id: str | None = None,
+        is_media: bool = False,
+        markup_spans: list | None = None,
     ) -> str:
         """Send message to MUC from a specific Discord user's JID. Returns XMPP message ID.
 
@@ -999,10 +1006,24 @@ class XMPPComponent(ComponentXMPP):
         await self._ensure_puppet_joined(muc_jid, user_jid, nick)
 
         try:
-            # Convert Discord spoilers ||text|| to XMPP format
-            has_spoiler = "||" in content
-            if has_spoiler:
-                content = content.replace("||", "")
+            # Convert Discord spoilers ||text|| to XMPP XEP-0382 format.
+            # XEP-0382 is message-level (whole body is a spoiler), not inline.
+            # If the entire message is wrapped in ||...||, use <spoiler/> properly.
+            # If spoilers are inline (mixed content), strip the || markers and leave
+            # the text — there is no inline spoiler element in XEP-0382.
+            import re as _re
+
+            whole_spoiler_re = _re.compile(r"^\|\|(.+)\|\|$", _re.DOTALL)
+            inline_spoiler_re = _re.compile(r"\|\|([^|]+)\|\|")
+            spoiler_hint: str | None = None
+            whole_match = whole_spoiler_re.match(content.strip())
+            if whole_match:
+                # Whole message is a spoiler — use XEP-0382 with optional hint
+                content = whole_match.group(1).strip()
+                spoiler_hint = ""  # empty hint = no hint text; triggers <spoiler/> element
+            elif "||" in content:
+                # Inline spoilers — strip markers, keep text, no XEP-0382 tag
+                content = inline_spoiler_re.sub(r"\1", content)
 
             msg = self.make_message(
                 mto=JID(muc_jid),
@@ -1021,7 +1042,7 @@ class XMPPComponent(ComponentXMPP):
                 self._msgid_tracker.store(msg_id, discord_message_id, muc_jid)
 
             # Add spoiler tag if Discord message had spoilers
-            if has_spoiler:
+            if spoiler_hint is not None:
                 msg.enable("spoiler")
 
             # Add reply reference if replying to another message
@@ -1050,16 +1071,43 @@ class XMPPComponent(ComponentXMPP):
                 except Exception:
                     pass
 
-            # Attach XEP-0066 OOB when the body is a bare URL so XMPP clients
-            # (Gajim, Dino, Conversations…) inline / preview the media instead
-            # of rendering it as plain text.
+            # Attach XEP-0066 OOB only when the URL is confirmed media (image reupload path).
+            # Plain links and paste URLs are sent as text only.
             body_stripped = content[:4000].strip()
-            if _BARE_URL_RE.match(body_stripped):
+            if is_media and _BARE_URL_RE.match(body_stripped):
                 try:
                     msg.enable("oob")
                     msg["oob"]["url"] = body_stripped
                 except Exception:
                     pass  # OOB plugin may not be loaded; safe to skip
+
+            # Attach XEP-0394 markup spans (bold, italic, code, strikethrough)
+            if markup_spans:
+                try:
+                    import xml.etree.ElementTree as ET
+
+                    from slixmpp.plugins.xep_0394.stanza import Markup, Span
+
+                    ns = "urn:xmpp:markup:0"
+                    # slixmpp 1.13.x set_types() handles emphasis/code/deleted but
+                    # not strong (added in XEP-0394 v0.3.0). Append it manually.
+                    slixmpp_types = {"emphasis", "code", "deleted"}
+
+                    markup_el = Markup()
+                    for span in markup_spans:
+                        s = Span()
+                        s["start"] = span.start
+                        s["end"] = span.end
+                        known = [t for t in span.types if t in slixmpp_types]
+                        if known:
+                            s["types"] = known
+                        for t in span.types:
+                            if t not in slixmpp_types:
+                                s.xml.append(ET.Element(f"{{{ns}}}{t}"))
+                        markup_el.append(s)
+                    msg.append(markup_el)
+                except Exception as exc:
+                    logger.debug("XEP-0394 markup attach failed: {}", exc)
 
             msg.send()
 
@@ -1082,6 +1130,8 @@ class XMPPComponent(ComponentXMPP):
         """Send reaction (add or remove) to a message from a specific Discord user's JID."""
         escaped_nick = _escape_jid_node(nick)
         user_jid = f"{escaped_nick}@{self._component_jid}"
+        # Record before send for echo detection fallback (when get_jid_property returns None)
+        self._recent_sent_nicks[(muc_jid, nick)] = None
         await self._ensure_puppet_joined(muc_jid, user_jid, nick)
 
         reactions_plugin = self.plugin.get("xep_0444", None)
