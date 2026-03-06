@@ -4,30 +4,27 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-import io
 import os
-import re
-import tempfile
-import time
 from typing import TYPE_CHECKING
 
 import aiohttp
 from cachetools import TTLCache
-from discord import File, Intents, Message, RawBulkMessageDeleteEvent, RawMessageDeleteEvent, TextChannel
+from discord import Intents, Message, RawBulkMessageDeleteEvent, RawMessageDeleteEvent, TextChannel
 from discord.ext import commands
 from discord.webhook import Webhook
 from loguru import logger
 
 from bridge.adapters.base import AdapterBase
+from bridge.adapters.discord import avatar as discord_avatar
 from bridge.adapters.discord import handlers as discord_handlers
+from bridge.adapters.discord import media as discord_media
+from bridge.adapters.discord import outbound as discord_outbound
 from bridge.adapters.discord import webhook as discord_webhook
 from bridge.events import (
     MessageDeleteOut,
     MessageOut,
     ReactionOut,
     TypingOut,
-    message_delete,
-    message_in,
 )
 from bridge.formatting.mention_resolution import resolve_mentions
 from bridge.gateway import Bus, ChannelRouter
@@ -35,27 +32,6 @@ from bridge.gateway import Bus, ChannelRouter
 if TYPE_CHECKING:
     from bridge.gateway.msgid_resolver import MessageIDResolver
     from bridge.identity import IdentityResolver
-
-# Media URL pattern: single URL, no surrounding text (discord-ircv3 style).
-# Matches URLs whose *path* (before any query string) ends with a media extension.
-_MEDIA_URL_PATTERN = re.compile(
-    r"^https?://[^\s\x01-\x16]+\.(?:jpg|jpeg|png|gif|mp4|webm)(?:[?#][^\s]*)?$",
-    re.IGNORECASE,
-)
-# Image content-types returned by a HEAD probe for URLs without a recognizable extension
-_IMAGE_CONTENT_TYPES = frozenset(
-    {
-        "image/png",
-        "image/jpeg",
-        "image/gif",
-        "image/webp",
-        "image/bmp",
-        "image/svg+xml",
-        "image/avif",
-    }
-)
-_MEDIA_FETCH_TIMEOUT = 10
-_MEDIA_SIZE_LIMIT = 10 * 1024 * 1024  # 10 MB, same as XMPP
 
 
 class DiscordAdapter(AdapterBase):
@@ -86,6 +62,10 @@ class DiscordAdapter(AdapterBase):
     def name(self) -> str:
         return "discord"
 
+    # ------------------------------------------------------------------
+    # Event routing
+    # ------------------------------------------------------------------
+
     def accept_event(self, source: str, evt: object) -> bool:
         """Accept MessageOut, MessageDeleteOut, ReactionOut, or TypingOut targeting Discord."""
         if isinstance(evt, MessageOut) and evt.target_origin == "discord":
@@ -110,123 +90,89 @@ class DiscordAdapter(AdapterBase):
         if isinstance(evt, MessageOut):
             self._queue.put_nowait(evt)
 
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
+
     def _get_channel_lock(self, channel_id: str) -> asyncio.Lock:
         """Get or create a per-channel send lock."""
         if channel_id not in self._channel_locks:
             self._channel_locks[channel_id] = asyncio.Lock()
         return self._channel_locks[channel_id]
 
-    def _extract_filename_from_url(self, url: str) -> str:
-        """Extract filename from URL path or return fallback."""
-        try:
-            path = url.split("?", maxsplit=1)[0].rstrip("/")
-            name = path.split("/")[-1]
-            if name and "." in name:
-                return name
-        except Exception:
-            pass
-        return "image.png"
+    def _is_bridged_channel(self, channel_id: str) -> bool:
+        return self._router.get_mapping_for_discord(str(channel_id)) is not None
 
-    def _rewrite_upload_url_for_fetch(self, url: str) -> str:
-        """Rewrite XMPP upload URL to internal Docker URL when bridge cannot reach xmpp.localhost."""
-        fetch_base = os.environ.get("XMPP_UPLOAD_FETCH_URL", "").rstrip("/")
-        if not fetch_base:
-            return url
-        try:
-            from urllib.parse import urlparse, urlunparse
+    # ------------------------------------------------------------------
+    # Outbound delegation (thin wrappers for backward compat)
+    # ------------------------------------------------------------------
 
-            parsed = urlparse(url)
-            # Match XMPP upload URLs (xmpp.localhost, upload.xmpp.localhost)
-            if parsed.hostname and "xmpp.localhost" in parsed.hostname:
-                base_parsed = urlparse(fetch_base)
-                new = (
-                    base_parsed.scheme,
-                    base_parsed.netloc,
-                    parsed.path,
-                    parsed.params,
-                    parsed.query,
-                    parsed.fragment,
-                )
-                return urlunparse(new)
-        except Exception:
-            pass
-        return url
+    async def _handle_delete_out(self, evt: MessageDeleteOut) -> None:
+        await discord_outbound.handle_delete_out(self._bot, evt)
 
-    async def _probe_is_image(self, url: str) -> bool:
-        """HEAD-probe URL and return True when Content-Type indicates an image.
+    async def _handle_reaction_out(self, evt: ReactionOut) -> None:
+        await discord_outbound.handle_reaction_out(self._bot, evt)
 
-        Used as a fallback for URLs that don't carry a recognised file extension
-        (e.g. ``https://avatars.githubusercontent.com/u/123?s=200&v=4``).
-        Failures (network error, non-200) are treated as non-image.
-        """
-        if not self._session:
-            return False
-        try:
-            async with self._session.head(
-                url,
-                timeout=aiohttp.ClientTimeout(total=5),
-                allow_redirects=True,
-            ) as resp:
-                if resp.status != 200:
-                    return False
-                ct = resp.headers.get("Content-Type", "").split(";")[0].strip().lower()
-                return ct in _IMAGE_CONTENT_TYPES
-        except Exception as exc:
-            logger.debug("HEAD probe failed for {}: {}", url, exc)
-            return False
+    async def _handle_typing_out(self, evt: TypingOut) -> None:
+        await discord_outbound.handle_typing_out(self._bot, evt, self._typing_throttle)
 
-    async def _fetch_media_to_temp(self, url: str) -> str | None:
-        """Fetch media URL to temp file. Returns path or None on failure. Caller must unlink."""
-        if not self._session:
-            return None
-        fetch_url = self._rewrite_upload_url_for_fetch(url)
-        path: str | None = None
-        try:
-            fd, path = tempfile.mkstemp(suffix=".media")
-            os.close(fd)
-            total = 0
-            async with self._session.get(fetch_url, timeout=aiohttp.ClientTimeout(total=_MEDIA_FETCH_TIMEOUT)) as resp:
-                if resp.status != 200:
-                    os.unlink(path)
-                    return None
-                with open(path, "wb") as f:
-                    async for chunk in resp.content.iter_chunked(8192):
-                        total += len(chunk)
-                        if total > _MEDIA_SIZE_LIMIT:
-                            f.close()
-                            os.unlink(path)
-                            return None
-                        f.write(chunk)
-            return path
-        except Exception as exc:
-            logger.debug("Failed to fetch media from {}: {}", url, exc)
-            if path and os.path.exists(path):
-                with contextlib.suppress(OSError):
-                    os.unlink(path)
-            return None
+    # ------------------------------------------------------------------
+    # Inbound delegation (thin wrappers for backward compat)
+    # ------------------------------------------------------------------
 
-    async def _prepare_media(self, content: str) -> tuple[str, File | None, str | None]:
-        """Probe URL and fetch media if applicable. Returns (content, file, temp_path).
+    async def _on_message(self, message: Message) -> None:
+        await discord_handlers.on_message(self, message)
 
-        - Non-media URL: ``(content, None, None)``
-        - Successful media fetch: ``("", File(...), temp_path)``
-        - Failed media fetch: ``(content, None, None)`` (graceful fallback)
-        """
-        content_trimmed = (content or "").strip()
-        is_media = bool(_MEDIA_URL_PATTERN.match(content_trimmed))
-        if not is_media and content_trimmed.startswith(("http://", "https://")):
-            is_media = await self._probe_is_image(content_trimmed)
-        if not is_media:
-            return (content, None, None)
-        temp_path = await self._fetch_media_to_temp(content_trimmed)
-        if temp_path:
-            filename = self._extract_filename_from_url(content_trimmed)
-            file_obj = File(temp_path, filename=filename)
-            return ("", file_obj, temp_path)
-        return (content, None, None)
+    async def _on_raw_message_edit(self, payload) -> None:
+        await discord_handlers.on_raw_message_edit(self, payload)
+
+    async def _on_reaction_add(self, payload) -> None:
+        await discord_handlers.on_reaction_add(self, payload)
+
+    async def _on_reaction_remove(self, payload) -> None:
+        await discord_handlers.on_reaction_remove(self, payload)
+
+    async def _on_typing(self, channel, user) -> None:
+        await discord_handlers.on_typing(self, channel, user)
+
+    async def _on_raw_message_delete(self, payload: RawMessageDeleteEvent) -> None:
+        await discord_handlers.on_raw_message_delete(self, payload)
+
+    async def _on_raw_bulk_message_delete(self, payload: RawBulkMessageDeleteEvent) -> None:
+        await discord_handlers.on_raw_bulk_message_delete(self, payload)
+
+    # ------------------------------------------------------------------
+    # Media delegation
+    # ------------------------------------------------------------------
+
+    async def _prepare_media(self, content: str):
+        return await discord_media.prepare_media(self._session, content)
+
+    async def _handle_attachments(self, message: Message) -> None:
+        await discord_outbound.handle_attachments(
+            message,
+            identity=self._identity,
+            router=self._router,
+            msgid_resolver=self._msgid_resolver,
+            bus=self._bus,
+            session=self._session,
+        )
+
+    async def upload_file(self, channel_id: str, data: bytes, filename: str) -> None:
+        await discord_media.upload_file(self._bot, channel_id, data, filename)
+
+    # ------------------------------------------------------------------
+    # Avatar delegation
+    # ------------------------------------------------------------------
+
+    def _resolve_xmpp_avatar_fallback(self, evt: MessageOut) -> str | None:
+        return discord_avatar.resolve_xmpp_avatar_fallback(evt, self._router)
+
+    # ------------------------------------------------------------------
+    # Webhook delegation
+    # ------------------------------------------------------------------
 
     async def _get_or_create_webhook(self, channel_id: str) -> Webhook | None:
-        """Get or create one webhook per channel (matterbridge pattern). Caller must hold per-channel lock."""
         if not self._bot:
             return None
         return await discord_webhook.get_or_create_webhook(self._bot, channel_id, self._webhook_cache)
@@ -241,9 +187,8 @@ class DiscordAdapter(AdapterBase):
         reply_to_id: str | None = None,
         reply_author: str | None = None,
         reply_content: str | None = None,
-        file: File | None = None,
+        file=None,
     ) -> int | None:
-        """Send message via webhook. Optional file attachment, Unifier/lightning style link button for replies."""
         webhook = await self._get_or_create_webhook(channel_id)
         if not webhook:
             return None
@@ -260,8 +205,18 @@ class DiscordAdapter(AdapterBase):
             file=file,
         )
 
+    async def _webhook_edit(self, channel_id: str, discord_message_id: int, content: str) -> bool:
+        webhook = await self._get_or_create_webhook(channel_id)
+        if not webhook:
+            return False
+        return await discord_webhook.webhook_edit(webhook, discord_message_id, content)
+
+    def _resolve_discord_message_id(self, replace_id: str, origin: str) -> str | None:
+        if self._msgid_resolver:
+            return self._msgid_resolver.get_discord_id(origin, replace_id)
+        return None
+
     async def _fetch_reply_context(self, channel_id: str, reply_to_id: str) -> tuple[str, str | None]:
-        """Fetch original message author and content for reply button. Returns (author, content)."""
         if not self._bot:
             return ("Unknown", None)
         channel = self._bot.get_channel(int(channel_id))
@@ -276,55 +231,12 @@ class DiscordAdapter(AdapterBase):
             logger.debug("Could not fetch reply context for {}: {}", reply_to_id, exc)
             return ("Unknown", None)
 
-    async def _webhook_edit(
-        self,
-        channel_id: str,
-        discord_message_id: int,
-        content: str,
-    ) -> bool:
-        """Edit webhook message by ID. Same webhook that created it can edit it."""
-        webhook = await self._get_or_create_webhook(channel_id)
-        if not webhook:
-            return False
-        return await discord_webhook.webhook_edit(webhook, discord_message_id, content)
+    async def _fetch_user(self, user_id: int):
+        return await discord_handlers.fetch_user(self, user_id)
 
-    def _resolve_discord_message_id(self, replace_id: str, origin: str) -> str | None:
-        """Resolve source protocol message ID to Discord message ID via MessageIDResolver."""
-        if self._msgid_resolver:
-            return self._msgid_resolver.get_discord_id(origin, replace_id)
-        return None
-
-    async def _handle_delete_out(self, evt: MessageDeleteOut) -> None:
-        """Delete Discord message when IRC REDACT or XMPP retraction received."""
-        await discord_handlers.handle_delete_out(self._bot, evt)
-
-    def _resolve_xmpp_avatar_fallback(self, evt: MessageOut) -> str | None:
-        """Try to resolve an XMPP avatar for IRC-origin messages with no avatar.
-
-        Uses the IRC nick as the XMPP node (localpart) and probes Prosody's
-        PEP/vCard avatar endpoints. Only applies when the channel mapping has
-        an XMPP target so we can derive the domain.
-        """
-        origin = (evt.raw or {}).get("origin", "")
-        if origin != "irc":
-            return None
-        mapping = self._router.get_mapping_for_discord(evt.channel_id)
-        if not mapping or not mapping.xmpp:
-            return None
-        from bridge.avatar import resolve_xmpp_avatar_url, xmpp_domain_from_muc_jid
-
-        base_domain = xmpp_domain_from_muc_jid(mapping.xmpp.muc_jid)
-        # Use IRC nick (author_display) as XMPP node — common for users on both protocols
-        node = evt.author_display.lower()
-        return resolve_xmpp_avatar_url(base_domain, node)
-
-    async def _handle_reaction_out(self, evt: ReactionOut) -> None:
-        """Add or remove reaction on Discord message when IRC/XMPP reaction received."""
-        await discord_handlers.handle_reaction_out(self._bot, evt)
-
-    async def _handle_typing_out(self, evt: TypingOut) -> None:
-        """Trigger Discord typing indicator when IRC typing received (throttled 3s)."""
-        await discord_handlers.handle_typing_out(self._bot, evt, self._typing_throttle)
+    # ------------------------------------------------------------------
+    # Queue consumer
+    # ------------------------------------------------------------------
 
     async def _queue_consumer(self, delay: float = 0.25) -> None:
         """Background consumer: pop from queue, send via webhook with delay (AUDIT §3)."""
@@ -338,7 +250,6 @@ class DiscordAdapter(AdapterBase):
                     evt.author_display,
                 )
 
-                # Check if this is an edit (XMPP correction or IRC edit)
                 is_edit = evt.raw.get("is_edit", False)
                 replace_id = evt.raw.get("replace_id")
                 origin = evt.raw.get("origin", "")
@@ -347,7 +258,10 @@ class DiscordAdapter(AdapterBase):
                 if is_edit and replace_id and self._bot:
                     resolved = self._resolve_discord_message_id(replace_id, origin)
                     logger.debug(
-                        "Discord: edit resolve replace_id={} origin={} -> discord_id={}", replace_id, origin, resolved
+                        "Discord: edit resolve replace_id={} origin={} -> discord_id={}",
+                        replace_id,
+                        origin,
+                        resolved,
                     )
                     if resolved:
                         edit_content = evt.content
@@ -357,38 +271,28 @@ class DiscordAdapter(AdapterBase):
                             if guild:
                                 edit_content = resolve_mentions(edit_content, guild)
                         async with self._get_channel_lock(evt.channel_id):
-                            edited = await self._webhook_edit(
-                                evt.channel_id,
-                                int(resolved),
-                                edit_content,
-                            )
+                            edited = await self._webhook_edit(evt.channel_id, int(resolved), edit_content)
                         if edited:
                             discord_msg_id = int(resolved)
-                            logger.info(
-                                "Discord: edited message {} via webhook (replace_id={})",
-                                resolved,
-                                replace_id,
-                            )
+                            logger.info("Discord: edited message {} via webhook (replace_id={})", resolved, replace_id)
                         else:
                             logger.warning("Discord: webhook edit failed for message {}", resolved)
 
                 # Send as new message if not edited
                 if discord_msg_id is None:
-                    content = evt.content  # Relay already strips reply fallback for discord target
+                    content = evt.content
                     logger.debug(
                         "Discord: sending new message channel={} author={} content={!r}",
                         evt.channel_id,
                         evt.author_display,
                         content[:80],
                     )
-                    # Resolve @nick to Discord mention before send
                     if self._bot and content:
                         channel = self._bot.get_channel(int(evt.channel_id))
                         guild = getattr(channel, "guild", None) if channel else None
                         if guild:
                             content = resolve_mentions(content, guild)
                     content, file_obj, temp_path = await self._prepare_media(content)
-                    # Resolve reply_to_id: XMPP tracker may have IRC msgid when original was from IRC
                     reply_to_discord_id = evt.reply_to_id
                     if reply_to_discord_id and not reply_to_discord_id.isdigit():
                         resolved = self._resolve_discord_message_id(reply_to_discord_id, "irc")
@@ -398,7 +302,8 @@ class DiscordAdapter(AdapterBase):
                     reply_content: str | None = None
                     if reply_to_discord_id:
                         reply_author, reply_content = await self._fetch_reply_context(
-                            evt.channel_id, reply_to_discord_id
+                            evt.channel_id,
+                            reply_to_discord_id,
                         )
                     async with self._get_channel_lock(evt.channel_id):
                         avatar_url = evt.avatar_url or self._resolve_xmpp_avatar_fallback(evt)
@@ -425,10 +330,10 @@ class DiscordAdapter(AdapterBase):
                             evt.channel_id,
                             evt.author_display,
                         )
-                    # Clean up temp file after send (File reads during send)
                     if temp_path and os.path.exists(temp_path):
                         with contextlib.suppress(OSError):
                             os.unlink(temp_path)
+
                 # Store XMPP->Discord mapping for retraction, reaction, and edit routing
                 origin = (evt.raw or {}).get("origin")
                 if discord_msg_id and origin == "xmpp" and self._msgid_resolver:
@@ -450,8 +355,13 @@ class DiscordAdapter(AdapterBase):
                 # Store IRC->Discord mapping for REDACT routing
                 if discord_msg_id and evt.raw.get("origin") == "irc" and self._msgid_resolver:
                     self._msgid_resolver.store_irc(evt.message_id, str(discord_msg_id))
-                    # Link discord_id -> xmpp_id so Discord replies to IRC webhooks resolve for XMPP
                     irc_msgid = evt.message_id
+                    if self._msgid_resolver.resolve_irc_xmpp_pending(irc_msgid, str(discord_msg_id)):
+                        logger.debug(
+                            "Resolved IRC→XMPP pending: irc_msgid={} -> discord_id={} (XMPP reactions now work)",
+                            irc_msgid,
+                            discord_msg_id,
+                        )
                     if self._msgid_resolver.add_discord_id_alias(str(discord_msg_id), irc_msgid):
                         logger.debug(
                             "Linked Discord reply target: discord_id={} -> xmpp (via irc_msgid={})",
@@ -464,364 +374,28 @@ class DiscordAdapter(AdapterBase):
             except Exception as exc:
                 logger.exception("Webhook send failed: {}", exc)
 
-    def _is_bridged_channel(self, channel_id: str) -> bool:
-        return self._router.get_mapping_for_discord(str(channel_id)) is not None
-
-    async def _handle_attachments(self, message: Message) -> None:
-        """Download Discord attachments and send via XMPP HTTP upload or IRC URL notification."""
-        await discord_handlers.handle_attachments(
-            message,
-            identity=self._identity,
-            router=self._router,
-            msgid_resolver=self._msgid_resolver,
-            bus=self._bus,
-            session=self._session,
-        )
-
-    async def upload_file(self, channel_id: str, data: bytes, filename: str) -> None:
-        """Upload file to Discord channel."""
-        if not self._bot:
-            return
-
-        channel = self._bot.get_channel(int(channel_id))
-        if not channel or not isinstance(channel, TextChannel):
-            logger.warning("Discord channel {} not found", channel_id)
-            return
-
-        try:
-            file_obj = File(io.BytesIO(data), filename=filename)
-            await channel.send(file=file_obj)
-            logger.info("Uploaded {} ({} bytes) to Discord", filename, len(data))
-        except Exception as exc:
-            logger.exception("Failed to upload file to Discord: {}", exc)
-
-    async def _on_message(self, message: Message) -> None:
-        """Handle incoming Discord message; emit MessageIn to bus."""
-        # Skip webhook-originated messages first (our own bridge output) — most definitive
-        if getattr(message, "webhook_id", None):
-            return
-        if message.author.bot:
-            return
-
-        channel_id = str(message.channel.id)
-        if not self._is_bridged_channel(channel_id):
-            return
-
-        content = message.content or ""
-
-        # Get avatar URL (needed for both attachments and content messages)
-        avatar_url = str(message.author.display_avatar.url) if message.author.display_avatar else None
-
-        # Handle attachments: emit each attachment's CDN URL as a message.
-        # The relay routes it to IRC (RELAYMSG) and XMPP (body + OOB for
-        # inline preview).  Discord CDN URLs already carry the original
-        # filename and extension, so XMPP clients render them as images.
-        if message.attachments:
-            for attachment in message.attachments:
-                _, att_evt = message_in(
-                    origin="discord",
-                    channel_id=channel_id,
-                    author_id=str(message.author.id),
-                    author_display=message.author.display_name or message.author.name,
-                    content=attachment.url,
-                    message_id=f"{message.id}_attachment_{attachment.id}",
-                    is_action=False,
-                    avatar_url=avatar_url,
-                    raw={},
-                )
-                logger.info(
-                    "Discord attachment bridged: channel={} author={} file={}",
-                    channel_id,
-                    message.author.display_name or message.author.name,
-                    attachment.filename,
-                )
-                self._bus.publish("discord", att_evt)
-            if not content.strip():
-                return
-
-        if not content.strip():
-            return
-
-        # For replies: include referenced message content + author so relay can add quote for IRC
-        raw: dict[str, object] = {}
-        if message.reference:
-            ref_content: str | None = None
-            ref_author: str | None = None
-            resolved = getattr(message.reference, "resolved", None)
-            if resolved is not None:
-                ref_content = getattr(resolved, "content", None) or ""
-                ref_author = (
-                    getattr(resolved.author, "display_name", None)
-                    or getattr(resolved.author, "name", None)
-                    or str(getattr(resolved.author, "id", ""))
-                )
-            elif self._bot:
-                try:
-                    ref_msg = await message.channel.fetch_message(message.reference.message_id)
-                    ref_content = ref_msg.content or ""
-                    ref_author = (
-                        getattr(ref_msg.author, "display_name", None)
-                        or getattr(ref_msg.author, "name", None)
-                        or str(getattr(ref_msg.author, "id", ""))
-                    )
-                except Exception:
-                    pass
-            if ref_content:
-                raw["reply_quoted_content"] = ref_content
-            if ref_author:
-                raw["reply_quoted_author"] = ref_author
-
-        # Detect Discord /me action: message starting with "/me "
-        is_action = False
-        if content.startswith("/me "):
-            is_action = True
-            content = content[4:]  # strip "/me " prefix; relay will format for each target
-
-        _, evt = message_in(
-            origin="discord",
-            channel_id=channel_id,
-            author_id=str(message.author.id),
-            author_display=message.author.display_name or message.author.name,
-            content=content,
-            message_id=str(message.id),
-            reply_to_id=str(message.reference.message_id) if message.reference else None,
-            is_edit=False,
-            is_action=is_action,
-            avatar_url=avatar_url,
-            raw=raw,
-        )
-        logger.info(
-            "Discord message bridged: channel={} author={}",
-            channel_id,
-            message.author.display_name or message.author.name,
-        )
-        self._bus.publish("discord", evt)
-
-    async def _on_raw_message_edit(self, payload) -> None:
-        """Handle Discord message edits via raw event (fires for cached and uncached messages)."""
-        message = payload.message
-        if message.author.bot:
-            return
-        if getattr(message, "webhook_id", None):
-            return
-
-        channel_id = str(payload.channel_id)
-        if not self._is_bridged_channel(channel_id):
-            return
-
-        content = message.content or ""
-        if not content.strip() and self._bot:
-            # Uncached: fetch message for content (MESSAGE_CONTENT intent may still not include it)
-            try:
-                channel = self._bot.get_channel(payload.channel_id)
-                if isinstance(channel, TextChannel):
-                    fetched = await channel.fetch_message(payload.message_id)
-                    content = fetched.content or ""
-                    message = fetched
-            except Exception:
-                pass
-        if not content.strip():
-            return
-
-        avatar_url = str(message.author.display_avatar.url) if message.author.display_avatar else None
-
-        msg_id = str(getattr(message, "id", None) or payload.message_id)
-        logger.debug("Discord edit received: channel={} msg_id={}", channel_id, msg_id)
-        _, evt = message_in(
-            origin="discord",
-            channel_id=channel_id,
-            author_id=str(message.author.id),
-            author_display=message.author.display_name or message.author.name,
-            content=content,
-            message_id=msg_id,
-            reply_to_id=str(message.reference.message_id) if message.reference else None,
-            is_edit=True,
-            is_action=False,
-            avatar_url=avatar_url,
-            raw={"replace_id": msg_id},
-        )
-        self._bus.publish("discord", evt)
-
-    async def _on_reaction_add(self, payload) -> None:
-        """Handle Discord reaction add; publish for Relay to route to IRC/XMPP."""
-        if not payload.emoji.is_unicode_emoji():
-            logger.debug("Skipping custom Discord emoji: {}", payload.emoji.name)
-            return
-        # Skip our own reactions (from bridge relaying XMPP/IRC) to prevent echo
-        if self._bot and self._bot.user and payload.user_id == self._bot.user.id:
-            return
-
-        channel_id = str(payload.channel_id)
-        mapping = self._router.get_mapping_for_discord(channel_id)
-        if not mapping:
-            return
-
-        user = payload.member
-        if not user and self._bot:
-            user = await self._fetch_user(payload.user_id)
-        author_display = user.display_name if user else str(payload.user_id)
-
-        from bridge.events import reaction_in
-
-        _, evt = reaction_in(
-            origin="discord",
-            channel_id=channel_id,
-            message_id=str(payload.message_id),
-            emoji=str(payload.emoji),
-            author_id=str(payload.user_id),
-            author_display=author_display,
-        )
-        logger.info(
-            "Discord reaction bridged: channel={} author={} emoji={}", channel_id, author_display, str(payload.emoji)
-        )
-        self._bus.publish("discord", evt)
-
-    async def _fetch_user(self, user_id: int):
-        """Fetch user by ID if bot available."""
-        if self._bot:
-            try:
-                return self._bot.get_user(user_id) or await self._bot.fetch_user(user_id)
-            except Exception:
-                pass
-        return None
-
-    async def _on_reaction_remove(self, payload) -> None:
-        """Handle Discord reaction remove; emit ReactionIn with is_remove=True for relay."""
-        if not payload.emoji.is_unicode_emoji():
-            return
-        # Skip our own reaction removals (from bridge relaying) to prevent echo
-        if self._bot and self._bot.user and payload.user_id == self._bot.user.id:
-            return
-
-        channel_id = str(payload.channel_id)
-        mapping = self._router.get_mapping_for_discord(channel_id)
-        if not mapping:
-            return
-
-        user = await self._fetch_user(payload.user_id)
-        author_display = user.display_name if user else str(payload.user_id)
-
-        from bridge.events import reaction_in
-
-        _, evt = reaction_in(
-            origin="discord",
-            channel_id=channel_id,
-            message_id=str(payload.message_id),
-            emoji=str(payload.emoji),
-            author_id=str(payload.user_id),
-            author_display=author_display,
-            raw={"is_remove": True},
-        )
-        logger.info(
-            "Discord reaction removal bridged: channel={} author={} emoji={}",
-            channel_id,
-            author_display,
-            str(payload.emoji),
-        )
-        self._bus.publish("discord", evt)
-
-    async def _on_typing(self, channel, user) -> None:
-        """Handle Discord typing; publish for Relay to route to IRC (throttled 3s)."""
-        if user.bot:
-            return
-        channel_id = str(channel.id)
-        if not self._is_bridged_channel(channel_id):
-            return
-
-        now = time.time()
-        last = self._typing_publish_throttle.get(channel_id, 0)
-        if now - last < 3:
-            return
-        self._typing_publish_throttle[channel_id] = now
-
-        from bridge.events import typing_in
-
-        _, evt = typing_in(origin="discord", channel_id=channel_id, user_id=str(user.id))
-        self._bus.publish("discord", evt)
-
-    async def _on_raw_message_delete(self, payload: RawMessageDeleteEvent) -> None:
-        """Handle Discord message deletes via raw event (fires for cached and uncached messages)."""
-        channel_id = str(payload.channel_id)
-        if not self._is_bridged_channel(channel_id):
-            return
-
-        author_id = ""
-        author_display = ""
-        if payload.cached_message:
-            author_id = str(payload.cached_message.author.id)
-            author_display = (
-                getattr(
-                    payload.cached_message.author,
-                    "global_name",
-                    None,
-                )
-                or getattr(payload.cached_message.author, "name", "")
-                or ""
-            )
-
-        _, evt = message_delete(
-            origin="discord",
-            channel_id=channel_id,
-            message_id=str(payload.message_id),
-            author_id=author_id,
-            author_display=author_display,
-        )
-        logger.info("Discord message delete bridged: channel={} message_id={}", channel_id, payload.message_id)
-        logger.debug(
-            "Discord: publishing message_delete channel={} message_id={} -> relay (IRC needs msgid for REDACT)",
-            channel_id,
-            payload.message_id,
-        )
-        self._bus.publish("discord", evt)
-
-    async def _on_raw_bulk_message_delete(self, payload: RawBulkMessageDeleteEvent) -> None:
-        """Handle Discord bulk message deletes (e.g. moderator purge)."""
-        channel_id = str(payload.channel_id)
-        if not self._is_bridged_channel(channel_id):
-            return
-
-        cached = {m.id: m for m in payload.cached_messages}
-        logger.info("Discord bulk delete bridged: channel={} count={}", channel_id, len(payload.message_ids))
-        for message_id in payload.message_ids:
-            author_id = ""
-            author_display = ""
-            if message_id in cached:
-                a = cached[message_id].author
-                author_id = str(a.id)
-                author_display = getattr(a, "global_name", None) or getattr(a, "name", "") or ""
-            _, evt = message_delete(
-                origin="discord",
-                channel_id=channel_id,
-                message_id=str(message_id),
-                author_id=author_id,
-                author_display=author_display,
-            )
-            self._bus.publish("discord", evt)
+    # ------------------------------------------------------------------
+    # Bridge status command
+    # ------------------------------------------------------------------
 
     async def _cmd_bridge_status(self, ctx: commands.Context) -> None:
         """Optional !bridge status: show linked IRC/XMPP (AUDIT §7)."""
         if not ctx.guild or not ctx.author:
             return
-
         if not self._identity:
             await ctx.reply("Identity resolution not configured (Portal).")
             return
-
         discord_id = str(ctx.author.id)
         irc_nick = await self._identity.discord_to_irc(discord_id)
         xmpp_jid = await self._identity.discord_to_xmpp(discord_id)
-
         parts = []
-        if irc_nick:
-            parts.append(f"IRC: {irc_nick}")
-        else:
-            parts.append("IRC: not linked")
-        if xmpp_jid:
-            parts.append(f"XMPP: {xmpp_jid}")
-        else:
-            parts.append("XMPP: not linked")
-
+        parts.append(f"IRC: {irc_nick}" if irc_nick else "IRC: not linked")
+        parts.append(f"XMPP: {xmpp_jid}" if xmpp_jid else "XMPP: not linked")
         await ctx.reply(" | ".join(parts))
+
+    # ------------------------------------------------------------------
+    # Lifecycle
+    # ------------------------------------------------------------------
 
     async def start(self) -> None:
         """Start Discord bot and queue consumer."""
@@ -832,7 +406,7 @@ class DiscordAdapter(AdapterBase):
 
         intents = Intents.default()
         intents.message_content = True
-        intents.messages = True  # Required for on_raw_message_delete / on_raw_bulk_message_delete
+        intents.messages = True
         intents.guilds = True
         intents.members = True
         intents.typing = True
@@ -852,44 +426,36 @@ class DiscordAdapter(AdapterBase):
 
         @bot.event
         async def on_raw_message_edit(payload) -> None:
-            """Handle message edits (raw: fires for cached and uncached messages)."""
             await self._on_raw_message_edit(payload)
 
         @bot.event
         async def on_raw_reaction_add(payload) -> None:
-            """Handle reaction adds."""
             await self._on_reaction_add(payload)
 
         @bot.event
         async def on_raw_reaction_remove(payload) -> None:
-            """Handle reaction removes."""
             await self._on_reaction_remove(payload)
 
         @bot.event
         async def on_raw_message_delete(payload) -> None:
-            """Handle message deletes (raw: fires for cached and uncached messages)."""
             await self._on_raw_message_delete(payload)
 
         @bot.event
         async def on_raw_bulk_message_delete(payload) -> None:
-            """Handle bulk message deletes (e.g. moderator purge)."""
             await self._on_raw_bulk_message_delete(payload)
 
         @bot.event
         async def on_typing(channel, user, when) -> None:
-            """Handle typing; publish for Relay to route to IRC."""
             await self._on_typing(channel, user)
 
         @bot.command(name="bridge")
         async def cmd_bridge(ctx: commands.Context, *args: str) -> None:
-            """!bridge or !bridge status: show linked IRC/XMPP accounts."""
             await self._cmd_bridge_status(ctx)
 
         self._bot = bot
         self._session = aiohttp.ClientSession()
         self._consumer_task = asyncio.create_task(self._queue_consumer())
         self._bot_task = asyncio.create_task(bot.start(token))
-
         self._bus.register(self)
 
     async def stop(self) -> None:

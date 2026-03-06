@@ -17,8 +17,7 @@ from loguru import logger
 from bridge.adapters.irc.msgid import MessageIDTracker, ReactionTracker
 from bridge.adapters.irc.throttle import TokenBucket
 from bridge.config import cfg
-from bridge.events import MessageOut, message_in
-from bridge.formatting.irc_message_split import extract_code_blocks, split_irc_lines
+from bridge.events import MessageOut
 from bridge.gateway import Bus, ChannelRouter
 
 # IRC color codes (Mirc color palette indices 2-13; skip 0=white, 1=black for readability)
@@ -135,6 +134,13 @@ class IRCClient(pydle.Client):
         self._puppet_nick_check: Callable[[str], bool] | None = None  # set by adapter for echo detection
         # Fallback echo detection when relaymsg tag missing (e.g. via irc-services)
         self._recent_relaymsg_sends: TTLCache[tuple[str, str], None] = TTLCache(maxsize=100, ttl=5)
+        # ISUPPORT values (Requirement 11.7, 11.8)
+        self._server_nicklen: int = 23  # effective limit: min(server_nicklen, 23)
+        self._server_casemapping: str = "rfc1459"  # default per IRC spec
+
+    # ------------------------------------------------------------------
+    # Connection lifecycle
+    # ------------------------------------------------------------------
 
     async def on_connect(self):
         """After connect, join channels and start consumer."""
@@ -174,9 +180,29 @@ class IRCClient(pydle.Client):
             logger.debug("IRC ready (fallback timeout)")
 
     async def on_raw_005(self, message):
-        """After 005 ISUPPORT, send PING ready for ready detection."""
+        """After 005 ISUPPORT, parse NICKLEN/CASEMAPPING and send PING for ready detection."""
         await super().on_raw_005(message)
+        # Parse ISUPPORT tokens (Requirement 11.7, 11.8)
+        params = getattr(message, "params", [])
+        for token in params:
+            token_str = str(token)
+            if token_str.startswith("NICKLEN="):
+                try:
+                    server_nicklen = int(token_str.split("=", 1)[1])
+                    self._server_nicklen = min(server_nicklen, 23)
+                    logger.debug("IRC ISUPPORT: NICKLEN={} (effective={})", server_nicklen, self._server_nicklen)
+                except (ValueError, IndexError):
+                    pass
+            elif token_str.startswith("CASEMAPPING="):
+                mapping_val = token_str.split("=", 1)[1].lower()
+                if mapping_val in ("ascii", "rfc1459", "rfc1459-strict"):
+                    self._server_casemapping = mapping_val
+                    logger.debug("IRC ISUPPORT: CASEMAPPING={}", self._server_casemapping)
         await self.rawmsg("PING", "ready")
+
+    # ------------------------------------------------------------------
+    # No-op numeric handlers (suppress "Unknown command" warnings)
+    # ------------------------------------------------------------------
 
     async def on_raw_396(self, message: object) -> None:
         """RPL_HOSTHIDDEN: host change notice (InspIRCd/UnrealIRCd). No-op to avoid Unknown command."""
@@ -194,6 +220,10 @@ class IRCClient(pydle.Client):
         """RPL_YOUREOPER (381): You are now an IRC Operator. No-op to avoid Unknown command."""
         pass
 
+    # ------------------------------------------------------------------
+    # Ready detection
+    # ------------------------------------------------------------------
+
     async def on_raw_pong(self, message) -> None:
         """Mark ready when we receive PONG ready (echo of our PING)."""
         await super().on_raw_pong(message)
@@ -201,6 +231,10 @@ class IRCClient(pydle.Client):
         if params and "ready" in (str(p) for p in params):
             self._ready = True
             logger.debug("IRC ready (PONG received)")
+
+    # ------------------------------------------------------------------
+    # PRIVMSG tag extraction (coupling: sets _message_tags for on_message)
+    # ------------------------------------------------------------------
 
     async def on_raw_privmsg(self, message) -> None:
         """Set _message_tags from parsed message so on_message can read msgid/draft/relaymsg."""
@@ -218,295 +252,26 @@ class IRCClient(pydle.Client):
         finally:
             self._message_tags = {}
 
-    async def on_kick(self, channel: str, target: str, by: str, reason: str | None = None) -> None:
-        """Handle KICK; rejoin if we were kicked and not banned."""
-        await super().on_kick(channel, target, by, reason or "")
-        if not self._auto_rejoin:
-            return
-        # Rejoin if we (our nick) were kicked
-        if target.lower() != self.nickname.lower():
-            return
-        if reason and "ban" in reason.lower():
-            logger.warning("Not rejoining {} (ban detected)", channel)
-            return
-        await asyncio.sleep(self._rejoin_delay)
-        await self.join(channel)
-        logger.info("Rejoined {} after KICK", channel)
-
-    async def on_nick(self, old: str, new: str) -> None:
-        """Revert any nick change on the main bridge connection.
-
-        Nick changes are disabled at the server level via restrict-commands, but
-        services (SVSNICK) or a race condition could still rename us. Force our
-        nick back immediately so the bridge identity stays consistent.
-        """
-        await super().on_nick(old, new)
-        if old.lower() == self.nickname.lower():
-            # Our own nick was changed — revert it
-            logger.warning("IRC: main connection nick changed {} -> {}; reverting", old, new)
-            try:
-                await self.set_nick(old)
-            except Exception as exc:
-                logger.exception("IRC: failed to revert nick change: {}", exc)
+    # ------------------------------------------------------------------
+    # Disconnect / cleanup
+    # ------------------------------------------------------------------
 
     async def on_disconnect(self, expected: bool) -> None:
         """Handle disconnect; rejoin channels on reconnect."""
         await super().on_disconnect(expected)
         self._ready = False
 
-    async def on_message(self, target, source, message):
-        """Handle channel message."""
-        await super().on_message(target, source, message)
-        if not self._ready:
-            return
-        if not target.startswith("#"):
-            return
+    async def disconnect(self, expected=True):
+        """Disconnect and cleanup."""
+        if self._consumer_task:
+            self._consumer_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await self._consumer_task
+        await super().disconnect(expected)
 
-        mapping = self._router.get_mapping_for_irc(self._server, target)
-        if not mapping:
-            return
-
-        # Extract msgid and reply from IRCv3 tags
-        msgid = None
-        reply_to = None
-        tags = {}
-        if hasattr(self, "_message_tags") and self._message_tags:
-            tags = self._message_tags
-            msgid = tags.get("msgid")
-            reply_to = tags.get("+draft/reply")
-
-        message_id = msgid or f"irc:{self._server}:{target}:{source}:{id(message)}"
-
-        # Resolve reply_to to Discord message ID if available
-        discord_reply_to = None
-        if reply_to:
-            discord_reply_to = self._msgid_tracker.get_discord_id(reply_to)
-
-        # If this is our echo (from bridge), correlate with pending send for msgid tracking
-        # RELAYMSG: server tags with draft/relaymsg=our_nick; source is spoofed nick
-        # Puppets: plain PRIVMSG from our puppets; main connection receives and must skip
-        # Fallback: relaymsg tag may be missing (e.g. via irc-services); check recent sends
-        relayed_by_us = tags.get("draft/relaymsg") == self.nickname or tags.get("relaymsg") == self.nickname
-        from_puppet = self._puppet_nick_check is not None and self._puppet_nick_check(source)
-        from_recent_relaymsg = (self._server, target, source) in self._recent_relaymsg_sends
-        if source == self.nickname or relayed_by_us or from_puppet or from_recent_relaymsg:
-            if msgid:
-                try:
-                    discord_id = self._pending_sends.get_nowait()
-                    self._msgid_tracker.store(msgid, discord_id)  # irc_msgid, discord_id
-                    logger.debug("IRC: stored msgid {} -> {} for REDACT/edit correlation", msgid, discord_id)
-                except asyncio.QueueEmpty:
-                    logger.debug(
-                        "IRC: RELAYMSG echo had msgid {} but no pending_send (queue empty); cannot correlate",
-                        msgid,
-                    )
-            elif relayed_by_us or from_recent_relaymsg:
-                logger.info(
-                    "IRC: RELAYMSG echo received for {} in {} but no msgid tag (UnrealIRCd message-ids may not add msgid to relaymsg)",
-                    source,
-                    target,
-                )
-                logger.debug(
-                    "IRC: RELAYMSG echo tags={} (empty => server may not send tags or message-tags cap not negotiated)",
-                    tags,
-                )
-            return  # Skip publishing our own echoed messages to prevent doubling
-
-        if msgid:
-            logger.debug("IRC: external message with msgid={} from {}", msgid, source)
-
-        _, evt = message_in(
-            origin="irc",
-            channel_id=mapping.discord_channel_id,
-            author_id=source,
-            author_display=source,
-            content=message,
-            message_id=message_id,
-            reply_to_id=discord_reply_to,
-            is_action=False,
-            raw={"tags": tags, "irc_msgid": msgid, "irc_reply_to": reply_to},
-        )
-        logger.info("IRC message bridged: channel={} author={}", target, source)
-        self._bus.publish("irc", evt)
-
-    async def on_ctcp_action(self, by, target, message):
-        """Handle /me action."""
-        await super().on_ctcp_action(by, target, message)
-        if not target.startswith("#"):
-            return
-
-        mapping = self._router.get_mapping_for_irc(self._server, target)
-        if not mapping:
-            return
-
-        if by == self.nickname:
-            return  # Skip our own /me echo
-
-        content = f"* {by} {message}"
-        _, evt = message_in(
-            origin="irc",
-            channel_id=mapping.discord_channel_id,
-            author_id=by,
-            author_display=by,
-            content=content,
-            message_id=f"irc:{self._server}:{target}:{by}:{id(message)}",
-            is_action=True,
-        )
-        logger.info("IRC action bridged: channel={} author={}", target, by)
-        self._bus.publish("irc", evt)
-
-    async def on_ctcp_version(self, by, target, contents):
-        """Respond to CTCP VERSION queries with bridge info."""
-        await self.ctcp_reply(by, "VERSION", "ATL Bridge (Discord\u2194IRC\u2194XMPP) https://atl.chat")
-
-    async def on_ctcp_source(self, by, target, contents):
-        """Respond to CTCP SOURCE queries with the project URL."""
-        await self.ctcp_reply(by, "SOURCE", "https://github.com/allthingslinux/atl.chat")
-
-    async def on_raw_tagmsg(self, message) -> None:
-        """Handle IRC TAGMSG with +draft/react, +draft/unreact, or +typing; publish for Relay."""
-        if not self._ready:
-            return
-        params = getattr(message, "params", [])
-        if not params:
-            return
-        target = params[0]
-        if not target.startswith("#"):
-            return
-        mapping = self._router.get_mapping_for_irc(self._server, target)
-        if not mapping:
-            return
-
-        tags = getattr(message, "tags", {}) or {}
-        reply_to = tags.get("+draft/reply")
-        react = tags.get("+draft/react")
-        unreact = tags.get("+draft/unreact")
-        typing_val = tags.get("typing")
-
-        source = getattr(message, "source", "") or ""
-        nick = source.split("!")[0] if "!" in source else source
-
-        if react and reply_to:
-            # Add reaction
-            if nick == self.nickname:
-                return  # Skip our own echo
-            discord_id = self._msgid_tracker.get_discord_id(reply_to)
-            if discord_id:
-                from bridge.events import reaction_in
-
-                msgid = tags.get("msgid")
-                if msgid:
-                    self._reaction_tracker.store_incoming(msgid, discord_id, react, nick)
-                _, evt = reaction_in(
-                    origin="irc",
-                    channel_id=f"{self._server}/{target}",
-                    message_id=discord_id,
-                    emoji=react,
-                    author_id=nick,
-                    author_display=nick,
-                )
-                logger.info("IRC reaction bridged: channel={} author={} emoji={}", target, nick, react)
-                self._bus.publish("irc", evt)
-        elif unreact and reply_to:
-            # Remove reaction (IRCv3 +draft/unreact)
-            if nick == self.nickname:
-                return  # Skip our own echo
-            discord_id = self._msgid_tracker.get_discord_id(reply_to)
-            if discord_id:
-                from bridge.events import reaction_in
-
-                _, evt = reaction_in(
-                    origin="irc",
-                    channel_id=f"{self._server}/{target}",
-                    message_id=discord_id,
-                    emoji=unreact,
-                    author_id=nick,
-                    author_display=nick,
-                    raw={"is_remove": True},
-                )
-                logger.info("IRC reaction removal bridged: channel={} author={} emoji={}", target, nick, unreact)
-                self._bus.publish("irc", evt)
-        elif typing_val == "active":
-            from bridge.events import typing_in
-
-            _, evt = typing_in(
-                origin="irc",
-                channel_id=f"{self._server}/{target}",
-                user_id=nick or "unknown",
-            )
-            self._bus.publish("irc", evt)
-
-    async def on_raw_redact(self, message) -> None:
-        """Handle IRC REDACT; publish MessageDelete or ReactionIn (removal) for Relay."""
-        params = getattr(message, "params", [])
-        if len(params) < 2:
-            return
-        target, irc_msgid = params[0], params[1]
-        logger.debug("IRC: received REDACT target={} msgid={}", target, irc_msgid)
-        if not target.startswith("#"):
-            return
-        mapping = self._router.get_mapping_for_irc(self._server, target)
-        if not mapping:
-            return
-
-        # REDACT on reaction TAGMSG → reaction removal
-        reaction_key = self._reaction_tracker.get_reaction_key(irc_msgid)
-        if reaction_key:
-            discord_id, emoji, author_id = reaction_key
-            source = getattr(message, "source", "") or ""
-            nick = source.split("!")[0] if "!" in source else source
-            from bridge.events import reaction_in
-
-            _, evt = reaction_in(
-                origin="irc",
-                channel_id=f"{self._server}/{target}",
-                message_id=discord_id,
-                emoji=emoji,
-                author_id=nick or author_id,
-                author_display=nick or author_id,
-                raw={"is_remove": True},
-            )
-            logger.info("IRC REDACT (reaction) bridged: channel={} emoji={}", target, emoji)
-            self._bus.publish("irc", evt)
-            return
-
-        discord_id = self._msgid_tracker.get_discord_id(irc_msgid)
-        if not discord_id:
-            logger.debug(
-                "No Discord msgid for IRC REDACT {}; skip (msgid never stored or expired)",
-                irc_msgid,
-            )
-            return
-        source = getattr(message, "source", "") or ""
-        nick = source.split("!")[0] if "!" in source else source
-        from bridge.events import message_delete
-
-        _, evt = message_delete(
-            origin="irc",
-            channel_id=f"{self._server}/{target}",
-            message_id=discord_id,
-            author_id=nick,
-            author_display=nick,
-        )
-        logger.info("IRC REDACT (message) bridged: channel={} msgid={}", target, irc_msgid)
-        self._bus.publish("irc", evt)
-
-    async def on_raw_chghost(self, message):
-        """Handle CHGHOST: user changed username/hostname."""
-        # :nick!old_user@old_host CHGHOST new_user new_host
-        if len(message.params) >= 2:
-            nick = message.source
-            new_user = message.params[0]
-            new_host = message.params[1]
-            logger.debug("IRC CHGHOST: {} -> {}@{}", nick, new_user, new_host)
-
-    async def on_raw_setname(self, message):
-        """Handle SETNAME: user changed realname."""
-        # :nick!user@host SETNAME :new realname
-        if message.params:
-            nick = message.source
-            new_realname = message.params[0]
-            logger.debug("IRC SETNAME: {} -> {}", nick, new_realname)
+    # ------------------------------------------------------------------
+    # Capability negotiation
+    # ------------------------------------------------------------------
 
     async def on_capability_message_tags_available(self, value):
         """Request message-tags (required for msgid on PRIVMSG/RELAYMSG)."""
@@ -556,6 +321,10 @@ class IRCClient(pydle.Client):
         """Request overdrivenetworks.com/relaymsg (alternate relaymsg cap name)."""
         return True
 
+    # ------------------------------------------------------------------
+    # RELAYMSG helpers
+    # ------------------------------------------------------------------
+
     def _has_relaymsg(self) -> bool:
         """Check if RELAYMSG capability was negotiated."""
         caps = getattr(self, "_capabilities", {})
@@ -572,135 +341,111 @@ class IRCClient(pydle.Client):
             out = f"{out}/d"
         return out
 
-    async def _consume_outbound(self):
-        """Consume outbound message queue with token bucket throttling."""
-        while True:
-            try:
-                evt = await self._outbound.get()
-                logger.debug("IRC: dequeued message discord_id={} channel={}", evt.message_id, evt.channel_id)
-                # Wait for token before sending (flood control)
-                wait = self._throttle.acquire()
-                if wait > 0:
-                    logger.debug("IRC: throttle wait {:.2f}s for channel={}", wait, evt.channel_id)
-                    await asyncio.sleep(wait)
-                self._throttle.use_token()  # Consume (guaranteed after acquire wait)
-                await self._send_message(evt)
-            except asyncio.CancelledError:
-                break
-            except Exception as exc:
-                logger.exception("IRC send failed: {}", exc)
-
-    async def _send_message(self, evt: MessageOut):
-        """Send message to IRC. Uses RELAYMSG when available (stateless bridging)."""
-        mapping = self._router.get_mapping_for_discord(evt.channel_id)
-        if not mapping or not mapping.irc:
-            logger.warning("IRC send skipped: no mapping for channel {}", evt.channel_id)
-            return
-
-        target = mapping.irc.channel
-        content = evt.content
-        logger.debug("IRC: _send_message start target={} content={!r}", target, content[:80])
-
-        # Add reply tag if replying and we have irc_msgid
-        reply_tags = None
-        if evt.reply_to_id:
-            irc_msgid = self._msgid_tracker.get_irc_msgid(evt.reply_to_id)
-            if irc_msgid:
-                reply_tags = {"+draft/reply": irc_msgid}
-                logger.debug("IRC: reply tag set for irc_msgid={}", irc_msgid)
-            else:
-                logger.debug("IRC: reply_to_id={} has no irc_msgid in tracker", evt.reply_to_id)
-                # Do NOT strip > quote fallback: server denies +draft/reply (CLIENTTAGDENY),
-                # so IRC clients ignore the tag. Keep the quote so users see reply context.
-
-        # Extract fenced code blocks and upload them to a paste service
-        processed = extract_code_blocks(content)
-        if processed.blocks:
-            logger.debug("IRC: found {} code block(s), uploading to paste", len(processed.blocks))
-            from bridge.formatting.paste import upload_paste
-
-            for i, block in enumerate(processed.blocks):
-                url = await upload_paste(block.content, lang=block.lang)
-                if url:
-                    label = url
-                    logger.debug("IRC: paste block {} uploaded -> {}", i, url)
-                else:
-                    # Upload failed — inline a truncated snippet so nothing is silently lost
-                    snippet = block.content.replace("\n", " ").strip()[:80]
-                    label = f"[code] (paste failed) {snippet}…"
-                    logger.warning("IRC: paste block {} upload failed, using inline snippet", i)
-                processed.text = processed.text.replace(f"{{PASTE_{i}}}", label)
-            content = processed.text
-            logger.info("IRC: paste replaced content -> {!r}", content[:120])
-        else:
-            content = processed.text
-
-        # IRC forbids \r, \0 in message payload; newlines are split into separate messages
-        content = content.replace("\r", "").replace("\x00", "")
-
-        chunks = split_irc_lines(content, max_bytes=450)
-        logger.debug("IRC: split into {} chunk(s) for {}", len(chunks), target)
-
-        # Spoofed nick for RELAYMSG: display/discord (Valware requires '/' in nick)
-        display = str(evt.author_display or evt.author_id or "user").strip()
-        spoofed_nick = self._sanitize_relaymsg_nick(display)
-
-        use_relaymsg = self._has_relaymsg()
-        is_action = getattr(evt, "is_action", False)
-        logger.debug("IRC: use_relaymsg={} spoofed_nick={} is_action={}", use_relaymsg, spoofed_nick, is_action)
-
-        for i, chunk in enumerate(chunks):
-            logger.debug("IRC: sending chunk {}/{} to {} -> {!r}", i + 1, len(chunks), target, chunk[:80])
-            if is_action:
-                # CTCP ACTION (/me): wrap in \x01ACTION ...\x01
-                # RELAYMSG doesn't support CTCP, fall back to PRIVMSG with colored prefix
-                action_text = f"\x01ACTION {chunk}\x01"
-                colored_prefix = f"{_nick_color(display)} "
-                prefixed = colored_prefix + action_text if i == 0 else action_text
-                tags = reply_tags if i == 0 else None
-                if tags:
-                    await self.rawmsg("PRIVMSG", target, prefixed, tags=tags)
-                else:
-                    await self.message(target, prefixed)
-                if i == 0:
-                    logger.info("IRC: sent CTCP ACTION to {} as {}", target, spoofed_nick)
-            elif use_relaymsg:
-                # RELAYMSG #channel spoofed_nick :message
-                if reply_tags and i == 0:
-                    await self.rawmsg("RELAYMSG", target, spoofed_nick, chunk, tags=reply_tags)
-                else:
-                    await self.rawmsg("RELAYMSG", target, spoofed_nick, chunk)
-                if i == 0:
-                    logger.info("IRC: sent RELAYMSG to {} as {}", target, spoofed_nick)
-                    self._recent_relaymsg_sends[(self._server, target, spoofed_nick)] = None
-            else:
-                # PRIVMSG fallback: prefix message with color-coded <Nick>
-                colored_prefix = f"{_nick_color(display)} "
-                prefixed = colored_prefix + chunk if i == 0 else chunk
-                tags = reply_tags if i == 0 else None
-                if tags:
-                    await self.rawmsg("PRIVMSG", target, prefixed, tags=tags)
-                else:
-                    await self.message(target, prefixed)
-                if i == 0:
-                    logger.info("IRC: sent PRIVMSG to {} as {}", target, spoofed_nick)
-            # Only store mapping for first chunk (echo will have msgid)
-            if i == 0:
-                self._pending_sends.put_nowait(evt.message_id)
-                logger.debug(
-                    "IRC: queued pending_send discord_id={} for echo correlation",
-                    evt.message_id,
-                )
+    # ------------------------------------------------------------------
+    # Outbound queue
+    # ------------------------------------------------------------------
 
     def queue_message(self, evt: MessageOut):
         """Queue outbound message."""
         logger.info("IRC: queued message for channel={}", evt.channel_id)
         self._outbound.put_nowait(evt)
 
-    async def disconnect(self, expected=True):
-        """Disconnect and cleanup."""
-        if self._consumer_task:
-            self._consumer_task.cancel()
-            with contextlib.suppress(asyncio.CancelledError):
-                await self._consumer_task
-        await super().disconnect(expected)
+    # ------------------------------------------------------------------
+    # Thin delegation stubs — inbound handlers (→ handlers.py)
+    # ------------------------------------------------------------------
+
+    async def on_message(self, target, source, message):
+        """Handle channel message — delegates to handlers.handle_message."""
+        await super().on_message(target, source, message)
+        from bridge.adapters.irc.handlers import handle_message
+
+        await handle_message(self, target, source, message)
+
+    async def on_ctcp_action(self, by, target, message):
+        """Handle /me action — delegates to handlers.handle_ctcp_action."""
+        await super().on_ctcp_action(by, target, message)
+        from bridge.adapters.irc.handlers import handle_ctcp_action
+
+        await handle_ctcp_action(self, by, target, message)
+
+    async def on_ctcp_version(self, by, target, contents):
+        """Respond to CTCP VERSION — delegates to handlers.handle_ctcp_version."""
+        from bridge.adapters.irc.handlers import handle_ctcp_version
+
+        await handle_ctcp_version(self, by, target, contents)
+
+    async def on_ctcp_source(self, by, target, contents):
+        """Respond to CTCP SOURCE — delegates to handlers.handle_ctcp_source."""
+        from bridge.adapters.irc.handlers import handle_ctcp_source
+
+        await handle_ctcp_source(self, by, target, contents)
+
+    async def on_raw_tagmsg(self, message) -> None:
+        """Handle TAGMSG — delegates to handlers.handle_tagmsg."""
+        from bridge.adapters.irc.handlers import handle_tagmsg
+
+        await handle_tagmsg(self, message)
+
+    async def on_raw_redact(self, message) -> None:
+        """Handle REDACT — delegates to handlers.handle_redact."""
+        from bridge.adapters.irc.handlers import handle_redact
+
+        await handle_redact(self, message)
+
+    async def on_kick(self, channel: str, target: str, by: str, reason: str | None = None) -> None:
+        """Handle KICK — delegates to handlers.handle_kick."""
+        await super().on_kick(channel, target, by, reason or "")
+        from bridge.adapters.irc.handlers import handle_kick
+
+        await handle_kick(self, channel, target, by, reason)
+
+    async def on_nick(self, old: str, new: str) -> None:
+        """Handle nick change — delegates to handlers.handle_nick."""
+        await super().on_nick(old, new)
+        from bridge.adapters.irc.handlers import handle_nick
+
+        await handle_nick(self, old, new)
+
+    async def on_raw_chghost(self, message):
+        """Handle CHGHOST — delegates to handlers.handle_chghost."""
+        from bridge.adapters.irc.handlers import handle_chghost
+
+        await handle_chghost(self, message)
+
+    async def on_raw_setname(self, message):
+        """Handle SETNAME — delegates to handlers.handle_setname."""
+        from bridge.adapters.irc.handlers import handle_setname
+
+        await handle_setname(self, message)
+
+    # ------------------------------------------------------------------
+    # Nick collision handling (Requirement 20.1, 20.2, 20.3)
+    # ------------------------------------------------------------------
+
+    async def on_raw_433(self, message) -> None:
+        """ERR_NICKNAMEINUSE (433): try alternative nicks with suffix escalation."""
+        from bridge.adapters.irc.handlers import handle_nick_collision
+
+        await handle_nick_collision(self, message, error_code=433)
+
+    async def on_raw_432(self, message) -> None:
+        """ERR_ERRONEUSNICKNAME (432): re-sanitize and retry."""
+        from bridge.adapters.irc.handlers import handle_nick_collision
+
+        await handle_nick_collision(self, message, error_code=432)
+
+    # ------------------------------------------------------------------
+    # Thin delegation stubs — outbound (→ outbound.py)
+    # ------------------------------------------------------------------
+
+    async def _consume_outbound(self):
+        """Consume outbound queue — delegates to outbound.consume_outbound."""
+        from bridge.adapters.irc.outbound import consume_outbound
+
+        await consume_outbound(self)
+
+    async def _send_message(self, evt: MessageOut):
+        """Send message to IRC — delegates to outbound.send_message."""
+        from bridge.adapters.irc.outbound import send_message
+
+        await send_message(self, evt)

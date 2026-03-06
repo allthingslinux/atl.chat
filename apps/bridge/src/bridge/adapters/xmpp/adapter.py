@@ -261,23 +261,45 @@ class XMPPAdapter(AdapterBase):
                                     content = new_url
                                     is_media = True
 
+                            # For IRC-origin, evt.message_id is an IRC msgid.
+                            # The temporary (xmpp_id, irc_msgid) mapping is created
+                            # by store_irc_xmpp_pending so the MUC echo can capture
+                            # the stanza-id; resolve_irc_xmpp_pending + add_discord_id_alias
+                            # later replace it with the real discord_id.
+                            is_discord_origin = origin == "discord"
                             xmpp_msg_id = await self._component.send_message_as_user(
                                 evt.author_id,
                                 muc_jid,
                                 content,
                                 nick,
                                 reply_to_id=reply_to_xmpp_id,
-                                discord_message_id=evt.message_id,
+                                discord_message_id=evt.message_id if is_discord_origin else None,
                                 is_media=is_media,
                                 markup_spans=markup_spans,
+                                media_width=evt.raw.get("media_width"),
+                                media_height=evt.raw.get("media_height"),
                             )
                             if xmpp_msg_id:
                                 logger.info("XMPP: sent message to {} as {}", muc_jid, nick)
-                                logger.debug(
-                                    "Stored Discord→XMPP mapping: discord_id={} -> xmpp_id={}",
-                                    evt.message_id,
-                                    xmpp_msg_id,
-                                )
+                                if is_discord_origin:
+                                    logger.debug(
+                                        "Stored Discord→XMPP mapping: discord_id={} -> xmpp_id={}",
+                                        evt.message_id,
+                                        xmpp_msg_id,
+                                    )
+                                elif origin == "irc" and self._msgid_resolver:
+                                    # Store irc_msgid→xmpp_msg_id so the Discord adapter
+                                    # can link xmpp_id→discord_id after the webhook fires.
+                                    self._msgid_resolver.store_irc_xmpp_pending(
+                                        evt.message_id,
+                                        xmpp_msg_id,
+                                        muc_jid,
+                                    )
+                                    logger.debug(
+                                        "Stored IRC→XMPP pending: irc_msgid={} -> xmpp_id={}",
+                                        evt.message_id,
+                                        xmpp_msg_id,
+                                    )
 
                         # Broadcast avatar hash AFTER message send — the puppet is
                         # now guaranteed to be in the MUC (send_message_as_user
@@ -342,7 +364,7 @@ class XMPPAdapter(AdapterBase):
             return
         is_remove = evt.raw.get("is_remove", False)
         logger.info(
-            "Sending XMPP reaction %s to msg %s (discord_id=%s)",
+            "Sending XMPP reaction {} to msg {} (discord_id={})",
             "removal" if is_remove else evt.emoji,
             target_xmpp_id,
             evt.message_id,
