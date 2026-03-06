@@ -33,11 +33,7 @@ For each inbound event:
 3. Skips if no mapping found or content matches `cfg.content_filter_regex`
 4. Emits a corresponding `*Out` event for every other protocol in the mapping via `Bus.publish("relay", out_evt)`
 
-Format conversion applied by `_transform_content`:
-
-- `discord` → `irc`: `discord_to_irc()`
-- `irc` → `discord`: `irc_to_discord()`
-- All other pairs: content passed through unchanged
+Format conversion is handled by the Pipeline (composable `TransformStep` chain). The default pipeline runs: `strip_reply_fallback` → `unwrap_spoiler` → `format_convert` (delegates to `converter.convert()`) → `wrap_spoiler` → `add_reply_fallback` → `content_filter` → `strip_invalid_xml`. All protocol pairs are supported via the IR-based converter.
 
 `MessageOut.raw` carries `{"is_edit": bool, "replace_id": str|None, "origin": str, "xmpp_id_aliases": list[str]}` for downstream adapters (XMPP edit lookup).
 `ReactionOut.raw` is forwarded verbatim from `ReactionIn.raw` (preserves `is_remove` flag).
