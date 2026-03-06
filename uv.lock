@@ -182,7 +182,7 @@ wheels = [
 
 [[package]]
 name = "atl-chat"
-version = "1.4.0"
+version = "1.4.1"
 source = { virtual = "." }
 dependencies = [
     { name = "bridge" },
@@ -357,7 +357,7 @@ wheels = [
 
 [[package]]
 name = "bridge"
-version = "1.4.0"
+version = "1.4.1"
 source = { editable = "apps/bridge" }
 dependencies = [
     { name = "cachetools" },

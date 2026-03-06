@@ -1,3 +1,10 @@
+## [1.4.1](https://github.com/allthingslinux/atl.chat/compare/v1.4.0...v1.4.1) (2026-03-06)
+
+
+### Bug Fixes
+
+* **bridge:** close 5 audit gaps from spec cross-reference ([b0586ec](https://github.com/allthingslinux/atl.chat/commit/b0586ec3dfd08300d15f7ae984e24d966b107bb3))
+
 # [1.4.0](https://github.com/allthingslinux/atl.chat/compare/v1.3.0...v1.4.0) (2026-03-06)
 
 
