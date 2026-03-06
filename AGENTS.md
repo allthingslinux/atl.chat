@@ -24,7 +24,8 @@ apps/
 ├── thelounge/      # Web IRC client (private mode, WebIRC, janitor/giphy plugins)
 ├── obsidianirc/    # Modern IRC web client (custom build)
 ├── gamja/          # IRC web client (planned)
-└── docs/           # Fumadocs documentation site (Next.js)
+├── docs/           # Fumadocs documentation site (Next.js)
+└── fluux-messenger/ # Fluux XMPP messenger (nginx, Docker)
 
 infra/
 ├── compose/        # Compose fragments: irc, xmpp, bridge, thelounge, obsidianirc, cert-manager, networks
@@ -83,6 +84,7 @@ docs/               # Static assets (examples/unrealircd/tls/)
 - [apps/web/AGENTS.md](apps/web/AGENTS.md)
 - [apps/webpanel/AGENTS.md](apps/webpanel/AGENTS.md)
 - [apps/docs/AGENTS.md](apps/docs/AGENTS.md)
+- [apps/fluux-messenger/](apps/fluux-messenger/)
 - [infra/AGENTS.md](infra/AGENTS.md)
 - [scripts/AGENTS.md](scripts/AGENTS.md)
 - [tests/AGENTS.md](tests/AGENTS.md)
