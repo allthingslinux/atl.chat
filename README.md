@@ -8,16 +8,17 @@ Monorepo layout:
 
 ```
 apps/
-├── unrealircd/     # UnrealIRCd 6.x server
-├── atheme/         # IRC services (NickServ, ChanServ, OperServ, MemoServ)
-├── webpanel/       # UnrealIRCd web admin
-├── prosody/        # XMPP server
-├── web/            # Next.js web application
-├── bridge/         # Discord↔IRC↔XMPP bridge (in-repo)
-├── thelounge/      # Web IRC client (private mode, WebIRC)
-├── obsidianirc/    # Modern IRC web client (custom build)
-├── gamja/          # IRC web client (planned)
-└── docs/           # Fumadocs documentation site
+├── unrealircd/        # UnrealIRCd 6.x server
+├── atheme/            # IRC services (NickServ, ChanServ, OperServ, MemoServ)
+├── webpanel/          # UnrealIRCd web admin
+├── prosody/           # XMPP server
+├── web/               # Next.js web application
+├── bridge/            # Discord↔IRC↔XMPP bridge (Python, in-repo)
+├── thelounge/         # Web IRC client (private mode, WebIRC)
+├── obsidianirc/       # Modern IRC web client (custom build)
+├── fluux-messenger/   # Fluux XMPP web client (React + Vite, nginx)
+├── gamja/             # IRC web client (planned)
+└── docs/              # Fumadocs documentation site
 ```
 
 Compose fragments in `infra/compose/`:
@@ -28,6 +29,7 @@ Compose fragments in `infra/compose/`:
 - `bridge.yaml` — Discord↔IRC↔XMPP bridge
 - `thelounge.yaml` — The Lounge web IRC client
 - `obsidianirc.yaml` — ObsidianIRC web client
+- `fluux-messenger.yaml` — Fluux XMPP web client
 - `networks.yaml` — Shared `atl-chat` network
 
 ## Quick Start
@@ -134,7 +136,7 @@ just web dev
 
 ### Bridges
 
-Discord↔IRC↔XMPP bridge (in-repo). See [apps/bridge/](apps/bridge/) and `infra/compose/bridge.yaml`.
+Discord↔IRC↔XMPP bridge (Python, in-repo). Multi-presence puppeting, IR-based format conversion, Portal identity integration. See [apps/bridge/](apps/bridge/) and `infra/compose/bridge.yaml`.
 
 ```bash
 just bridge test       # Run bridge tests
@@ -162,6 +164,15 @@ Modern IRC web client (custom build). See [apps/obsidianirc/](apps/obsidianirc/)
 just obsidianirc rebuild       # Rebuild image
 just obsidianirc rebuild-clean # Rebuild without cache
 ```
+
+### Fluux Messenger
+
+React + Vite XMPP web client by ProcessOne, served via nginx. Connects to Prosody via WebSocket. See [apps/fluux-messenger/](apps/fluux-messenger/).
+
+| Port | Purpose |
+|------|---------|
+| 8091 | HTTP |
+| 8443 | HTTPS |
 
 ## Task Running
 
@@ -260,15 +271,19 @@ just dev    # Uses .env.dev + dev profile
 | Bridges       | [docs-old/bridges/README.md](docs-old/bridges/README.md) |
 | Fumadocs Site | [apps/docs/](apps/docs/) |
 
+## CI/CD
+
+GitHub Actions runs on push to `main`/`develop` and on pull requests:
+
+- Path-based change detection (only affected services are checked)
+- Lint, test, and Docker build jobs per service (IRC, XMPP, Web, Bridge)
+- Security scans (Gitleaks, Trivy)
+- Semantic versioning with automatic changelog on `main` via [semantic-release](https://github.com/semantic-release/semantic-release)
+
 ## Contributing
 
-1. Fork and branch: `git checkout -b feat/my-feature`
-2. Run `just init` and `just dev`
-3. Make changes
-4. Run `just test-all` and `just lint`
-5. Commit: `git commit -m "feat: add feature"` (conventional commits)
-6. Open a pull request
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions, commit conventions, and code style guidelines.
 
 ## License
 
-See [LICENSE](LICENSE).
+Apache 2.0 — see [LICENSE](LICENSE).
