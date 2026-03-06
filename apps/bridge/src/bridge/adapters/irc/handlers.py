@@ -131,7 +131,10 @@ async def handle_message(client: IRCClient, target: str, source: str, message: s
 
     # History replay suppression (Requirement 18.2): discard messages with
     # server-time timestamps significantly in the past (>30s).
-    if is_history_replay(tags):
+    # Exception: messages in a chathistory batch are intentionally replayed
+    # and should NOT be suppressed.
+    in_chathistory = tags.get("batch") in client._chathistory_batches if tags.get("batch") else False
+    if not in_chathistory and is_history_replay(tags):
         logger.debug("IRC: discarding history replay message from {} in {}", source, target)
         return
 
@@ -200,9 +203,16 @@ async def handle_message(client: IRCClient, target: str, source: str, message: s
     logger.info("IRC message bridged: channel={} author={}", target, source)
     client._bus.publish("irc", evt)
 
+    # Track last message timestamp for CHATHISTORY AFTER on reconnect
+    time_str = tags.get("time")
+    if time_str:
+        client._last_message_times[target] = time_str
+
 
 async def handle_ctcp_action(client: IRCClient, by: str, target: str, message: str) -> None:
     """Handle /me action; emit MessageIn with action flag."""
+    if not client._ready:
+        return
     if not target.startswith("#"):
         return
 
@@ -210,8 +220,14 @@ async def handle_ctcp_action(client: IRCClient, by: str, target: str, message: s
     if not mapping:
         return
 
-    if by == client.nickname:
-        return  # Skip our own /me echo
+    # Echo suppression: skip our own, puppet, and relaymsg echoes (same as handle_message)
+    tags = getattr(client, "_message_tags", {}) or {}
+    if (
+        is_own_echo(client, by, tags)
+        or is_puppet_echo(client, by)
+        or is_relaymsg_echo(client, client._server, target, by, tags)
+    ):
+        return
 
     content = f"* {by} {message}"
     _, evt = message_in(
@@ -388,12 +404,19 @@ async def handle_nick(client: IRCClient, old: str, new: str) -> None:
     Nick changes are disabled at the server level via restrict-commands, but
     services (SVSNICK) or a race condition could still rename us. Force our
     nick back immediately so the bridge identity stays consistent.
+
+    NOTE: By the time this handler runs, pydle has already updated
+    client.nickname to *new*. We compare against the initial nick stored
+    at construction time, not the (already-updated) client.nickname.
     """
-    if old.lower() == client.nickname.lower():
-        # Our own nick was changed — revert it
-        logger.warning("IRC: main connection nick changed {} -> {}; reverting", old, new)
+    initial = getattr(client, "_initial_nick", None)
+    if not initial:
+        return
+    if old.lower() == initial.lower() and new.lower() != initial.lower():
+        # Our nick was changed away from the initial — revert it
+        logger.warning("IRC: main connection nick changed {} -> {}; reverting to {}", old, new, initial)
         try:
-            await client.set_nick(old)
+            await client.set_nick(initial)
         except Exception as exc:
             logger.exception("IRC: failed to revert nick change: {}", exc)
 
