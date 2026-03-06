@@ -1,0 +1,71 @@
+# =============================================================================
+# ObsidianIRC - Modern IRC Web Client
+# =============================================================================
+# Custom build from upstream submodule with ATL build args baked in.
+# VITE_HIDE_SERVER_LIST=true hides the Discover page / multi-server UI.
+# =============================================================================
+
+name: atl-obsidianirc
+
+include:
+  - networks.yaml
+
+services:
+  atl-obsidianirc:
+    build:
+      context: ../../apps/obsidianirc
+      dockerfile: Containerfile
+      args:
+        VITE_DEFAULT_IRC_SERVER: ${OBSIDIANIRC_IRC_WS_URL:-wss://irc.atl.chat/ws}
+        VITE_DEFAULT_IRC_SERVER_NAME: "ATL IRC"
+        VITE_DEFAULT_IRC_CHANNELS: ${OBSIDIANIRC_AUTOJOIN:-#general}
+        VITE_HIDE_SERVER_LIST: "true"
+    container_name: atl-obsidianirc
+    hostname: atl-obsidianirc
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+
+    depends_on:
+      atl-irc-server:
+        condition: service_healthy
+
+    ports:
+      - "${OBSIDIANIRC_PORT:-8090}:80"
+
+    env_file:
+      - path: ../../.env
+        required: false
+      - path: ../../.env.dev
+        required: false
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "${LOG_MAX_SIZE:-50m}"
+        max-file: "${LOG_MAX_FILES:-5}"
+        compress: "true"
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:80/",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+    networks:
+      - atl-chat
