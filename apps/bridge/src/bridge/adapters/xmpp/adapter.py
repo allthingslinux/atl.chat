@@ -206,8 +206,8 @@ class XMPPAdapter(AdapterBase):
 
                             # Extract fenced code blocks and upload to paste service
                             from bridge.formatting.discord_to_xmpp import discord_to_xmpp
-                            from bridge.formatting.irc_message_split import extract_code_blocks
                             from bridge.formatting.paste import upload_paste
+                            from bridge.formatting.splitter import extract_code_blocks
 
                             processed = extract_code_blocks(content)
                             had_paste = False

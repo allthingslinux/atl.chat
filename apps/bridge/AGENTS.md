@@ -73,19 +73,13 @@ src/bridge/
 │   ├── paste.py         # PrivateBin paste service integration
 │   ├── mention_resolution.py  # @nick -> Discord <@userId> resolution
 │   ├── reply_fallback.py      # Reply threading fallback
-│   ├── discord_to_irc.py      # Legacy converter (used by some paths)
-│   ├── discord_to_xmpp.py     # Legacy converter
-│   ├── irc_to_discord.py      # Legacy converter
-│   ├── irc_to_xmpp.py         # Legacy converter
-│   ├── xmpp_to_discord.py     # Legacy converter
-│   ├── xmpp_to_irc.py         # Legacy converter
-│   └── irc_message_split.py   # Legacy splitter (used by some paths)
+│   └── discord_to_xmpp.py     # Discord markdown -> XEP-0393 body + XEP-0394 spans
 └── adapters/
     ├── base.py          # AdapterBase ABC
     ├── discord/         # DiscordAdapter: adapter, handlers, webhook, avatar, media, outbound
     ├── irc/             # IRCAdapter: adapter, client, handlers, outbound, puppet, msgid, throttle
     └── xmpp/            # XMPPAdapter: adapter, component, handlers, outbound, media, avatar, msgid
-tests/                   # pytest suite (1729 tests)
+tests/                   # pytest suite (1505 tests)
 ├── unit/                # Isolated component tests (discord/, irc/, xmpp/, formatting/, gateway/, identity/, tracking/, config/, misc/)
 ├── property/            # Hypothesis property-based tests (24 correctness properties)
 ├── integration/         # Cross-component integration tests
@@ -104,7 +98,7 @@ tests/                   # pytest suite (1729 tests)
 - `just bridge lint` -- ruff check (from root)
 - `just bridge format` -- ruff format
 - `just bridge typecheck` -- basedpyright
-- `just bridge test` -- pytest (1729 tests)
+- `just bridge test` -- pytest (1505 tests)
 - `just bridge test -k foo` -- run matching tests
 - `just bridge check` -- all of the above in sequence
 

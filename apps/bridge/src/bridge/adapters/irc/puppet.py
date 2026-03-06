@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 import pydle
 from loguru import logger
 
-from bridge.formatting.irc_message_split import split_irc_message
+from bridge.formatting.splitter import split_irc_message
 
 if TYPE_CHECKING:
     from bridge.gateway import Bus, ChannelRouter

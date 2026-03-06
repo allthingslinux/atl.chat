@@ -2,7 +2,7 @@
 
 > Scope: `tests/` directory. Inherits root [AGENTS.md](../AGENTS.md).
 
-1729-test pytest suite covering all bridge components.
+1505-test pytest suite covering all bridge components.
 
 ## Quick Facts
 

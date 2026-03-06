@@ -12,7 +12,7 @@ All cross-protocol formatting goes through an intermediate representation (IR):
 Source format -> parse -> FormattedText IR -> emit -> Target format
 ```
 
-The `converter.py` registry dispatches to protocol-specific parsers and emitters. Legacy direct converters (`discord_to_irc.py`, etc.) remain for paths that haven't migrated.
+The `converter.py` registry dispatches to protocol-specific parsers and emitters.
 
 ## Files
 
@@ -27,13 +27,7 @@ The `converter.py` registry dispatches to protocol-specific parsers and emitters
 | `paste.py` | PrivateBin paste service integration for long messages |
 | `mention_resolution.py` | Resolve `@nick` in IRC/XMPP content to Discord `<@userId>` via guild member lookup |
 | `reply_fallback.py` | Reply threading fallback when msgid unavailable |
-| `discord_to_irc.py` | Legacy: strip Discord markdown to plain text for IRC |
-| `discord_to_xmpp.py` | Legacy: Discord markdown to XEP-0393 |
-| `irc_to_discord.py` | Legacy: IRC control codes to Discord markdown |
-| `irc_to_xmpp.py` | Legacy: IRC control codes to XEP-0393 |
-| `xmpp_to_discord.py` | Legacy: XEP-0393 to Discord markdown |
-| `xmpp_to_irc.py` | Legacy: XEP-0393 to IRC control codes |
-| `irc_message_split.py` | Legacy: IRC message splitting |
+| `discord_to_xmpp.py` | Discord markdown to XEP-0393 body + XEP-0394 spans (used by XMPP adapter for rich markup) |
 
 ## IR Types (`primitives.py`)
 

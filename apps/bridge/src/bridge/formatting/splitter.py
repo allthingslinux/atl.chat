@@ -2,9 +2,67 @@
 
 Each chunk encodes to at most *max_bytes* bytes in UTF-8, and the
 concatenation of all chunks equals the original text (no content loss).
+
+Also provides code-block extraction for paste-service upload.
 """
 
 from __future__ import annotations
+
+import re
+from dataclasses import dataclass, field
+
+# Matches fenced code blocks: ```[lang]\n...\n``` (multiline)
+_FENCED_CODE_RE = re.compile(r"```(\w+)?\n(.*?)```|```(.*?)```", re.DOTALL)
+
+
+@dataclass
+class CodeBlock:
+    """A fenced code block extracted from message content."""
+
+    lang: str
+    content: str
+
+
+@dataclass
+class ProcessedContent:
+    """Content with code blocks extracted and replaced by placeholders."""
+
+    text: str
+    blocks: list[CodeBlock] = field(default_factory=list)
+
+
+def extract_code_blocks(content: str) -> ProcessedContent:
+    """Extract fenced code blocks, replacing each with a ``{PASTE_N}`` token."""
+    blocks: list[CodeBlock] = []
+
+    def _replace(m: re.Match[str]) -> str:
+        if m.group(3) is not None:
+            lang = ""
+            body = m.group(3)
+        else:
+            lang = (m.group(1) or "").strip()
+            body = m.group(2)
+        if body.endswith("\n"):
+            body = body[:-1]
+        blocks.append(CodeBlock(lang=lang, content=body))
+        return f"{{PASTE_{len(blocks) - 1}}}"
+
+    text = _FENCED_CODE_RE.sub(_replace, content)
+    return ProcessedContent(text=text, blocks=blocks)
+
+
+def split_irc_lines(content: str, max_bytes: int = 450) -> list[str]:
+    """Split on newlines first, then byte-split each line.
+
+    Empty lines are skipped.
+    """
+    lines = content.split("\n") or [""]
+    result: list[str] = []
+    for line in lines:
+        if not line.strip():
+            continue
+        result.extend(split_irc_message(line, max_bytes=max_bytes))
+    return result or [""]
 
 
 def split_irc_message(text: str, max_bytes: int = 450) -> list[str]:

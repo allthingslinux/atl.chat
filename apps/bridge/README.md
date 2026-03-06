@@ -2,7 +2,7 @@
 
 **Production-ready Discord–IRC–XMPP bridge with multi-presence and Portal identity.**
 
-[![Tests](https://img.shields.io/badge/tests-1729%20passing-brightgreen)]() [![Python](https://img.shields.io/badge/python-3.10+-blue)]() [![License](https://img.shields.io/badge/license-MIT-blue)]()
+[![Tests](https://img.shields.io/badge/tests-1505%20passing-brightgreen)]() [![Python](https://img.shields.io/badge/python-3.10+-blue)]() [![License](https://img.shields.io/badge/license-MIT-blue)]()
 
 ## Overview
 
@@ -181,15 +181,13 @@ src/bridge/
 │   ├── paste.py         # PrivateBin paste service integration
 │   ├── mention_resolution.py  # @nick → Discord <@userId> resolution
 │   ├── reply_fallback.py      # Reply threading fallback
-│   ├── discord_to_irc.py      # Legacy converter
-│   ├── irc_to_discord.py      # Legacy converter
-│   └── irc_message_split.py   # Legacy splitter
+│   └── discord_to_xmpp.py     # Discord markdown → XEP-0393 body + XEP-0394 spans
 └── adapters/
     ├── base.py          # AdapterBase ABC
     ├── discord/         # adapter, handlers, outbound, webhook, avatar, media
     ├── irc/             # adapter, client, handlers, outbound, puppet, msgid, throttle
     └── xmpp/            # adapter, component, handlers, outbound, media, avatar, msgid
-tests/                   # pytest suite (1729 tests)
+tests/                   # pytest suite (1505 tests)
 ├── unit/                # Isolated component tests (discord/, irc/, xmpp/, formatting/, gateway/, identity/, tracking/, config/, misc/)
 ├── property/            # Hypothesis property-based tests (24 correctness properties)
 ├── integration/         # Cross-component integration tests

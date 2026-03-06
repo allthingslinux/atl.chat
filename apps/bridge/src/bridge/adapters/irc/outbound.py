@@ -14,7 +14,7 @@ from loguru import logger
 from bridge.adapters.irc.client import _nick_color
 from bridge.config import cfg
 from bridge.events import MessageOut
-from bridge.formatting.irc_message_split import extract_code_blocks, split_irc_lines
+from bridge.formatting.splitter import extract_code_blocks, split_irc_lines
 
 if TYPE_CHECKING:
     from bridge.adapters.irc.client import IRCClient

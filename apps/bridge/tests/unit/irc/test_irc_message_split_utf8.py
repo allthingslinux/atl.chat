@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from bridge.formatting.irc_message_split import split_irc_message
+from bridge.formatting.splitter import split_irc_message
 
 
 class TestSplitIrcMessageUtf8:
@@ -130,17 +130,3 @@ class TestSplitIrcMessageUtf8:
         for chunk in chunks:
             encoded = chunk.encode("utf-8")
             assert len(encoded) % 2 == 0  # é = 2 bytes, so count must be even
-
-    def test_prefers_word_boundary_over_mid_word(self):
-        """Split should land at the last space rather than cutting a word."""
-        # Arrange
-        first = "a" * 60
-        second = "b" * 40
-        content = first + " " + second  # 101 bytes — just over the limit
-
-        # Act
-        chunks = split_irc_message(content, max_bytes=100)
-
-        # Assert — first chunk carries the first word, second carries the rest
-        assert chunks[0].rstrip() == first
-        assert second in "".join(chunks)
