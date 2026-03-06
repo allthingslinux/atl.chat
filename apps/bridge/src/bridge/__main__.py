@@ -22,7 +22,7 @@ from bridge.events import config_reload
 from bridge.gateway import Bus, ChannelRouter, Relay
 from bridge.gateway.msgid_resolver import DefaultMessageIDResolver
 from bridge.gateway.relay import rebuild_content_filters
-from bridge.identity import DevIdentityResolver, IdentityResolver, PortalClient
+from bridge.identity import DevIdentityResolver, IdentityResolver, PortalClient, PortalIdentityResolver
 
 
 class Adapter(Protocol):
@@ -183,10 +183,10 @@ def main() -> None:
     # Portal client + identity resolver (when Portal URL available)
     portal_url = _get_portal_url()
     portal_client: PortalClient | None = None
-    identity_resolver: IdentityResolver | DevIdentityResolver | None = None
+    identity_resolver: IdentityResolver | None = None
     if portal_url:
         portal_client = PortalClient(portal_url, token=_get_portal_token())
-        identity_resolver = IdentityResolver(
+        identity_resolver = PortalIdentityResolver(
             portal_client,
             ttl=config.identity_cache_ttl_seconds,
         )
