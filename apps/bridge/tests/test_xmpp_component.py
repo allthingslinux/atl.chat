@@ -80,6 +80,9 @@ class MockMsg:
             return self._mucnick
         if key == "oob" and self._oob_url is not None:
             return {"url": self._oob_url, "desc": ""}
+        # Return actual plugin object if registered (e.g. spoiler, replace, reply)
+        if key in self._plugins:
+            return self._plugins[key]
         # For nested access like msg["replace"]["id"] return a dict-like mock
         return MagicMock()
 
@@ -154,6 +157,25 @@ class TestOnGroupchatMessage:
 
         _, evt = bus.publish.call_args[0]
         assert evt.content == "||secret||"
+
+    def test_spoiler_with_hint(self):
+        """XEP-0382: spoiler with hint text prepended."""
+        router = self._make_router()
+        bus = MagicMock()
+        comp = make_component(router=router, bus=bus)
+
+        # Create a mock spoiler plugin with xml.text for the hint
+        spoiler_plugin = MockPlugin()
+        from types import SimpleNamespace
+
+        spoiler_plugin.xml = SimpleNamespace(text="Plot twist")
+
+        msg = MockMsg("room@conf.example.com/nick", body="they all die", plugins={"spoiler": spoiler_plugin})
+        comp._on_groupchat_message(msg)
+
+        _, evt = bus.publish.call_args[0]
+        assert evt.content == "Plot twist: ||they all die||"
+        assert evt.raw.get("spoiler_hint") == "Plot twist"
 
     def test_oob_url_used_as_content_when_body_empty(self):
         """XEP-0066 OOB: when body is empty, OOB URL becomes content."""

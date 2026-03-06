@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import hashlib
 import re
 import time
@@ -215,7 +216,7 @@ class XMPPComponent(ComponentXMPP):
             disco.add_identity(
                 category="gateway",
                 itype="discord",
-                name="Discord-IRC-XMPP Bridge",
+                name="Bridge",
             )
 
         self.add_event_handler("groupchat_message", self._on_groupchat_message)
@@ -298,8 +299,14 @@ class XMPPComponent(ComponentXMPP):
         from_jid = str(msg["from"]) if msg["from"] else ""
 
         # Convert XMPP spoilers to Discord format
+        # XEP-0382: <spoiler>hint</spoiler> — hint is optional warning text
+        spoiler_hint: str | None = None
         if msg.get_plugin("spoiler", check=True):
-            body = f"||{body}||"
+            hint_text = ""
+            with contextlib.suppress(AttributeError, TypeError):
+                hint_text = (msg["spoiler"].xml.text or "").strip()
+            spoiler_hint = hint_text
+            body = f"{hint_text}: ||{body}||" if hint_text else f"||{body}||"
 
         # XEP-0066 OOB: extract file URL from <x xmlns="jabber:x:oob"><url/></x>
         # Clients often put the same URL in both body and oob; avoid duplicating
@@ -385,12 +392,20 @@ class XMPPComponent(ComponentXMPP):
         # Check for reply reference (XEP-0461 or XEP-0372)
         reply_to_xmpp_id: str | None = None
 
+        reply_quoted_author: str | None = None
+
         # Try XEP-0461 first (newer)
         if msg.get_plugin("reply", check=True):
             reply_plugin = msg["reply"]
             if reply_plugin.get("id"):
                 reply_to_xmpp_id = reply_plugin["id"]
                 logger.debug("Received XMPP reply (XEP-0461) to message {}", reply_to_xmpp_id)
+                # Extract author nick from the reply's 'to' attribute (full MUC JID: room/nick)
+                reply_to_jid = reply_plugin.get("to")
+                if reply_to_jid:
+                    reply_to_str = str(reply_to_jid)
+                    if "/" in reply_to_str:
+                        reply_quoted_author = reply_to_str.split("/", 1)[1]
 
         # Fall back to XEP-0372 if no XEP-0461 reply
         if not reply_to_xmpp_id and msg.get_plugin("reference", check=True):
@@ -424,10 +439,14 @@ class XMPPComponent(ComponentXMPP):
                 origin_id_val = origin_id_elem.get("id")
 
         raw_data = {}
+        if spoiler_hint is not None:
+            raw_data["spoiler_hint"] = spoiler_hint
         if replace_id:
             raw_data["replace_id"] = replace_id
         if reply_to_xmpp_id:
             raw_data["reply_to_id"] = reply_to_xmpp_id  # Original XMPP stanza-id (for tests/debug)
+            if reply_quoted_author:
+                raw_data["reply_quoted_author"] = reply_quoted_author
             # Extract quoted content from XEP-0428 fallback so relay can add > quote for IRC
             if xml is not None:
                 fb = xml.find(".//{urn:xmpp:fallback:0}fallback[@for='urn:xmpp:reply:0']")
@@ -1044,6 +1063,8 @@ class XMPPComponent(ComponentXMPP):
             # Add spoiler tag if Discord message had spoilers
             if spoiler_hint is not None:
                 msg.enable("spoiler")
+                if spoiler_hint:
+                    msg["spoiler"].xml.text = spoiler_hint
 
             # Add reply reference if replying to another message
             if reply_to_id:
@@ -1181,6 +1202,26 @@ class XMPPComponent(ComponentXMPP):
             logger.info("XMPP: sent retraction for message {} to room {} (from IRC/Discord)", target_msg_id, muc_jid)
         except Exception as exc:
             logger.exception("Failed to send retraction: {}", exc)
+
+    async def send_retraction_as_bridge(self, muc_jid: str, target_msg_id: str) -> None:
+        """Send message retraction from the bridge listener JID (no puppet join needed)."""
+        bridge_jid = f"bridge@{self._component_jid}"
+
+        retraction_plugin = self.plugin.get("xep_0424", None)
+        if not retraction_plugin:
+            logger.error("XEP-0424 plugin not available")
+            return
+
+        try:
+            retraction_plugin.send_retraction(
+                JID(muc_jid),
+                target_msg_id,
+                mtype="groupchat",
+                mfrom=JID(bridge_jid),
+            )
+            logger.info("XMPP: sent retraction for message {} to room {} (from bridge)", target_msg_id, muc_jid)
+        except Exception as exc:
+            logger.exception("Failed to send retraction from bridge: {}", exc)
 
     async def send_correction_as_user(
         self, discord_id: str, muc_jid: str, content: str, nick: str, original_xmpp_id: str

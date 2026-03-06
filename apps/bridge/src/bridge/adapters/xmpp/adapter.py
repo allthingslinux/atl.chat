@@ -230,18 +230,22 @@ class XMPPAdapter(AdapterBase):
                                 content = processed.text
 
                             # Parse Discord markdown -> XEP-0393 styled body + XEP-0394 spans.
-                            # Send the XEP-0393 styled body (e.g. *bold*, _italic_) so that
-                            # both Gajim (XEP-0393 only) and Dino (XEP-0393 + XEP-0394) render
-                            # formatting correctly. XEP-0394 spans reference body offsets, so
-                            # we only attach them when the body is the plain (stripped) version.
-                            xmpp_markup = discord_to_xmpp(content)
-                            if xmpp_markup.styled_body is not None:
-                                # Use XEP-0393 styled body; skip XEP-0394 spans (offsets mismatch)
-                                content = xmpp_markup.styled_body
-                                markup_spans = None
+                            # Only needed for Discord-origin content. IRC and XMPP content
+                            # is already XEP-0393 (irc_to_xmpp converts control codes to
+                            # *bold*/_italic_/etc., and XMPP content is native XEP-0393).
+                            # Running discord_to_xmpp on XEP-0393 text would double-process
+                            # it (e.g. *bold* → _bold_ because Discord *text* = italic).
+                            origin = evt.raw.get("origin", "")
+                            if origin == "discord":
+                                xmpp_markup = discord_to_xmpp(content)
+                                if xmpp_markup.styled_body is not None:
+                                    content = xmpp_markup.styled_body
+                                    markup_spans = None
+                                else:
+                                    content = xmpp_markup.body
+                                    markup_spans = xmpp_markup.spans if xmpp_markup.has_markup else None
                             else:
-                                content = xmpp_markup.body
-                                markup_spans = xmpp_markup.spans if xmpp_markup.has_markup else None
+                                markup_spans = None
 
                             # Re-upload extensionless image URLs so XMPP clients
                             # render them inline (they rely on URL file extension).
@@ -305,24 +309,21 @@ class XMPPAdapter(AdapterBase):
         if not mapping or not mapping.xmpp:
             return
         tracker = self._component._msgid_tracker
-        stanza_id = tracker.get_xmpp_id_for_reaction(evt.message_id)
-        primary_id = tracker.get_xmpp_id(evt.message_id)
-        ids_to_send = []
-        if stanza_id:
-            ids_to_send.append(stanza_id)
-        if primary_id and primary_id not in ids_to_send:
-            ids_to_send.append(primary_id)
-        if not ids_to_send:
+        # Prefer stanza-id (XEP-0424 §5.1 for MUC); fall back to origin-id.
+        # Only send ONE retraction — sending both causes duplicate "unsupported
+        # retraction" fallback messages on clients like Dino that lack XEP-0424.
+        target_xmpp_id = tracker.get_xmpp_id_for_reaction(evt.message_id)
+        if not target_xmpp_id:
+            target_xmpp_id = tracker.get_xmpp_id(evt.message_id)
+        if not target_xmpp_id:
             logger.debug("No XMPP msgid for Discord message {}; skip retraction", evt.message_id)
             return
-        nick = await self._resolve_nick_async(evt)
-        for target_xmpp_id in ids_to_send:
-            await self._component.send_retraction_as_user(
-                evt.author_id or "unknown",
-                mapping.xmpp.muc_jid,
-                target_xmpp_id,
-                nick,
-            )
+        # Send retraction from the bridge listener JID — it's already in the MUC,
+        # so no puppet join is needed (avoids nick conflicts like "admin_bridge").
+        await self._component.send_retraction_as_bridge(
+            mapping.xmpp.muc_jid,
+            target_xmpp_id,
+        )
 
     async def _handle_reaction_out(self, evt: ReactionOut) -> None:
         """Send XMPP reaction for ReactionOut."""
