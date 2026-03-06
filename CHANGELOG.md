@@ -1,3 +1,13 @@
+# [1.4.0](https://github.com/allthingslinux/atl.chat/compare/v1.3.0...v1.4.0) (2026-03-06)
+
+
+### Features
+
+* **atheme:** update config template ([75129be](https://github.com/allthingslinux/atl.chat/commit/75129bee49583d3e1d44374b2a5a2853794bbbd7))
+* **infra:** add fluux-messenger service and env examples ([9c34a1a](https://github.com/allthingslinux/atl.chat/commit/9c34a1afcba7aec24111606ec18ac4c451ea2caf))
+* **prosody:** add audit commands, modules, and config updates ([78c5d06](https://github.com/allthingslinux/atl.chat/commit/78c5d0628b078a4123b75276d352f5c3dbbcf3be))
+* **unrealircd:** update config template and third-party modules ([6f2fc8d](https://github.com/allthingslinux/atl.chat/commit/6f2fc8d5e67d5e83d33ad5dd4a22d1b9328ae5d3))
+
 # [1.3.0](https://github.com/allthingslinux/atl.chat/compare/v1.2.0...v1.3.0) (2026-03-06)
 
 
