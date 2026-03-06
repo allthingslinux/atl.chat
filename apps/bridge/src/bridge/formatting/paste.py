@@ -38,16 +38,18 @@ def _unwrap(obj: object) -> object:
 def _create_paste_sync(content: str, lang: str, server: str) -> str:
     """Synchronous PrivateBin v2 paste creation with correct enum serialization."""
     import base58
-    from privatebin._core import (
-        AuthenticatedData,
+    from privatebin._crypto import encrypt
+    from privatebin._enums import (
         Compression,
         Expiration,
         Formatter,
         PrivateBinEncryptionSetting,
-        PrivateBinUrl,
-        encrypt,
-        to_compact_jsonb,
     )
+    from privatebin._models import (
+        AuthenticatedData,
+        PrivateBinUrl,
+    )
+    from privatebin._utils import to_compact_jsonb
 
     formatter = Formatter.SOURCE_CODE if lang else Formatter.PLAIN_TEXT
     compression = Compression.ZLIB
@@ -61,7 +63,7 @@ def _create_paste_sync(content: str, lang: str, server: str) -> str:
     data = {"paste": content}
     encoded_data = to_compact_jsonb(data)
 
-    from privatebin._core import Compressor
+    from privatebin._utils import Compressor
 
     compressed_data = Compressor(mode=compression).compress(encoded_data)
 
