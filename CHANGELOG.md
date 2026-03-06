@@ -1,3 +1,25 @@
+# [1.5.0](https://github.com/allthingslinux/atl.chat/compare/v1.4.1...v1.5.0) (2026-03-06)
+
+
+### Bug Fixes
+
+* **irc:** add puppet channel join and per-user creation lock ([e6a3efa](https://github.com/allthingslinux/atl.chat/commit/e6a3efa02fd039e14a8a3c4527fec1a70f5e15d8))
+* **irc:** close multiline BATCH in finally block, add draft/multiline support ([a85eece](https://github.com/allthingslinux/atl.chat/commit/a85eece38f48fbf3f798629f8b6b6b65d2ea11e4))
+* **irc:** fix broken nick revert and add echo suppression to CTCP ACTION ([a81cf9b](https://github.com/allthingslinux/atl.chat/commit/a81cf9b1243b25648fe9a06c01fc8d962fdd30f9))
+* **irc:** store initial nick, protect channel joins, add IRCv3 cap handlers ([6fd0275](https://github.com/allthingslinux/atl.chat/commit/6fd02756e6a495193d071764cb822c08117a30d0))
+
+
+### Features
+
+* **bridge:** add chathistory config options to schema ([2b3edd1](https://github.com/allthingslinux/atl.chat/commit/2b3edd1bba034783cb24284c9fbce83b971d443d))
+* **unrealircd:** add display-name and block_masshighlight to module manifest ([2ee6dfe](https://github.com/allthingslinux/atl.chat/commit/2ee6dfe34d31d3f911eb26fde342147c423b757f))
+* **unrealircd:** add third/display-name and third/block_masshighlight ([e33f887](https://github.com/allthingslinux/atl.chat/commit/e33f8875561948c066f2fe81aebb241e657525bc))
+
+
+### Performance Improvements
+
+* **irc:** throttle MessageIDTracker cleanup to once per minute ([e7f3fcd](https://github.com/allthingslinux/atl.chat/commit/e7f3fcd33d570a78922d3d948c621a4fe5686a42))
+
 ## [1.4.1](https://github.com/allthingslinux/atl.chat/compare/v1.4.0...v1.4.1) (2026-03-06)
 
 
