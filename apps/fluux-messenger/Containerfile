@@ -1,0 +1,39 @@
+# =============================================================================
+# Fluux Messenger — Multi-stage build
+# =============================================================================
+# Clones upstream, builds the web client, serves static assets via nginx.
+# Fluux is a React + Vite XMPP client (processone/fluux-messenger).
+# TLS terminated by nginx using shared wildcard certs from cert-manager.
+# =============================================================================
+
+# --- Stage 1: Build ---
+FROM node:22-alpine AS builder
+
+ARG FLUUX_VERSION=v0.13.3
+
+RUN apk add --no-cache git
+
+WORKDIR /src
+RUN git clone --depth 1 --branch "${FLUUX_VERSION}" \
+    https://github.com/processone/fluux-messenger.git .
+
+RUN npm ci --ignore-scripts
+RUN npm run build
+
+# --- Stage 2: Serve ---
+FROM nginx:1-alpine
+
+RUN apk add --no-cache wget
+
+COPY --from=builder /src/apps/fluux/dist /usr/share/nginx/html
+COPY nginx-plain.conf.template /etc/nginx/templates/nginx-plain.conf.template
+COPY nginx-tls.conf.template /etc/nginx/templates/nginx-tls.conf.template
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+
+EXPOSE 80 443
+
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 --start-period=10s \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:80/health || exit 1
+
+ENTRYPOINT ["/docker-entrypoint.sh"]

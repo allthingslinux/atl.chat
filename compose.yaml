@@ -19,6 +19,7 @@ include:
   - infra/compose/bridge.yaml
   - infra/compose/thelounge.yaml
   - infra/compose/obsidianirc.yaml
+  - infra/compose/fluux-messenger.yaml
 
 services:
   dozzle:
