@@ -379,6 +379,8 @@ loadmodule "third/redact";        /* IRCv3 draft/message-redaction: REDACT for d
 loadmodule "third/relaymsg-atl";  /* atl.chat fork: RELAYMSG for stateless bridging */
 loadmodule "third/irccloud-tags"; /* IRCCloud MessageTags support */
 loadmodule "third/kiwiirc-tags";  /* KiwiIRC MessageTags support */
+loadmodule "third/display-name";  /* IRCv3 draft/display-name: display names in message tags */
+loadmodule "third/block_masshighlight"; /* Block mass highlight spam network-wide */
 
 /* METADATA: avatars, message coloring, status texts (draft/metadata, draft/metadata-notify-2)
  * Usage: /metadata * set avatar :https://example.com/avatar.png
@@ -396,6 +398,17 @@ relaymsg {
 	hostmask "bridge@${IRC_DOMAIN}";
 	require-separator no;
 }
+
+/* BLOCK_MASSHIGHLIGHT: prevent highlight spam network-wide.
+ * Channel mode +B exempts a channel from checks. Opers and +a/+q are exempt.
+ * Action: drop the message silently; notify opers via log event. */
+block_masshighlight {
+	maxnicks 5;
+	action drop;
+	snotice 1;
+	allow_authed 0;
+	show_opers_origmsg 1;
+};
 
 me {
 	name "${IRC_DOMAIN}";
