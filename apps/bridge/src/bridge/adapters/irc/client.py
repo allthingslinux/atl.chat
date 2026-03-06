@@ -100,6 +100,10 @@ class IRCClient(pydle.Client):
         "setname",  # IRCv3: realname change notifications
         "draft/relaymsg",  # IRCv3: stateless bridging — send as spoofed nick without puppets
         "overdrivenetworks.com/relaymsg",  # Alternate relaymsg cap name (some networks)
+        "cap-notify",  # IRCv3: notify when caps are added/removed at runtime
+        "bot",  # IRCv3: bot mode — mark ourselves as a bot, see bot tags on others
+        "draft/multiline",  # IRCv3: send multi-line messages as a single batch
+        "draft/chathistory",  # IRCv3: fetch missed messages on reconnect via CHATHISTORY
     }
 
     def __init__(
@@ -121,6 +125,7 @@ class IRCClient(pydle.Client):
         self._router = router
         self._server = server
         self._channels = channels
+        self._initial_nick = nick  # for nick revert after forced rename
         self._outbound: asyncio.Queue[MessageOut] = asyncio.Queue()
         self._consumer_task: asyncio.Task | None = None
         self._msgid_tracker = msgid_tracker
@@ -143,6 +148,14 @@ class IRCClient(pydle.Client):
         # ISUPPORT values (Requirement 11.7, 11.8)
         self._server_nicklen: int = 23  # effective limit: min(server_nicklen, 23)
         self._server_casemapping: str = "rfc1459"  # default per IRC spec
+        # Nick collision retry counter (used by handlers.handle_nick_collision)
+        self._nick_collision_attempts: int = 0
+        # Multiline batch counter for draft/multiline BATCH references
+        self._batch_counter: int = 0
+        # Chathistory: track last message timestamp per channel for CHATHISTORY AFTER on reconnect
+        self._last_message_times: dict[str, str] = {}
+        # Active chathistory batch references — messages in these batches bypass history replay suppression
+        self._chathistory_batches: set[str] = set()
 
     # ------------------------------------------------------------------
     # Connection lifecycle
@@ -154,11 +167,17 @@ class IRCClient(pydle.Client):
         self._ready = False
         logger.info("IRC connected to {}", self._server)
         for channel in self._channels:
-            await self.join(channel)
+            try:
+                await self.join(channel)
+            except Exception as exc:
+                logger.warning("IRC: failed to join {}: {} (will retry on next reconnect)", channel, exc)
         await self._ensure_channels_permanent()
         self._consumer_task = asyncio.create_task(self._consume_outbound())
         # Fallback: if no PONG within 10s, mark ready anyway (some servers don't echo PING)
         asyncio.create_task(self._ready_fallback())  # noqa: RUF006
+        # Fetch missed messages via CHATHISTORY on reconnect (if we have prior timestamps)
+        if self._last_message_times:
+            asyncio.create_task(self._fetch_chathistory())  # noqa: RUF006
 
     async def _ensure_channels_permanent(self) -> None:
         """OPER up, set +B (bot mode), and set +P (permanent) on bridged channels."""
@@ -336,6 +355,105 @@ class IRCClient(pydle.Client):
         """Generate the next unique label for labeled-response."""
         self._label_counter += 1
         return f"bridge-{self._label_counter}"
+
+    # ------------------------------------------------------------------
+    # cap-notify, bot, multiline, chathistory capability handlers
+    # ------------------------------------------------------------------
+
+    async def on_capability_cap_notify_available(self, value):
+        """Request cap-notify for runtime capability change notifications."""
+        return True
+
+    async def on_capability_bot_available(self, value):
+        """Request bot capability — marks us as a bot, lets us see bot tags on others."""
+        return True
+
+    async def on_capability_bot_enabled(self):
+        """Log when bot capability is negotiated."""
+        logger.debug("IRC: bot capability negotiated")
+
+    async def on_capability_draft_multiline_available(self, value):
+        """Request draft/multiline for sending multi-line messages as a single batch."""
+        return True
+
+    async def on_capability_draft_multiline_enabled(self):
+        """Log when draft/multiline is negotiated."""
+        logger.info("IRC: draft/multiline capability negotiated — multi-line batches enabled")
+
+    def _has_multiline(self) -> bool:
+        """Check if draft/multiline capability was negotiated."""
+        caps = getattr(self, "_capabilities", {})
+        return bool(caps.get("draft/multiline"))
+
+    def _next_batch_ref(self) -> str:
+        """Generate the next unique batch reference tag for BATCH commands."""
+        self._batch_counter += 1
+        return f"bridge-ml-{self._batch_counter}"
+
+    async def on_capability_draft_chathistory_available(self, value):
+        """Request draft/chathistory for fetching missed messages on reconnect."""
+        return True
+
+    async def on_capability_draft_chathistory_enabled(self):
+        """Log when draft/chathistory is negotiated."""
+        logger.info("IRC: draft/chathistory capability negotiated — reconnect history enabled")
+
+    def _has_chathistory(self) -> bool:
+        """Check if draft/chathistory capability was negotiated."""
+        caps = getattr(self, "_capabilities", {})
+        return bool(caps.get("draft/chathistory"))
+
+    async def _fetch_chathistory(self) -> None:
+        """Fetch missed messages via CHATHISTORY AFTER on reconnect.
+
+        Waits for the client to be ready, then issues CHATHISTORY AFTER for
+        each channel that has a stored last-message timestamp. Messages arrive
+        in a chathistory batch and bypass history replay suppression.
+        """
+        if not cfg.irc_chathistory_on_reconnect:
+            return
+        # Wait for ready (caps negotiated, channels joined)
+        for _ in range(30):
+            if self._ready:
+                break
+            await asyncio.sleep(0.5)
+        if not self._has_chathistory():
+            logger.debug("IRC: draft/chathistory not negotiated; skipping reconnect history fetch")
+            return
+        limit = str(cfg.irc_chathistory_limit)
+        for channel in self._channels:
+            last = self._last_message_times.get(channel)
+            if not last:
+                continue
+            try:
+                await self.rawmsg("CHATHISTORY", "AFTER", channel, f"timestamp={last}", limit)
+                logger.info("IRC: requested CHATHISTORY AFTER {} since {}", channel, last)
+            except Exception as exc:
+                logger.warning("IRC: CHATHISTORY request failed for {}: {}", channel, exc)
+
+    # ------------------------------------------------------------------
+    # BATCH handler (chathistory batch tracking)
+    # ------------------------------------------------------------------
+
+    async def on_raw_batch(self, message) -> None:
+        """Track chathistory batch start/end for history replay suppression bypass."""
+        params = getattr(message, "params", [])
+        if not params:
+            return
+        ref_tag = str(params[0])
+        if ref_tag.startswith("+"):
+            # Batch start: +ref type [params...]
+            ref = ref_tag[1:]
+            batch_type = params[1] if len(params) > 1 else ""
+            if batch_type == "chathistory":
+                self._chathistory_batches.add(ref)
+                logger.debug("IRC: chathistory batch started ref={}", ref)
+        elif ref_tag.startswith("-"):
+            # Batch end: -ref
+            ref = ref_tag[1:]
+            if ref in self._chathistory_batches:
+                self._chathistory_batches.discard(ref)
+                logger.debug("IRC: chathistory batch ended ref={}", ref)
 
     async def on_capability_draft_relaymsg_available(self, value):
         """Request draft/relaymsg for stateless bridging."""
