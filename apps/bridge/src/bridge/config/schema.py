@@ -61,6 +61,8 @@ class IRCConfig:
     tls_verify: bool = True
     puppet_ping_interval: int = 120
     puppet_prejoin_commands: list[str] = field(default_factory=list)
+    chathistory_on_reconnect: bool = True
+    chathistory_limit: int = 50
 
 
 @dataclass
@@ -104,6 +106,9 @@ def _build_irc_config(data: dict[str, Any], env: dict[str, str]) -> IRCConfig:
 
     val = data.get("irc_puppet_prejoin_commands")
     kw["puppet_prejoin_commands"] = [str(c) for c in val] if isinstance(val, list) else []
+
+    kw["chathistory_on_reconnect"] = bool(data.get("irc_chathistory_on_reconnect", True))
+    kw["chathistory_limit"] = int(data.get("irc_chathistory_limit", 50))
 
     # --- env overrides for redact_enabled ---
     env_redact = env.get("BRIDGE_IRC_REDACT_ENABLED", "")
@@ -348,6 +353,14 @@ class Config:
     @property
     def irc_puppet_prejoin_commands(self) -> list[str]:
         return self.irc.puppet_prejoin_commands
+
+    @property
+    def irc_chathistory_on_reconnect(self) -> bool:
+        return self.irc.chathistory_on_reconnect
+
+    @property
+    def irc_chathistory_limit(self) -> int:
+        return self.irc.chathistory_limit
 
     # ------------------------------------------------------------------
     # Backward-compatible flat XMPP properties (delegate to self.xmpp)
