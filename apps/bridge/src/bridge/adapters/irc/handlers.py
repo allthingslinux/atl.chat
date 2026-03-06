@@ -83,6 +83,10 @@ def decode_irc_bytes(data: bytes) -> str:
 # ---------------------------------------------------------------------------
 
 # Maximum age (seconds) for a server-time timestamp to be considered current.
+# IRC servers with +H (history replay) send old messages on join with a
+# ``time`` tag in ISO 8601 format. 30 seconds is generous enough to handle
+# clock skew and network latency while still filtering out genuine replays
+# (which are typically minutes to hours old).
 _HISTORY_REPLAY_THRESHOLD_SECONDS = 30
 
 
@@ -138,7 +142,11 @@ async def handle_message(client: IRCClient, target: str, source: str, message: s
     if reply_to:
         discord_reply_to = client._msgid_tracker.get_discord_id(reply_to)
 
-    # Echo suppression: check all echo conditions via centralized utilities
+    # Echo suppression: check all echo conditions via centralized utilities.
+    # Three layers of echo detection prevent double-relay:
+    # 1. is_own_echo: source matches our nick OR draft/relaymsg tag matches us
+    # 2. is_puppet_echo: source is one of our puppet connections
+    # 3. is_relaymsg_echo: TTLCache fallback when relaymsg tag is missing
     if (
         is_own_echo(client, source, tags)
         or is_puppet_echo(client, source)

@@ -26,7 +26,9 @@ UNDERLINE = "\x1f"
 _CONTROL_CHARS = frozenset({BOLD, COLOR, RESET, MONOSPACE, REVERSE, ITALIC, STRIKETHROUGH, UNDERLINE})
 
 # Map toggle control codes → Style flag.
-# REVERSE (0x16) is mapped to ITALIC per design decision D1.
+# REVERSE (0x16) is mapped to ITALIC per design decision D1: IRC's "reverse video"
+# has no visual equivalent in Discord/XMPP, and most IRC clients that use it
+# intend emphasis. Mapping to ITALIC preserves the semantic intent across protocols.
 _TOGGLE_MAP: dict[str, Style] = {
     BOLD: Style.BOLD,
     ITALIC: Style.ITALIC,

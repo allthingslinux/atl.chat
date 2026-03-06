@@ -85,21 +85,21 @@ class IRCClient(pydle.Client):
     """Pydle IRC client with IRCv3 capabilities."""
 
     CAPABILITIES: ClassVar[set[str]] = {
-        "message-tags",
-        "msgid",
-        "account-notify",
-        "extended-join",
-        "server-time",
-        "draft/reply",
-        "draft/message-redaction",
-        "draft/react",
-        "batch",
-        "echo-message",
-        "labeled-response",
-        "chghost",
-        "setname",
-        "draft/relaymsg",
-        "overdrivenetworks.com/relaymsg",
+        "message-tags",  # IRCv3: structured key-value tags on messages (required for msgid)
+        "msgid",  # IRCv3: server-assigned unique message IDs (for REDACT/edit correlation)
+        "account-notify",  # IRCv3: notifications when users authenticate to services
+        "extended-join",  # IRCv3: includes account name in JOIN messages
+        "server-time",  # IRCv3: server-side timestamps (for history replay detection)
+        "draft/reply",  # IRCv3: reply threading via +draft/reply tag
+        "draft/message-redaction",  # IRCv3: REDACT command for message deletion
+        "draft/react",  # IRCv3: emoji reactions via TAGMSG +draft/react
+        "batch",  # IRCv3: batch message grouping
+        "echo-message",  # IRCv3: server echoes our own messages back (for msgid capture)
+        "labeled-response",  # IRCv3: correlate server responses to our commands via labels
+        "chghost",  # IRCv3: host change notifications (no reconnect needed)
+        "setname",  # IRCv3: realname change notifications
+        "draft/relaymsg",  # IRCv3: stateless bridging — send as spoofed nick without puppets
+        "overdrivenetworks.com/relaymsg",  # Alternate relaymsg cap name (some networks)
     }
 
     def __init__(
@@ -134,7 +134,10 @@ class IRCClient(pydle.Client):
         self._puppet_nick_check: Callable[[str], bool] | None = None  # set by adapter for echo detection
         # Fallback echo detection when relaymsg tag missing (e.g. via irc-services)
         self._recent_relaymsg_sends: TTLCache[tuple[str, str], None] = TTLCache(maxsize=100, ttl=5)
-        # labeled-response: label counter and pending label→discord_id mapping for echo correlation
+        # labeled-response: label counter and pending label→discord_id mapping for echo correlation.
+        # When we send a RELAYMSG/PRIVMSG with a label tag, the server echoes it back with the
+        # same label. We match the echo's label to the discord_id we stored, enabling reliable
+        # msgid→discord_id correlation even when multiple messages are in flight.
         self._label_counter: int = 0
         self._pending_labels: TTLCache[str, str] = TTLCache(maxsize=200, ttl=30)  # label -> discord_id
         # ISUPPORT values (Requirement 11.7, 11.8)
@@ -353,8 +356,12 @@ class IRCClient(pydle.Client):
 
     def _sanitize_relaymsg_nick(self, nick: str) -> str:
         """Sanitize nick for RELAYMSG: replace invalid chars with '-'.
-        When irc_relaymsg_clean_nicks: no /d suffix (server allows clean nicks).
-        Otherwise: append /d (Valware relaymsg requires '/' in nick)."""
+
+        When irc_relaymsg_clean_nicks is enabled (server allows clean nicks
+        without a separator), the nick is used as-is. Otherwise, '/d' is
+        appended because Valware's relaymsg implementation requires a '/'
+        separator in the spoofed nick to distinguish it from real users.
+        """
         invalid = " \t\n\r!+%@&#$:'\"?*,."
         out = "".join("-" if c in invalid else c for c in nick)
         out = (out or "user")[:32]

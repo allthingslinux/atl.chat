@@ -121,7 +121,11 @@ class PortalClient:
         """
         assert self._client is not None, "call aopen() first"
 
-        # Circuit breaker: skip if Portal is known to be down
+        # Circuit breaker: skip if Portal is known to be down.
+        # After _CIRCUIT_FAIL_THRESHOLD consecutive connection failures, we
+        # short-circuit all requests for _CIRCUIT_COOLDOWN seconds. This prevents
+        # the bridge from blocking message delivery while waiting for Portal
+        # timeouts — identity resolution is best-effort, not critical path.
         now = time.monotonic()
         if self._consecutive_failures >= _CIRCUIT_FAIL_THRESHOLD:
             if now < self._circuit_open_until:

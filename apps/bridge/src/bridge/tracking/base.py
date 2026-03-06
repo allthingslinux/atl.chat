@@ -27,6 +27,10 @@ class BidirectionalTTLMap(Generic[K, V]):
     Maps key1 ↔ key2 with an associated value and timestamp.
     Supports forward lookup (key1 → key2, value) and reverse lookup
     (key2 → key1, value), plus alias resolution.
+
+    Eviction strategy: when the forward store reaches maxsize, a cleanup
+    pass removes all expired entries. This is cheaper than per-insert
+    expiry checks and keeps memory bounded without requiring an LRU.
     """
 
     def __init__(self, ttl_seconds: int = 3600, maxsize: int = 10000) -> None:

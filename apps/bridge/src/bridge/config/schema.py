@@ -10,7 +10,11 @@ from loguru import logger
 
 from bridge.core.errors import BridgeConfigurationError
 
-# Env keys that override config (centralized; loaded once per reload)
+# Env keys that override config (centralized; loaded once per reload).
+# These env vars take precedence over config.yaml values, allowing
+# deployment-specific overrides without modifying the config file.
+# This is especially useful for Docker/CI where env vars are the
+# standard configuration mechanism.
 _ENV_OVERRIDE_KEYS = (
     "BRIDGE_IRC_REDACT_ENABLED",
     "BRIDGE_RELAYMSG_CLEAN_NICKS",

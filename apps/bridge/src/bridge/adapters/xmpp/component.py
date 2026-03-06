@@ -99,13 +99,19 @@ def _url_has_media_extension(url: str) -> bool:
 
 
 def _capture_stanza_id_from_echo(tracker: XMPPMessageIDTracker, msg: Any, room_jid: str) -> None:
-    """Capture IDs from our echo for correction mapping.
+    """Capture IDs from our echo for correction and reaction mapping.
 
-    Prosody adds stanza-id as a child element but may not rewrite the top-level
-    msg id. Gajim and many clients use the top-level id for XEP-0308 matching,
-    so we keep our_id (origin-id) for corrections. We only update to stanza-id
-    when msg.id was rewritten (stanza_id != our_id and msg.id == stanza_id),
-    indicating the server rewrote the id for delivery.
+    XMPP MUC servers (Prosody) may assign a stanza-id that differs from the
+    origin-id we sent. The distinction matters:
+
+    - Corrections (XEP-0308): Gajim uses the top-level msg id (our origin-id)
+      for ``<replace id="..."/>``, so we keep origin-id as the primary key.
+    - Reactions (XEP-0444 §4.2): MUC requires stanza-id (assigned by server),
+      so we add it as an alias for reaction lookups.
+
+    We only replace origin-id with stanza-id when the server rewrote the
+    top-level msg.id to match stanza-id, indicating the server replaced our
+    id entirely for delivery.
     """
     xml = getattr(msg, "xml", None)
     if xml is None:
@@ -202,11 +208,14 @@ class XMPPComponent(ComponentXMPP):
 
         # -------------------------------------------------------------------
         # XEP Registration (Requirement 10.6)
+        # Plugins are registered in dependency order. Some XEPs depend on
+        # others (e.g. XEP-0425 depends on XEP-0421), and slixmpp handles
+        # this internally, but we list them in logical groups for clarity.
         # -------------------------------------------------------------------
-        self.register_plugin("xep_0030")  # Service Discovery
+        self.register_plugin("xep_0030")  # Service Discovery (foundation for all XEP negotiation)
         self.register_plugin(
             "xep_0045", {"multi_from": True}
-        )  # MUC: per-user JIDs (component simulates multiple entities)
+        )  # MUC: multi_from enables per-user JIDs (component simulates multiple entities)
         self.register_plugin("xep_0198")  # Stream Management
         self.register_plugin("xep_0199")  # XMPP Ping
         self.register_plugin("xep_0203")  # Delayed Delivery
@@ -263,8 +272,9 @@ class XMPPComponent(ComponentXMPP):
         # and <retract><moderated> (v1) but NO <body>.  slixmpp's MUC handler
         # requires <body/> so groupchat_message never fires, and the XEP-0424
         # handler may not match due to component namespace rewriting.
-        # Register a raw handler that catches ALL groupchat messages to
-        # intercept moderation announcements.
+        # We register a raw handler that catches ALL groupchat messages to
+        # intercept these bodyless moderation announcements that would
+        # otherwise be silently dropped.
         from slixmpp.xmlstream.handler import Callback as _Callback
         from slixmpp.xmlstream.matcher import MatchXMLMask as _MatchXMLMask
 

@@ -48,7 +48,14 @@ def extract_filename_from_url(url: str) -> str:
 
 
 def rewrite_upload_url_for_fetch(url: str) -> str:
-    """Rewrite XMPP upload URL to internal Docker URL when bridge cannot reach xmpp.localhost."""
+    """Rewrite XMPP upload URL to internal Docker URL when bridge cannot reach xmpp.localhost.
+
+    In the Docker Compose setup, the XMPP server's HTTP Upload module serves
+    files at ``https://xmpp.localhost/upload/...``, but the bridge container
+    can't resolve ``xmpp.localhost``. The ``XMPP_UPLOAD_FETCH_URL`` env var
+    provides the internal Docker hostname (e.g. ``http://atl-xmpp-server:5280``)
+    so the bridge can fetch uploaded files for re-upload to Discord.
+    """
     fetch_base = os.environ.get("XMPP_UPLOAD_FETCH_URL", "").rstrip("/")
     if not fetch_base:
         return url
@@ -78,7 +85,9 @@ async def probe_is_image(session: aiohttp.ClientSession | None, url: str) -> boo
 
     Used as a fallback for URLs that don't carry a recognised file extension
     (e.g. ``https://avatars.githubusercontent.com/u/123?s=200&v=4``).
-    Failures (network error, non-200) are treated as non-image.
+    This enables the bridge to download and re-upload such URLs as proper
+    file attachments in Discord, which renders them inline rather than as
+    plain text links. Failures (network error, non-200) are treated as non-image.
     """
     if not session:
         return False

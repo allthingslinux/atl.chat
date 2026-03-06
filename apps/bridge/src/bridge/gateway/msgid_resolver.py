@@ -106,12 +106,18 @@ class DefaultMessageIDResolver:
     def store_irc_xmpp_pending(self, irc_msgid: str, xmpp_id: str, muc_jid: str) -> None:
         """Store pending irc_msgid → (xmpp_id, muc_jid) for later resolution.
 
-        Also creates a temporary tracker entry (xmpp_id, irc_msgid) so the MUC
-        echo can capture the stanza-id via add_stanza_id_alias *before* the
-        Discord webhook returns the real discord_id.  Without this, the echo
-        fires while no mapping exists and the stanza-id is silently lost —
-        causing reactions on IRC-originated messages to target the origin-id
-        instead of the stanza-id (Gajim/Dino ignore those).
+        This handles the IRC→Discord→XMPP message ID chain:
+        1. IRC message arrives with irc_msgid, gets relayed to XMPP with xmpp_id.
+        2. The XMPP adapter sends the message and stores (xmpp_id, irc_msgid) in
+           its tracker so the MUC echo can capture the stanza-id.
+        3. When the Discord webhook returns the real discord_id, we call
+           resolve_irc_xmpp_pending to replace irc_msgid with discord_id in the
+           XMPP tracker, enabling reactions on IRC-originated messages.
+
+        Without this pre-registration, the MUC echo fires before any mapping
+        exists, and the stanza-id is silently lost — causing reactions on
+        IRC-originated messages to target the origin-id instead of the
+        stanza-id (Gajim/Dino ignore those).
         """
         self._irc_xmpp_pending[irc_msgid] = (xmpp_id, muc_jid)
         if self._xmpp_component:

@@ -54,7 +54,13 @@ def is_own_reaction(adapter: DiscordAdapter, payload: object) -> bool:
 
 
 def _is_voice_message(message: Message) -> bool:
-    """Return True if *message* is a Discord voice message (bit 13)."""
+    """Return True if *message* is a Discord voice message (bit 13).
+
+    Discord voice messages are audio recordings sent inline in chat.
+    They have a special flag (bit 13 of message.flags) and carry the
+    audio as an attachment. We relay the audio URL (preferring proxy_url
+    for CDN reliability) rather than the message content.
+    """
     flags = getattr(message, "flags", None)
     if flags is None:
         return False

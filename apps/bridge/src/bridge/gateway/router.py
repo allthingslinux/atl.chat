@@ -91,7 +91,10 @@ class ChannelRouter:
             )
         self._mappings = mappings
 
-        # Build O(1) lookup indexes
+        # Build O(1) lookup indexes.
+        # Three separate dicts allow constant-time routing from any protocol's
+        # channel identifier to the shared ChannelMapping, avoiding linear scans
+        # on every message relay.
         by_discord: dict[str, ChannelMapping] = {}
         by_irc: dict[tuple[str, str], ChannelMapping] = {}
         by_xmpp: dict[str, ChannelMapping] = {}

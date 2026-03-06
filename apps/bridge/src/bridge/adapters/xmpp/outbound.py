@@ -117,7 +117,11 @@ async def send_message_as_user(
             except Exception:
                 pass
 
-        # Attach XEP-0066 OOB only when the URL is confirmed media
+        # Attach XEP-0066 OOB only when the URL is confirmed media.
+        # OOB (Out of Band Data) tells XMPP clients to render the URL as an
+        # inline image/video rather than a plain text link. We only attach it
+        # when the body is a bare URL confirmed as media to avoid clients
+        # trying to render non-media URLs as images.
         body_stripped = content[:4000].strip()
         if is_media and _BARE_URL_RE.match(body_stripped):
             try:

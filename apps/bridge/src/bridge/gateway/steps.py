@@ -109,8 +109,9 @@ def format_convert(content: str, ctx: TransformContext) -> str:
     """Delegate to :func:`formatting.converter.convert`.
 
     When ``ctx.raw["unstyled"]`` is set (XEP-0393 §6), the XMPP sender
-    explicitly opted out of styling — skip format conversion so the body
-    is relayed as plain text.
+    explicitly opted out of styling via ``<unstyled xmlns="urn:xmpp:styling:0"/>``.
+    In that case we skip format conversion entirely so the body is relayed
+    as plain text, respecting the sender's intent.
     """
     if ctx.raw.get("unstyled"):
         return content
@@ -136,7 +137,9 @@ def wrap_spoiler(content: str, ctx: TransformContext) -> str:
         return f"||{content}||"
 
     if ctx.target == "irc":
-        # fg==bg color 1 (black on black) — common IRC spoiler convention
+        # fg==bg color 1 (black on black) — the de facto IRC spoiler convention.
+        # Most IRC clients render this as invisible text that users can select
+        # to reveal, mimicking Discord's ||spoiler|| behavior.
         return f"{COLOR}01,01{content}{RESET}"
 
     if ctx.target == "xmpp":
@@ -170,7 +173,9 @@ def add_reply_fallback(content: str, ctx: TransformContext) -> str:
     if not quoted:
         return content
 
-    # Check first line doesn't already contain a quote marker
+    # Check first line doesn't already contain a quote marker.
+    # This prevents double-quoting when the message itself starts with ">"
+    # (e.g. a user manually quoting someone in their message).
     first_line = content.split("\n", maxsplit=1)[0] if content else ""
     if ">" in first_line:
         return content

@@ -106,15 +106,16 @@ async def send_file_with_fallback(
 async def reupload_extensionless_image(comp: XMPPComponent, url: str) -> str | None:
     """Re-upload an image URL that lacks a file extension.
 
-    XMPP clients (Gajim, Dino) determine file type from the URL path.
-    URLs like ``https://avatars.githubusercontent.com/u/123?s=200``
-    have no extension, so they render as generic files.
+    XMPP clients (Gajim, Dino) determine file type from the URL path, not
+    Content-Type headers. URLs like ``https://avatars.githubusercontent.com/u/123?s=200``
+    have no extension, so they render as generic file attachments instead of
+    inline images.
 
     This method:
     1. Checks the URL path for an existing media extension (skip if found).
     2. HEAD-probes to check Content-Type.
     3. Downloads the image data (max 10 MB).
-    4. Re-uploads via XEP-0363 HTTP Upload.
+    4. Re-uploads via XEP-0363 HTTP Upload with a proper filename extension.
 
     Returns the new upload URL (with a proper extension) or None.
     """

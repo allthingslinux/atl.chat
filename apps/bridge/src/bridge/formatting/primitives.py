@@ -22,7 +22,10 @@ class Style(Flag):
 
     SPOILER is intentionally absent — XEP-0382 (Spoiler Messages) is a
     message-level stanza in XMPP, not inline formatting.  Spoiler handling
-    is a separate Pipeline step (unwrap_spoiler / wrap_spoiler).
+    is a separate Pipeline step (unwrap_spoiler / wrap_spoiler) that sets
+    a flag on TransformContext rather than encoding it in the IR.  This
+    keeps the IR protocol-agnostic: Discord uses inline ||markers||, IRC
+    uses fg==bg color codes, and XMPP uses a stanza-level element.
     """
 
     BOLD = auto()
@@ -79,6 +82,9 @@ ZWS_RE = re.compile(r"\u200B")
 # ---------------------------------------------------------------------------
 
 # rfc1459 folds uppercase → lowercase: [ → {, ] → }, \ → |, ~ → ^
+# These extra mappings exist because IRC predates ASCII standardization;
+# the characters []\ occupy codepoints that some national character sets
+# used for accented letters, so the IRC spec treats them as case-equivalent.
 _RFC1459_TABLE = str.maketrans("[]\\~", "{}|^")
 
 # rfc1459-strict is the same but WITHOUT ~ → ^

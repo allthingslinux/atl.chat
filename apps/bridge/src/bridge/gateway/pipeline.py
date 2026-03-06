@@ -40,6 +40,8 @@ class Pipeline:
 
     Steps are executed in declaration order.  If any step returns ``None``
     the pipeline short-circuits immediately and ``transform`` returns ``None``.
+    This short-circuit semantic is how content filters drop messages: they
+    return ``None`` to signal "do not relay this message".
     """
 
     def __init__(self, steps: list[TransformStep]) -> None:

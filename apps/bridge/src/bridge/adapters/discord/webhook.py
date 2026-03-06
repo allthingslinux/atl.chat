@@ -34,7 +34,13 @@ def _avatar_url_ok_for_discord(url: str | None) -> bool:
 
 
 def _reply_button_view(author: str, content: str | None, url: str) -> View:
-    """Build Unifier/lightning style link button: ↪️ Author · content (truncated)."""
+    """Build Unifier/lightning style link button: ↪️ Author · content (truncated).
+
+    This creates a clickable button below the webhook message that links back
+    to the original message being replied to. It's the Discord equivalent of
+    IRC's "> quote | reply" pattern — since webhooks can't use Discord's native
+    reply feature, this button provides visual reply context.
+    """
     content_clean = (content or "").replace("\n", " ").strip()
     label = f"{author} · {content_clean}" if content_clean else author
     if len(label) > REPLY_BUTTON_MAX_LABEL:
@@ -49,7 +55,17 @@ async def get_or_create_webhook(
     channel_id: str,
     webhook_cache: dict,
 ) -> Webhook | None:
-    """Get or create one webhook per channel (matterbridge pattern). Caller must hold send lock."""
+    """Get or create one webhook per channel (matterbridge pattern).
+
+    Webhooks allow the bridge to send messages that appear to come from
+    different users (with custom username and avatar), rather than all
+    messages appearing from the bot account. We reuse a single webhook
+    per channel (named "ATL Bridge") to stay within Discord's 10-webhook
+    limit per channel.
+
+    Caller must hold the per-channel send lock to prevent race conditions
+    when multiple messages target the same channel simultaneously.
+    """
     channel = bot.get_channel(int(channel_id))
     if not channel or not isinstance(channel, TextChannel):
         logger.warning("Discord channel {} not found or not a text channel", channel_id)

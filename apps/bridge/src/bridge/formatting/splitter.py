@@ -68,8 +68,11 @@ def split_irc_lines(content: str, max_bytes: int = 450) -> list[str]:
 def split_irc_message(text: str, max_bytes: int = 450) -> list[str]:
     """Split *text* into chunks where each chunk ≤ *max_bytes* in UTF-8.
 
-    The default of 450 leaves room for the IRC protocol overhead
-    (``PRIVMSG #channel :`` prefix, IRCv3 tags, CRLF).
+    The default of 450 leaves room for the IRC protocol overhead:
+    ``:nick!user@host PRIVMSG #channel :`` prefix (~80 bytes), IRCv3 tags
+    (variable), and the trailing CRLF (2 bytes).  512 is the hard IRC line
+    limit, but with tags the effective limit can be higher — 450 is a safe
+    conservative default that works with all servers.
 
     Guarantees:
     - No chunk exceeds *max_bytes* when encoded as UTF-8.

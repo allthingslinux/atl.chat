@@ -32,6 +32,8 @@ from bridge.gateway.steps import (
 )
 
 # Protocols that support native message editing — no edit suffix needed.
+# IRC has no edit mechanism, so edited messages get an " (edited)" suffix appended.
+# Discord uses webhook_edit and XMPP uses XEP-0308 Last Message Correction.
 _NATIVE_EDIT_PROTOCOLS: frozenset[str] = frozenset({"discord", "xmpp"})
 
 
@@ -71,8 +73,9 @@ def _content_matches_filter(content: str) -> bool:
 def _lazy_content_filter(content: str, ctx: TransformContext) -> str | None:
     """Content filter step that reads from the module-level ``_compiled_filters``.
 
-    This allows filters to be rebuilt (e.g. on config reload or in tests)
-    without reconstructing the pipeline.
+    Uses module-level state instead of closure-captured patterns so that
+    filters can be rebuilt (e.g. on config reload or in tests) without
+    reconstructing the entire pipeline object.
     """
     if not content:
         return content  # empty → pass through unchanged
@@ -86,13 +89,18 @@ def _build_default_pipeline() -> Pipeline:
     """Build the default content transformation pipeline (Design §D6).
 
     Steps in declared order:
-    1. strip_reply_fallback
-    2. unwrap_spoiler
-    3. format_convert
-    4. wrap_spoiler
-    5. strip_invalid_xml
-    6. add_reply_fallback
-    7. content_filter
+    1. strip_reply_fallback  — remove origin-protocol reply quotes before conversion
+    2. unwrap_spoiler        — extract spoiler markers into ctx.spoiler flag
+    3. format_convert        — IR-based cross-protocol formatting conversion
+    4. wrap_spoiler          — re-apply spoiler in target-protocol syntax
+    5. strip_invalid_xml     — remove chars illegal in XML 1.0 (XMPP targets only)
+    6. add_reply_fallback    — prepend "> quote | reply" for IRC targets
+    7. content_filter        — drop messages matching configured regex patterns
+
+    Order matters: spoiler must be unwrapped before format conversion so the
+    converter sees clean text, and re-wrapped after so the target gets the
+    correct spoiler syntax. strip_invalid_xml runs between wrap_spoiler and
+    add_reply_fallback because the reply fallback itself is plain ASCII.
     """
     return Pipeline(
         [

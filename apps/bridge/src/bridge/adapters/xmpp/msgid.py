@@ -36,7 +36,13 @@ class XMPPMessageIDTracker:
         self._discord_to_xmpp[discord_id] = mapping
 
     def add_stanza_id_alias(self, our_id: str, stanza_id: str) -> bool:
-        """Add stanza-id as alias for lookups (reactions use stanza-id; corrections use our_id)."""
+        """Add stanza-id as alias for lookups.
+
+        Reactions use stanza-id (the MUC-assigned ID visible to all participants),
+        while corrections use our_id (the origin-id we sent, which Gajim matches
+        for XEP-0308 ``<replace id="..."/>``). This alias ensures both IDs resolve
+        to the same Discord message for routing.
+        """
         self._cleanup()
         mapping = self._xmpp_to_discord.get(our_id)
         if not mapping:
@@ -86,7 +92,13 @@ class XMPPMessageIDTracker:
         return mapping.xmpp_id if mapping else None
 
     def get_xmpp_id_for_reaction(self, discord_id: str) -> str | None:
-        """Get XMPP message ID for reaction targeting (prefers stanza-id when available)."""
+        """Get XMPP message ID for reaction targeting (prefers stanza-id when available).
+
+        XEP-0444 §4.2 requires reactions in MUC to target the stanza-id (assigned
+        by the MUC server), not the origin-id. If we only have the origin-id,
+        we return that as a fallback — some servers accept it, but Gajim/Dino
+        may ignore reactions targeting origin-id.
+        """
         self._cleanup()
         stanza_id = self._discord_to_stanza_id.get(discord_id)
         if stanza_id:

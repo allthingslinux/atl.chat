@@ -31,7 +31,10 @@ class MessageIDResolver:
     ``discord_id``.
 
     The pair ordering is canonical — ``("discord", "irc")`` and
-    ``("irc", "discord")`` share the same underlying map.
+    ``("irc", "discord")`` share the same underlying map. The first
+    call to access a pair establishes the canonical ordering; subsequent
+    calls with the reversed pair detect the swap and adjust lookups
+    accordingly.
     """
 
     def __init__(

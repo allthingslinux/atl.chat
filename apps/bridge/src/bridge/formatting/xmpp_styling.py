@@ -62,7 +62,7 @@ _FENCE_DETAIL_RE = re.compile(r"```(\w*)\n?([\s\S]*?)```", re.MULTILINE)
 _QUOTE_RE = re.compile(r"^> (.+)$", re.MULTILINE)
 
 # XEP-0393 inline patterns.
-# Rules:
+# Rules (from XEP-0393 §3):
 #   - Styling directive must start at a word boundary (preceded by
 #     whitespace, start of string, or another directive character).
 #   - Closing directive must be followed by a non-alphanumeric char,
@@ -70,6 +70,11 @@ _QUOTE_RE = re.compile(r"^> (.+)$", re.MULTILINE)
 #   - Backtick (monospace) takes priority over other inline styles.
 #   - Inner text: opener must NOT be followed by whitespace, closer
 #     must NOT be preceded by whitespace, at least one char inside.
+#
+# These rules differ from Discord markdown: Discord uses ** for bold
+# while XEP-0393 uses single *. Discord's _ italic requires word
+# boundaries only for single underscore, while XEP-0393 requires
+# word boundaries for all directives.
 #
 # We use a left-to-right, non-overlapping scan (same approach as the
 # markdown and IRC parsers).

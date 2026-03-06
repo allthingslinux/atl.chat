@@ -1,4 +1,13 @@
-"""Convert Discord markdown to plain text + XEP-0394 markup spans for XMPP."""
+"""Convert Discord markdown to plain text + XEP-0394 markup spans for XMPP.
+
+This is the ONLY legacy direct converter kept after the IR-based refactor.
+It's retained because the XMPP adapter needs dual output: both XEP-0393
+styled body text (for clients like Gajim that render Message Styling) AND
+XEP-0394 markup spans (for clients that support Message Markup). The IR-based
+converter only produces one output format at a time, so this module handles
+the Discord-specific transforms (emoji, mentions, timestamps) plus the dual
+XEP-0393/XEP-0394 output in a single pass.
+"""
 
 from __future__ import annotations
 

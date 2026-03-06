@@ -219,7 +219,9 @@ def on_groupchat_message(comp: XMPPComponent, msg: Any) -> None:
             logger.debug("Resolved XMPP reply target {} -> Discord {}", reply_to_xmpp_id, reply_to_id)
 
     # Get or generate message ID. XEP-0444 §4.2: for groupchat, MUST use stanza-id, NOT
-    # the top-level id. Reactions in MUC require the stanza-id from the MUC server.
+    # the top-level id. Reactions in MUC require the stanza-id from the MUC server because
+    # that's the ID other participants see. The top-level id (origin-id) is only visible
+    # to the sender and the server.
     stanza_id_val = sid_elem.get("id") if sid_elem is not None and sid_elem.get("id") else None
     top_level_id = msg.get("id")
     xmpp_msg_id = str(stanza_id_val) if stanza_id_val else (top_level_id or f"xmpp:{room_jid}:{nick}:{id(msg)}")
@@ -322,6 +324,9 @@ def on_reactions(comp: XMPPComponent, msg: Any) -> None:
 
     emojis_raw = reactions.get_values()
     new_set = frozenset(e for e in emojis_raw if e and isinstance(e, str))
+    # XEP-0444 sends the FULL reaction set per-user per-message on every update.
+    # We diff against the previous set to determine which reactions were added
+    # and which were removed, then emit individual add/remove events.
     cache_key = (target_msg_id, nick)
     prev_set = comp._reactions_by_user.get(cache_key, frozenset())
     comp._reactions_by_user[cache_key] = new_set

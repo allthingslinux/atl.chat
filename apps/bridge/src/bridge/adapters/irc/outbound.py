@@ -73,9 +73,10 @@ async def send_message(client: IRCClient, evt: MessageOut) -> None:
             reply_tags = {"+draft/reply": irc_msgid}
             logger.debug("IRC: reply tag set for irc_msgid={}", irc_msgid)
         else:
-            logger.debug("IRC: reply_to_id={} has no irc_msgid in tracker", evt.reply_to_id)
             # Do NOT strip > quote fallback: server denies +draft/reply (CLIENTTAGDENY),
-            # so IRC clients ignore the tag. Keep the quote so users see reply context.
+            # so IRC clients ignore the tag. Keep the quote so users see reply context
+            # even when the server doesn't support threaded replies.
+            logger.debug("IRC: reply_to_id={} has no irc_msgid in tracker", evt.reply_to_id)
 
     # Extract fenced code blocks and upload them to a paste service
     processed = extract_code_blocks(content)
@@ -105,7 +106,9 @@ async def send_message(client: IRCClient, evt: MessageOut) -> None:
     chunks = split_irc_lines(content, max_bytes=450)
     logger.debug("IRC: split into {} chunk(s) for {}", len(chunks), target)
 
-    # Spoofed nick for RELAYMSG: display/discord (Valware requires '/' in nick)
+    # Spoofed nick for RELAYMSG: display/discord (Valware requires '/' in nick).
+    # When RELAYMSG is available, messages appear to come from the spoofed nick
+    # directly, without needing a puppet connection per user.
     display = str(evt.author_display or evt.author_id or "user").strip()
     spoofed_nick = client._sanitize_relaymsg_nick(display)
 
