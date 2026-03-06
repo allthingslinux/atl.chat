@@ -21,6 +21,8 @@ class MessageIDTracker:
         self._ttl = ttl_seconds
         self._irc_to_discord: dict[str, MessageMapping] = {}
         self._discord_to_irc: dict[str, MessageMapping] = {}
+        self._last_cleanup: float = 0.0
+        self._cleanup_interval: float = 60.0  # cleanup at most once per minute
 
     def store(self, irc_msgid: str, discord_id: str):
         """Store bidirectional mapping."""
@@ -45,8 +47,11 @@ class MessageIDTracker:
         return mapping.irc_msgid if mapping else None
 
     def _cleanup(self):
-        """Remove expired entries."""
+        """Remove expired entries (throttled to once per minute)."""
         now = time.time()
+        if now - self._last_cleanup < self._cleanup_interval:
+            return
+        self._last_cleanup = now
         cutoff = now - self._ttl
 
         # Clean IRC -> Discord
