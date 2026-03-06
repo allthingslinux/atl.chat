@@ -106,7 +106,14 @@ def unwrap_spoiler(content: str, ctx: TransformContext) -> str:
 
 
 def format_convert(content: str, ctx: TransformContext) -> str:
-    """Delegate to :func:`formatting.converter.convert`."""
+    """Delegate to :func:`formatting.converter.convert`.
+
+    When ``ctx.raw["unstyled"]`` is set (XEP-0393 §6), the XMPP sender
+    explicitly opted out of styling — skip format conversion so the body
+    is relayed as plain text.
+    """
+    if ctx.raw.get("unstyled"):
+        return content
     return convert(content, ctx.origin, ctx.target)
 
 

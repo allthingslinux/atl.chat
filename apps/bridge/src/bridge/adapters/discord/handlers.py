@@ -81,7 +81,11 @@ async def on_message(adapter: DiscordAdapter, message: Message) -> None:
     # Voice messages: relay the audio attachment URL or a placeholder.
     if _is_voice_message(message):
         avatar_url = str(message.author.display_avatar.url) if message.author.display_avatar else None
-        voice_content = message.attachments[0].url if message.attachments else "[voice message]"
+        voice_content = (
+            (getattr(message.attachments[0], "proxy_url", None) or message.attachments[0].url)
+            if message.attachments
+            else "[voice message]"
+        )
         _, evt = message_in(
             origin="discord",
             channel_id=channel_id,
@@ -118,7 +122,7 @@ async def on_message(adapter: DiscordAdapter, message: Message) -> None:
                 channel_id=channel_id,
                 author_id=str(message.author.id),
                 author_display=message.author.display_name or message.author.name,
-                content=attachment.url,
+                content=getattr(attachment, "proxy_url", None) or attachment.url,
                 message_id=f"{message.id}_attachment_{attachment.id}",
                 is_action=False,
                 avatar_url=avatar_url,

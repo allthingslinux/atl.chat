@@ -134,6 +134,9 @@ class IRCClient(pydle.Client):
         self._puppet_nick_check: Callable[[str], bool] | None = None  # set by adapter for echo detection
         # Fallback echo detection when relaymsg tag missing (e.g. via irc-services)
         self._recent_relaymsg_sends: TTLCache[tuple[str, str], None] = TTLCache(maxsize=100, ttl=5)
+        # labeled-response: label counter and pending label→discord_id mapping for echo correlation
+        self._label_counter: int = 0
+        self._pending_labels: TTLCache[str, str] = TTLCache(maxsize=200, ttl=30)  # label -> discord_id
         # ISUPPORT values (Requirement 11.7, 11.8)
         self._server_nicklen: int = 23  # effective limit: min(server_nicklen, 23)
         self._server_casemapping: str = "rfc1459"  # default per IRC spec
@@ -312,6 +315,24 @@ class IRCClient(pydle.Client):
     async def on_capability_draft_relaymsg_enabled(self):
         """Log when draft/relaymsg is negotiated."""
         logger.debug("IRC: draft/relaymsg capability negotiated")
+
+    async def on_capability_labeled_response_available(self, value):
+        """Request labeled-response for echo correlation (Requirement 11.5)."""
+        return True
+
+    async def on_capability_labeled_response_enabled(self):
+        """Log when labeled-response is negotiated."""
+        logger.debug("IRC: labeled-response capability negotiated")
+
+    def _has_labeled_response(self) -> bool:
+        """Check if labeled-response capability was negotiated."""
+        caps = getattr(self, "_capabilities", {})
+        return bool(caps.get("labeled-response"))
+
+    def _next_label(self) -> str:
+        """Generate the next unique label for labeled-response."""
+        self._label_counter += 1
+        return f"bridge-{self._label_counter}"
 
     async def on_capability_draft_relaymsg_available(self, value):
         """Request draft/relaymsg for stateless bridging."""

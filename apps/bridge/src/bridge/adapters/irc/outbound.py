@@ -115,23 +115,41 @@ async def send_message(client: IRCClient, evt: MessageOut) -> None:
 
     for i, chunk in enumerate(chunks):
         logger.debug("IRC: sending chunk {}/{} to {} -> {!r}", i + 1, len(chunks), target, chunk[:80])
+
+        # Generate labeled-response tag for first chunk (echo correlation, Req 11.5)
+        label_tag: dict[str, str] | None = None
+        if i == 0 and client._has_labeled_response():
+            label = client._next_label()
+            label_tag = {"label": label}
+            client._pending_labels[label] = evt.message_id
+            logger.debug("IRC: attached label={} for echo correlation (discord_id={})", label, evt.message_id)
+
+        # Merge reply tags and label tag for first chunk
+        first_chunk_tags: dict[str, str] | None = None
+        if i == 0:
+            if reply_tags and label_tag:
+                first_chunk_tags = {**reply_tags, **label_tag}
+            elif reply_tags:
+                first_chunk_tags = reply_tags
+            elif label_tag:
+                first_chunk_tags = label_tag
+
         if is_action:
             # CTCP ACTION (/me): wrap in \x01ACTION ...\x01
             # RELAYMSG doesn't support CTCP, fall back to PRIVMSG with colored prefix
             action_text = f"\x01ACTION {chunk}\x01"
             colored_prefix = f"{_nick_color(display)} "
             prefixed = colored_prefix + action_text if i == 0 else action_text
-            tags = reply_tags if i == 0 else None
-            if tags:
-                await client.rawmsg("PRIVMSG", target, prefixed, tags=tags)
+            if first_chunk_tags:
+                await client.rawmsg("PRIVMSG", target, prefixed, tags=first_chunk_tags)
             else:
                 await client.message(target, prefixed)
             if i == 0:
                 logger.info("IRC: sent CTCP ACTION to {} as {}", target, spoofed_nick)
         elif use_relaymsg:
             # RELAYMSG #channel spoofed_nick :message
-            if reply_tags and i == 0:
-                await client.rawmsg("RELAYMSG", target, spoofed_nick, chunk, tags=reply_tags)
+            if first_chunk_tags and i == 0:
+                await client.rawmsg("RELAYMSG", target, spoofed_nick, chunk, tags=first_chunk_tags)
             else:
                 await client.rawmsg("RELAYMSG", target, spoofed_nick, chunk)
             if i == 0:
@@ -141,9 +159,8 @@ async def send_message(client: IRCClient, evt: MessageOut) -> None:
             # PRIVMSG fallback: prefix message with configurable remote nick format
             colored_prefix = f"{_nick_color(display)} "
             prefixed = colored_prefix + chunk if i == 0 else chunk
-            tags = reply_tags if i == 0 else None
-            if tags:
-                await client.rawmsg("PRIVMSG", target, prefixed, tags=tags)
+            if first_chunk_tags:
+                await client.rawmsg("PRIVMSG", target, prefixed, tags=first_chunk_tags)
             else:
                 await client.message(target, prefixed)
             if i == 0:

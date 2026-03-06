@@ -114,6 +114,14 @@ def on_groupchat_message(comp: XMPPComponent, msg: Any) -> None:
         elif not body.strip():
             body = oob_url
 
+    # XEP-0393 §6: <unstyled xmlns="urn:xmpp:styling:0"/> disables styling
+    unstyled = False
+    xml = getattr(msg, "xml", None)
+    if xml is not None:
+        unstyled_elem = xml.find("{urn:xmpp:styling:0}unstyled")
+        if unstyled_elem is not None:
+            unstyled = True
+
     if "/" in from_jid:
         room_jid = from_jid.split("/")[0]
         if not nick:
@@ -225,6 +233,8 @@ def on_groupchat_message(comp: XMPPComponent, msg: Any) -> None:
             origin_id_val = origin_id_elem.get("id")
 
     raw_data: dict[str, Any] = {}
+    if unstyled:
+        raw_data["unstyled"] = True
     if spoiler_hint is not None:
         raw_data["spoiler_hint"] = spoiler_hint
     if replace_id:

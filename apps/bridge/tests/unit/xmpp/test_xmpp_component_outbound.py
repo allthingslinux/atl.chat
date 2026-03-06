@@ -54,6 +54,7 @@ def make_component(router=None, bus=None) -> Any:
     comp._puppets_joined = set()
     comp._avatar_broadcast_done = set()
     comp._recent_sent_nicks = TTLCache(maxsize=200, ttl=10)
+    comp._reactions_by_user = TTLCache(maxsize=2000, ttl=3600)
     comp._banned_rooms = set()
     comp._auto_rejoin = True
     comp._confirmed_mucs = set()

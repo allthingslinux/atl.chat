@@ -144,7 +144,16 @@ async def handle_message(client: IRCClient, target: str, source: str, message: s
         or is_puppet_echo(client, source)
         or is_relaymsg_echo(client, client._server, target, source, tags)
     ):
-        if msgid:
+        # labeled-response correlation (Req 11.5): use label tag for reliable echo matching
+        label = tags.get("label")
+        if label and label in client._pending_labels:
+            discord_id = client._pending_labels.pop(label)
+            if msgid:
+                client._msgid_tracker.store(msgid, discord_id)
+                logger.debug("IRC: label={} correlated msgid {} -> {} for REDACT/edit", label, msgid, discord_id)
+            else:
+                logger.debug("IRC: label={} matched but no msgid tag on echo", label)
+        elif msgid:
             try:
                 discord_id = client._pending_sends.get_nowait()
                 client._msgid_tracker.store(msgid, discord_id)  # irc_msgid, discord_id

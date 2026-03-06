@@ -25,6 +25,7 @@ from bridge.gateway.router import ChannelMapping, ChannelRouter
 from bridge.gateway.steps import (
     add_reply_fallback,
     format_convert,
+    strip_invalid_xml,
     strip_reply_fallback,
     unwrap_spoiler,
     wrap_spoiler,
@@ -89,8 +90,9 @@ def _build_default_pipeline() -> Pipeline:
     2. unwrap_spoiler
     3. format_convert
     4. wrap_spoiler
-    5. add_reply_fallback
-    6. content_filter
+    5. strip_invalid_xml
+    6. add_reply_fallback
+    7. content_filter
     """
     return Pipeline(
         [
@@ -98,6 +100,7 @@ def _build_default_pipeline() -> Pipeline:
             unwrap_spoiler,
             format_convert,
             wrap_spoiler,
+            strip_invalid_xml,
             add_reply_fallback,
             _lazy_content_filter,
         ]
@@ -192,6 +195,7 @@ class Relay:
                 raw={
                     "reply_quoted_content": evt.raw.get("reply_quoted_content"),
                     "reply_quoted_author": evt.raw.get("reply_quoted_author"),
+                    "unstyled": evt.raw.get("unstyled"),
                 },
             )
 

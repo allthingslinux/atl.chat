@@ -181,7 +181,12 @@ async def send_reaction_as_user(
     *,
     is_remove: bool = False,
 ) -> None:
-    """Send reaction (add or remove) to a message from a specific Discord user's JID."""
+    """Send reaction (add or remove) to a message from a specific Discord user's JID.
+
+    XEP-0444 requires sending the full reaction set per-user per-message.
+    We accumulate state in ``comp._reactions_by_user`` (keyed by
+    ``(target_msg_id, nick)``) and always send the complete set.
+    """
     escaped_nick = _escape_jid_node(nick)
     user_jid = f"{escaped_nick}@{comp._component_jid}"
     comp._recent_sent_nicks[(muc_jid, nick)] = None
@@ -193,18 +198,28 @@ async def send_reaction_as_user(
         return
 
     try:
-        emoji_set = set() if is_remove else {emoji}
+        # Accumulate full reaction state per (message, user)
+        cache_key = (target_msg_id, nick)
+        prev_set = set(comp._reactions_by_user.get(cache_key, frozenset()))
+        if is_remove:
+            prev_set.discard(emoji)
+        else:
+            prev_set.add(emoji)
+        # Update cache with new full set
+        comp._reactions_by_user[cache_key] = frozenset(prev_set)
+
         msg = comp.make_message(
             mto=JID(muc_jid),
             mfrom=JID(user_jid),
             mtype="groupchat",
         )
-        reactions_plugin.set_reactions(msg, target_msg_id, emoji_set)
+        reactions_plugin.set_reactions(msg, target_msg_id, prev_set)
         msg.enable("no-store")
         msg.send()
         logger.info(
-            "XMPP: sent reaction {} to message {} in room {} (from IRC/Discord)",
+            "XMPP: sent reaction {} (full set: {}) to message {} in room {} (from IRC/Discord)",
             "removal" if is_remove else emoji,
+            prev_set or "empty",
             target_msg_id,
             muc_jid,
         )

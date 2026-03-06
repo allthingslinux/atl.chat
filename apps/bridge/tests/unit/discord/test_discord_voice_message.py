@@ -127,6 +127,7 @@ class TestVoiceMessageWithAttachment:
 
         attachment = MagicMock()
         attachment.url = "https://cdn.discord.com/attachments/123/voice-message.ogg"
+        attachment.proxy_url = "https://cdn.discord.com/attachments/123/voice-message.ogg"
         attachment.id = 77777
 
         msg = _make_message(voice=True, attachments=[attachment])
