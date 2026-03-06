@@ -388,7 +388,7 @@ nickserv {
 	expire = 30;
 	enforce_expire = 14;
 	enforce_delay = 30;
-	enforce_prefix = "Guest";
+	enforce_prefix = "atl";
 	waitreg_time = 30;
 	#pwquality_dict = "/var/cache/cracklib/cracklib_dict";
 	#passwdqc_max = 288;     /* (8 <= value <= 288) */
