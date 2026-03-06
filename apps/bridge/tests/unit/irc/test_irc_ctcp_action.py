@@ -46,6 +46,9 @@ def _make_client(bus: Bus, router: ChannelRouter, nickname: str = "bridge") -> M
     client._router = router
     client._server = "irc.example.com"
     client._ready = True
+    client._puppet_nick_check = None
+    client._message_tags = {}
+    client._recent_relaymsg_sends = {}
     return client
 
 
