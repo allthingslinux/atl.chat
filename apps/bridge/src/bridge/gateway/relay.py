@@ -18,31 +18,28 @@ from bridge.events import (
     reaction_out,
     typing_out,
 )
-from bridge.formatting.discord_to_irc import discord_to_irc
-from bridge.formatting.irc_to_discord import irc_to_discord
-from bridge.formatting.irc_to_xmpp import irc_to_xmpp
-from bridge.formatting.reply_fallback import add_reply_fallback, strip_reply_fallback
-from bridge.formatting.xmpp_to_discord import xmpp_to_discord
-from bridge.formatting.xmpp_to_irc import xmpp_to_irc
+from bridge.formatting.converter import convert
 from bridge.gateway.bus import Bus
+from bridge.gateway.pipeline import Pipeline, TransformContext
 from bridge.gateway.router import ChannelMapping, ChannelRouter
+from bridge.gateway.steps import (
+    add_reply_fallback,
+    format_convert,
+    strip_reply_fallback,
+    unwrap_spoiler,
+    wrap_spoiler,
+)
+
+# Protocols that support native message editing — no edit suffix needed.
+_NATIVE_EDIT_PROTOCOLS: frozenset[str] = frozenset({"discord", "xmpp"})
 
 
 def _transform_content(content: str, origin: str, target: str) -> str:
-    """Transform content for target protocol based on origin."""
-    if target == "irc" and origin == "discord":
-        return discord_to_irc(content)
-    if target == "discord" and origin == "irc":
-        return irc_to_discord(content)
-    if target == "discord" and origin == "xmpp":
-        return xmpp_to_discord(content)
-    if target == "xmpp" and origin == "irc":
-        return irc_to_xmpp(content)
-    if target == "irc" and origin == "xmpp":
-        return xmpp_to_irc(content)
-    # XMPP: raw Discord markdown passes through; discord_to_xmpp() in the XMPP adapter
-    # strips syntax and attaches XEP-0394 markup spans before sending.
-    return content
+    """Transform content for target protocol based on origin.
+
+    Backward-compatible shim — delegates to the IR-based converter.
+    """
+    return convert(content, origin, target)
 
 
 _compiled_filters: list[re.Pattern[str]] = []
@@ -70,6 +67,43 @@ def _content_matches_filter(content: str) -> bool:
     return any(pat.search(content) for pat in _compiled_filters)
 
 
+def _lazy_content_filter(content: str, ctx: TransformContext) -> str | None:
+    """Content filter step that reads from the module-level ``_compiled_filters``.
+
+    This allows filters to be rebuilt (e.g. on config reload or in tests)
+    without reconstructing the pipeline.
+    """
+    if not content:
+        return content  # empty → pass through unchanged
+    for pat in _compiled_filters:
+        if pat.search(content):
+            return None  # drop
+    return content
+
+
+def _build_default_pipeline() -> Pipeline:
+    """Build the default content transformation pipeline (Design §D6).
+
+    Steps in declared order:
+    1. strip_reply_fallback
+    2. unwrap_spoiler
+    3. format_convert
+    4. wrap_spoiler
+    5. add_reply_fallback
+    6. content_filter
+    """
+    return Pipeline(
+        [
+            strip_reply_fallback,
+            unwrap_spoiler,
+            format_convert,
+            wrap_spoiler,
+            add_reply_fallback,
+            _lazy_content_filter,
+        ]
+    )
+
+
 class Relay:
     """Relays MessageIn to MessageOut for target protocols. No adapter-to-adapter coupling."""
 
@@ -79,6 +113,7 @@ class Relay:
         self._bus = bus
         self._router = router
         rebuild_content_filters()
+        self._pipeline = _build_default_pipeline()
 
     def _get_mapping_for_origin(
         self, origin: str, channel_id: str, *, fallback_discord: bool = False
@@ -138,10 +173,6 @@ class Relay:
         if not isinstance(evt, MessageIn):
             return
 
-        # Skip if content matches filter
-        if _content_matches_filter(evt.content):
-            return
-
         mapping = self._get_mapping_for_origin(evt.origin, evt.channel_id, fallback_discord=True)
         if not mapping:
             logger.warning("Relay: no mapping for {} channel {}", evt.origin, evt.channel_id)
@@ -151,24 +182,42 @@ class Relay:
 
         def emit_message(target: str) -> object:
             logger.info("Relay: {} -> {} channel={}", evt.origin, target, channel_id)
-            # Strip XEP-0461 reply fallback lines (> quoted) from raw content BEFORE
-            # format conversion — otherwise xmpp_to_irc converts > to curly quotes first,
-            # making strip_reply_fallback unable to find them.
-            raw_content = evt.content
-            if evt.reply_to_id and evt.origin in ("xmpp", "irc") and target in ("discord", "irc"):
-                raw_content = strip_reply_fallback(raw_content)
-            content = _transform_content(raw_content, evt.origin, target)
+
+            # Build TransformContext from event fields
+            ctx = TransformContext(
+                origin=evt.origin,
+                target=target,
+                is_edit=evt.is_edit,
+                reply_to_id=evt.reply_to_id,
+                raw={
+                    "reply_quoted_content": evt.raw.get("reply_quoted_content"),
+                    "reply_quoted_author": evt.raw.get("reply_quoted_author"),
+                },
+            )
+
+            # Run the pipeline
+            content = self._pipeline.transform(evt.content, ctx)
+            if content is None:
+                return None  # message dropped by content filter
+
+            # Edit suffix: append when target doesn't support native edits
+            if evt.is_edit and target not in _NATIVE_EDIT_PROTOCOLS:
+                suffix = cfg.edit_suffix
+                if suffix:
+                    content += suffix
+
             out_raw = {
                 "is_edit": evt.is_edit,
                 "replace_id": evt.raw.get("replace_id"),
                 "origin": evt.origin,
                 "xmpp_id_aliases": evt.raw.get("xmpp_id_aliases", []),
             }
-            reply_quoted = evt.raw.get("reply_quoted_content")
-            if evt.reply_to_id and target == "irc" and reply_quoted:
-                if ">" not in (content.split("\n")[0] if content else ""):
-                    author = evt.raw.get("reply_quoted_author")
-                    content = add_reply_fallback(content, reply_quoted, author=author)
+            # Pass through media dimensions for XEP-0446 file metadata
+            if evt.raw.get("media_width"):
+                out_raw["media_width"] = evt.raw["media_width"]
+                out_raw["media_height"] = evt.raw["media_height"]
+            # Propagate reply_fallback_added from pipeline context
+            if ctx.raw.get("reply_fallback_added"):
                 out_raw["reply_fallback_added"] = True
             _, out_evt = message_out(
                 target_origin=target,

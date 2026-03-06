@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Protocol
 
+from cachetools import TTLCache
+
 from bridge.adapters.irc.msgid import MessageIDTracker
 
 if TYPE_CHECKING:
@@ -45,6 +47,14 @@ class MessageIDResolver(Protocol):
         """Register XMPP component (called by XMPPAdapter)."""
         ...
 
+    def store_irc_xmpp_pending(self, irc_msgid: str, xmpp_id: str, muc_jid: str) -> None:
+        """Store pending irc_msgid → xmpp_id mapping for later Discord ID resolution."""
+        ...
+
+    def resolve_irc_xmpp_pending(self, irc_msgid: str, discord_id: str) -> bool:
+        """Resolve pending mapping: store xmpp_id → discord_id using stored irc_msgid → xmpp_id."""
+        ...
+
 
 class DefaultMessageIDResolver:
     """Implementation that delegates to IRC and XMPP trackers."""
@@ -52,6 +62,10 @@ class DefaultMessageIDResolver:
     def __init__(self) -> None:
         self._irc_tracker: MessageIDTracker | None = None
         self._xmpp_component: XMPPComponent | None = None
+        # Pending irc_msgid → (xmpp_id, muc_jid) for IRC-origin messages relayed to XMPP.
+        # Resolved when the Discord adapter gets the webhook discord_id.
+        # TTLCache prevents unbounded growth if the Discord webhook never fires.
+        self._irc_xmpp_pending: TTLCache[str, tuple[str, str]] = TTLCache(maxsize=2000, ttl=3600)
 
     def register_irc(self, tracker: MessageIDTracker) -> None:
         """Register IRC message ID tracker (called by IRCAdapter)."""
@@ -88,3 +102,28 @@ class DefaultMessageIDResolver:
 
     def get_xmpp_component(self) -> XMPPComponent | None:
         return self._xmpp_component
+
+    def store_irc_xmpp_pending(self, irc_msgid: str, xmpp_id: str, muc_jid: str) -> None:
+        """Store pending irc_msgid → (xmpp_id, muc_jid) for later resolution.
+
+        Also creates a temporary tracker entry (xmpp_id, irc_msgid) so the MUC
+        echo can capture the stanza-id via add_stanza_id_alias *before* the
+        Discord webhook returns the real discord_id.  Without this, the echo
+        fires while no mapping exists and the stanza-id is silently lost —
+        causing reactions on IRC-originated messages to target the origin-id
+        instead of the stanza-id (Gajim/Dino ignore those).
+        """
+        self._irc_xmpp_pending[irc_msgid] = (xmpp_id, muc_jid)
+        if self._xmpp_component:
+            self._xmpp_component._msgid_tracker.store(xmpp_id, irc_msgid, muc_jid)
+
+    def resolve_irc_xmpp_pending(self, irc_msgid: str, discord_id: str) -> bool:
+        """Resolve pending mapping: store xmpp_id → discord_id in the XMPP tracker."""
+        pending = self._irc_xmpp_pending.pop(irc_msgid, None)
+        if not pending:
+            return False
+        xmpp_id, muc_jid = pending
+        if self._xmpp_component:
+            self._xmpp_component._msgid_tracker.store(xmpp_id, discord_id, muc_jid)
+            return True
+        return False

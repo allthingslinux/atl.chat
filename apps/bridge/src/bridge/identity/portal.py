@@ -15,6 +15,8 @@ from tenacity import (
     wait_exponential,
 )
 
+from bridge.identity.base import IdentityResolver
+
 DEFAULT_RETRY = retry(
     stop=stop_after_attempt(2),
     wait=wait_exponential(multiplier=0.5, min=0.5, max=2),
@@ -168,8 +170,12 @@ class PortalClient:
         return await self._request({"xmppJid": jid})
 
 
-class IdentityResolver:
-    """Identity resolver with TTL cache. Wraps PortalClient."""
+class PortalIdentityResolver(IdentityResolver):
+    """Portal-backed identity resolver with TTL cache. Wraps PortalClient.
+
+    Extends the :class:`IdentityResolver` ABC and implements all abstract
+    methods using the Portal API with circuit breaker and retry.
+    """
 
     def __init__(
         self,
