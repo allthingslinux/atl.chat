@@ -16,6 +16,10 @@ modules_enabled = {
     "roster",     -- Allow users to have a roster/contact list (RFC 6121)
     -- "legacyauth", -- Legacy authentication. Disabled: use SASL (SCRAM-SHA-256) instead.
     "saslauth",   -- SASL authentication for clients and servers (RFC 4422)
+    "sasl2",      -- Extensible SASL Profile for modern clients (XEP-0388; modules.prosody.im/mod_sasl2)
+    "sasl2_fast",  -- Fast Authentication Streamlining Tokens; password→token exchange (XEP-0484; requires mod_sasl2)
+    "sasl2_bind2", -- Bind 2 resource binding via SASL2 (XEP-0386; requires mod_sasl2)
+    "sasl2_sm",    -- Inline Stream Management negotiation in SASL2 (requires mod_sasl2 + mod_sasl2_bind2)
     "tls",        -- TLS encryption support for c2s/s2s connections (RFC 6120)
     "dialback",   -- Server-to-server authentication via dialback (XEP-0220)
     "disco",      -- Service discovery for features and items (XEP-0030)
@@ -102,6 +106,7 @@ modules_enabled = {
     "http_files",    -- Static file serving over HTTP
     "conversejs",    -- Converse.js web client at /conversejs (auto-config from VirtualHost)
     "http_status",   -- HTTP status API for monitoring
+    "http_logging",  -- Apache-style HTTP access logs for Prosody's built-in HTTP server (modules.prosody.im/mod_http_logging)
     -- "proxy65", -- Disabled here; provided via dedicated Component `proxy.atl.chat`
     "turn_external", -- External TURN server support (XEP-0215)
     -- ===============================================
@@ -113,6 +118,15 @@ modules_enabled = {
     -- ===============================================
     "server_contact_info", -- Contact information advertisement (XEP-0157)
     "server_info",         -- Server information advertisement (XEP-0157)
+    -- ===============================================
+    -- AUDIT LOGGING
+    -- ===============================================
+    "audit",               -- Audit logging infrastructure for security-sensitive events (modules.prosody.im/mod_audit)
+    "audit_auth",          -- Log auth successes/failures and new client connections to audit log (requires mod_audit)
+    "audit_tokens",        -- Log token grant creation/revocation to audit log (requires mod_audit + mod_tokenauth)
+    "audit_user_accounts", -- Log account registration, deletion, enable/disable to audit log (requires mod_audit)
+    "audit_status",        -- Log server start/stop/crash events to audit log with heartbeat detection (requires mod_audit)
+    "client_management",   -- Track and manage clients with account access; enriches audit_auth with new-client detection (modules.prosody.im/mod_client_management)
     -- ===============================================
     -- MONITORING & METRICS
     -- ===============================================

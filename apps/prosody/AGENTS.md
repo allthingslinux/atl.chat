@@ -48,6 +48,9 @@ modules.list
 | `just xmpp deluser [user]` | Delete XMPP user |
 | `just xmpp db-backup` | Backup database |
 | `just xmpp check` | Run all Prosody sanity checks (prosodyctl check) |
+| `just xmpp audit <host>` | View full audit log for a host |
+| `just xmpp audit-user <jid>` | View audit log for a specific user |
+| `just xmpp audit-global <host>` | View host-wide audit events (not user-specific) |
 | `just xmpp check-config` | Sanity checks on config file |
 | `just xmpp check-certs` | Verify certificate config (prosodyctl check certs) |
 | `just xmpp check-cert [domain]` | Check certificate for domain |

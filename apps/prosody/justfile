@@ -66,6 +66,36 @@ deluser user:
         echo "XMPP server not running"; \
     fi
 
+[group('Audit')]
+audit host:
+    @echo "Viewing audit log for: {{host}}"
+    @CONTAINER=$(docker compose -f ../../compose.yaml -p atl-chat ps -q atl-xmpp-server 2>/dev/null); \
+    if [ -n "$CONTAINER" ]; then \
+        docker exec $CONTAINER prosodyctl mod_audit {{host}}; \
+    else \
+        echo "XMPP server not running"; \
+    fi
+
+[group('Audit')]
+audit-user jid:
+    @echo "Viewing audit log for user: {{jid}}"
+    @CONTAINER=$(docker compose -f ../../compose.yaml -p atl-chat ps -q atl-xmpp-server 2>/dev/null); \
+    if [ -n "$CONTAINER" ]; then \
+        docker exec $CONTAINER prosodyctl mod_audit {{jid}}; \
+    else \
+        echo "XMPP server not running"; \
+    fi
+
+[group('Audit')]
+audit-global host:
+    @echo "Viewing host-wide audit events for: {{host}}"
+    @CONTAINER=$(docker compose -f ../../compose.yaml -p atl-chat ps -q atl-xmpp-server 2>/dev/null); \
+    if [ -n "$CONTAINER" ]; then \
+        docker exec $CONTAINER prosodyctl mod_audit --global {{host}}; \
+    else \
+        echo "XMPP server not running"; \
+    fi
+
 [group('Database')]
 db-backup:
     @echo "Backing up database..."
