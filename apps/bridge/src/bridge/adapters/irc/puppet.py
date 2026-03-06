@@ -111,36 +111,51 @@ class IRCPuppetManager:
         self._ping_interval = ping_interval
         self._prejoin_commands: list[str] = prejoin_commands or []
         self._puppets: dict[str, IRCPuppet] = {}
+        self._puppet_locks: dict[str, asyncio.Lock] = {}  # per-user creation lock
         self._cleanup_task: asyncio.Task | None = None
 
     async def get_or_create_puppet(self, discord_id: str) -> IRCPuppet | None:
-        """Get existing puppet or create new one for Discord user."""
+        """Get existing puppet or create new one for Discord user.
+
+        Uses a per-user lock to prevent concurrent creation races where two
+        messages from the same user could both create puppet connections.
+        """
         if discord_id in self._puppets:
             puppet = self._puppets[discord_id]
             puppet.touch()
             return puppet
 
-        # Resolve IRC nick from Portal
-        nick = await self._identity.discord_to_irc(discord_id)
-        if not nick:
-            logger.debug("No IRC nick for Discord user {}", discord_id)
+        # Per-user lock: only one coroutine creates the puppet at a time
+        if discord_id not in self._puppet_locks:
+            self._puppet_locks[discord_id] = asyncio.Lock()
+        async with self._puppet_locks[discord_id]:
+            # Re-check after acquiring lock (another coroutine may have created it)
+            if discord_id in self._puppets:
+                puppet = self._puppets[discord_id]
+                puppet.touch()
+                return puppet
+
+            # Resolve IRC nick from Portal
+            nick = await self._identity.discord_to_irc(discord_id)
+            if not nick:
+                logger.debug("No IRC nick for Discord user {}", discord_id)
+                return None
+
+            # Create and connect puppet with backoff retry
+            puppet = IRCPuppet(
+                nick,
+                discord_id,
+                ping_interval=self._ping_interval,
+                prejoin_commands=self._prejoin_commands,
+            )
+
+            if await self._connect_puppet_with_backoff(puppet):
+                self._puppets[discord_id] = puppet
+                puppet.touch()
+                logger.info("Created IRC puppet {} for Discord user {}", nick, discord_id)
+                return puppet
+
             return None
-
-        # Create and connect puppet with backoff retry
-        puppet = IRCPuppet(
-            nick,
-            discord_id,
-            ping_interval=self._ping_interval,
-            prejoin_commands=self._prejoin_commands,
-        )
-
-        if await self._connect_puppet_with_backoff(puppet):
-            self._puppets[discord_id] = puppet
-            puppet.touch()
-            logger.info("Created IRC puppet {} for Discord user {}", nick, discord_id)
-            return puppet
-
-        return None
 
     async def _connect_puppet_with_backoff(
         self,
@@ -193,11 +208,20 @@ class IRCPuppetManager:
         content: str,
         avatar_url: str | None = None,
     ):
-        """Send message via puppet. Sets METADATA avatar if server supports it."""
+        """Send message via puppet. Joins channel if needed. Sets METADATA avatar if supported."""
         puppet = await self.get_or_create_puppet(discord_id)
         if not puppet:
             logger.debug("IRC puppet: no puppet for discord_id={}; message not sent", discord_id)
             return
+
+        # Ensure puppet has joined the target channel before sending
+        if channel not in puppet.channels:
+            try:
+                await puppet.join(channel)
+                logger.debug("IRC puppet: {} joined {}", puppet.nickname, channel)
+            except Exception as exc:
+                logger.warning("IRC puppet: {} failed to join {}: {}", puppet.nickname, channel, exc)
+                return
 
         # Set avatar via METADATA before first message (when URL changed)
         if avatar_url and hasattr(puppet, "set_metadata"):
