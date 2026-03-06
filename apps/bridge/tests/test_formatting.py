@@ -467,6 +467,28 @@ class TestXmppToDiscord:
         # Block quotes pass through unchanged (Discord also renders > as quote)
         assert xmpp_to_discord("> quoted text") == "> quoted text"
 
+    def test_double_tilde_strikethrough(self):
+        # ~~text~~ from XMPP should pass through as Discord strikethrough, not get mangled
+        assert xmpp_to_discord("~~strike from dino~~") == "~~strike from dino~~"
+
+    def test_double_tilde_single_char(self):
+        assert xmpp_to_discord("~~x~~") == "~~x~~"
+
+    def test_double_underscore_underline(self):
+        # __text__ from XMPP should pass through as Discord underline
+        assert xmpp_to_discord("__underline from dino__") == "__underline from dino__"
+
+    def test_double_underscore_single_char(self):
+        assert xmpp_to_discord("__x__") == "__x__"
+
+    def test_single_underscore_still_italic(self):
+        # Single _text_ should still convert to Discord italic *text*
+        assert xmpp_to_discord("_italic_") == "*italic*"
+
+    def test_single_tilde_still_strikethrough(self):
+        # Single ~text~ should still convert to Discord ~~text~~
+        assert xmpp_to_discord("~strike~") == "~~strike~~"
+
 
 # ---------------------------------------------------------------------------
 # xmpp_to_irc
@@ -487,6 +509,10 @@ class TestXmppToIrc:
     def test_double_asterisks_passthrough(self):
         # **text** → IRC bold (Discord-style bold, bridged to IRC \x02)
         assert xmpp_to_irc("**double asterisks from dino**") == f"{self._B}double asterisks from dino{self._B}"
+
+    def test_triple_asterisks_bold_italic(self):
+        # ***text*** → IRC bold+italic (Discord-style)
+        assert xmpp_to_irc("***test***") == f"{self._B}{self._I}test{self._I}{self._B}"
 
     def test_double_underscore_passthrough(self):
         # __text__ → IRC underline (Discord-style underline, bridged to IRC \x1f)
@@ -540,6 +566,28 @@ class TestXmppToIrc:
 
     def test_blockquote_with_inline_formatting(self):
         assert xmpp_to_irc("> *bold quote*") == f"\u201c{self._B}bold quote{self._B}\u201d"
+
+    def test_double_tilde_strikethrough(self):
+        # ~~text~~ from XMPP should convert to IRC strikethrough, not get mangled
+        assert xmpp_to_irc("~~strike from dino~~") == f"{self._S}strike from dino{self._S}"
+
+    def test_double_tilde_single_char(self):
+        assert xmpp_to_irc("~~x~~") == f"{self._S}x{self._S}"
+
+    def test_single_tilde_still_strikethrough(self):
+        # Single ~text~ should still convert to IRC strikethrough
+        assert xmpp_to_irc("~strike~") == f"{self._S}strike{self._S}"
+
+    def test_double_pipe_spoiler(self):
+        # ||text|| from XMPP should convert to IRC spoiler (black-on-black)
+        assert xmpp_to_irc("||secret||") == "\x0301,01secret\x03"
+
+    def test_double_pipe_spoiler_with_spaces(self):
+        # || text || with spaces inside pipes
+        assert xmpp_to_irc("|| secret ||") == "\x0301,01 secret \x03"
+
+    def test_double_pipe_spoiler_mid_sentence(self):
+        assert xmpp_to_irc("this is ||hidden|| text") == "this is \x0301,01hidden\x03 text"
 
 
 # ---------------------------------------------------------------------------
@@ -641,16 +689,30 @@ class TestIrcToDiscord:
     def test_escapes_markdown_chars(self):
         # * and _ are intentionally NOT escaped — IRC users typing *text* or _text_
         # want Discord to render them as italic (IRC uses control codes for formatting).
+        # `, ~, and | are also NOT escaped for the same reason — IRC users typing
+        # `code`, ~~strike~~, or ||spoiler|| want Discord to render them.
         assert irc_to_discord("a*b") == "a*b"
         assert irc_to_discord("a_b") == "a_b"
-        assert irc_to_discord("a`b") == "a\\`b"
-        assert irc_to_discord("a~b") == "a\\~b"
-        assert irc_to_discord("a|b") == "a\\|b"
+        assert irc_to_discord("a`b") == "a`b"
+        assert irc_to_discord("a~b") == "a~b"
+        assert irc_to_discord("a|b") == "a|b"
 
     def test_literal_asterisk_italic_passthrough(self):
         # Real bug: *single set of astricks from irc* should render as italic on Discord
         assert irc_to_discord("*single set of astricks from irc*") == "*single set of astricks from irc*"
         assert irc_to_discord("**bold from irc**") == "**bold from irc**"
+
+    def test_backtick_code_passthrough(self):
+        # IRC users typing `code` want Discord to render it as inline code
+        assert irc_to_discord("`hello from irc`") == "`hello from irc`"
+
+    def test_double_tilde_strikethrough_passthrough(self):
+        # IRC users typing ~~text~~ want Discord to render it as strikethrough
+        assert irc_to_discord("~~strike from irc~~") == "~~strike from irc~~"
+
+    def test_double_pipe_spoiler_passthrough(self):
+        # IRC users typing ||text|| want Discord to render it as spoiler
+        assert irc_to_discord("||spoiler from irc||") == "||spoiler from irc||"
 
     def test_unclosed_bold(self):
         assert irc_to_discord(f"{_B}bold no close") == "**bold no close**"
@@ -963,9 +1025,10 @@ class TestIrcToXmppEdgeCases:
 
     # --- double-toggle ---
 
-    def test_double_toggle_bold_produces_no_span(self):
-        # \x02\x02 = on then off immediately → no markers, text passes through
-        assert irc_to_xmpp(f"{_B}{_B}text") == "text"
+    def test_double_toggle_bold_produces_empty_markers(self):
+        # \x02\x02 = on then off immediately → ** markers emitted, text follows
+        # (empty span regex no longer strips ** to avoid eating literal double-asterisks)
+        assert irc_to_xmpp(f"{_B}{_B}text") == "**text"
 
     # --- only formatting codes ---
 
@@ -990,9 +1053,10 @@ class TestIrcToXmppEdgeCases:
     def test_bold_with_asterisk_in_content(self):
         # IRC bold containing a literal * — the output *hello *world* has an
         # ambiguous second * that XEP-0393 parsers will treat as a closer.
-        # Current behaviour documented; content after the stray * is lost.
+        # The ** between "hello " and "world" is no longer stripped by the
+        # empty span regex (which now requires whitespace between delimiters).
         result = irc_to_xmpp(f"{_B}hello *world*{_B}")
-        assert result == "*hello *world"
+        assert result == "*hello *world**"
 
     def test_italic_with_underscore_in_content(self):
         # IRC italic containing a literal _ — _hello_world_ has an ambiguous
@@ -1096,6 +1160,16 @@ class TestDiscordToIrcEdgeCases:
         # **bold `code` bold** — backtick inside bold span
         result = discord_to_irc("**bold `code` bold**")
         assert result == f"{_B}bold \x11code\x11 bold{_B}"
+
+    def test_bare_blockquote_line_stripped(self):
+        # Discord sends ">>> test\n\ntest" as per-line "> test\n>\n> test"
+        # Bare ">" must not leak into IRC output
+        result = discord_to_irc("> test\n>\n> test")
+        assert result == "\u201ctest\u201d\n\n\u201ctest\u201d"
+
+    def test_bare_blockquote_line_with_trailing_space(self):
+        result = discord_to_irc("> test\n> \n> test")
+        assert result == "\u201ctest\u201d\n\n\u201ctest\u201d"
 
     def test_empty_string(self):
         assert discord_to_irc("") == ""

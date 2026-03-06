@@ -11,6 +11,9 @@ _S = "\x1e"  # strikethrough
 _U = "\x1f"  # underline
 _M = "\x11"  # monospace
 _R = "\x0f"  # reset
+# IRC spoiler: black foreground on black background (fg==bg convention)
+_SPOILER_OPEN = "\x0301,01"
+_SPOILER_CLOSE = "\x03"
 
 # Pre-block: same as xmpp_to_discord — pass through verbatim
 _PRE_BLOCK_RE = re.compile(r"(?m)^```[^\n]*\n([\s\S]*?)\n```\s*$")
@@ -26,6 +29,8 @@ _INLINE_RULES: list[tuple[re.Pattern[str], str, str]] = [
     (re.compile(r"`(\S[^`\n]*?\S|\S)`"), _M, _M),
     # Bold+italic *_text_* → \x02\x1dtext\x1d\x02
     (re.compile(r"\*_(\S[^*\n]*?\S|\S)_\*"), f"{_B}{_I}", f"{_I}{_B}"),
+    # Discord-style ***text*** → \x02\x1dtext\x1d\x02 (must come before ** and *)
+    (re.compile(r"\*\*\*(\S[^*\n]*?\S|\S)\*\*\*"), f"{_B}{_I}", f"{_I}{_B}"),
     # Discord-style **text** → \x02text\x02 (must come before single * bold)
     (re.compile(r"\*\*(\S[^*\n]*?\S|\S)\*\*"), _B, _B),
     # Bold *text* → \x02text\x02  — lone * only, not adjacent to another *
@@ -34,8 +39,12 @@ _INLINE_RULES: list[tuple[re.Pattern[str], str, str]] = [
     (re.compile(r"__(\S[^_\n]*?\S|\S)__"), _U, _U),
     # Italic _text_ → \x1dtext\x1d  — lone _ only, not adjacent to another _
     (re.compile(r"(?<!_)_(?!_)(\S[^_\n]*?\S|\S)(?<!_)_(?!_)"), _I, _I),
-    # Strikethrough ~text~ → \x1etext\x1e
-    (re.compile(r"~(\S[^~\n]*?\S|\S)~"), _S, _S),
+    # Discord-style ~~text~~ → \x1etext\x1e (strikethrough, must come before single ~)
+    (re.compile(r"~~(\S[^~\n]*?\S|\S)~~"), _S, _S),
+    # Strikethrough ~text~ → \x1etext\x1e  — lone ~ only, not adjacent to another ~
+    (re.compile(r"(?<!~)~(?!~)(\S[^~\n]*?\S|\S)(?<!~)~(?!~)"), _S, _S),
+    # Discord-style ||text|| → IRC spoiler (black-on-black)
+    (re.compile(r"\|\|(.+?)\|\|"), _SPOILER_OPEN, _SPOILER_CLOSE),
 ]
 
 

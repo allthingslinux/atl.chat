@@ -133,8 +133,10 @@ _XEP0393_WS_FIX_RE = re.compile(
     r"([*_~`])([ \t]+)(.*?)([ \t]+)(\1)",
     re.DOTALL,
 )
-# Spans containing only whitespace (e.g. "_ _") — strip delimiters entirely.
-_XEP0393_EMPTY_SPAN_RE = re.compile(r"([*_~`])([ \t]*)(\1)")
+# Spans containing only whitespace (e.g. "* *") — strip delimiters entirely.
+# Require at least one whitespace char so that literal ** or ~~ in passthrough
+# text is not mistakenly consumed as an empty span.
+_XEP0393_EMPTY_SPAN_RE = re.compile(r"([*_~`])([ \t]+)(\1)")
 
 
 def _fix_xep0393_whitespace(text: str) -> str:

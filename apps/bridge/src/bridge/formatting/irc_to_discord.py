@@ -162,12 +162,9 @@ def _convert_irc_codes(text: str) -> str:
             i += 1
         else:
             c = text[i]
-            # Escape Discord markdown chars outside URLs (and outside monospace).
-            # We do NOT escape * or _ — IRC users typing *text* or _text_ likely
-            # want Discord to render them as italic, since IRC uses control codes
-            # (\x02/\x1d) for formatting, not asterisks/underscores.
-            if not monospace and c in "`~|":
-                result.append("\\")
+            # Do NOT escape markdown chars — IRC uses control codes (\x02/\x1d/etc.)
+            # for formatting, not markdown syntax. IRC users typing *text*, _text_,
+            # `code`, ~~strike~~, or ||spoiler|| likely want Discord to render them.
             result.append(c)
             i += 1
 

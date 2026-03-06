@@ -38,7 +38,10 @@ _MULTILINE_BLOCKQUOTE_RE = re.compile(r"^>>> (.+)$", re.MULTILINE | re.DOTALL)
 
 # Blockquote: > at start of line — convert to curly-quoted text for IRC
 # (bare > at line start can confuse IRC clients that render it as a quote marker)
+# Also match bare ">" or "> " lines (empty blockquote continuation) so they
+# don't leak a raw ">" into IRC output.
 _BLOCKQUOTE_RE = re.compile(r"^> (.+)$", re.MULTILINE)
+_BARE_BLOCKQUOTE_RE = re.compile(r"^>[ \t]*$", re.MULTILINE)
 
 # Discord custom/animated emoji <:name:id> or <a:name:id> → :name:
 _CUSTOM_EMOJI_RE = re.compile(r"<a?:(\w+):\d+>")
@@ -97,6 +100,8 @@ def _convert_non_fence(text: str) -> str:
 
     text = _MULTILINE_BLOCKQUOTE_RE.sub(_quote_lines, text)
     text = _BLOCKQUOTE_RE.sub(lambda m: f"\u201c{m.group(1)}\u201d", text)
+    # Strip bare ">" or "> " lines left over from empty blockquote continuation
+    text = _BARE_BLOCKQUOTE_RE.sub("", text)
     # No-embed URLs <https://...> → strip angle brackets
     text = _NO_EMBED_RE.sub(r"\1", text)
     # Masked links: [text](url) → text (url)  — before URL splitting so url is preserved

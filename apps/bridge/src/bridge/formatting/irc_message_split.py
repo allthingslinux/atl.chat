@@ -59,7 +59,7 @@ def split_irc_lines(content: str, max_bytes: int = 450) -> list[str]:
     rather than collapsing them into a single mangled line.
     Empty lines are skipped — blank-only messages are noise on IRC.
     """
-    lines = content.splitlines() or [""]
+    lines = content.split("\n") or [""]
     result: list[str] = []
     for line in lines:
         if not line.strip():

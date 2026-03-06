@@ -33,10 +33,14 @@ _INLINE_RULES: list[tuple[re.Pattern[str], str, str]] = [
     (re.compile(r"\*_(\S[^*\n]*?\S|\S)_\*"), "***", "***"),
     # Strong *text* → **text**  — opener/closer must not be adjacent to another *
     (re.compile(r"(?<!\*)\*(?!\*)(\S[^*\n]*?\S|\S)(?<!\*)\*(?!\*)"), "**", "**"),
+    # Discord-style __text__ → __text__ (underline passthrough, must come before single _)
+    (re.compile(r"__(\S[^_\n]*?\S|\S)__"), "__", "__"),
     # Emphasis _text_ → *text*
-    (re.compile(r"_(\S[^_\n]*?\S|\S)_"), "*", "*"),
+    (re.compile(r"(?<!_)_(?!_)(\S[^_\n]*?\S|\S)(?<!_)_(?!_)"), "*", "*"),
+    # Discord-style ~~text~~ → ~~text~~ (strikethrough passthrough, must come before single ~)
+    (re.compile(r"~~(\S[^~\n]*?\S|\S)~~"), "~~", "~~"),
     # Strikethrough ~text~ → ~~text~~
-    (re.compile(r"~(\S[^~\n]*?\S|\S)~"), "~~", "~~"),
+    (re.compile(r"(?<!~)~(?!~)(\S[^~\n]*?\S|\S)(?<!~)~(?!~)"), "~~", "~~"),
 ]
 
 
