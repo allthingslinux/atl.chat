@@ -377,6 +377,8 @@ loadmodule "third/metadata";
 loadmodule "third/react";         /* IRCv3 draft/react: message reactions */
 loadmodule "third/redact";        /* IRCv3 draft/message-redaction: REDACT for deletion */
 loadmodule "third/relaymsg-atl";  /* atl.chat fork: RELAYMSG for stateless bridging */
+loadmodule "third/irccloud-tags"; /* IRCCloud MessageTags support */
+loadmodule "third/kiwiirc-tags";  /* KiwiIRC MessageTags support */
 
 /* METADATA: avatars, message coloring, status texts (draft/metadata, draft/metadata-notify-2)
  * Usage: /metadata * set avatar :https://example.com/avatar.png
@@ -397,7 +399,7 @@ relaymsg {
 
 me {
 	name "${IRC_DOMAIN}";
-	info "${IRC_NETWORK_NAME} IRC Server";
+	info "${IRC_NETWORK_NAME}";
 	sid "001";
 }
 
@@ -607,27 +609,10 @@ allow {
 /* Authentication Requirements — uncomment and customize as needed.
  * Docs: https://www.unrealircd.org/docs/Require_authentication_block */
 
-/* Example 1: Require authentication for users from specific ISPs/countries
-require authentication {
-	mask *@*.suspicious-isp.com;
-	reason "Many troublemakers from this provider. Please authenticate with your registered account.";
-};
-*/
-
 /* Example 2: Require authentication for everyone (closed server)
 require authentication {
 	mask *@*;
 	reason "This server requires authentication. Please register an account first.";
-};
-*/
-
-/* Example 3: Require authentication for all except trusted countries
-require authentication {
-	mask {
-		mask *;
-		exclude-country { US; CA; GB; DE; FR; AU; }
-	}
-	reason "Authentication required from your location. Please register an account.";
 };
 */
 
@@ -778,8 +763,8 @@ except ban {
 /* Network configuration */
 set {
 	network-name 		"${IRC_NETWORK_NAME}";
-	default-server 		"${IRC_DOMAIN}";
-	services-server 	"${IRC_SERVICES_SERVER}";
+	default-server 	"${IRC_DOMAIN}";
+	services-server "${IRC_SERVICES_SERVER}";
 	stats-server 		"${IRC_DOMAIN}";
 	sasl-server 		"${IRC_SERVICES_SERVER}";
 
@@ -843,7 +828,12 @@ rpc-user "${WEBPANEL_RPC_USER}" {
 	password "${WEBPANEL_RPC_PASSWORD}";
 }
 
-/* Automatic vhost for registered users — applied at login via services */
+/* Automatic vhost for registered users — applied on-connect for SASL users.
+ * Only fires during the connection handshake (SASL); NS IDENTIFY after connect
+ * does NOT trigger this block. For post-connect identify, Atheme HostServ
+ * applies the vhost (set during account provisioning via Portal).
+ * Both mechanisms coexist: SASL users get instant vhost here, NS IDENTIFY
+ * users get it from HostServ — both resolve to $account@atl.chat. */
 vhost {
 	auto-login yes;
 	mask {
@@ -905,7 +895,7 @@ set {
 	spamfilter {
 		ban-time 1d;
 		ban-reason "Spam/Advertising";
-		virus-help-channel "#help";
+		virus-help-channel "#support";
 	}
 
 	/* Connection throttling: limits new connections during attacks.

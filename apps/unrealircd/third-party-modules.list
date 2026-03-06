@@ -35,6 +35,12 @@ third/react
 # draft/message-redaction (IRCv3): REDACT command for message deletion - Valware
 third/redact
 
+# IRCCloud MessageTags support
+third/irccloud-tags
+
+# KiwiIRC MessageTags support
+third/kiwiirc-tags
+
 # third/relaymsg-atl: built from contrib/relaymsg/relaymsg-atl.c (atl.chat fork, unique name avoids upstream overwrite)
 # Add more modules as needed:
 # third/commandsno
