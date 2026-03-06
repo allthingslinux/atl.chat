@@ -1,3 +1,23 @@
+# [1.3.0](https://github.com/allthingslinux/atl.chat/compare/v1.2.0...v1.3.0) (2026-03-06)
+
+
+### Bug Fixes
+
+* **bridge:** fix XMPP adapter origin-aware formatting and retraction ([a7c9f2c](https://github.com/allthingslinux/atl.chat/commit/a7c9f2c3dc6847133d72adc2e3f1573be97fc0e5))
+* **bridge:** improve cross-platform formatting fidelity ([a05bba3](https://github.com/allthingslinux/atl.chat/commit/a05bba33a050f12609603c83244dedcead7f20cb))
+* xep0393 whitespace at span boundaries in irc_to_xmpp ([93bedd3](https://github.com/allthingslinux/atl.chat/commit/93bedd355ee9f6f22d4d5ade939d87e81ecd92f7))
+
+
+### Features
+
+* **obsidianirc:** add compose fragment for ObsidianIRC service ([3dc35c5](https://github.com/allthingslinux/atl.chat/commit/3dc35c58728ca518941f8401dadc3bfadd82796a))
+* **obsidianirc:** add Containerfile for custom build with ATL build args ([a5079ac](https://github.com/allthingslinux/atl.chat/commit/a5079ac9299bcfd18688b8374fbf708afdac9fcf))
+* **obsidianirc:** add data/obsidianirc directory to init script ([3a59258](https://github.com/allthingslinux/atl.chat/commit/3a59258fa4c26dde4b4b9eca7fa3d36c3050091c))
+* **obsidianirc:** add justfile with rebuild and rebuild-clean recipes ([c469d9a](https://github.com/allthingslinux/atl.chat/commit/c469d9a906764df5eef97db93a37cee66a340f1b))
+* **obsidianirc:** add ObsidianIRC env vars to .env.example and .env.dev.example ([d33efc4](https://github.com/allthingslinux/atl.chat/commit/d33efc44771d4a825202a7cab4d2b610a2566fd7))
+* **obsidianirc:** add ObsidianIRC upstream as git submodule ([8419c0b](https://github.com/allthingslinux/atl.chat/commit/8419c0bcc5d7db178bc2346c56abb1cb6ac64347))
+* **obsidianirc:** include ObsidianIRC in compose.yaml and root justfile ([eba4fb7](https://github.com/allthingslinux/atl.chat/commit/eba4fb70840bfeadd7efee6a49a1f7442e8779ea))
+
 # [1.2.0](https://github.com/allthingslinux/atl.chat/compare/v1.1.0...v1.2.0) (2026-03-05)
 
 
