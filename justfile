@@ -16,6 +16,9 @@ mod bridge './apps/bridge'
 # The Lounge (web IRC client)
 mod lounge './apps/thelounge'
 
+# ObsidianIRC (web IRC client)
+mod obsidianirc './apps/obsidianirc'
+
 set export := true
 
 
