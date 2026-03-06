@@ -41,9 +41,14 @@ third/irccloud-tags
 # KiwiIRC MessageTags support
 third/kiwiirc-tags
 
+# draft/display-name (IRCv3): display names in message tags - Valware
+third/display-name
+
+# Block mass highlights network-wide (anti-spam) - Gottem / k4be
+third/block_masshighlight
+
 # third/relaymsg-atl: built from contrib/relaymsg/relaymsg-atl.c (atl.chat fork, unique name avoids upstream overwrite)
 # Add more modules as needed:
 # third/commandsno
 # third/clones
 # third/repeatprot
-# third/block_masshighlight
