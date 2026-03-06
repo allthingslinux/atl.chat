@@ -4,7 +4,7 @@ Infrastructure as code for ATL chat services.
 
 ## Structure
 
-- `compose/` - Compose fragments included by root `compose.yaml` (irc, xmpp, bridge, cert-manager, networks)
+- `compose/` - Compose fragments included by root `compose.yaml` (irc, xmpp, bridge, thelounge, obsidianirc, fluux-messenger, cert-manager, networks)
 - `turn-standalone/` - Standalone TURN/STUN server for edge deployment (atl.network)
 
 ## Usage

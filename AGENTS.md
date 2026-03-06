@@ -6,7 +6,7 @@ Unified chat infrastructure for All Things Linux: IRC, XMPP, web, and protocol b
 
 ## Quick Facts
 
-- **Layout:** Monorepo with `apps/*` (UnrealIRCd, Atheme, Prosody, WebPanel, Web, Docs, Bridge, The Lounge, Gamja)
+- **Layout:** Monorepo with `apps/*` (UnrealIRCd, Atheme, Prosody, WebPanel, Web, Docs, Bridge, The Lounge, ObsidianIRC, Gamja)
 - **Orchestration:** Docker Compose (root `compose.yaml` includes `infra/compose/*.yaml`)
 - **Task Runner:** just (root + per-app via `mod`)
 - **Key Commands:** `just init`, `just dev`, `just prod`, `just test`, `just test-all`
@@ -22,11 +22,12 @@ apps/
 ├── web/            # Next.js web application
 ├── bridge/         # Discord↔IRC↔XMPP bridge (Python, in-repo)
 ├── thelounge/      # Web IRC client (private mode, WebIRC, janitor/giphy plugins)
+├── obsidianirc/    # Modern IRC web client (custom build)
 ├── gamja/          # IRC web client (planned)
 └── docs/           # Fumadocs documentation site (Next.js)
 
 infra/
-├── compose/        # Compose fragments: irc, xmpp, bridge, cert-manager, networks
+├── compose/        # Compose fragments: irc, xmpp, bridge, thelounge, obsidianirc, cert-manager, networks
 ├── nginx/          # Nginx config for Prosody HTTPS
 └── turn-standalone/
 
@@ -63,17 +64,19 @@ docs/               # Static assets (examples/unrealircd/tls/)
 
 | Mod | Loads | Example |
 |-----|-------|---------|
-| `just irc` | apps/unrealircd | `just irc shell`, `just irc reload`, `just irc test` |
-| `just xmpp` | apps/prosody | `just xmpp shell`, `just xmpp reload`, `just xmpp adduser` |
-| `just web` | apps/web | `just web dev`, `just web build` |
-| `just bridge` | apps/bridge | `just bridge test`, `just bridge check` |
-| `just lounge` | apps/thelounge | `just lounge add`, `just lounge list`, `just lounge reset` |
+| `just irc` | apps/unrealircd | `just irc shell`, `just irc reload`, `just irc test`, `just irc sra-bootstrap <nick>` |
+| `just xmpp` | apps/prosody | `just xmpp shell`, `just xmpp reload`, `just xmpp adduser`, `just xmpp check` |
+| `just web` | apps/web | `just web dev`, `just web build`, `just web lint` |
+| `just bridge` | apps/bridge | `just bridge test`, `just bridge check`, `just bridge lint` |
+| `just lounge` | apps/thelounge | `just lounge add <name>`, `just lounge list`, `just lounge reset <name>` |
+| `just obsidianirc` | apps/obsidianirc | `just obsidianirc shell`, `just obsidianirc rebuild`, `just obsidianirc rebuild-clean` |
 
 ## Related
 
 - [apps/atheme/AGENTS.md](apps/atheme/AGENTS.md)
 - [apps/bridge/AGENTS.md](apps/bridge/AGENTS.md)
 - [apps/gamja/AGENTS.md](apps/gamja/AGENTS.md)
+- [apps/obsidianirc/AGENTS.md](apps/obsidianirc/AGENTS.md)
 - [apps/prosody/AGENTS.md](apps/prosody/AGENTS.md)
 - [apps/thelounge/AGENTS.md](apps/thelounge/AGENTS.md)
 - [apps/unrealircd/AGENTS.md](apps/unrealircd/AGENTS.md)

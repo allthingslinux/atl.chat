@@ -55,10 +55,15 @@ src/bridge/
 │   └── msgid_resolver.py # MessageIDResolver port, DefaultMessageIDResolver
 ├── formatting/
 │   ├── discord_to_irc.py
+│   ├── discord_to_xmpp.py
 │   ├── irc_to_discord.py
+│   ├── irc_to_xmpp.py
 │   ├── irc_message_split.py
 │   ├── reply_fallback.py
-│   └── mention_resolution.py
+│   ├── mention_resolution.py
+│   ├── paste.py
+│   ├── xmpp_to_discord.py
+│   └── xmpp_to_irc.py
 └── adapters/
     ├── base.py         # AdapterBase ABC
     ├── discord/        # DiscordAdapter, handlers, webhook

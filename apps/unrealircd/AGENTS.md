@@ -39,6 +39,9 @@ justfile           # Loaded via: mod irc './apps/unrealircd'
 | `just irc test-protocol` | Run protocol tests |
 | `just irc test-env` | Environment validation tests |
 | `just irc test-irc` | IRC functionality + protocol tests |
+| `just irc test-performance` | Performance tests |
+| `just irc test-services` | Service tests (Atheme) |
+| `just irc test-docker` | Docker-related tests |
 | `just irc test-quick` | Quick environment check (compose config + status) |
 | `just irc ssl-setup` | Start cert-manager (Lego) |
 | `just irc ssl-status` | Show SSL cert status |

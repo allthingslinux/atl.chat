@@ -16,7 +16,7 @@ src/bridge/          # The bridge package (entry point: __main__.py)
 ├── core/            # Constants, events, errors
 ├── identity/        # Portal API + dev resolver
 ├── gateway/         # Bus, Relay, Router, MessageIDResolver
-├── formatting/      # Discord↔IRC format converters
+├── formatting/      # Discord↔IRC↔XMPP format converters, paste
 └── adapters/        # discord/, irc/, xmpp/ protocol packages
 ```
 

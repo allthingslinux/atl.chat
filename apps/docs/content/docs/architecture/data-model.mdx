@@ -32,6 +32,8 @@ graph TD
 
     thelounge["thelounge/\nconfig.js, users/, logs/,\nplugin state"]
 
+    obsidianirc["obsidianirc/\n(if needed)"]
+
     subgraph certs["certs/"]
       certsLive["live/\n&lt;domain&gt;/fullchain.pem, privkey.pem"]
       certsCertificates["certificates/\nLego output (prod)"]
@@ -53,6 +55,7 @@ data/
 │   ├── data/              # Prosody SQLite database (prosody.sqlite)
 │   └── uploads/           # Prosody HTTP Upload files
 ├── thelounge/             # The Lounge home: config.js, users/, packages/
+├── obsidianirc/           # ObsidianIRC data (if needed)
 └── certs/
     ├── live/              # Per-domain cert dirs: <domain>/fullchain.pem, privkey.pem
     │   ├── irc.localhost/ # Dev self-signed certs
@@ -76,6 +79,7 @@ Every bind-mount is defined in the compose fragments under `infra/compose/`. Pat
 | `data/certs` | `/etc/prosody/certs` | Prosody | `xmpp.yaml` |
 | `data/certs` | `/etc/nginx/certs` (ro) | XMPP Nginx | `xmpp.yaml` |
 | `data/thelounge` | `/var/opt/thelounge` | The Lounge | `thelounge.yaml` |
+| `data/obsidianirc` | _(none)_ | ObsidianIRC | `obsidianirc.yaml` |
 | `data/certs` | `/data` | Cert Manager | `cert-manager.yaml` |
 
 > **Note:** The Bridge service does not have a `data/` volume. Its configuration (`apps/bridge/config.yaml`) is bind-mounted read-only from the source tree, not from `data/`.

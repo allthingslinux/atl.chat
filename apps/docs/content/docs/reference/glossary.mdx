@@ -13,6 +13,7 @@ This glossary defines every project-specific term, acronym, and service name use
 | **Atheme** | The IRC services daemon that provides nickname registration (NickServ), channel management (ChanServ), operator tools (OperServ), and other service bots. Shares a network namespace with UnrealIRCd. |
 | **Prosody** | The XMPP server that provides real-time messaging alongside IRC. Configured via Lua (`prosody.cfg.lua`) and runs from `apps/prosody/`. |
 | **The Lounge** | A self-hosted web IRC client running in private mode. Connects to UnrealIRCd via WebIRC and provides a persistent, browser-based chat experience. Managed from `apps/thelounge/`. |
+| **ObsidianIRC** | A modern web IRC client built from upstream source with ATL-specific defaults. Single-server mode with auto-join configured. Runs from `apps/obsidianirc/`. |
 | **WebPanel** | The UnrealIRCd administration web panel served by nginx. Connects to UnrealIRCd's JSON-RPC interface for server management. Runs from `apps/webpanel/`. |
 | **Bridge** | A Python application (`apps/bridge/`) that relays messages between Discord, IRC, and XMPP using an event bus pattern. |
 | **Gamja** | A lightweight, planned IRC web client. Directory exists at `apps/gamja/` but is not yet active. |

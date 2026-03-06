@@ -13,7 +13,7 @@ atl.chat is the unified chat infrastructure for the [All Things Linux](https://a
 
 ### How do the services relate to each other?
 
-UnrealIRCd handles IRC connections and Atheme provides nickname/channel registration on top of it (they share a Docker network namespace). Prosody runs the XMPP side independently. The [Bridge](/docs/services/bridge) relays messages between Discord, IRC, and XMPP so users on any platform see the same conversations. [The Lounge](/docs/services/thelounge) and [Gamja](/docs/reference/glossary) are web IRC clients that connect to UnrealIRCd, and the [WebPanel](/docs/services/webpanel) gives operators a browser-based admin interface via UnrealIRCd's JSON-RPC API.
+UnrealIRCd handles IRC connections and Atheme provides nickname/channel registration on top of it (they share a Docker network namespace). Prosody runs the XMPP side independently. The [Bridge](/docs/services/bridge) relays messages between Discord, IRC, and XMPP so users on any platform see the same conversations. [The Lounge](/docs/services/thelounge) and [ObsidianIRC](/docs/reference/glossary) are web IRC clients that connect to UnrealIRCd, and the [WebPanel](/docs/services/webpanel) gives operators a browser-based admin interface via UnrealIRCd's JSON-RPC API.
 
 ### Is atl.chat open source?
 
@@ -27,7 +27,7 @@ You have several options:
 
 1. **Desktop IRC client** (HexChat, irssi, WeeChat) — connect to `irc.atl.tools` on port `6697` with TLS enabled.
 2. **The Lounge** — open the web client in your browser (port `9000` in dev, or the public URL in production). You need an account created by an operator (`just lounge add`).
-3. **Gamja** — a lightweight web client (planned, not yet active).
+3. **ObsidianIRC** — a modern web client (port `8090` in dev). Pre-configured for ATL IRC with auto-join enabled.
 
 See the [IRC overview](/docs/services/irc) for full connection details.
 

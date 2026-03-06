@@ -27,6 +27,7 @@ Use `BridgeTestHarness` for any test that needs a real Bus + Relay wired togethe
 | `test_bridge_flow.py` | End-to-end message flow through the full stack |
 | `test_relay.py` | Core relay routing: Discord→IRC, IRC→Discord, XMPP paths |
 | `test_relay_extended.py` | Content filtering, edit/delete/reaction/typing relay |
+| `test_content_filter.py` | Pre-compiled content filter functions (`_build_content_filters`, `_content_matches_filter`) |
 | `test_bus.py` | Bus dispatch, per-adapter exception isolation |
 | `test_gateway.py` | Gateway integration (Bus + Relay + Router together) |
 | `test_router.py` | `ChannelRouter` mapping lookups, `load_from_config`, edge cases |

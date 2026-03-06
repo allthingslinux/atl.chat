@@ -2,15 +2,20 @@
 
 > Scope: `src/bridge/formatting/` — inherits [Bridge AGENTS.md](../../../AGENTS.md).
 
-Stateless format converters between Discord markdown and IRC control codes, plus IRC message splitting.
+Stateless format converters between Discord, IRC, and XMPP, plus IRC message splitting and paste service integration.
 
 ## Files
 
 | File | Purpose |
 |------|---------|
 | `discord_to_irc.py` | Strip Discord markdown to plain text for IRC; preserves URLs |
+| `discord_to_xmpp.py` | Convert Discord markdown to XMPP XEP-0393 formatting |
 | `irc_to_discord.py` | Convert IRC control codes to Discord markdown; strips colors; strikethrough `\x1e` → `~~` |
+| `irc_to_xmpp.py` | Convert IRC control codes to XMPP XEP-0393 formatting |
+| `xmpp_to_discord.py` | Convert XMPP XEP-0393 to Discord markdown |
+| `xmpp_to_irc.py` | Convert XMPP XEP-0393 to IRC control codes |
 | `irc_message_split.py` | Split long messages at IRC's byte limit, preserving word boundaries and UTF-8 |
+| `paste.py` | Paste service integration for long messages |
 | `reply_fallback.py` | Reply threading fallback when msgid unavailable |
 | `mention_resolution.py` | Resolve `@nick` in IRC/XMPP content to Discord `<@userId>` via guild member lookup |
 

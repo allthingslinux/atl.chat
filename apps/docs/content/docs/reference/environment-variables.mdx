@@ -186,6 +186,16 @@ The full variable names follow the pattern: `ATHEME_NICKSERV_NICK=NickServ`, `AT
 
 > **Warning:** `THELOUNGE_WEBIRC_PASSWORD` must match the WebIRC password configured in UnrealIRCd. Change this from the default before production deployment.
 
+### ObsidianIRC
+
+| Variable | Description | Required | Default |
+|---|---|---|---|
+| `OBSIDIANIRC_PORT` | Port for ObsidianIRC web IRC client | Yes | `8090` |
+| `OBSIDIANIRC_IRC_WS_URL` | WebSocket URL for IRC connection | Yes | `wss://irc.atl.chat/ws` |
+| `OBSIDIANIRC_AUTOJOIN` | Comma-separated list of channels to auto-join | No | `#general` |
+
+ObsidianIRC is built with these values baked into the image as Vite build args. To change them, update `.env` and rebuild: `just obsidianirc rebuild`.
+
 ## XMPP Service (Prosody)
 
 ### Domain and admin

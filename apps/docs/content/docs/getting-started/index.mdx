@@ -126,6 +126,7 @@ atl.chat/
 │   ├── web/            # Next.js web application — the public-facing site
 │   ├── webpanel/       # UnrealIRCd admin panel (nginx + JSON-RPC)
 │   ├── thelounge/      # The Lounge web IRC client (private mode, WebIRC)
+│   ├── obsidianirc/    # ObsidianIRC modern web IRC client (custom build)
 │   ├── gamja/          # Gamja lightweight IRC web client (planned)
 │   └── docs/           # This documentation site (Fumadocs on Cloudflare Workers)
 │
@@ -149,7 +150,7 @@ atl.chat/
 
 ### How services interconnect
 
-UnrealIRCd is the core IRC daemon. Atheme connects to it over a server-to-server link (port 6901) to provide nickname registration, channel management, and other services. The Lounge and Gamja connect as IRC clients via WebSocket (port 8000). The WebPanel talks to UnrealIRCd's JSON-RPC API (port 8600) for administration.
+UnrealIRCd is the core IRC daemon. Atheme connects to it over a server-to-server link (port 6901) to provide nickname registration, channel management, and other services. The Lounge and ObsidianIRC connect as IRC clients via WebSocket (port 8000). The WebPanel talks to UnrealIRCd's JSON-RPC API (port 8600) for administration.
 
 Prosody runs the XMPP side, handling federated messaging with BOSH/WebSocket endpoints for web clients.
 

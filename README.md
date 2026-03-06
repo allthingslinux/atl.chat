@@ -15,7 +15,9 @@ apps/
 ├── web/            # Next.js web application
 ├── bridge/         # Discord↔IRC↔XMPP bridge (in-repo)
 ├── thelounge/      # Web IRC client (private mode, WebIRC)
-└── gamja/          # IRC web client (planned)
+├── obsidianirc/    # Modern IRC web client (custom build)
+├── gamja/          # IRC web client (planned)
+└── docs/           # Fumadocs documentation site
 ```
 
 Compose fragments in `infra/compose/`:
@@ -25,6 +27,7 @@ Compose fragments in `infra/compose/`:
 - `cert-manager.yaml` — Lego (Let's Encrypt)
 - `bridge.yaml` — Discord↔IRC↔XMPP bridge
 - `thelounge.yaml` — The Lounge web IRC client
+- `obsidianirc.yaml` — ObsidianIRC web client
 - `networks.yaml` — Shared `atl-chat` network
 
 ## Quick Start
@@ -54,7 +57,7 @@ just dev       # Starts stack with dev profile (Dozzle, localhost domains)
 
 `just init` runs `scripts/init.sh` and `scripts/prepare-config.sh` to:
 
-- Create `data/irc/`, `data/atheme/`, `data/xmpp/`, `data/thelounge/`, `data/certs/`
+- Create `data/irc/`, `data/atheme/`, `data/xmpp/`, `data/thelounge/`, `data/obsidianirc/`, `data/certs/`
 - Substitute `.env` into UnrealIRCd, Atheme, and Bridge config templates
 - Generate dev certs for `irc.localhost` (if missing)
 
@@ -96,7 +99,7 @@ just irc reload     # Reload UnrealIRCd config
 just logs           # Follow logs (root command; use service name to filter)
 ```
 
-See [docs/services/irc/](docs/services/irc/) for full docs.
+See [docs-old/services/irc/](docs-old/services/irc/) for full docs.
 
 ### XMPP (Prosody)
 
@@ -118,7 +121,7 @@ just xmpp reload    # Reload Prosody
 just xmpp adduser   # Add XMPP user
 ```
 
-See [docs/services/xmpp/](docs/services/xmpp/).
+See [docs-old/services/xmpp/](docs-old/services/xmpp/).
 
 ### Web
 
@@ -149,6 +152,15 @@ Web IRC client (private mode, WebIRC). See [apps/thelounge/](apps/thelounge/).
 just lounge add <name>   # Create user (prompts for password)
 just lounge list        # List users
 just lounge reset <name> # Reset user password
+```
+
+### ObsidianIRC
+
+Modern IRC web client (custom build). See [apps/obsidianirc/](apps/obsidianirc/).
+
+```bash
+just obsidianirc rebuild       # Rebuild image
+just obsidianirc rebuild-clean # Rebuild without cache
 ```
 
 ## Task Running
@@ -193,11 +205,12 @@ data/
 │   ├── logs/          # Prosody logs
 │   └── uploads/       # File uploads
 ├── thelounge/         # The Lounge user data
+├── obsidianirc/       # ObsidianIRC data (if needed)
 └── certs/             # TLS certs (Let's Encrypt layout)
     └── live/<domain>/  # fullchain.pem, privkey.pem
 ```
 
-See [docs/infra/data-structure.md](docs/infra/data-structure.md).
+See [docs-old/infra/data-structure.md](docs-old/infra/data-structure.md).
 
 ## Environment
 
@@ -237,14 +250,15 @@ just dev    # Uses .env.dev + dev profile
 
 | Area          | Path |
 |---------------|------|
-| Hub           | [docs/README.md](docs/README.md) |
-| Onboarding    | [docs/onboarding/README.md](docs/onboarding/README.md) |
-| Architecture  | [docs/architecture/README.md](docs/architecture/README.md) |
-| Data layout   | [docs/infra/data-structure.md](docs/infra/data-structure.md) |
-| IRC           | [docs/services/irc/](docs/services/irc/) |
-| XMPP          | [docs/services/xmpp/](docs/services/xmpp/) |
-| Web           | [docs/services/web/](docs/services/web/) |
-| Bridges       | [docs/bridges/README.md](docs/bridges/README.md) |
+| Hub           | [docs-old/README.md](docs-old/README.md) |
+| Onboarding    | [docs-old/onboarding/README.md](docs-old/onboarding/README.md) |
+| Architecture  | [docs-old/architecture/README.md](docs-old/architecture/README.md) |
+| Data layout   | [docs-old/infra/data-structure.md](docs-old/infra/data-structure.md) |
+| IRC           | [docs-old/services/irc/](docs-old/services/irc/) |
+| XMPP          | [docs-old/services/xmpp/](docs-old/services/xmpp/) |
+| Web           | [docs-old/services/web/](docs-old/services/web/) |
+| Bridges       | [docs-old/bridges/README.md](docs-old/bridges/README.md) |
+| Fumadocs Site | [apps/docs/](apps/docs/) |
 
 ## Contributing
 
