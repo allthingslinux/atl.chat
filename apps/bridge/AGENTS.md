@@ -2,7 +2,7 @@
 
 > Scope: Root project (applies to all subdirectories unless overridden)
 
-Production-ready Discord–IRC–XMPP bridge with multi-presence and Portal identity.
+Production-ready Discord-IRC-XMPP bridge with multi-presence and Portal identity.
 
 ## Quick Facts
 
@@ -13,22 +13,25 @@ Production-ready Discord–IRC–XMPP bridge with multi-presence and Portal iden
 
 ## Tech Stack
 
-discord.py · pydle (IRC) · slixmpp (XMPP) · asyncio · uvloop · loguru · tenacity · httpx · pyyaml · basedpyright · ruff
+discord.py · pydle (IRC) · slixmpp (XMPP) · asyncio · uvloop · loguru · tenacity · httpx · pyyaml · basedpyright · ruff · hypothesis (property-based testing)
 
 ## Architecture
 
-Event-driven: all protocol adapters communicate through a central `Bus`. No adapter talks directly to another.
+Event-driven: all protocol adapters communicate through a central `Bus`. No adapter talks directly to another. Formatting uses an intermediate representation (IR) for lossless cross-protocol conversion.
 
 ```
-Discord Adapter  ──┐
-IRC Adapter      ──→  Bus → Relay → Bus → target adapters
-XMPP Adapter     ──┘
+Discord Adapter  --+
+IRC Adapter      ---->  Bus -> Relay -> Pipeline -> Bus -> target adapters
+XMPP Adapter     --+
 ```
 
-- **Bus** (`gateway/bus.py`) — dispatches typed events to registered adapters
-- **Relay** (`gateway/relay.py`) — transforms `MessageIn` → `MessageOut` for other protocols; applies content filtering
-- **Router** (`gateway/router.py`) — maps Discord channel IDs ↔ IRC channels ↔ XMPP MUCs
-- **Identity** (`identity/`) — Portal API client with TTL cache; resolves Discord ID → IRC nick / XMPP JID
+- **Bus** (`gateway/bus.py`) -- dispatches typed events to registered adapters
+- **Relay** (`gateway/relay.py`) -- transforms `MessageIn` -> `MessageOut` for other protocols
+- **Pipeline** (`gateway/pipeline.py`, `gateway/steps.py`) -- composable transform steps (spoiler, reply fallback, content filter, format conversion)
+- **Router** (`gateway/router.py`) -- maps Discord channel IDs <-> IRC channels <-> XMPP MUCs
+- **Identity** (`identity/`) -- Portal API client with TTL cache; resolves Discord ID -> IRC nick / XMPP JID
+- **Tracking** (`tracking/`) -- BidirectionalTTLMap and MessageIDResolver for cross-protocol message correlation
+- **Formatting** (`formatting/`) -- IR-based format conversion: primitives, markdown parser/emitter, IRC codes, XEP-0393/0394, converter registry
 
 ## Repository Structure
 
@@ -39,54 +42,71 @@ src/bridge/
 ├── events.py            # Re-export from core.events
 ├── errors.py            # Re-export from core.errors
 ├── config/              # YAML config + env overlay
-│   ├── loader.py        # load_config, load_config_with_env
-│   └── schema.py       # Config class, cfg singleton
+│   ├── loader.py        # load_config, validate_config, load_config_with_env
+│   └── schema.py        # Config class, cfg singleton
 ├── core/                # Domain primitives
-│   ├── constants.py    # ProtocolOrigin, ORIGINS
-│   ├── events.py       # Event dataclasses, factories, Dispatcher, BridgeAdapter
+│   ├── constants.py     # ProtocolOrigin, ORIGINS
+│   ├── events.py        # Event dataclasses, factories, Dispatcher, BridgeAdapter
 │   └── errors.py        # BridgeError, BridgeConfigurationError
-├── identity/            # Portal API + dev resolver
-│   ├── portal.py       # PortalClient, IdentityResolver
-│   └── dev.py          # DevIdentityResolver
+├── identity/            # Portal API + dev resolver + sanitization
+│   ├── base.py          # IdentityResolver ABC, DevIdentityResolver
+│   ├── portal.py        # PortalClient, PortalIdentityResolver
+│   ├── dev.py           # DevIdentityResolver (legacy alias)
+│   └── sanitize.py      # ensure_valid_username, sanitize_nick
+├── tracking/            # Cross-protocol message correlation
+│   ├── base.py          # BidirectionalTTLMap (generic bidirectional TTL cache)
+│   └── message_ids.py   # MessageIDResolver (per-protocol-pair ID mapping)
 ├── gateway/
-│   ├── bus.py          # Event dispatcher
-│   ├── relay.py        # MessageIn → MessageOut routing
-│   ├── router.py       # Channel mapping
+│   ├── bus.py           # Event dispatcher
+│   ├── relay.py         # MessageIn -> MessageOut routing
+│   ├── router.py        # Channel mapping
+│   ├── pipeline.py      # Pipeline, TransformContext, TransformStep protocol
+│   ├── steps.py         # Default pipeline steps (spoiler, reply, filter, format)
 │   └── msgid_resolver.py # MessageIDResolver port, DefaultMessageIDResolver
 ├── formatting/
-│   ├── discord_to_irc.py
-│   ├── discord_to_xmpp.py
-│   ├── irc_to_discord.py
-│   ├── irc_to_xmpp.py
-│   ├── irc_message_split.py
-│   ├── reply_fallback.py
-│   ├── mention_resolution.py
-│   ├── paste.py
-│   ├── xmpp_to_discord.py
-│   └── xmpp_to_irc.py
+│   ├── primitives.py    # FormattedText IR, Span, Style, CodeBlock, URL_RE, irc_casefold
+│   ├── converter.py     # Registry-based convert(content, origin, target), strip_formatting
+│   ├── markdown.py      # Discord markdown parser/emitter
+│   ├── irc_codes.py     # IRC control code parser/emitter
+│   ├── xmpp_styling.py  # XEP-0393 parser/emitter, XEP-0394 emitter
+│   ├── splitter.py      # split_irc_message (byte-safe UTF-8 splitting)
+│   ├── paste.py         # PrivateBin paste service integration
+│   ├── mention_resolution.py  # @nick -> Discord <@userId> resolution
+│   ├── reply_fallback.py      # Reply threading fallback
+│   ├── discord_to_irc.py      # Legacy converter (used by some paths)
+│   ├── discord_to_xmpp.py     # Legacy converter
+│   ├── irc_to_discord.py      # Legacy converter
+│   ├── irc_to_xmpp.py         # Legacy converter
+│   ├── xmpp_to_discord.py     # Legacy converter
+│   ├── xmpp_to_irc.py         # Legacy converter
+│   └── irc_message_split.py   # Legacy splitter (used by some paths)
 └── adapters/
-    ├── base.py         # AdapterBase ABC
-    ├── discord/        # DiscordAdapter, handlers, webhook
-    ├── irc/            # IRCAdapter, IRCClient, puppet, msgid, throttle
-    └── xmpp/           # XMPPAdapter, XMPPComponent, msgid
-tests/                  # pytest suite (859 tests)
+    ├── base.py          # AdapterBase ABC
+    ├── discord/         # DiscordAdapter: adapter, handlers, webhook, avatar, media, outbound
+    ├── irc/             # IRCAdapter: adapter, client, handlers, outbound, puppet, msgid, throttle
+    └── xmpp/            # XMPPAdapter: adapter, component, handlers, outbound, media, avatar, msgid
+tests/                   # pytest suite (1729 tests)
+├── unit/                # Isolated component tests (discord/, irc/, xmpp/, formatting/, gateway/, identity/, tracking/, config/, misc/)
+├── property/            # Hypothesis property-based tests (24 correctness properties)
+├── integration/         # Cross-component integration tests
+└── offensive/           # Adversarial tests (injection, overflow, race conditions, Unicode edge cases)
 ```
 
 ## Common Tasks
 
 ### Development
 
-- `uv sync` — install all dependencies
-- `uv run bridge --config config.yaml` — run the bridge
+- `uv sync` -- install all dependencies
+- `uv run bridge --config config.yaml` -- run the bridge
 
 ### Quality
 
-- `just bridge lint` — ruff check (from root)
-- `just bridge format` — ruff format
-- `just bridge typecheck` — basedpyright
-- `just bridge test` — pytest (859 tests)
-- `just bridge test -k foo` — run matching tests
-- `just bridge check` — all of the above in sequence
+- `just bridge lint` -- ruff check (from root)
+- `just bridge format` -- ruff format
+- `just bridge typecheck` -- basedpyright
+- `just bridge test` -- pytest (1729 tests)
+- `just bridge test -k foo` -- run matching tests
+- `just bridge check` -- all of the above in sequence
 
 ## Event System
 
@@ -126,10 +146,10 @@ Config is YAML + env overlay (dotenv loaded at startup). Generated by `scripts/p
 
 ## Critical Rules
 
-- Never import one adapter from another — all cross-adapter communication goes through the Bus.
+- Never import one adapter from another -- all cross-adapter communication goes through the Bus.
 - `uvloop.run()` is used on Linux/macOS; falls back to `asyncio.run()` on Windows.
-- `AllowedMentions(everyone=False, roles=False)` on all webhook sends — never allow mass pings from bridged content.
-- Raw Discord events (`on_raw_*`) are used throughout — never the cached variants.
+- `AllowedMentions(everyone=False, roles=False)` on all webhook sends -- never allow mass pings from bridged content.
+- Raw Discord events (`on_raw_*`) are used throughout -- never the cached variants.
 
 ## Finish the Task
 

@@ -14,8 +14,9 @@ src/bridge/          # The bridge package (entry point: __main__.py)
 ├── errors.py        # Re-export from core.errors
 ├── config/          # YAML config + env overlay (loader, schema)
 ├── core/            # Constants, events, errors
-├── identity/        # Portal API + dev resolver
-├── gateway/         # Bus, Relay, Router, MessageIDResolver
+├── identity/        # Portal API + dev resolver + sanitization
+├── tracking/        # Cross-protocol message correlation (BidirectionalTTLMap, MessageIDResolver)
+├── gateway/         # Bus, Relay, Router, Pipeline
 ├── formatting/      # Discord↔IRC↔XMPP format converters, paste
 └── adapters/        # discord/, irc/, xmpp/ protocol packages
 ```
@@ -26,3 +27,6 @@ src/bridge/          # The bridge package (entry point: __main__.py)
 - [bridge/gateway/AGENTS.md](bridge/gateway/AGENTS.md)
 - [bridge/adapters/AGENTS.md](bridge/adapters/AGENTS.md)
 - [bridge/formatting/AGENTS.md](bridge/formatting/AGENTS.md)
+- [bridge/tracking/AGENTS.md](bridge/tracking/AGENTS.md)
+- [bridge/identity/AGENTS.md](bridge/identity/AGENTS.md)
+- [bridge/config/AGENTS.md](bridge/config/AGENTS.md)

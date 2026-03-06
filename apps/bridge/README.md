@@ -2,13 +2,14 @@
 
 **Production-ready Discord–IRC–XMPP bridge with multi-presence and Portal identity.**
 
-[![Tests](https://img.shields.io/badge/tests-819%20passing-brightgreen)]() [![Python](https://img.shields.io/badge/python-3.10+-blue)]() [![License](https://img.shields.io/badge/license-MIT-blue)]()
+[![Tests](https://img.shields.io/badge/tests-1729%20passing-brightgreen)]() [![Python](https://img.shields.io/badge/python-3.10+-blue)]() [![License](https://img.shields.io/badge/license-MIT-blue)]()
 
 ## Overview
 
 - **Multi-presence**: Each Discord user gets their own IRC connection and XMPP JID (puppets)
 - **Identity-first**: Portal API is the source of truth—no account provisioning on the bridge
 - **Event-driven**: All adapters communicate via a central Bus; no direct adapter-to-adapter calls
+- **IR-based formatting**: Lossless cross-protocol format conversion through an intermediate representation
 - **Modern protocols**: IRCv3 capabilities, XMPP XEPs for edits, reactions, replies, file transfers
 
 ## Quick Start
@@ -53,7 +54,7 @@ From monorepo root with `just`: `just bridge test`, `just bridge check`, etc. (s
 - **Mention safety**: `@everyone` and role pings suppressed
 - **Mention resolution**: `@nick` in IRC/XMPP content resolved to `<@userId>` via guild member lookup
 - **Media embedding**: Fetch image/video URLs from IRC/XMPP, send as Discord File
-- **IRC formatting**: Bold, italic, underline, strikethrough (`\x1e` → `~~`) mapped to Discord markdown
+- **IRC formatting**: IR-based conversion — bold, italic, underline, strikethrough, spoiler mapped bidirectionally between Discord markdown, IRC control codes, and XEP-0393/0394
 
 ### IRC
 
@@ -128,48 +129,71 @@ See `config.example.yaml` for the full schema.
 
 ```
 Discord Adapter  ──┐
-IRC Adapter      ──→  Bus → Relay → Router → target adapters
+IRC Adapter      ──→  Bus → Relay → Pipeline → Bus → target adapters
 XMPP Adapter     ──┘
 ```
 
 - **Bus** (`gateway/bus.py`): Dispatches typed events to registered adapters
 - **Relay** (`gateway/relay.py`): Transforms `MessageIn` → `MessageOut`; applies content filtering
+- **Pipeline** (`gateway/pipeline.py`, `gateway/steps.py`): Composable transform steps (spoiler, reply fallback, content filter, format conversion)
 - **Router** (`gateway/router.py`): Maps Discord channel IDs ↔ IRC channels ↔ XMPP MUCs
 - **Identity** (`identity/`): Portal API client with TTL cache; resolves Discord ID → IRC nick / XMPP JID
+- **Tracking** (`tracking/`): BidirectionalTTLMap and MessageIDResolver for cross-protocol message correlation
+- **Formatting** (`formatting/`): IR-based format conversion — primitives, markdown parser/emitter, IRC codes, XEP-0393/0394, converter registry
 
 ### Project Structure
 
 ```
 src/bridge/
 ├── __main__.py          # Entry point, signal handling
+├── avatar.py            # Avatar URL caching and resolution
 ├── events.py            # Re-export from core.events
 ├── errors.py            # Re-export from core.errors
 ├── config/              # YAML + env overlay
-│   ├── loader.py
-│   └── schema.py
+│   ├── loader.py        # load_config, validate_config, load_config_with_env
+│   └── schema.py        # Config class, cfg singleton
 ├── core/                # Domain primitives
-│   ├── constants.py
-│   ├── events.py
-│   └── errors.py
-├── identity/
-│   ├── portal.py       # PortalClient, IdentityResolver
-│   └── dev.py          # DevIdentityResolver
+│   ├── constants.py     # ProtocolOrigin, ORIGINS
+│   ├── events.py        # Event dataclasses, factories, Dispatcher
+│   └── errors.py        # BridgeError, BridgeConfigurationError
+├── identity/            # Portal API + dev resolver + sanitization
+│   ├── base.py          # IdentityResolver ABC, DevIdentityResolver
+│   ├── portal.py        # PortalClient, PortalIdentityResolver
+│   ├── dev.py           # DevIdentityResolver (legacy alias)
+│   └── sanitize.py      # ensure_valid_username, sanitize_nick
+├── tracking/            # Cross-protocol message correlation
+│   ├── base.py          # BidirectionalTTLMap (generic bidirectional TTL cache)
+│   └── message_ids.py   # MessageIDResolver (per-protocol-pair ID mapping)
 ├── gateway/
-│   ├── bus.py
-│   ├── relay.py
-│   ├── router.py
-│   └── msgid_resolver.py
+│   ├── bus.py           # Event dispatcher
+│   ├── relay.py         # MessageIn → MessageOut routing
+│   ├── router.py        # Channel mapping
+│   ├── pipeline.py      # Pipeline, TransformContext, TransformStep protocol
+│   ├── steps.py         # Default pipeline steps (spoiler, reply, filter, format)
+│   └── msgid_resolver.py # MessageIDResolver port
 ├── formatting/
-│   ├── discord_to_irc.py
-│   ├── irc_to_discord.py
-│   ├── irc_message_split.py
-│   ├── reply_fallback.py
-│   └── mention_resolution.py
+│   ├── primitives.py    # FormattedText IR, Span, Style, CodeBlock, URL_RE, irc_casefold
+│   ├── converter.py     # Registry-based convert(content, origin, target), strip_formatting
+│   ├── markdown.py      # Discord markdown parser/emitter
+│   ├── irc_codes.py     # IRC control code parser/emitter
+│   ├── xmpp_styling.py  # XEP-0393 parser/emitter, XEP-0394 emitter
+│   ├── splitter.py      # split_irc_message (byte-safe UTF-8 splitting)
+│   ├── paste.py         # PrivateBin paste service integration
+│   ├── mention_resolution.py  # @nick → Discord <@userId> resolution
+│   ├── reply_fallback.py      # Reply threading fallback
+│   ├── discord_to_irc.py      # Legacy converter
+│   ├── irc_to_discord.py      # Legacy converter
+│   └── irc_message_split.py   # Legacy splitter
 └── adapters/
-    ├── base.py
-    ├── discord/         # adapter, handlers, webhook
-    ├── irc/              # adapter, client, puppet, msgid, throttle
-    └── xmpp/             # adapter, component, msgid
+    ├── base.py          # AdapterBase ABC
+    ├── discord/         # adapter, handlers, outbound, webhook, avatar, media
+    ├── irc/             # adapter, client, handlers, outbound, puppet, msgid, throttle
+    └── xmpp/            # adapter, component, handlers, outbound, media, avatar, msgid
+tests/                   # pytest suite (1729 tests)
+├── unit/                # Isolated component tests (discord/, irc/, xmpp/, formatting/, gateway/, identity/, tracking/, config/, misc/)
+├── property/            # Hypothesis property-based tests (24 correctness properties)
+├── integration/         # Cross-component integration tests
+└── offensive/           # Adversarial tests (injection, overflow, race conditions, Unicode edge cases)
 ```
 
 ## Development

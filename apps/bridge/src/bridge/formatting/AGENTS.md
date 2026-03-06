@@ -1,57 +1,53 @@
 # Formatting
 
-> Scope: `src/bridge/formatting/` — inherits [Bridge AGENTS.md](../../../AGENTS.md).
+> Scope: `src/bridge/formatting/` -- inherits [Bridge AGENTS.md](../../../AGENTS.md).
 
-Stateless format converters between Discord, IRC, and XMPP, plus IRC message splitting and paste service integration.
+IR-based format conversion between Discord, IRC, and XMPP, plus message splitting and paste service integration.
+
+## Architecture
+
+All cross-protocol formatting goes through an intermediate representation (IR):
+
+```
+Source format -> parse -> FormattedText IR -> emit -> Target format
+```
+
+The `converter.py` registry dispatches to protocol-specific parsers and emitters. Legacy direct converters (`discord_to_irc.py`, etc.) remain for paths that haven't migrated.
 
 ## Files
 
 | File | Purpose |
 |------|---------|
-| `discord_to_irc.py` | Strip Discord markdown to plain text for IRC; preserves URLs |
-| `discord_to_xmpp.py` | Convert Discord markdown to XMPP XEP-0393 formatting |
-| `irc_to_discord.py` | Convert IRC control codes to Discord markdown; strips colors; strikethrough `\x1e` → `~~` |
-| `irc_to_xmpp.py` | Convert IRC control codes to XMPP XEP-0393 formatting |
-| `xmpp_to_discord.py` | Convert XMPP XEP-0393 to Discord markdown |
-| `xmpp_to_irc.py` | Convert XMPP XEP-0393 to IRC control codes |
-| `irc_message_split.py` | Split long messages at IRC's byte limit, preserving word boundaries and UTF-8 |
-| `paste.py` | Paste service integration for long messages |
-| `reply_fallback.py` | Reply threading fallback when msgid unavailable |
+| `primitives.py` | `FormattedText`, `Span`, `Style` (flag enum), `CodeBlock` IR types; `URL_RE`, `FENCE_RE`, `ZWS_RE` shared regex; `irc_casefold`, `strip_invalid_xml_chars` |
+| `converter.py` | `convert(content, origin, target)` registry; `strip_formatting(content, protocol)` |
+| `markdown.py` | Discord markdown parser (`parse_discord_markdown`) and emitter (`emit_discord_markdown`) |
+| `irc_codes.py` | IRC control code parser (`parse_irc_codes`) and emitter (`emit_irc_codes`); `detect_irc_spoilers` |
+| `xmpp_styling.py` | XEP-0393 parser (`parse_xep0393`) and emitter (`emit_xep0393`); XEP-0394 emitter (`emit_xep0394`) |
+| `splitter.py` | `split_irc_message(content, max_bytes)` -- byte-safe UTF-8 splitting at word boundaries |
+| `paste.py` | PrivateBin paste service integration for long messages |
 | `mention_resolution.py` | Resolve `@nick` in IRC/XMPP content to Discord `<@userId>` via guild member lookup |
+| `reply_fallback.py` | Reply threading fallback when msgid unavailable |
+| `discord_to_irc.py` | Legacy: strip Discord markdown to plain text for IRC |
+| `discord_to_xmpp.py` | Legacy: Discord markdown to XEP-0393 |
+| `irc_to_discord.py` | Legacy: IRC control codes to Discord markdown |
+| `irc_to_xmpp.py` | Legacy: IRC control codes to XEP-0393 |
+| `xmpp_to_discord.py` | Legacy: XEP-0393 to Discord markdown |
+| `xmpp_to_irc.py` | Legacy: XEP-0393 to IRC control codes |
+| `irc_message_split.py` | Legacy: IRC message splitting |
 
-## `discord_to_irc.py`
+## IR Types (`primitives.py`)
 
-`discord_to_irc(content)` — strips Discord markdown to plain text. Splits on URLs first so URL content is never modified.
-
-`_strip_markdown(text)` handles: spoilers `||…||`, bold `**…**` / `__…__`, italic `*…*` / `_…_`, strikethrough `~~…~~`, code blocks ` ``` `, double backtick ` `` `, inline code `` ` ``.
-
-## `irc_to_discord.py`
-
-`irc_to_discord(content)` — converts IRC formatting to Discord markdown. Splits on URLs first.
-
-Strips IRC color codes (`\x03NN`, `\x03N,N`, `\x04RRGGBB`). Converts:
-
-- `\x02` (bold) → `**…**`
-- `\x1d` (italic) → `*…*`
-- `\x1f` (underline) → `__…__`
-- `\x0f` (reset) — closes all open formatting
-
-Escapes Discord markdown special chars (`* _ \` ~ |`) outside URLs. Closes any unclosed formatting at end of string.
-
-## `irc_message_split.py`
-
-`split_irc_message(content, max_bytes=450)` — splits UTF-8 content into chunks each ≤ `max_bytes` bytes.
-
-- Default 450 bytes leaves room for `PRIVMSG #channel :` prefix and IRCv3 tag overhead
-- Prefers word boundaries (splits at last space in first half of chunk)
-- Never splits mid-UTF-8 multi-byte character
-- Returns `[]` for empty input, `[content]` if already within limit
+- `Style` -- flag enum: `BOLD`, `ITALIC`, `UNDERLINE`, `STRIKETHROUGH`, `MONOSPACE`, `SPOILER`
+- `Span(start, end, style)` -- styled region within plain text
+- `CodeBlock(language, content, start, end)` -- fenced code block
+- `FormattedText(plain, spans, code_blocks)` -- complete IR
 
 ## Rules
 
-- All functions are pure — no side effects, no I/O, no state.
-- `discord_to_irc` and `irc_to_discord` are called by `relay.py` — do not call them from adapters directly.
+- All IR functions are pure -- no side effects, no I/O, no state.
+- `convert()` is called by pipeline steps in `gateway/steps.py` -- do not call from adapters directly.
 - `split_irc_message` is called by the IRC adapter before sending, not by the relay.
+- URLs are protected from formatting parsing (XEP-0393 parser skips URL regions).
 
 ## Related
 

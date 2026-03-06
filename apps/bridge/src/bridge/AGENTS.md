@@ -14,7 +14,8 @@ The `bridge` Python package. Entry point, config, events, and identity live here
 | `errors.py` | Re-export from `core.errors` |
 | `config/` | `loader.py` (load_config, load_config_with_env), `schema.py` (Config, cfg singleton) |
 | `core/` | `constants.py` (ProtocolOrigin, ORIGINS), `events.py` (event dataclasses, Dispatcher), `errors.py` (BridgeError) |
-| `identity/` | `portal.py` (PortalClient, IdentityResolver), `dev.py` (DevIdentityResolver) |
+| `identity/` | `base.py` (IdentityResolver ABC), `portal.py` (PortalClient, PortalIdentityResolver), `dev.py` (DevIdentityResolver), `sanitize.py` (ensure_valid_username, sanitize_nick) |
+| `tracking/` | `base.py` (BidirectionalTTLMap), `message_ids.py` (MessageIDResolver) |
 
 ## Startup Sequence
 
@@ -101,7 +102,8 @@ Full property reference (see root AGENTS.md for the table). Additional propertie
 - [gateway/AGENTS.md](gateway/AGENTS.md) — Bus, Relay, Router, MessageIDResolver
 - [adapters/AGENTS.md](adapters/AGENTS.md) — Discord, IRC, XMPP adapters
 - [formatting/AGENTS.md](formatting/AGENTS.md) — Format converters
-- [config/](config/) — Config loader and schema
+- [config/AGENTS.md](config/AGENTS.md) — Config loader and schema
 - [core/](core/) — Events, constants, errors
-- [identity/](identity/) — Portal and dev identity resolvers
+- [identity/AGENTS.md](identity/AGENTS.md) — Portal and dev identity resolvers, sanitization
+- [tracking/AGENTS.md](tracking/AGENTS.md) — Cross-protocol message correlation
 - [Bridge AGENTS.md](../../AGENTS.md)

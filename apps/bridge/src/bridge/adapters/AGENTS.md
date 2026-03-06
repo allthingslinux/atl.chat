@@ -13,19 +13,28 @@ adapters/
 ├── discord/
 │   ├── __init__.py
 │   ├── adapter.py      # DiscordAdapter (orchestrator)
-│   ├── handlers.py     # handle_delete_out, handle_reaction_out, handle_typing_out, handle_attachments
-│   └── webhook.py      # get_or_create_webhook, webhook_send, webhook_edit, _reply_button_view
+│   ├── handlers.py     # Inbound event handlers (should_relay_message, is_bridge_echo, on_message, etc.)
+│   ├── outbound.py     # Outbound event handlers (handle_delete_out, handle_reaction_out, handle_typing_out)
+│   ├── webhook.py      # get_or_create_webhook, webhook_send, webhook_edit, _reply_button_view
+│   ├── avatar.py       # Avatar URL resolution and caching
+│   └── media.py        # Media/attachment handling
 ├── irc/
 │   ├── __init__.py
 │   ├── adapter.py      # IRCAdapter
 │   ├── client.py       # IRCClient (pydle)
+│   ├── handlers.py     # Inbound handlers (on_message, handle_ctcp_action, handle_chghost, nick collision)
+│   ├── outbound.py     # Outbound message sending
 │   ├── msgid.py        # MessageIDTracker, ReactionTracker, MessageMapping
 │   ├── puppet.py       # IRCPuppet, IRCPuppetManager
 │   └── throttle.py     # TokenBucket
 └── xmpp/
     ├── __init__.py
     ├── adapter.py      # XMPPAdapter
-    ├── component.py    # XMPPComponent
+    ├── component.py    # XMPPComponent (slixmpp ComponentXMPP)
+    ├── handlers.py     # Inbound handlers (on_groupchat_message, echo suppression, MUC presence)
+    ├── outbound.py     # Outbound sending (send_message_as_user, corrections, retractions, reactions)
+    ├── media.py        # Media/file transfer (HTTP Upload, IBB)
+    ├── avatar.py       # Avatar management (vCard, PEP)
     └── msgid.py        # XMPPMessageIDTracker, XMPPMessageMapping
 ```
 

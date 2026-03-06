@@ -67,7 +67,7 @@ async def test_discord_to_irc_message(harness: BridgeTestHarness):
 ## Running Tests
 
 ```bash
-uv run pytest tests/test_bridge_flow.py -v
+uv run pytest tests/unit/misc/test_bridge_flow.py -v
 ```
 
 ## Adding Tests
