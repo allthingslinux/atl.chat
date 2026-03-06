@@ -116,62 +116,94 @@ async def send_message(client: IRCClient, evt: MessageOut) -> None:
     is_action = getattr(evt, "is_action", False)
     logger.debug("IRC: use_relaymsg={} spoofed_nick={} is_action={}", use_relaymsg, spoofed_nick, is_action)
 
-    for i, chunk in enumerate(chunks):
-        logger.debug("IRC: sending chunk {}/{} to {} -> {!r}", i + 1, len(chunks), target, chunk[:80])
+    # --- Multiline batch: wrap multiple chunks in a BATCH when draft/multiline is available ---
+    use_multiline = len(chunks) > 1 and not is_action and client._has_multiline()
+    batch_ref: str | None = None
+    if use_multiline:
+        batch_ref = client._next_batch_ref()
+        await client.rawmsg("BATCH", f"+{batch_ref}", "draft/multiline", target)
+        logger.debug("IRC: started multiline batch ref={} for {} chunks", batch_ref, len(chunks))
 
-        # Generate labeled-response tag for first chunk (echo correlation, Req 11.5)
-        label_tag: dict[str, str] | None = None
-        if i == 0 and client._has_labeled_response():
-            label = client._next_label()
-            label_tag = {"label": label}
-            client._pending_labels[label] = evt.message_id
-            logger.debug("IRC: attached label={} for echo correlation (discord_id={})", label, evt.message_id)
+    try:
+        for i, chunk in enumerate(chunks):
+            logger.debug("IRC: sending chunk {}/{} to {} -> {!r}", i + 1, len(chunks), target, chunk[:80])
 
-        # Merge reply tags and label tag for first chunk
-        first_chunk_tags: dict[str, str] | None = None
-        if i == 0:
-            if reply_tags and label_tag:
-                first_chunk_tags = {**reply_tags, **label_tag}
-            elif reply_tags:
-                first_chunk_tags = reply_tags
-            elif label_tag:
-                first_chunk_tags = label_tag
+            # Generate labeled-response tag for first chunk (echo correlation, Req 11.5)
+            label_tag: dict[str, str] | None = None
+            if i == 0 and client._has_labeled_response():
+                label = client._next_label()
+                label_tag = {"label": label}
+                client._pending_labels[label] = evt.message_id
+                logger.debug("IRC: attached label={} for echo correlation (discord_id={})", label, evt.message_id)
 
-        if is_action:
-            # CTCP ACTION (/me): wrap in \x01ACTION ...\x01
-            # RELAYMSG doesn't support CTCP, fall back to PRIVMSG with colored prefix
-            action_text = f"\x01ACTION {chunk}\x01"
-            colored_prefix = f"{_nick_color(display)} "
-            prefixed = colored_prefix + action_text if i == 0 else action_text
-            if first_chunk_tags:
-                await client.rawmsg("PRIVMSG", target, prefixed, tags=first_chunk_tags)
-            else:
-                await client.message(target, prefixed)
+            # Merge reply tags, label tag, and batch tag for first chunk
+            first_chunk_tags: dict[str, str] | None = None
             if i == 0:
-                logger.info("IRC: sent CTCP ACTION to {} as {}", target, spoofed_nick)
-        elif use_relaymsg:
-            # RELAYMSG #channel spoofed_nick :message
-            if first_chunk_tags and i == 0:
-                await client.rawmsg("RELAYMSG", target, spoofed_nick, chunk, tags=first_chunk_tags)
+                if reply_tags and label_tag:
+                    first_chunk_tags = {**reply_tags, **label_tag}
+                elif reply_tags:
+                    first_chunk_tags = reply_tags
+                elif label_tag:
+                    first_chunk_tags = label_tag
+
+            # Multiline batch tags: all chunks get batch=ref, continuation chunks get concat
+            if use_multiline and batch_ref:
+                ml_tags: dict[str, str] = {"batch": batch_ref}
+                if i > 0:
+                    ml_tags["draft/multiline-concat"] = ""
+                if first_chunk_tags and i == 0:
+                    ml_tags.update(first_chunk_tags)
+                    first_chunk_tags = ml_tags
+                elif i == 0:
+                    first_chunk_tags = ml_tags
+                else:
+                    first_chunk_tags = ml_tags
+
+            if is_action:
+                # CTCP ACTION (/me): wrap in \x01ACTION ...\x01
+                # RELAYMSG doesn't support CTCP, fall back to PRIVMSG with colored prefix
+                action_text = f"\x01ACTION {chunk}\x01"
+                colored_prefix = f"{_nick_color(display)} "
+                prefixed = colored_prefix + action_text if i == 0 else action_text
+                if first_chunk_tags:
+                    await client.rawmsg("PRIVMSG", target, prefixed, tags=first_chunk_tags)
+                else:
+                    await client.message(target, prefixed)
+                if i == 0:
+                    logger.info("IRC: sent CTCP ACTION to {} as {}", target, spoofed_nick)
+            elif use_relaymsg:
+                # RELAYMSG #channel spoofed_nick :message
+                tags_to_send = first_chunk_tags if first_chunk_tags else None
+                if tags_to_send:
+                    await client.rawmsg("RELAYMSG", target, spoofed_nick, chunk, tags=tags_to_send)
+                else:
+                    await client.rawmsg("RELAYMSG", target, spoofed_nick, chunk)
+                if i == 0:
+                    logger.info("IRC: sent RELAYMSG to {} as {}", target, spoofed_nick)
+                    client._recent_relaymsg_sends[(client._server, target, spoofed_nick)] = None
             else:
-                await client.rawmsg("RELAYMSG", target, spoofed_nick, chunk)
+                # PRIVMSG fallback: prefix message with configurable remote nick format
+                colored_prefix = f"{_nick_color(display)} "
+                prefixed = colored_prefix + chunk if i == 0 else chunk
+                tags_to_send = first_chunk_tags if first_chunk_tags else None
+                if tags_to_send:
+                    await client.rawmsg("PRIVMSG", target, prefixed, tags=tags_to_send)
+                else:
+                    await client.message(target, prefixed)
+                if i == 0:
+                    logger.info("IRC: sent PRIVMSG to {} as {}", target, spoofed_nick)
+            # Only store mapping for first chunk (echo will have msgid)
             if i == 0:
-                logger.info("IRC: sent RELAYMSG to {} as {}", target, spoofed_nick)
-                client._recent_relaymsg_sends[(client._server, target, spoofed_nick)] = None
-        else:
-            # PRIVMSG fallback: prefix message with configurable remote nick format
-            colored_prefix = f"{_nick_color(display)} "
-            prefixed = colored_prefix + chunk if i == 0 else chunk
-            if first_chunk_tags:
-                await client.rawmsg("PRIVMSG", target, prefixed, tags=first_chunk_tags)
-            else:
-                await client.message(target, prefixed)
-            if i == 0:
-                logger.info("IRC: sent PRIVMSG to {} as {}", target, spoofed_nick)
-        # Only store mapping for first chunk (echo will have msgid)
-        if i == 0:
-            client._pending_sends.put_nowait(evt.message_id)
-            logger.debug(
-                "IRC: queued pending_send discord_id={} for echo correlation",
-                evt.message_id,
-            )
+                client._pending_sends.put_nowait(evt.message_id)
+                logger.debug(
+                    "IRC: queued pending_send discord_id={} for echo correlation",
+                    evt.message_id,
+                )
+    finally:
+        # Always close multiline batch if we opened one (even on error)
+        if use_multiline and batch_ref:
+            try:
+                await client.rawmsg("BATCH", f"-{batch_ref}")
+                logger.debug("IRC: closed multiline batch ref={}", batch_ref)
+            except Exception as exc:
+                logger.warning("IRC: failed to close multiline batch ref={}: {}", batch_ref, exc)
