@@ -6,6 +6,16 @@
  * Docs: https://www.unrealircd.org/docs/Configuration
  * ============================================================================ */
 
+/* ---------- Disabled modules (portal/SSO model) ---------- */
+/* halfop: not needed for our channel hierarchy */
+blacklist-module "chanmodes/halfop";
+/* chanadmin: +a mode not needed, simplifies channel hierarchy */
+blacklist-module "chanmodes/chanadmin";
+/* link: channel linking not needed on single server */
+blacklist-module "chanmodes/link";
+/* bot usermode: +B not needed, bridge uses oper instead */
+blacklist-module "usermodes/bot";
+
 /* ---------- Core user commands ---------- */
 loadmodule "admin";
 loadmodule "away";
@@ -121,9 +131,9 @@ loadmodule "svslogin";
 
 /* ---------- Channel modes ---------- */
 loadmodule "chanmodes/chanowner";
-loadmodule "chanmodes/chanadmin";
+/* chanmodes/chanadmin — blacklisted above */
 loadmodule "chanmodes/chanop";
-loadmodule "chanmodes/halfop";
+/* chanmodes/halfop — blacklisted above */
 loadmodule "chanmodes/voice";
 loadmodule "chanmodes/key";
 loadmodule "chanmodes/limit";
@@ -140,7 +150,7 @@ loadmodule "chanmodes/stripcolor";
 loadmodule "chanmodes/isregistered";
 loadmodule "chanmodes/issecure";
 loadmodule "chanmodes/permanent";
-loadmodule "chanmodes/link";
+/* chanmodes/link — blacklisted above */
 loadmodule "chanmodes/censor";
 loadmodule "chanmodes/delayjoin";
 loadmodule "chanmodes/noknock";
@@ -156,7 +166,7 @@ loadmodule "chanmodes/history";
 
 /* ---------- User modes ---------- */
 loadmodule "usermodes/wallops";
-loadmodule "usermodes/bot";
+/* usermodes/bot — blacklisted above */
 loadmodule "usermodes/servicebot";
 loadmodule "usermodes/noctcp";
 loadmodule "usermodes/censor";
@@ -375,8 +385,8 @@ loadmodule "cloak_sha256";
 loadmodule "third/showwebirc";
 loadmodule "third/metadata";
 loadmodule "third/react";         /* IRCv3 draft/react: message reactions */
-loadmodule "third/redact";        /* IRCv3 draft/message-redaction: REDACT for deletion */
-loadmodule "third/relaymsg-atl";  /* atl.chat fork: RELAYMSG for stateless bridging */
+loadmodule "third/redact-atl";    /* IRCv3 draft/message-redaction: REDACT (atl.chat: fixed) */
+loadmodule "third/relaymsg-atl";   /* atl.chat: RELAYMSG for stateless bridging (clean nicks) */
 loadmodule "third/irccloud-tags"; /* IRCCloud MessageTags support */
 loadmodule "third/kiwiirc-tags";  /* KiwiIRC MessageTags support */
 loadmodule "third/display-name";  /* IRCv3 draft/display-name: display names in message tags */
@@ -391,12 +401,10 @@ metadata {
 	max-subscriptions 10;
 }
 
-/* RELAYMSG: stateless bridging - hostmask shown for relayed messages.
- * Default: require-separator yes (nicks must contain /). Bridge uses /d suffix (irc_relaymsg_clean_nicks: false).
- * For clean nicks (no /): add "require-separator no;" and set irc_relaymsg_clean_nicks: true in bridge config. */
+/* RELAYMSG (relaymsg-atl): stateless bridging with clean nicks (no / separator).
+ * Bridge uses irc_relaymsg_clean_nicks: true. */
 relaymsg {
 	hostmask "bridge@${IRC_DOMAIN}";
-	require-separator no;
 }
 
 /* BLOCK_MASSHIGHLIGHT: prevent highlight spam network-wide.
@@ -622,12 +630,23 @@ allow {
 /* Authentication Requirements — uncomment and customize as needed.
  * Docs: https://www.unrealircd.org/docs/Require_authentication_block */
 
-/* Example 2: Require authentication for everyone (closed server)
+/* Require SASL authentication for all users — portal/SSO model.
+ * Users must register via the ATL Portal and authenticate via SASL.
+ * Exemptions use mask exclude-* items (UnrealIRCd 6.0.7+).
+ * Docs: https://www.unrealircd.org/docs/Require_authentication_block
+ *       https://www.unrealircd.org/docs/Mask_item */
 require authentication {
-	mask *@*;
-	reason "This server requires authentication. Please register an account first.";
-};
-*/
+	mask {
+		mask *;
+		/* Docker internal network — Atheme, bridge, webpanel, The Lounge */
+		exclude-ip { 172.16.0.0/12; }
+		/* Localhost — Atheme services (shared network namespace) */
+		exclude-ip { 127.0.0.0/8; }
+		/* WebIRC clients (The Lounge, KiwiIRC — they handle auth upstream) */
+		exclude-webirc yes;
+	}
+	reason "This server requires authentication. Please register an account at the ATL Portal first.";
+}
 
 /* Ban nicknames reserved for services or system use */
 ban nick {
@@ -680,55 +699,8 @@ ban nick {
 	reason "Reserved system name";
 }
 
-ban nick {
-	mask "*admin*";
-	reason "Reserved system name";
-}
-
-ban nick {
-	mask "*administrator*";
-	reason "Reserved system name";
-}
-
-ban nick {
-	mask "*server*";
-	reason "Reserved system name";
-}
-
-ban nick {
-	mask "*services*";
-	reason "Reserved for Services";
-}
-
-ban nick {
-	mask "*IRC*";
-	reason "Reserved for network";
-}
-
-ban nick {
-	mask "*ircop*";
-	reason "Reserved for operators";
-}
-
-ban nick {
-	mask "*operator*";
-	reason "Reserved for operators";
-}
-
-ban nick {
-	mask "*guest*";
-	reason "Generic guest name not allowed";
-}
-
-ban nick {
-	mask "*anonymous*";
-	reason "Anonymous connections not allowed";
-}
-
-ban nick {
-	mask "*unknown*";
-	reason "Unknown user not allowed";
-}
+/* Removed overly broad ban nicks: *admin*, *server*, *IRC*, *operator*, *unknown*
+ * These blocked legitimate nicks like "sysadmin", "serverless", "IRCFan", etc. */
 
 /* DNSBL blacklists — block known proxies, drones, and TOR exit nodes.
  * Docs: https://www.unrealircd.org/docs/Blacklist_block */
@@ -811,24 +783,27 @@ oper staff {
 	password "${IRC_OPER_PASSWORD}";
 	operclass netadmin-with-override;
 	swhois "is a member of the Network Staff";
-	vhost "${DOLLAR}account@${IRC_STAFF_VHOST}";
+	vhost ${DOLLAR}account@${IRC_STAFF_VHOST};
 	require-modes "z";
 }
 
 /* Bridge operclass — minimal privileges needed for the bridge bot:
  * - channel override: allows setting +P (permanent) without being chanop
- * - relaymsg: allows RELAYMSG for stateless bridging (third/relaymsg-atl) */
+ * - relaymsg: allows RELAYMSG for stateless bridging (third/relaymsg-atl)
+ * - chat:redact: allows REDACT for message deletion (third/redact-atl) */
 operclass bridge-oper {
 	parent locop;
 	permissions {
 		channel { operonly; override; }
 		relaymsg;
+		chat { redact; }
 	}
 }
 
 oper bridge {
 	class opers;
-	mask *@*bridge*;
+	/* Hostname *@*bridge* (atl-bridge) OR Docker IPs — ensures OPER works from bridge container */
+	mask { *@*bridge*; ip 172.16.0.0/12; ip 127.0.0.0/8; };
 	password "${BRIDGE_IRC_OPER_PASSWORD}";
 	operclass bridge-oper;
 	vhost "bridge@bridge.atl.chat";
@@ -852,7 +827,7 @@ vhost {
 	mask {
 		identified yes;
 	}
-	vhost "${DOLLAR}account@${IRC_ROOT_DOMAIN}";
+	vhost ${DOLLAR}account@${IRC_ROOT_DOMAIN};
 }
 
 /* Log to stdout (JSON) — captured by Docker json-file driver with rotation.
