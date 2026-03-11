@@ -35,6 +35,10 @@ class MessageIDResolver(Protocol):
         """Link Discord ID to IRC msgid for XMPP reply resolution."""
         ...
 
+    def add_irc_discord_id_alias(self, new_discord_id: str, existing_value: str) -> bool:
+        """Link Discord ID to IRC msgid for IRC reaction routing (XMPP-origin messages)."""
+        ...
+
     def get_xmpp_component(self) -> XMPPComponent | None:
         """Get XMPP component for file uploads (attachments)."""
         ...
@@ -100,6 +104,12 @@ class DefaultMessageIDResolver:
             return self._xmpp_component._msgid_tracker.add_discord_id_alias(discord_id, irc_msgid)
         return False
 
+    def add_irc_discord_id_alias(self, new_discord_id: str, existing_value: str) -> bool:
+        """Add Discord ID alias to IRC tracker so get_irc_msgid(discord_id) works for XMPP-origin."""
+        if self._irc_tracker:
+            return self._irc_tracker.add_discord_id_alias(new_discord_id, existing_value)
+        return False
+
     def get_xmpp_component(self) -> XMPPComponent | None:
         return self._xmpp_component
 
@@ -124,12 +134,15 @@ class DefaultMessageIDResolver:
             self._xmpp_component._msgid_tracker.store(xmpp_id, irc_msgid, muc_jid)
 
     def resolve_irc_xmpp_pending(self, irc_msgid: str, discord_id: str) -> bool:
-        """Resolve pending mapping: store xmpp_id → discord_id in the XMPP tracker."""
+        """Resolve pending mapping: update xmpp_id (and aliases like stanza-id) → discord_id.
+
+        Uses update_discord_id so stanza_id alias (added by echo) also returns the real
+        discord_id — Fluux reactions target stanza-id, so get_discord_id must resolve it.
+        """
         pending = self._irc_xmpp_pending.pop(irc_msgid, None)
         if not pending:
             return False
-        xmpp_id, muc_jid = pending
+        xmpp_id, _ = pending
         if self._xmpp_component:
-            self._xmpp_component._msgid_tracker.store(xmpp_id, discord_id, muc_jid)
-            return True
+            return self._xmpp_component._msgid_tracker.update_discord_id(xmpp_id, discord_id)
         return False
