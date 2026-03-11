@@ -52,6 +52,23 @@ class TestCrossProtocolConversion:
         # XEP-0393 bold is *hello*
         assert "hello" in result
 
+    def test_discord_to_irc_inline_code(self) -> None:
+        """Discord `code` → IRC emits \\x11 (MONOSPACE) for HexChat/ObsidianIRC."""
+        result = convert("hello `world` end", "discord", "irc")
+        assert "\x11" in result
+        assert "world" in result
+
+    def test_xmpp_to_irc_inline_code(self) -> None:
+        """XMPP `code` → IRC emits \\x11 (MONOSPACE)."""
+        result = convert("hello `world` end", "xmpp", "irc")
+        assert "\x11" in result
+        assert "world" in result
+
+    def test_irc_to_discord_inline_code(self) -> None:
+        """IRC \\x11 (MONOSPACE) → Discord emits `code`."""
+        result = convert("hello \x11world\x11 end", "irc", "discord")
+        assert "`world`" in result
+
     def test_plain_text_survives_conversion(self) -> None:
         """Plain text without formatting markers should survive any conversion."""
         text = "just plain text"
