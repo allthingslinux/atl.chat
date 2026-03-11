@@ -352,6 +352,13 @@ class DiscordAdapter(AdapterBase):
                             evt.message_id,
                             discord_msg_id,
                         )
+                    # Link Discord ID to IRC msgid so IRC reactions work (IRC echo stored xmpp_id)
+                    if self._msgid_resolver.add_irc_discord_id_alias(str(discord_msg_id), evt.message_id):
+                        logger.debug(
+                            "Linked Discord ID to IRC tracker: discord_id={} -> xmpp_id={} (IRC reactions now work)",
+                            discord_msg_id,
+                            evt.message_id,
+                        )
                 # Store IRC->Discord mapping for REDACT routing
                 if discord_msg_id and evt.raw.get("origin") == "irc" and self._msgid_resolver:
                     self._msgid_resolver.store_irc(evt.message_id, str(discord_msg_id))
