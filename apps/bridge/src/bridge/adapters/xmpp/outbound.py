@@ -38,6 +38,8 @@ async def send_message_as_user(
     markup_spans: list | None = None,
     media_width: int | None = None,
     media_height: int | None = None,
+    spoiler: bool = False,
+    spoiler_reason: str | None = None,
 ) -> str:
     """Send message to MUC from a specific Discord user's JID. Returns XMPP message ID.
 
@@ -51,16 +53,20 @@ async def send_message_as_user(
     await comp._ensure_puppet_joined(muc_jid, user_jid, nick)
 
     try:
-        # Convert Discord spoilers ||text|| to XMPP XEP-0382 format.
-        whole_spoiler_re = _re.compile(r"^\|\|(.+)\|\|$", _re.DOTALL)
-        inline_spoiler_re = _re.compile(r"\|\|([^|]+)\|\|")
+        # XEP-0382 spoiler: use pipeline flag (content already stripped) or detect inline ||markers||
         spoiler_hint: str | None = None
-        whole_match = whole_spoiler_re.match(content.strip())
-        if whole_match:
-            content = whole_match.group(1).strip()
-            spoiler_hint = ""
-        elif "||" in content:
-            content = inline_spoiler_re.sub(r"\1", content)
+        if spoiler:
+            spoiler_hint = spoiler_reason or ""
+        else:
+            whole_spoiler_re = _re.compile(r"^\|\|(.+)\|\|$", _re.DOTALL)
+            inline_spoiler_re = _re.compile(r"\|\|([^|]+)\|\|")
+            whole_match = whole_spoiler_re.match(content.strip())
+            if whole_match:
+                content = whole_match.group(1).strip()
+                spoiler_hint = ""
+            elif "||" in content:
+                content = inline_spoiler_re.sub(r"\1", content)
+                spoiler_hint = ""
 
         msg = comp.make_message(
             mto=JID(muc_jid),
