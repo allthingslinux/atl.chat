@@ -6,6 +6,7 @@ import asyncio
 import contextlib
 import os
 import random
+import re
 from typing import TYPE_CHECKING
 
 from loguru import logger
@@ -261,6 +262,10 @@ class XMPPAdapter(AdapterBase):
                                     content = new_url
                                     is_media = True
 
+                            # XEP-0393 uses single ~ for strikethrough; Fluux and some clients
+                            # don't render ~~ (Discord-style). Normalize any ~~ that slipped through.
+                            content = re.sub(r"~~([^~]+)~~", r"~\1~", content)
+
                             # For IRC-origin, evt.message_id is an IRC msgid.
                             # The temporary (xmpp_id, irc_msgid) mapping is created
                             # by store_irc_xmpp_pending so the MUC echo can capture
@@ -278,6 +283,8 @@ class XMPPAdapter(AdapterBase):
                                 markup_spans=markup_spans,
                                 media_width=evt.raw.get("media_width"),
                                 media_height=evt.raw.get("media_height"),
+                                spoiler=evt.raw.get("spoiler", False),
+                                spoiler_reason=evt.raw.get("spoiler_reason"),
                             )
                             if xmpp_msg_id:
                                 logger.info("XMPP: sent message to {} as {}", muc_jid, nick)
