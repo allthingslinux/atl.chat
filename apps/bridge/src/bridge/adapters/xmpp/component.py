@@ -459,6 +459,8 @@ class XMPPComponent(ComponentXMPP):
         markup_spans: list | None = None,
         media_width: int | None = None,
         media_height: int | None = None,
+        spoiler: bool = False,
+        spoiler_reason: str | None = None,
     ) -> str:
         from bridge.adapters.xmpp.outbound import send_message_as_user
 
@@ -475,6 +477,8 @@ class XMPPComponent(ComponentXMPP):
             markup_spans=markup_spans,
             media_width=media_width,
             media_height=media_height,
+            spoiler=spoiler,
+            spoiler_reason=spoiler_reason,
         )
 
     async def send_reaction_as_user(
