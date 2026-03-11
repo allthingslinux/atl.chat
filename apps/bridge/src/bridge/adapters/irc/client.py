@@ -245,6 +245,22 @@ class IRCClient(pydle.Client):
         """RPL_YOUREOPER (381): You are now an IRC Operator. No-op to avoid Unknown command."""
         pass
 
+    async def on_raw_fail(self, message: object) -> None:
+        """FAIL (standard-replies): handle REDACT errors gracefully.
+
+        FAIL REDACT UNKNOWN_MSGID occurs when we send a duplicate REDACT (e.g. XMPP
+        retraction + Discord delete for the same message). No-op to avoid Unknown command.
+        """
+        params = getattr(message, "params", [])
+        if len(params) >= 2 and params[0] == "REDACT" and params[1] == "UNKNOWN_MSGID":
+            logger.debug(
+                "IRC: FAIL REDACT UNKNOWN_MSGID (expected for duplicate delete) target={}",
+                params[2] if len(params) > 2 else "?",
+            )
+            return
+        # Log other FAIL codes at debug
+        logger.debug("IRC: FAIL {} params={}", params[0] if params else "?", params)
+
     # ------------------------------------------------------------------
     # Ready detection
     # ------------------------------------------------------------------
