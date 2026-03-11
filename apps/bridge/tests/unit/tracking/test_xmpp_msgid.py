@@ -233,3 +233,22 @@ class TestXMPPMessageIDTracking:
         """add_discord_id_alias returns False when existing_key not found."""
         tracker = XMPPMessageIDTracker()
         assert tracker.add_discord_id_alias("new-discord-id", "nonexistent-irc-msgid") is False
+
+    def test_update_discord_id_propagates_to_stanza_id_alias(self) -> None:
+        """update_discord_id updates all aliases (stanza-id) so Fluux reactions resolve.
+
+        IRC-origin: XMPP stores xmpp_id -> irc_msgid. Echo adds stanza_id alias.
+        resolve_irc_xmpp_pending calls update_discord_id so get_discord_id(stanza_id)
+        returns the real Discord ID for reactions.
+        """
+        tracker = XMPPMessageIDTracker()
+        tracker.store("origin-id-e5f0704a", "irc-msgid-965RQiD6", "room@muc.example.com")
+        tracker.add_stanza_id_alias("origin-id-e5f0704a", "stanza-id-019cde26")
+        # Before update: stanza_id resolves to irc_msgid (wrong for Discord API)
+        assert tracker.get_discord_id("stanza-id-019cde26") == "irc-msgid-965RQiD6"
+        # Resolve with real Discord ID
+        updated = tracker.update_discord_id("origin-id-e5f0704a", "1481357671809548308")
+        assert updated is True
+        # After: both xmpp_id and stanza_id resolve to real Discord ID
+        assert tracker.get_discord_id("origin-id-e5f0704a") == "1481357671809548308"
+        assert tracker.get_discord_id("stanza-id-019cde26") == "1481357671809548308"
