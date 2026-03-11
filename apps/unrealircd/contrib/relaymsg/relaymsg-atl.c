@@ -1,27 +1,29 @@
 /* Copyright © 2025 Valware
  * License: GPLv3
- * Name: third/relaymsg-atl (atl.chat fork)
+ * Name: third/relaymsg-atl (atl.chat)
  *
- * Modified by atl.chat:
- * - add require-separator config option to allow clean nicks (no / suffix)
+ * atl.chat relaymsg: clean nicks (no / separator required).
  * - attach msgid tag (IRCv3 message-ids) to RELAYMSG for bridge REDACT support
- * - in cmd_rrelaymsg: add msgid + draft/relaymsg when upstream (e.g. Atheme) strips tags
+ * - in cmd_rrelaymsg: add msgid + draft/relaymsg when upstream (e.g. Atheme)
+ * strips tags
  *
- * Uses unique name third/relaymsg-atl to avoid collision with upstream third/relaymsg
- * during UnrealIRCd build (make runs "unrealircd -m upgrade" which overwrites contrib modules).
+ * Uses unique name third/relaymsg-atl to avoid collision with upstream
+ * third/relaymsg during UnrealIRCd build (make runs "unrealircd -m upgrade"
+ * which overwrites contrib modules).
  */
 /*** <<<MODULE MANAGER START>>>
 module
 {
-	documentation "https://github.com/ValwareIRC/valware-unrealircd-mods/blob/main/relaymsg/README.md";
-	troubleshooting "In case of problems, check the documentation or e-mail me at v.a.pond@outlook.com";
-	min-unrealircd-version "6.1.0";
-	max-unrealircd-version "6.*";
-	post-install-text {
-		"The module is installed. Add to unrealircd.conf:";
-		"loadmodule \"third/relaymsg-atl\";";
-		"Then: ./unrealircd rehash";
-	}
+        documentation
+"https://github.com/ValwareIRC/valware-unrealircd-mods/blob/main/relaymsg/README.md";
+        troubleshooting "In case of problems, check the documentation or e-mail
+me at v.a.pond@outlook.com"; min-unrealircd-version "6.1.0";
+        max-unrealircd-version "6.*";
+        post-install-text {
+                "The module is installed. Add to unrealircd.conf:";
+                "loadmodule \"third/relaymsg-atl\";";
+                "Then: ./unrealircd rehash";
+        }
 }
 *** <<<MODULE MANAGER END>>>
 */
@@ -40,358 +42,302 @@ void free_config(void);
 int hookfunc_configtest(ConfigFile *cf, ConfigEntry *ce, int type, int *errs);
 int hookfunc_configrun(ConfigFile *cf, ConfigEntry *ce, int type);
 
-/** Returns 1 if cep->name is a separator/clean-nicks option (hyphen or underscore). */
-static int is_separator_option(const char *name)
-{
-	if (!name)
-		return 0;
-	return !strcmp(name, "allow-clean-nicks") || !strcmp(name, "allow_clean_nicks") ||
-	       !strcmp(name, "require-separator") || !strcmp(name, "require_separator");
-}
-
 int relaymsg_tag_is_ok(Client *client, const char *name, const char *value);
 const char *relay_msg_cap_parameter(Client *client);
 
 CMD_FUNC(cmd_relaymsg);
 CMD_FUNC(cmd_rrelaymsg);
 
-struct MyConfStruct
-{
-	char *hostmask;
-	bool got_hostmask;
-	bool require_separator;
+struct MyConfStruct {
+  char *hostmask;
+  bool got_hostmask;
 };
 static struct MyConfStruct MyConf;
 
 ModuleHeader MOD_HEADER = {
-	"third/relaymsg-atl",
-	"1.0.5",
-	"Implements draft/relaymsg (atl.chat: optional separator)",
-	"Valware",
-	"unrealircd-6",
+    "third/relaymsg-atl",
+    "2.0.0",
+    "Implements draft/relaymsg (atl.chat: clean nicks)",
+    "Valware",
+    "unrealircd-6",
 };
 
-MOD_INIT()
-{
-	ClientCapabilityInfo c;
-	ClientCapability *c2;
-	MessageTagHandlerInfo mtag;
+MOD_INIT() {
+  ClientCapabilityInfo c;
+  ClientCapability *c2;
+  MessageTagHandlerInfo mtag;
 
-	MARK_AS_GLOBAL_MODULE(modinfo);
+  MARK_AS_GLOBAL_MODULE(modinfo);
 
-	set_config();
-	HookAdd(modinfo->handle, HOOKTYPE_CONFIGRUN, 0, hookfunc_configrun);
+  set_config();
+  HookAdd(modinfo->handle, HOOKTYPE_CONFIGRUN, 0, hookfunc_configrun);
 
-	memset(&c, 0, sizeof(c));
-	c.name = NAME_RELAYMSG;
-	c.parameter = relay_msg_cap_parameter;
-	c2 = ClientCapabilityAdd(modinfo->handle, &c, &CAP_RELAYMSG);
+  memset(&c, 0, sizeof(c));
+  c.name = NAME_RELAYMSG;
+  c.parameter = relay_msg_cap_parameter;
+  c2 = ClientCapabilityAdd(modinfo->handle, &c, &CAP_RELAYMSG);
 
-	memset(&mtag, 0, sizeof(mtag));
-	mtag.name = NAME_RELAYMSG;
-	mtag.is_ok = relaymsg_tag_is_ok;
-	mtag.clicap_handler = c2;
-	MessageTagHandlerAdd(modinfo->handle, &mtag);
+  memset(&mtag, 0, sizeof(mtag));
+  mtag.name = NAME_RELAYMSG;
+  mtag.is_ok = relaymsg_tag_is_ok;
+  mtag.clicap_handler = c2;
+  MessageTagHandlerAdd(modinfo->handle, &mtag);
 
-	CommandAdd(modinfo->handle, "RELAYMSG", cmd_relaymsg, 4, CMD_USER|CMD_SERVER|CMD_NOLAG);
-	CommandAdd(modinfo->handle, "RRELAYMSG", cmd_rrelaymsg, 5, CMD_SERVER|CMD_NOLAG|CMD_BIGLINES);
+  CommandAdd(modinfo->handle, "RELAYMSG", cmd_relaymsg, 4,
+             CMD_USER | CMD_SERVER | CMD_NOLAG);
+  CommandAdd(modinfo->handle, "RRELAYMSG", cmd_rrelaymsg, 5,
+             CMD_SERVER | CMD_NOLAG | CMD_BIGLINES);
 
-	return MOD_SUCCESS;
+  return MOD_SUCCESS;
 }
 
-MOD_LOAD()
-{
-	return MOD_SUCCESS;
+MOD_LOAD() { return MOD_SUCCESS; }
+
+MOD_UNLOAD() {
+  free_config();
+  return MOD_SUCCESS;
 }
 
-MOD_UNLOAD()
-{
-	free_config();
-	return MOD_SUCCESS;
+MOD_TEST() {
+  memset(&MyConf, 0, sizeof(MyConf));
+  HookAdd(modinfo->handle, HOOKTYPE_CONFIGTEST, 0, hookfunc_configtest);
+  return MOD_SUCCESS;
 }
 
-MOD_TEST()
-{
-	memset(&MyConf, 0, sizeof(MyConf));
-	HookAdd(modinfo->handle, HOOKTYPE_CONFIGTEST, 0, hookfunc_configtest);
-	return MOD_SUCCESS;
+void set_config(void) { safe_strdup(MyConf.hostmask, "unreal@localhost"); }
+
+void free_config(void) { safe_free(MyConf.hostmask); }
+
+int hookfunc_configtest(ConfigFile *cf, ConfigEntry *ce, int type, int *errs) {
+  int errors = 0;
+  ConfigEntry *cep;
+
+  if (type != CONFIG_MAIN)
+    return 0;
+  if (!ce || !ce->name)
+    return 0;
+  if (strcmp(ce->name, CONF_BLOCK_NAME))
+    return 0;
+
+  for (cep = ce->items; cep; cep = cep->next) {
+    if (!cep->value) {
+      config_error("%s:%i: blank %s value", cep->file->filename,
+                   cep->line_number, CONF_BLOCK_NAME);
+      errors++;
+      continue;
+    }
+
+    if (!strcmp(cep->name, "hostmask")) {
+      if (MyConf.got_hostmask) {
+        config_error("%s:%i: duplicate %s::%s directive", cep->file->filename,
+                     cep->line_number, CONF_BLOCK_NAME, cep->name);
+        errors++;
+        continue;
+      }
+      MyConf.got_hostmask = 1;
+      if (!strlen(cep->value) || !strcmp(cep->value, "@")) {
+        config_error(
+            "%s:%i: %s::%s must be non-empty and be in nick@hostmask format",
+            cep->file->filename, cep->line_number, CONF_BLOCK_NAME, cep->name);
+        errors++;
+      }
+      if (!strchr(cep->value, '@')) {
+        config_error("%s:%i: %s::%s must be in nick@hostmask format",
+                     cep->file->filename, cep->line_number, CONF_BLOCK_NAME,
+                     cep->name);
+        errors++;
+      }
+      continue;
+    }
+
+    config_warn("%s:%i: unknown item %s::%s", cep->file->filename,
+                cep->line_number, CONF_BLOCK_NAME, cep->name);
+  }
+
+  *errs = errors;
+  return errors ? -1 : 1;
 }
 
-void set_config(void)
-{
-	safe_strdup(MyConf.hostmask, "unreal@localhost");
-	MyConf.require_separator = 1; /* default: yes, upstream behavior */
+int hookfunc_configrun(ConfigFile *cf, ConfigEntry *ce, int type) {
+  ConfigEntry *cep;
+
+  if (type != CONFIG_MAIN)
+    return 0;
+  if (!ce || !ce->name)
+    return 0;
+  if (strcmp(ce->name, CONF_BLOCK_NAME))
+    return 0;
+
+  for (cep = ce->items; cep; cep = cep->next) {
+    if (!cep->name)
+      continue;
+
+    if (!strcmp(cep->name, "hostmask")) {
+      safe_strdup(MyConf.hostmask, cep->value);
+      continue;
+    }
+  }
+
+  return 1;
 }
 
-void free_config(void)
-{
-	safe_free(MyConf.hostmask);
+int relaymsg_tag_is_ok(Client *client, const char *name, const char *value) {
+  if (IsServer(client))
+    return 1;
+  return 0;
 }
 
-int hookfunc_configtest(ConfigFile *cf, ConfigEntry *ce, int type, int *errs)
-{
-	int errors = 0;
-	ConfigEntry *cep;
+const char *relay_msg_cap_parameter(Client *client) { return "/"; }
 
-	if (type != CONFIG_MAIN)
-		return 0;
-	if (!ce || !ce->name)
-		return 0;
-	if (strcmp(ce->name, CONF_BLOCK_NAME))
-		return 0;
-
-	for (cep = ce->items; cep; cep = cep->next)
-	{
-		if (is_separator_option(cep->name))
-		{
-			if (!cep->value || !*cep->value)
-			{
-				config_error("%s:%i: %s::allow-clean-nicks requires yes or no", cep->file->filename, cep->line_number, CONF_BLOCK_NAME);
-				errors++;
-			}
-			else if (!strcasecmp(cep->value, "yes") || !strcasecmp(cep->value, "true") || !strcmp(cep->value, "1"))
-				; /* ok */
-			else if (!strcasecmp(cep->value, "no") || !strcasecmp(cep->value, "false") || !strcmp(cep->value, "0"))
-				; /* ok */
-			else
-			{
-				config_error("%s:%i: %s::allow-clean-nicks must be yes or no", cep->file->filename, cep->line_number, CONF_BLOCK_NAME);
-				errors++;
-			}
-			continue;
-		}
-
-		if (!cep->value)
-		{
-			config_error("%s:%i: blank %s value", cep->file->filename, cep->line_number, CONF_BLOCK_NAME);
-			errors++;
-			continue;
-		}
-
-		if (!strcmp(cep->name, "hostmask"))
-		{
-			if (MyConf.got_hostmask)
-			{
-				config_error("%s:%i: duplicate %s::%s directive", cep->file->filename, cep->line_number, CONF_BLOCK_NAME, cep->name);
-				errors++;
-				continue;
-			}
-			MyConf.got_hostmask = 1;
-			if (!strlen(cep->value) || !strcmp(cep->value, "@"))
-			{
-				config_error("%s:%i: %s::%s must be non-empty and be in nick@hostmask format", cep->file->filename, cep->line_number, CONF_BLOCK_NAME, cep->name);
-				errors++;
-			}
-			if (!strchr(cep->value, '@'))
-			{
-				config_error("%s:%i: %s::%s must be in nick@hostmask format", cep->file->filename, cep->line_number, CONF_BLOCK_NAME, cep->name);
-				errors++;
-			}
-			continue;
-		}
-
-		config_warn("%s:%i: unknown item %s::%s", cep->file->filename, cep->line_number, CONF_BLOCK_NAME, cep->name);
-	}
-
-	*errs = errors;
-	return errors ? -1 : 1;
+/** Generate a unique msgid per IRCv3 message-ids. Format:
+ * serverid-timestamp-counter. */
+static char *relaymsg_generate_msgid(void) {
+  static unsigned int counter = 0;
+  static char buf[96];
+  unsigned long long ts = (unsigned long long)time(NULL);
+  snprintf(buf, sizeof(buf), "%s-%llu-%u", me.id, ts, ++counter);
+  return buf;
 }
 
-int hookfunc_configrun(ConfigFile *cf, ConfigEntry *ce, int type)
-{
-	ConfigEntry *cep;
+CMD_FUNC(cmd_relaymsg) {
+  MessageTag *mtags = NULL, *m = NULL;
 
-	if (type != CONFIG_MAIN)
-		return 0;
-	if (!ce || !ce->name)
-		return 0;
-	if (strcmp(ce->name, CONF_BLOCK_NAME))
-		return 0;
+  if (!HasCapability(client, NAME_RELAYMSG))
+    return;
 
-	for (cep = ce->items; cep; cep = cep->next)
-	{
-		if (!cep->name)
-			continue;
+  if (!ValidatePermissionsForPath("relaymsg", client, NULL, NULL, NULL)) {
+    sendnumeric(client, ERR_NOPRIVILEGES);
+    return;
+  }
 
-		if (!strcmp(cep->name, "hostmask"))
-		{
-			safe_strdup(MyConf.hostmask, cep->value);
-			continue;
-		}
-		if (is_separator_option(cep->name))
-		{
-			int yes_val = cep->value && (!strcasecmp(cep->value, "yes") || !strcasecmp(cep->value, "true") || !strcmp(cep->value, "1"));
-			/* allow-clean-nicks yes => require_separator no; require-separator yes => require_separator yes */
-			if (!strcmp(cep->name, "allow-clean-nicks") || !strcmp(cep->name, "allow_clean_nicks"))
-				MyConf.require_separator = !yes_val;  /* allow-clean-nicks yes = no separator required */
-			else
-				MyConf.require_separator = yes_val;   /* require-separator yes = separator required */
-			continue;
-		}
-	}
+  if (parc < 4) {
+    sendnumeric(client, ERR_NEEDMOREPARAMS, "RELAYMSG");
+    return;
+  }
 
-	return 1;
-}
+  {
+    const char *invalid_chars = " \t\n\r!+%@&#$:'\"?*,.";
+    for (const char *p = parv[2]; *p; p++) {
+      if (strchr(invalid_chars, *p)) {
+        sendnotice(client, "Invalid characters in spoofed nick");
+        return;
+      }
+    }
+  }
 
-int relaymsg_tag_is_ok(Client *client, const char *name, const char *value)
-{
-	if (IsServer(client))
-		return 1;
-	return 0;
-}
+  if (strlen(parv[2]) > 35) {
+    sendnotice(client, "Spoofed nick too long");
+    return;
+  }
 
-const char *relay_msg_cap_parameter(Client *client)
-{
-	return "/";
-}
+  {
+    Channel *channel = find_channel(parv[1]);
+    if (!channel) {
+      sendnumeric(client, ERR_NOSUCHCHANNEL, parv[1]);
+      return;
+    }
 
-static int nick_has_valid_separator(const char *nick)
-{
-	if (!MyConf.require_separator)
-		return 1;
-	return strchr(nick, '/') != NULL;
-}
+    sendnotice(client, "Sending message to %s", parv[1]);
 
-/** Generate a unique msgid per IRCv3 message-ids. Format: serverid-timestamp-counter. */
-static char *relaymsg_generate_msgid(void)
-{
-	static unsigned int counter = 0;
-	static char buf[96];
-	unsigned long long ts = (unsigned long long)time(NULL);
-	snprintf(buf, sizeof(buf), "%s-%llu-%u", me.id, ts, ++counter);
-	return buf;
-}
+    m = safe_alloc(sizeof(MessageTag));
+    safe_strdup(m->name, NAME_RELAYMSG);
+    safe_strdup(m->value, client->name);
+    AddListItem(m, mtags);
 
-CMD_FUNC(cmd_relaymsg)
-{
-	MessageTag *mtags = NULL, *m = NULL;
+    /* Do NOT add our synthetic msgid here - the core message-ids module adds
+     * msgid when delivering to clients. That canonical msgid is what
+     * chathistory/redact use. A second msgid would overwrite in client parsers
+     * and we'd store the wrong one, causing REDACT UNKNOWN_MSGID. */
+    new_message(client, recv_mtags, &mtags);
 
-	if (!HasCapability(client, NAME_RELAYMSG))
-		return;
+    sendto_channel(channel, &me, NULL, NULL, 0, SEND_LOCAL, mtags,
+                   ":%s!%s PRIVMSG %s :%s", parv[2], MyConf.hostmask, parv[1],
+                   parv[3]);
 
-	if (!ValidatePermissionsForPath("relaymsg", client, NULL, NULL, NULL))
-	{
-		sendnumeric(client, ERR_NOPRIVILEGES);
-		return;
-	}
+    /* Store in history so REDACT can find the msgid. Normal PRIVMSG goes
+     * through message.c which calls RunHook(HOOKTYPE_CHANMSG); relaymsg
+     * bypasses that. */
+    {
+      char linebuf[512];
+      snprintf(linebuf, sizeof(linebuf), ":%s!%s PRIVMSG %s :%s", parv[2],
+               MyConf.hostmask, channel->name, parv[3]);
+      history_add(channel->name, mtags, linebuf);
+    }
 
-	if (parc < 3)
-	{
-		sendnumeric(client, ERR_NEEDMOREPARAMS, "RELAYMSG");
-		return;
-	}
-
-	{
-		const char *invalid_chars = " \t\n\r!+%@&#$:'\"?*,.";
-		for (const char *p = parv[2]; *p; p++)
-		{
-			if (strchr(invalid_chars, *p))
-			{
-				sendnotice(client, "Invalid characters in spoofed nick");
-				return;
-			}
-		}
-	}
-
-	if (!nick_has_valid_separator(parv[2]))
-	{
-		sendnotice(client, "Invalid spoofed nick format (require-separator is yes; nick must contain /)");
-		return;
-	}
-
-	if (strlen(parv[2]) > 35)
-	{
-		sendnotice(client, "Spoofed nick too long");
-		return;
-	}
-
-	{
-		Channel *channel = find_channel(parv[1]);
-		if (!channel)
-		{
-			sendnumeric(client, ERR_NOSUCHCHANNEL, parv[1]);
-			return;
-		}
-
-		sendnotice(client, "Sending message to %s", parv[1]);
-
-		m = safe_alloc(sizeof(MessageTag));
-		safe_strdup(m->name, NAME_RELAYMSG);
-		safe_strdup(m->value, client->name);
-		AddListItem(m, mtags);
-
-		/* Do NOT add our synthetic msgid here - the core message-ids module adds msgid
-		 * when delivering to clients. That canonical msgid is what chathistory/redact
-		 * use. A second msgid would overwrite in client parsers and we'd store the
-		 * wrong one, causing REDACT UNKNOWN_MSGID. */
-		new_message(client, recv_mtags, &mtags);
-
-		sendto_channel(channel, &me, NULL, NULL, 0, SEND_LOCAL, mtags,
-			":%s!%s PRIVMSG %s :%s", parv[2], MyConf.hostmask, parv[1], parv[3]);
-		sendto_server(NULL, 0, 0, mtags,
-			":%s RRELAYMSG %s %s %s :%s", me.name, client->id, parv[1], parv[2], parv[3]);
-	}
+    sendto_server(NULL, 0, 0, mtags, ":%s RRELAYMSG %s %s %s :%s", me.name,
+                  client->id, parv[1], parv[2], parv[3]);
+  }
 }
 
 /** Return 1 if mtags contains msgid, 0 otherwise. */
-static int mtags_has_msgid(MessageTag *mtags)
-{
-	MessageTag *t;
-	for (t = mtags; t; t = t->next)
-		if (t->name && !strcmp(t->name, MSGID_TAG))
-			return 1;
-	return 0;
+static int mtags_has_msgid(MessageTag *mtags) {
+  MessageTag *t;
+  for (t = mtags; t; t = t->next)
+    if (t->name && !strcmp(t->name, MSGID_TAG))
+      return 1;
+  return 0;
 }
 
-CMD_FUNC(cmd_rrelaymsg)
-{
-	MessageTag *mtags = NULL;
-	MessageTag *relaymsg_tag = NULL;
-	MessageTag *msgid_tag = NULL;
-	MessageTag *use_mtags;
+CMD_FUNC(cmd_rrelaymsg) {
+  MessageTag *mtags = NULL;
+  MessageTag *relaymsg_tag = NULL;
+  MessageTag *msgid_tag = NULL;
+  MessageTag *use_mtags;
 
-	if (parc < 5)
-		return;
+  if (parc < 5)
+    return;
 
-	/* parv[1]=client_id, parv[2]=channel, parv[3]=spoofed_nick, parv[4]=message */
-	{
-		const char *invalid_chars = " \t\n\r!+%@&#$:'\"?*,.";
-		for (const char *p = parv[3]; *p; p++)
-			if (strchr(invalid_chars, *p))
-				return;
+  /* parv[1]=client_id, parv[2]=channel, parv[3]=spoofed_nick, parv[4]=message
+   */
+  {
+    const char *invalid_chars = " \t\n\r!+%@&#$:'\"?*,.";
+    for (const char *p = parv[3]; *p; p++)
+      if (strchr(invalid_chars, *p))
+        return;
 
-		if (!nick_has_valid_separator(parv[3]))
-			return;
-	}
+    if (strlen(parv[3]) > 35)
+      return;
+  }
 
-	{
-		Channel *channel = find_channel(parv[2]);
-		if (!channel)
-			return;
+  {
+    Channel *channel = find_channel(parv[2]);
+    if (!channel)
+      return;
 
-		use_mtags = recv_mtags;
-		if (!recv_mtags || !mtags_has_msgid(recv_mtags))
-		{
-			/* Upstream (e.g. Atheme) strips IRCv3 tags; add both for bridge echo correlation. */
-			Client *relay_client = find_user(parv[1], NULL);
-			const char *relay_nick = relay_client ? relay_client->name : parv[3];
-			relaymsg_tag = safe_alloc(sizeof(MessageTag));
-			safe_strdup(relaymsg_tag->name, NAME_RELAYMSG);
-			safe_strdup(relaymsg_tag->value, relay_nick);
-			AddListItem(relaymsg_tag, mtags);
-			msgid_tag = safe_alloc(sizeof(MessageTag));
-			safe_strdup(msgid_tag->name, MSGID_TAG);
-			safe_strdup(msgid_tag->value, relaymsg_generate_msgid());
-			AddListItem(msgid_tag, mtags);
-			use_mtags = mtags;
-			/* Run new_message so message-ids and other hooks propagate tags to clients. */
-			if (relay_client)
-				new_message(relay_client, NULL, &use_mtags);
-		}
+    use_mtags = recv_mtags;
+    if (!recv_mtags || !mtags_has_msgid(recv_mtags)) {
+      /* Upstream (e.g. Atheme) strips IRCv3 tags; add both for bridge echo
+       * correlation. */
+      Client *relay_client = find_user(parv[1], NULL);
+      const char *relay_nick = relay_client ? relay_client->name : parv[3];
+      relaymsg_tag = safe_alloc(sizeof(MessageTag));
+      safe_strdup(relaymsg_tag->name, NAME_RELAYMSG);
+      safe_strdup(relaymsg_tag->value, relay_nick);
+      AddListItem(relaymsg_tag, mtags);
+      msgid_tag = safe_alloc(sizeof(MessageTag));
+      safe_strdup(msgid_tag->name, MSGID_TAG);
+      safe_strdup(msgid_tag->value, relaymsg_generate_msgid());
+      AddListItem(msgid_tag, mtags);
+      use_mtags = mtags;
+      /* Run new_message so message-ids and other hooks propagate tags to
+       * clients. */
+      if (relay_client)
+        new_message(relay_client, NULL, &use_mtags);
+    }
 
-		sendto_channel(channel, &me, NULL, NULL, 0, SEND_LOCAL, use_mtags,
-			":%s!%s PRIVMSG %s :%s", parv[3], MyConf.hostmask, parv[2], parv[4]);
-		sendto_server(client, 0, 0, use_mtags,
-			":%s RRELAYMSG %s %s %s :%s", me.name, parv[1], parv[2], parv[3], parv[4]);
-	}
+    sendto_channel(channel, &me, NULL, NULL, 0, SEND_LOCAL, use_mtags,
+                   ":%s!%s PRIVMSG %s :%s", parv[3], MyConf.hostmask, parv[2],
+                   parv[4]);
+
+    /* Store in history so REDACT can find the msgid (same as cmd_relaymsg). */
+    {
+      char linebuf[512];
+      snprintf(linebuf, sizeof(linebuf), ":%s!%s PRIVMSG %s :%s", parv[3],
+               MyConf.hostmask, channel->name, parv[4]);
+      history_add(channel->name, use_mtags, linebuf);
+    }
+
+    sendto_server(client, 0, 0, use_mtags, ":%s RRELAYMSG %s %s %s :%s",
+                  me.name, parv[1], parv[2], parv[3], parv[4]);
+  }
 }
