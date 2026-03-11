@@ -34,7 +34,7 @@ irc_auto_rejoin: true
 # IRC TLS: false for dev (self-signed certs), true for prod
 irc_tls_verify: true
 
-# RELAYMSG: no /d suffix when UnrealIRCd relaymsg has require_separator no
+# RELAYMSG: clean nicks (no /d suffix). relaymsg-atl always allows clean nicks.
 irc_relaymsg_clean_nicks: true
 
 # IRC REDACT: set true when UnrealIRCd third/redact segfault is fixed

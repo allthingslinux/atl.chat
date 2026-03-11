@@ -35,8 +35,8 @@ irc_auto_rejoin: true
 # IRC TLS: set false for dev with self-signed certs (env: BRIDGE_IRC_TLS_VERIFY or ATL_ENVIRONMENT=dev)
 irc_tls_verify: ${IRC_TLS_VERIFY}
 
-# RELAYMSG: /d suffix (Valware default). Set true only if UnrealIRCd relaymsg has allow-clean-nicks yes.
-irc_relaymsg_clean_nicks: false
+# RELAYMSG: clean nicks (no /d suffix). relaymsg-atl always allows clean nicks.
+irc_relaymsg_clean_nicks: true
 
 # IRC REDACT: send REDACT when Discord message deleted. Disabled by default: UnrealIRCd third/redact
 # segfaults on REDACT (exit 139). Set true after upstream fix.
