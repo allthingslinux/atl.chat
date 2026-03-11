@@ -2,7 +2,7 @@
 
 **Production-ready Discord–IRC–XMPP bridge with multi-presence and Portal identity.**
 
-[![Tests](https://img.shields.io/badge/tests-1505%20passing-brightgreen)]() [![Python](https://img.shields.io/badge/python-3.10+-blue)]() [![License](https://img.shields.io/badge/license-MIT-blue)]()
+[![Tests](https://img.shields.io/badge/tests-1514%20passing-brightgreen)]() [![Python](https://img.shields.io/badge/python-3.10+-blue)]() [![License](https://img.shields.io/badge/license-MIT-blue)]()
 
 ## Overview
 
@@ -20,7 +20,8 @@ cd apps/bridge
 uv sync
 
 # Configure
-cp config.example.yaml config.yaml
+# In monorepo: just init generates config from config.template.yaml (env substitution)
+# Standalone: cp config.example.yaml config.yaml
 # Edit config.yaml with channel mappings
 
 # Required env vars
@@ -63,7 +64,7 @@ From monorepo root with `just`: `just bridge test`, `just bridge check`, etc. (s
 - **Puppets**: Per-user connections with idle timeout (24h default), keep-alive PING, pre-join commands
 - **Flood control**: Token bucket rate limiting, configurable throttle and queue size
 - **SASL**: Optional PLAIN auth
-- **RELAYMSG / REDACT**: UnrealIRCd relaymsg clean nicks; redact support (configurable)
+- **RELAYMSG / REDACT**: UnrealIRCd relaymsg-atl (clean nicks); redact-atl for message deletion (`irc_redact_enabled: true` when using third/redact-atl)
 
 ### XMPP
 
@@ -109,8 +110,10 @@ mappings:
 | `irc_auto_rejoin` | `true` | Auto-rejoin after KICK/disconnect |
 | `irc_use_sasl` | `false` | SASL PLAIN auth |
 | `irc_tls_verify` | `true` | Verify IRC TLS (false for dev self-signed) |
+| `irc_relaymsg_clean_nicks` | `true` | Use RELAYMSG with clean nicks (requires UnrealIRCd third/relaymsg-atl) |
+| `irc_redact_enabled` | `false` | Enable REDACT for message deletion (requires UnrealIRCd third/redact-atl) |
 
-See `config.example.yaml` for the full schema.
+See `config.example.yaml` for the full schema. In the monorepo, `just init` generates `config.yaml` from `config.template.yaml`.
 
 ### Environment Variables
 
@@ -124,6 +127,8 @@ See `config.example.yaml` for the full schema.
 | `BRIDGE_XMPP_COMPONENT_SERVER` | No | Component host (default: `localhost`) |
 | `BRIDGE_XMPP_COMPONENT_PORT` | No | Component port (default: `5347`) |
 | `BRIDGE_IRC_NICK` | No | Main IRC nick (default: `bridge`) |
+| `BRIDGE_IRC_REDACT_ENABLED` | No | Override `irc_redact_enabled` from env (true/false) |
+| `BRIDGE_IRC_TLS_VERIFY` | No | Override `irc_tls_verify` from env (true/false) |
 
 ## Architecture
 
@@ -187,7 +192,7 @@ src/bridge/
     ├── discord/         # adapter, handlers, outbound, webhook, avatar, media
     ├── irc/             # adapter, client, handlers, outbound, puppet, msgid, throttle
     └── xmpp/            # adapter, component, handlers, outbound, media, avatar, msgid
-tests/                   # pytest suite (1505 tests)
+tests/                   # pytest suite (1514 tests)
 ├── unit/                # Isolated component tests (discord/, irc/, xmpp/, formatting/, gateway/, identity/, tracking/, config/, misc/)
 ├── property/            # Hypothesis property-based tests (24 correctness properties)
 ├── integration/         # Cross-component integration tests

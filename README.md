@@ -136,7 +136,7 @@ just web dev
 
 ### Bridges
 
-Discord↔IRC↔XMPP bridge (Python, in-repo). Multi-presence puppeting, IR-based format conversion, Portal identity integration. See [apps/bridge/](apps/bridge/) and `infra/compose/bridge.yaml`.
+Discord↔IRC↔XMPP bridge (Python, in-repo). Multi-presence puppeting, IR-based format conversion, Portal identity integration. Config generated from `apps/bridge/config.template.yaml` by `just init`. See [apps/bridge/](apps/bridge/) and `infra/compose/bridge.yaml`.
 
 ```bash
 just bridge test       # Run bridge tests

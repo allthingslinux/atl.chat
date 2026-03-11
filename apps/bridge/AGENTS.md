@@ -98,7 +98,7 @@ tests/                   # pytest suite (1505 tests)
 - `just bridge lint` -- ruff check (from root)
 - `just bridge format` -- ruff format
 - `just bridge typecheck` -- basedpyright
-- `just bridge test` -- pytest (1505 tests)
+- `just bridge test` -- pytest (1514 tests)
 - `just bridge test -k foo` -- run matching tests
 - `just bridge check` -- all of the above in sequence
 
