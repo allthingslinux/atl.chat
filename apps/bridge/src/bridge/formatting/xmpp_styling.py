@@ -90,7 +90,9 @@ _INLINE_PATTERNS: list[tuple[re.Pattern[str], Style]] = [
     (re.compile(r"(?<!\*)\*(\S(?:[^*]*\S)?)\*(?!\*)(?=[^a-zA-Z0-9]|$)"), Style.BOLD),
     # Italic _text_
     (re.compile(r"(?<!_)_(\S(?:[^_]*\S)?)_(?!_)(?=[^a-zA-Z0-9]|$)"), Style.ITALIC),
-    # Strikethrough ~text~
+    # Strikethrough ~~text~~ (Discord-style) — before single ~ so it takes precedence
+    (re.compile(r"(?<!~)~~(\S(?:[^~]*\S)?)~~(?!~)(?=[^a-zA-Z0-9]|$)"), Style.STRIKETHROUGH),
+    # Strikethrough ~text~ (XEP-0393 native)
     (re.compile(r"(?<!~)~(\S(?:[^~]*\S)?)~(?!~)(?=[^a-zA-Z0-9]|$)"), Style.STRIKETHROUGH),
 ]
 
