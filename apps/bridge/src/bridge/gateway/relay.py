@@ -231,6 +231,11 @@ class Relay:
             # Propagate reply_fallback_added from pipeline context
             if ctx.raw.get("reply_fallback_added"):
                 out_raw["reply_fallback_added"] = True
+            # Propagate spoiler flag so XMPP adapter can emit XEP-0382 (pipeline strips || before relay)
+            if ctx.raw.get("spoiler"):
+                out_raw["spoiler"] = True
+                if ctx.raw.get("spoiler_reason"):
+                    out_raw["spoiler_reason"] = ctx.raw["spoiler_reason"]
             _, out_evt = message_out(
                 target_origin=target,
                 channel_id=channel_id,
