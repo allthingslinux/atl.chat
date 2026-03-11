@@ -45,6 +45,13 @@ class TestParseXEP0393Basic:
         assert len(ft.spans) == 1
         assert ft.spans[0] == Span(6, 11, Style.STRIKETHROUGH)
 
+    def test_strikethrough_discord_style(self):
+        """~~text~~ (Discord-style) is parsed as strikethrough for XMPP-origin content."""
+        ft = parse_xep0393("hello ~~world~~")
+        assert ft.plain == "hello world"
+        assert len(ft.spans) == 1
+        assert ft.spans[0] == Span(6, 11, Style.STRIKETHROUGH)
+
     def test_monospace(self):
         ft = parse_xep0393("hello `world`")
         assert ft.plain == "hello world"
