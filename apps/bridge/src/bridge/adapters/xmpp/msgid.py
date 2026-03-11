@@ -127,6 +127,36 @@ class XMPPMessageIDTracker:
         self._discord_to_xmpp[mapping.discord_id] = new_mapping
         return True
 
+    def update_discord_id(self, xmpp_id: str, new_discord_id: str) -> bool:
+        """Replace discord_id in mapping (and all aliases) with real Discord ID.
+
+        For IRC-origin: XMPP initially stores xmpp_id -> irc_msgid. Echo adds
+        stanza_id as alias. When Discord webhook returns, we must update all
+        keys (xmpp_id, stanza_id) to return the real discord_id so reactions
+        from Fluux (which use stanza-id) resolve correctly.
+        """
+        self._cleanup()
+        mapping = self._xmpp_to_discord.get(xmpp_id)
+        if not mapping:
+            return False
+        old_discord_id = mapping.discord_id
+        new_mapping = XMPPMessageMapping(
+            xmpp_id=mapping.xmpp_id,
+            discord_id=new_discord_id,
+            room_jid=mapping.room_jid,
+            timestamp=mapping.timestamp,
+        )
+        # Update all keys pointing to the old mapping (xmpp_id + aliases like stanza_id)
+        for key in list(self._xmpp_to_discord.keys()):
+            if self._xmpp_to_discord[key] is mapping:
+                self._xmpp_to_discord[key] = new_mapping
+        self._discord_to_xmpp.pop(old_discord_id, None)
+        self._discord_to_xmpp[new_discord_id] = new_mapping
+        stanza_id = self._discord_to_stanza_id.pop(old_discord_id, None)
+        if stanza_id:
+            self._discord_to_stanza_id[new_discord_id] = stanza_id
+        return True
+
     def _cleanup(self):
         """Remove expired entries."""
         now = time.time()
