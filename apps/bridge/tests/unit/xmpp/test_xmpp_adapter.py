@@ -393,6 +393,8 @@ class TestOutboundConsumer:
             markup_spans=None,
             media_width=None,
             media_height=None,
+            spoiler=False,
+            spoiler_reason=None,
         )
 
     @pytest.mark.asyncio
@@ -445,6 +447,8 @@ class TestOutboundConsumer:
             markup_spans=None,
             media_width=None,
             media_height=None,
+            spoiler=False,
+            spoiler_reason=None,
         )
 
     @pytest.mark.asyncio
@@ -521,6 +525,8 @@ class TestOutboundConsumer:
             markup_spans=None,
             media_width=None,
             media_height=None,
+            spoiler=False,
+            spoiler_reason=None,
         )
 
     @pytest.mark.asyncio
@@ -951,4 +957,6 @@ class TestConsumerGuardConditions:
             markup_spans=None,
             media_width=None,
             media_height=None,
+            spoiler=False,
+            spoiler_reason=None,
         )
