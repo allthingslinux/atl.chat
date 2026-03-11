@@ -66,6 +66,7 @@ Env: `BRIDGE_IRC_NICK` (default: `bridge`).
 - `on_message` / `on_ctcp_action` — emit `MessageIn` to Bus.
 - `on_raw_tagmsg` — handles `+draft/reply` (threading), `+draft/react` (add), `+draft/unreact` (remove).
 - `on_raw_redact` — handles IRCv3 REDACT; emits `MessageDelete`.
+- `on_raw_fail` — handles FAIL REDACT UNKNOWN_MSGID (duplicate delete); no-op to avoid Unknown command warning.
 - `on_kick` — emits `Part`; auto-rejoins after `irc_rejoin_delay` if `irc_auto_rejoin` is set.
 - `on_disconnect` — reconnects with exponential backoff via `_connect_with_backoff`.
 - Outbound queue consumed by `_consume_outbound`; uses `TokenBucket` for flood control.
@@ -93,6 +94,7 @@ Env: `BRIDGE_IRC_NICK` (default: `bridge`).
 
 - Bidirectional `irc_msgid ↔ discord_id` map with manual TTL cleanup (1h default).
 - `store(irc_msgid, discord_id)`, `get_discord_id(irc_msgid)`, `get_irc_msgid(discord_id)`.
+- `add_discord_id_alias(new_discord_id, existing_value)` — for XMPP-origin: IRC echo stores xmpp_id; when Discord webhook returns, updates irc_msgid→discord_id so REDACT→Discord delete uses the real snowflake.
 
 **throttle.py** — `TokenBucket(limit, refill_rate=1.0)`:
 

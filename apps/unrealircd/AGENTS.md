@@ -18,6 +18,7 @@ config/
 └── modules.sources.list
 
 contrib/relaymsg/   # relaymsg-atl.c (atl.chat fork, built as third/relaymsg-atl)
+contrib/redact/     # redact-atl.c (atl.chat fork, built as third/redact-atl)
 scripts/            # Docker entrypoint helpers, generate-oper-password, manage-modules, module-config
 config.settings    # UnrealIRCd build settings
 third-party-modules.list   # third/showwebirc, third/relaymsg-atl, etc.
@@ -64,7 +65,7 @@ justfile           # Loaded via: mod irc './apps/unrealircd'
 - **third/showwebirc** — WebIRC/WebSocket info in WHOIS
 - **third/metadata** — METADATA command for avatars, message coloring, status texts (draft/metadata, draft/metadata-notify-2)
 - **third/react** — IRCv3 draft/react (message reactions)
-- **third/redact** — IRCv3 draft/message-redaction (REDACT command for message deletion)
+- **third/redact-atl** — IRCv3 draft/message-redaction (REDACT command; atl.chat fork with fixed parc/parv validation)
 - **third/relaymsg-atl** — draft/relaymsg for stateless bridging (atl.chat fork); bridge sends `RELAYMSG` instead of puppet PRIVMSG when server supports it
 
 ## Config Generation

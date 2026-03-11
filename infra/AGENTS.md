@@ -13,6 +13,7 @@ Docker Compose fragments and TURN server. Root `compose.yaml` includes `infra/co
 | `compose/bridge.yaml` | Discord↔IRC↔XMPP bridge |
 | `compose/thelounge.yaml` | The Lounge web IRC client |
 | `compose/obsidianirc.yaml` | ObsidianIRC web client |
+| `compose/fluux-messenger.yaml` | Fluux XMPP messenger (nginx) |
 | `compose/cert-manager.yaml` | Lego (Let's Encrypt) |
 | `compose/networks.yaml` | Shared `atl-chat` network |
 | `nginx/` | Nginx config for Prosody HTTPS (docker-entrypoint, Dockerfile, prosody-https.conf.template) |
