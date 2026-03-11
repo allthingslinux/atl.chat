@@ -19,9 +19,9 @@ loadmodule "crypto/pbkdf2v2";
 /* ---------- NickServ ---------- */
 loadmodule "nickserv/main";	/* Core components */
 loadmodule "nickserv/badmail";	/* Bad e-mail address blocking */
-loadmodule "nickserv/drop";	/* DROP command */
+#loadmodule "nickserv/drop";	/* DROP command — disabled: account lifecycle managed via Portal */
 loadmodule "nickserv/ghost";	/* GHOST command */
-loadmodule "nickserv/group";	/* GROUP and UNGROUP commands */
+#loadmodule "nickserv/group";	/* GROUP and UNGROUP commands — disabled: nick grouping managed via Portal */
 loadmodule "nickserv/help";	/* HELP command */
 loadmodule "nickserv/hold";	/* HOLD command: Overrides default nickname expiry */
 loadmodule "nickserv/identify";	/* IDENTIFY command */
@@ -33,31 +33,31 @@ loadmodule "nickserv/mark";	/* MARK command */
 loadmodule "nickserv/freeze";	/* FREEZE command */
 loadmodule "nickserv/listchans";	/* LISTCHANS command */
 loadmodule "nickserv/listgroups";      /* LISTGROUPS command */
-loadmodule "nickserv/register";	/* REGISTER command */
+#loadmodule "nickserv/register";	/* REGISTER command — disabled: registration via Portal/SSO only */
 loadmodule "nickserv/regnolimit";      /* Bypass registration limits (REGNOLIMIT) */
-loadmodule "nickserv/resetpass";	/* Password reset (RESETPASS command) */
+#loadmodule "nickserv/resetpass";	/* Password reset (RESETPASS command) — disabled: password managed via Portal */
 loadmodule "nickserv/restrict";	/* RESTRICT command */
 loadmodule "nickserv/return";	/* Password return (RETURN command) */
-loadmodule "nickserv/setpass";	/* Password retrieval uses code (SETPASS cmd) */
-loadmodule "nickserv/sendpass_user";	/* Password retrieval allowed to normal users */
+#loadmodule "nickserv/setpass";	/* Password retrieval uses code (SETPASS cmd) — disabled: password managed via Portal */
+#loadmodule "nickserv/sendpass_user";	/* Password retrieval allowed to normal users — disabled: password managed via Portal */
 #loadmodule "nickserv/set_accountname"; /* Change primary nickname (SET ACCOUNTNAME) — disabled: nicks are fixed via Portal */
-loadmodule "nickserv/set_email";	/* SET EMAIL command */
-loadmodule "nickserv/set_emailmemos";	/* SET EMAILMEMOS command - Forwards incoming memos to user's e-mail */
+#loadmodule "nickserv/set_email";	/* SET EMAIL command — disabled: email managed via Portal */
+#loadmodule "nickserv/set_emailmemos";	/* SET EMAILMEMOS command — disabled: MemoServ removed */
 loadmodule "nickserv/set_hidemail";	/* SET HIDEMAIL command - Hides the user's e-mail address */
 #loadmodule "nickserv/set_language";	/* SET LANGUAGE command - requires NLS build support */
 loadmodule "nickserv/set_nevergroup";	/* SET NEVERGROUP command */
 loadmodule "nickserv/set_neverop";	/* SET NEVEROP command - Prevents user from being added to access lists */
 loadmodule "nickserv/set_nogreet";	/* SET NOGREET command */
-loadmodule "nickserv/set_nomemo";      /* SET NOMEMO command - Disables the ability to receive memos */
+#loadmodule "nickserv/set_nomemo";      /* SET NOMEMO command — disabled: MemoServ removed */
 loadmodule "nickserv/set_noop";	/* SET NOOP command - Prevents services from setting modes automatically */
-loadmodule "nickserv/set_password";	/* SET PASSWORD command */
+#loadmodule "nickserv/set_password";	/* SET PASSWORD command — disabled: password managed via Portal */
 loadmodule "nickserv/set_property";	/* SET PROPERTY command */
 loadmodule "nickserv/set_pubkey";      /* SET PUBKEY command */
 loadmodule "nickserv/set_quietchg";	/* SET QUIETCHG command - Allows user to opt-out of channel change messages */
 loadmodule "nickserv/status";	/* STATUS command */
 loadmodule "nickserv/taxonomy";	/* Nickname metadata viewer (TAXONOMY command) */
 loadmodule "nickserv/vacation";	/* VACATION command */
-loadmodule "nickserv/verify";	/* VERIFY command */
+#loadmodule "nickserv/verify";	/* VERIFY command — disabled: verification via Portal */
 loadmodule "nickserv/vhost";	/* VHOST command */
 
 /* ---------- ChanServ ---------- */
@@ -66,18 +66,18 @@ loadmodule "chanserv/access";	/* ACCESS command (simplified ACL editing) */
 loadmodule "chanserv/akick";	/* AKICK command */
 loadmodule "chanserv/ban";	/* BAN/UNBAN commands */
 loadmodule "chanserv/bansearch";	/* BANSEARCH command */
-loadmodule "chanserv/clone";	/* CLONE command */
+#loadmodule "chanserv/clone";	/* CLONE command — disabled: clutter */
 loadmodule "chanserv/close";	/* CLOSE command */
 loadmodule "chanserv/clear";	/* CLEAR command */
-loadmodule "chanserv/clear_akicks";	/* CLEAR AKICKS command */
+#loadmodule "chanserv/clear_akicks";	/* CLEAR AKICKS command — disabled: clutter */
 loadmodule "chanserv/clear_bans";      /* CLEAR BANS command */
-loadmodule "chanserv/clear_flags";	/* CLEAR FLAGS command */
+#loadmodule "chanserv/clear_flags";	/* CLEAR FLAGS command — disabled: clutter */
 loadmodule "chanserv/clear_users";	/* CLEAR USERS command */
-loadmodule "chanserv/count";	/* COUNT command */
+#loadmodule "chanserv/count";	/* COUNT command — disabled: clutter */
 loadmodule "chanserv/drop";	/* DROP command */
 loadmodule "chanserv/flags";	/* FLAGS command */
 loadmodule "chanserv/ftransfer";	/* Forced foundership transfers */
-loadmodule "chanserv/getkey";	/* GETKEY command */
+#loadmodule "chanserv/getkey";	/* GETKEY command — disabled: clutter */
 loadmodule "chanserv/help";	/* HELP command */
 loadmodule "chanserv/hold";	/* HOLD command - Overrides default channel expiry */
 loadmodule "chanserv/info";	/* INFO command */
@@ -88,22 +88,22 @@ loadmodule "chanserv/mark";	/* MARK command */
 loadmodule "chanserv/op";	/* OP/DEOP commands */
 loadmodule "chanserv/recover";	/* Channel takeover recovery (RECOVER command) */
 loadmodule "chanserv/register";	/* REGISTER command */
-loadmodule "chanserv/set_email";	/* SET EMAIL command */
-loadmodule "chanserv/set_entrymsg";	/* SET ENTRYMSG command */
+#loadmodule "chanserv/set_email";	/* SET EMAIL command — disabled: clutter */
+#loadmodule "chanserv/set_entrymsg";	/* SET ENTRYMSG command — disabled: clutter */
 loadmodule "chanserv/set_fantasy";	/* SET FANTASY command */
 loadmodule "chanserv/set_guard";	/* SET GUARD command - Sets whether ChanServ will inhabit the channel */
 loadmodule "chanserv/set_keeptopic";	/* SET KEEPTOPIC command - Enables topic retention if channel is empty */
 loadmodule "chanserv/set_mlock";	/* SET MLOCK command */
-loadmodule "chanserv/set_prefix";      /* SET PREFIX command */
-loadmodule "chanserv/set_property";	/* SET PROPERTY command */
+#loadmodule "chanserv/set_prefix";      /* SET PREFIX command — disabled: clutter */
+#loadmodule "chanserv/set_property";	/* SET PROPERTY command — disabled: clutter */
 loadmodule "chanserv/set_restricted";	/* SET RESTRICTED command */
 loadmodule "chanserv/set_secure";      /* SET SECURE command - Prevents unauthorized users from gaining oper */
 loadmodule "chanserv/set_topiclock";	/* SET TOPICLOCK command - Restricts who can change the topic */
-loadmodule "chanserv/set_url";	/* SET URL command */
-loadmodule "chanserv/set_verbose";	/* SET VERBOSE command - Notifies channel about access list modifications */
+#loadmodule "chanserv/set_url";	/* SET URL command — disabled: clutter */
+#loadmodule "chanserv/set_verbose";	/* SET VERBOSE command — disabled: clutter (removed from cflags too) */
 loadmodule "chanserv/status";	/* STATUS command */
 loadmodule "chanserv/sync";	/* SYNC command (and automatic ACL syncing) */
-loadmodule "chanserv/taxonomy";	/* Channel metadata viewer (TAXONOMY command) */
+#loadmodule "chanserv/taxonomy";	/* Channel metadata viewer — disabled: clutter */
 loadmodule "chanserv/template";	/* TEMPLATE command */
 loadmodule "chanserv/topic";	/* TOPIC/TOPICAPPEND commands */
 loadmodule "chanserv/voice";	/* VOICE/DEVOICE commands */
@@ -150,20 +150,20 @@ loadmodule "operserv/sqline";	/* SQLINE system */
 loadmodule "operserv/update";	/* UPDATE command */
 loadmodule "operserv/uptime";	/* UPTIME command */
 
-/* ---------- MemoServ ---------- */
-loadmodule "memoserv/main";	/* Core components */
-loadmodule "memoserv/help";	/* HELP command */
-loadmodule "memoserv/send";	/* SEND command */
-loadmodule "memoserv/sendops";	/* SENDOPS command */
-loadmodule "memoserv/sendgroup";	/* SENDGROUP command */
-loadmodule "memoserv/list";	/* LIST command */
-loadmodule "memoserv/read";	/* READ command */
-loadmodule "memoserv/forward";	/* FORWARD command */
-loadmodule "memoserv/delete";	/* DELETE command */
-loadmodule "memoserv/ignore";	/* IGNORE command */
+/* ---------- MemoServ — REMOVED (portal model, no in-IRC memos) ---------- */
+#loadmodule "memoserv/main";
+#loadmodule "memoserv/help";
+#loadmodule "memoserv/send";
+#loadmodule "memoserv/sendops";
+#loadmodule "memoserv/sendgroup";
+#loadmodule "memoserv/list";
+#loadmodule "memoserv/read";
+#loadmodule "memoserv/forward";
+#loadmodule "memoserv/delete";
+#loadmodule "memoserv/ignore";
 
 loadmodule "global/main";	/* Core components */
-loadmodule "infoserv/main";	/* Core components */
+#loadmodule "infoserv/main";	/* InfoServ — REMOVED (use Global for announcements) */
 
 /* ---------- SASL ---------- */
 loadmodule "saslserv/authcookie";	/* AUTHCOOKIE mechanism (for IRIS) */
@@ -212,8 +212,8 @@ loadmodule "groupserv/set_url";			/* SET URL command */
 #loadmodule "crypto/crypt3-des";	/* DES crypt(3) - Verify-only for legacy Atheme on Mac OS X */
 #loadmodule "crypto/base64";	/*Base64 - Verify-only for Anope ~1.8 compatibility */
 #loadmodule "auth/ldap";	/* LDAP authentication */
-loadmodule "nickserv/access";	/* Nickname access lists */
-loadmodule "nickserv/cert";	/* CertFP fingerprint management */
+#loadmodule "nickserv/access";	/* Nickname access lists — disabled: SASL/CertFP only, no IP-based access */
+#loadmodule "nickserv/cert";	/* CertFP fingerprint management — disabled: managed via Portal */
 loadmodule "nickserv/enforce";	/* Nickname enforcement - Enables or disables automatic protection */
 loadmodule "nickserv/info_lastquit";	/* Last quit message in INFO */
 loadmodule "nickserv/listlogins";	/* LISTLOGINS command */
@@ -240,7 +240,7 @@ loadmodule "chanserv/quiet";	/* QUIET command (+q support) */
 loadmodule "chanserv/set_private";	/* SET PRIVATE command - Hides information about a channel */
 #loadmodule "chanserv/set_pubacl";	/* SET PUBACL command */
 #loadmodule "chanserv/successor_acl";	/* Named Successor ACL flag */
-loadmodule "chanserv/xop";	/* VOP/HOP/AOP/SOP commands */
+#loadmodule "chanserv/xop";	/* VOP/HOP/AOP/SOP commands — disabled: use FLAGS instead */
 #loadmodule "chanfix/main";	/*Core components */
 loadmodule "operserv/clearchan";	/* CLEARCHAN command */
 loadmodule "operserv/clones";	/* CLONES system */
@@ -288,10 +288,10 @@ loadmodule "helpserv/helpme";			/* HELPME command */
 loadmodule "helpserv/ticket";			/* Help Ticket system */
 loadmodule "helpserv/services";			/* Service List */
 loadmodule "alis/main";					/* Core components */
-loadmodule "statserv/main";				/* Core components */
-loadmodule "statserv/channel";			/* CHANNEL command */
-loadmodule "statserv/netsplit";			/* NETSPLIT command */
-loadmodule "statserv/server";			/* SERVER command */
+#loadmodule "statserv/main";				/* StatServ — REMOVED (single server, not useful) */
+#loadmodule "statserv/channel";
+#loadmodule "statserv/netsplit";
+#loadmodule "statserv/server";
 loadmodule "groupserv/invite";			/* INVITE command */
 loadmodule "misc/httpd";				/* HTTP Server */
 loadmodule "misc/login_throttling";	/* Password-based login throttling */
@@ -301,8 +301,8 @@ loadmodule "exttarget/registered"; 	/* $registered exttarget match type */
 loadmodule "exttarget/channel";		/* $channel exttarget match type */
 #loadmodule "exttarget/chanacs";		/* $chanacs exttarget match type */
 #loadmodule "exttarget/server";			/* $server exttarget match type */
-loadmodule "proxyscan/main";			/* Core components */
-loadmodule "proxyscan/dnsbl";			/* Proxyscan (DNSBL) modules */
+#loadmodule "proxyscan/main";			/* ProxyScan — REMOVED (UnrealIRCd handles DNSBL) */
+#loadmodule "proxyscan/dnsbl";
 #loadmodule "contrib/backtrace";	/* Backtrace module */
 
 crypto {
@@ -402,7 +402,7 @@ nickserv {
 	show_custom_metadata;
 	emailexempts {
 	};
-	shorthelp = "REGISTER IDENTIFY LOGOUT GROUP DROP GHOST ACCESS CERT SET";
+	shorthelp = "IDENTIFY LOGOUT GHOST INFO STATUS SET";
 	listownmail_canon;
 	bad_password_message;
 };
@@ -471,6 +471,7 @@ global {
 	};
 };
 
+/* InfoServ — REMOVED (use Global for announcements)
 infoserv {
 	nick = "${ATHEME_INFOSERV_NICK}";
 	user = "${ATHEME_INFOSERV_USER}";
@@ -484,6 +485,7 @@ infoserv {
 	logoninfo_reverse;
 	logoninfo_show_metadata;
 };
+*/
 
 operserv {
 	nick = "${ATHEME_OPERSERV_NICK}";
@@ -508,6 +510,7 @@ saslserv {
 	#hide_server_names;
 };
 
+/* MemoServ — REMOVED (portal model, no in-IRC memos)
 memoserv {
 	nick = "${ATHEME_MEMOSERV_NICK}";
 	user = "${ATHEME_MEMOSERV_USER}";
@@ -523,7 +526,9 @@ memoserv {
 	};
 	maxmemos = 50;
 };
+*/
 
+/* GameServ — REMOVED (modules not loaded)
 gameserv {
 	nick = "${ATHEME_GAMESERV_NICK}";
 	user = "${ATHEME_GAMESERV_USER}";
@@ -534,7 +539,9 @@ gameserv {
 	access {
 	};
 };
+*/
 
+/* RPGServ — REMOVED (modules not loaded)
 rpgserv {
 	nick = "${ATHEME_RPGSERV_NICK}";
 	user = "${ATHEME_RPGSERV_USER}";
@@ -545,7 +552,9 @@ rpgserv {
 	access {
 	};
 };
+*/
 
+/* BotServ — REMOVED (modules not loaded)
 botserv {
 	nick = "${ATHEME_BOTSERV_NICK}";
 	user = "${ATHEME_BOTSERV_USER}";
@@ -557,6 +566,7 @@ botserv {
 	};
 	min_users = 0;
 };
+*/
 
 groupserv {
 	nick = "${ATHEME_GROUPSERV_NICK}";
@@ -609,6 +619,7 @@ helpserv {
 	};
 };
 
+/* StatServ — REMOVED (single server, not useful)
 statserv {
 	nick = "${ATHEME_STATSERV_NICK}";
 	user = "${ATHEME_STATSERV_USER}";
@@ -622,6 +633,7 @@ statserv {
 	access {
 	};
 };
+*/
 
 alis {
 	nick = "${ATHEME_ALIS_NICK}";
@@ -637,6 +649,7 @@ alis {
 	maxmatches = 128;
 };
 
+/* ProxyScan — REMOVED (UnrealIRCd handles DNSBL)
 proxyscan {
 	nick = "${ATHEME_PROXYSCAN_NICK}";
 	user = "${ATHEME_PROXYSCAN_USER}";
@@ -657,6 +670,7 @@ proxyscan {
 	};
 	dnsbl_action = kline;
 };
+*/
 
 /* ---------- HTTP daemon ---------- */
 httpd {
@@ -685,7 +699,7 @@ logfile "/dev/stdout" { error; info; admin; network; commands; register; set; de
 
 /* ---------- General settings ---------- */
 general {
-	#permissive_mode; /* Purpose undocumented; not recommended to enable */
+	#permissive_mode; /* Soft security denials instead of hard denials — debugging only */
 	helpchan = "${ATHEME_HELP_CHANNEL}"; /* Channel shown when user requests help for an unknown command */
 	helpurl = "${ATHEME_HELP_URL}"; /* URL shown when user requests help for an unknown command */
 	#silent; /* Suppresses WALLOPS/GLOBOPS — not recommended */
@@ -694,7 +708,7 @@ general {
 	leave_chans; /* ChanServ leaves channels after everyone else leaves */
 	#secure; /* Require /msg <service>@<host> instead of /msg <service> */
 	uflags = { hidemail; }; /* Default flags for new user accounts */
-	cflags = { guard; verbose; }; /* Default flags for newly registered channels */
+	cflags = { guard; }; /* Default flags for newly registered channels */
 	#raw; /* Allows RAW/INJECT commands — TAINTS the instance; debugging only */
 	flood_msgs = 7; /* Number of messages within flood_time that triggers flood protection */
 	flood_time = 10; /* Time window in seconds for flood detection */
