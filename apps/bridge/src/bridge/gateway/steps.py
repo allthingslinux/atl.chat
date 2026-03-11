@@ -112,8 +112,14 @@ def format_convert(content: str, ctx: TransformContext) -> str:
     explicitly opted out of styling via ``<unstyled xmlns="urn:xmpp:styling:0"/>``.
     In that case we skip format conversion entirely so the body is relayed
     as plain text, respecting the sender's intent.
+
+    When origin is Discord and target is XMPP, we pass through raw content.
+    The XMPP adapter runs discord_to_xmpp to produce XEP-0393 styled body
+    and XEP-0394 spans (the IR converter only emits XEP-0393 text, not spans).
     """
     if ctx.raw.get("unstyled"):
+        return content
+    if ctx.origin == "discord" and ctx.target == "xmpp":
         return content
     return convert(content, ctx.origin, ctx.target)
 
