@@ -132,6 +132,12 @@ class TestFormatConvert:
         result = format_convert("**bold**", ctx)
         assert "\x02" in result  # IRC bold control code
 
+    def test_discord_to_xmpp_passthrough(self) -> None:
+        """Discord→XMPP passes through raw content; XMPP adapter runs discord_to_xmpp."""
+        ctx = TransformContext(origin="discord", target="xmpp")
+        result = format_convert("**bold** and *italic*", ctx)
+        assert result == "**bold** and *italic*"
+
     def test_plain_text_preserved(self) -> None:
         ctx = TransformContext(origin="irc", target="xmpp")
         assert format_convert("hello world", ctx) == "hello world"
