@@ -281,7 +281,12 @@ async def handle_tagmsg(client: IRCClient, message: object) -> None:
         if nick == client.nickname:
             return  # Skip our own echo
         discord_id = client._msgid_tracker.get_discord_id(reply_to)
-        if discord_id:
+        if not discord_id:
+            logger.debug(
+                "IRC reaction dropped: no discord_id for reply_to={} (msgid not in tracker; echo may lack msgid)",
+                reply_to,
+            )
+        elif discord_id:
             from bridge.events import reaction_in
 
             msgid = tags.get("msgid")
@@ -302,7 +307,12 @@ async def handle_tagmsg(client: IRCClient, message: object) -> None:
         if nick == client.nickname:
             return  # Skip our own echo
         discord_id = client._msgid_tracker.get_discord_id(reply_to)
-        if discord_id:
+        if not discord_id:
+            logger.debug(
+                "IRC unreact dropped: no discord_id for reply_to={} (msgid not in tracker)",
+                reply_to,
+            )
+        elif discord_id:
             from bridge.events import reaction_in
 
             _, evt = reaction_in(
