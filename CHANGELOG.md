@@ -1,3 +1,27 @@
+# [1.6.0](https://github.com/allthingslinux/atl.chat/compare/v1.5.0...v1.6.0) (2026-03-11)
+
+
+### Bug Fixes
+
+* **config:** update relaymsg configuration for clean nick handling ([bc4fada](https://github.com/allthingslinux/atl.chat/commit/bc4fada9de182630210cd8a7f1fb84b9411081e7))
+* **irc:** improve logging for missing Discord IDs in handle_tagmsg ([f601f10](https://github.com/allthingslinux/atl.chat/commit/f601f10928e2c5da66d5ef193db520a6842026cd))
+
+
+### Features
+
+* **discord:** link Discord ID to IRC message ID for reaction support ([b660315](https://github.com/allthingslinux/atl.chat/commit/b660315a5490b30ae72fa27bfea336b6e5aff228))
+* **irc:** add method for linking Discord ID aliases to IRC tracker ([92d7599](https://github.com/allthingslinux/atl.chat/commit/92d75991b2c1b1c10d9cab5a36c8439e8fd5be25))
+* **irc:** add method to manage Discord ID aliases for message tracking ([9dc824e](https://github.com/allthingslinux/atl.chat/commit/9dc824e39dca85610f82a8ad9ca8964aafd5df99))
+* **irc:** handle REDACT errors gracefully in on_raw_fail method ([1c27f44](https://github.com/allthingslinux/atl.chat/commit/1c27f44a79309a8fcc07cb908c4327e388843d60))
+* **redact:** implement REDACT functionality with improved validation and configuration ([57401ed](https://github.com/allthingslinux/atl.chat/commit/57401ed89bf5d81f7af082e978d7e43437f3ea4c))
+* **xmpp:** add method to update Discord ID in message mapping ([6318391](https://github.com/allthingslinux/atl.chat/commit/631839133c053e2bc421612c68cdcf9a5ecf7a1b))
+* **xmpp:** add spoiler parameters to message sending ([c03742a](https://github.com/allthingslinux/atl.chat/commit/c03742a57d5d38f4f34b8bdb94704eebcac5d17f))
+* **xmpp:** enhance message sending with spoiler handling ([dcfb8a0](https://github.com/allthingslinux/atl.chat/commit/dcfb8a06e7f260ccd407e5dd7e11e3a4e534bbc2))
+* **xmpp:** enhance strikethrough formatting for Discord compatibility ([545c39e](https://github.com/allthingslinux/atl.chat/commit/545c39e75afb69401bacac5583cdfac106a4b2cb))
+* **xmpp:** normalize strikethrough formatting and add spoiler support ([748e2af](https://github.com/allthingslinux/atl.chat/commit/748e2af3907a9afbb45610e7a9bbfc8849821f4d))
+* **xmpp:** propagate spoiler flag in relay messages ([71ef4a0](https://github.com/allthingslinux/atl.chat/commit/71ef4a0c17168692d7b5243657a20510e5e35bdf))
+* **xmpp:** support raw content passthrough from Discord to XMPP ([59a1c91](https://github.com/allthingslinux/atl.chat/commit/59a1c91b3de6e57458ae61a1f8788f13a90d5a5f))
+
 # [1.5.0](https://github.com/allthingslinux/atl.chat/compare/v1.4.1...v1.5.0) (2026-03-06)
 
 
