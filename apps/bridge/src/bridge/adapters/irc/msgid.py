@@ -46,6 +46,29 @@ class MessageIDTracker:
         mapping = self._discord_to_irc.get(discord_id)
         return mapping.irc_msgid if mapping else None
 
+    def add_discord_id_alias(self, new_discord_id: str, existing_value: str) -> bool:
+        """Add Discord ID as alias and update irc_msgid -> discord_id for get_discord_id.
+
+        For XMPP-origin messages: IRC echo stores irc_msgid -> xmpp_id. When the Discord
+        webhook returns the real discord_id, we add discord_id -> irc_msgid for reactions
+        and update irc_msgid -> new_discord_id so REDACT→Discord delete uses the real ID.
+        """
+        self._cleanup()
+        mapping = self._discord_to_irc.get(existing_value)
+        if not mapping:
+            return False
+        self._discord_to_irc[new_discord_id] = mapping
+        # Update irc_msgid -> discord_id so get_discord_id returns the real Discord snowflake
+        # (not xmpp_id); required for IRC REDACT → Discord delete.
+        updated = MessageMapping(
+            irc_msgid=mapping.irc_msgid,
+            discord_id=new_discord_id,
+            timestamp=mapping.timestamp,
+        )
+        self._irc_to_discord[mapping.irc_msgid] = updated
+        self._discord_to_irc[new_discord_id] = updated
+        return True
+
     def _cleanup(self):
         """Remove expired entries (throttled to once per minute)."""
         now = time.time()
