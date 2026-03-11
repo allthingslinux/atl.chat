@@ -95,3 +95,30 @@ class TestMessageIDTracker:
             tracker.store("irc-fresh", "discord-fresh")
             assert tracker.get_discord_id("irc-fresh") == "discord-fresh"
             assert tracker.get_irc_msgid("discord-fresh") == "irc-fresh"
+
+    def test_add_discord_id_alias_enables_reaction_lookup(self) -> None:
+        """add_discord_id_alias links Discord ID when IRC echo stored xmpp_id (XMPP-origin)."""
+        tracker = MessageIDTracker()
+        # Simulate IRC echo: irc_msgid -> xmpp_id (stored as discord_id in mapping)
+        tracker.store("irc-msgid-abc", "xmpp-id-019cde19")
+        assert tracker.get_irc_msgid("1481354198271529023") is None
+        # Webhook returns; add real Discord ID as alias
+        added = tracker.add_discord_id_alias("1481354198271529023", "xmpp-id-019cde19")
+        assert added is True
+        assert tracker.get_irc_msgid("1481354198271529023") == "irc-msgid-abc"
+
+    def test_add_discord_id_alias_updates_get_discord_id_for_redact(self) -> None:
+        """add_discord_id_alias updates irc_msgid->discord_id so REDACT→Discord delete works."""
+        tracker = MessageIDTracker()
+        # XMPP-origin: IRC echo stores irc_msgid -> xmpp_id
+        tracker.store("irc-msgid-BXxmnc", "019cde86-4646-7bbd-8899-47c5795c8c03")
+        assert tracker.get_discord_id("irc-msgid-BXxmnc") == "019cde86-4646-7bbd-8899-47c5795c8c03"
+        # Discord webhook returns real snowflake; add_discord_id_alias updates mapping
+        tracker.add_discord_id_alias("1481383997677506632", "019cde86-4646-7bbd-8899-47c5795c8c03")
+        # get_discord_id must return real Discord ID for Discord delete API
+        assert tracker.get_discord_id("irc-msgid-BXxmnc") == "1481383997677506632"
+
+    def test_add_discord_id_alias_nonexistent_returns_false(self) -> None:
+        """add_discord_id_alias returns False when existing_value not found."""
+        tracker = MessageIDTracker()
+        assert tracker.add_discord_id_alias("new-discord-id", "nonexistent-xmpp-id") is False
