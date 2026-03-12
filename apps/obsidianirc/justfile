@@ -15,11 +15,10 @@ shell:
 logs:
     {{ compose }} logs -f atl-obsidianirc
 
-# Rebuild and restart ObsidianIRC
+# Rebuild ObsidianIRC image (does not start containers)
 rebuild:
-    {{ compose }} up -d --build atl-obsidianirc
+    {{ compose }} build atl-obsidianirc
 
-# Rebuild from scratch (no Docker cache — use when build args change)
+# Rebuild from scratch (no Docker cache — use when build args change; does not start containers)
 rebuild-clean:
     {{ compose }} build --no-cache atl-obsidianirc
-    {{ compose }} up -d --no-deps --force-recreate atl-obsidianirc
