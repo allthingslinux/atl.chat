@@ -256,6 +256,7 @@ def message_delete(
     *,
     author_id: str = "",
     author_display: str = "",
+    raw: dict[str, Any] | None = None,
 ) -> MessageDelete:
     return MessageDelete(
         origin=origin,
@@ -263,6 +264,7 @@ def message_delete(
         message_id=message_id,
         author_id=author_id,
         author_display=author_display,
+        raw=raw or {},
     )
 
 
