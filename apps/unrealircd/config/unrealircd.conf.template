@@ -386,6 +386,9 @@ loadmodule "third/showwebirc";
 loadmodule "third/metadata";
 loadmodule "third/react";         /* IRCv3 draft/react: message reactions */
 loadmodule "third/redact-atl";    /* IRCv3 draft/message-redaction: REDACT (atl.chat: fixed) */
+set {
+	redacters { sender; }  /* Allow message authors to redact their own messages (requires +H chathistory) */
+}
 loadmodule "third/relaymsg-atl";   /* atl.chat: RELAYMSG for stateless bridging (clean nicks) */
 loadmodule "third/irccloud-tags"; /* IRCCloud MessageTags support */
 loadmodule "third/kiwiirc-tags";  /* KiwiIRC MessageTags support */
@@ -903,6 +906,9 @@ set {
 
 	anti-spam-quit-message-time 10s;
 
+	/* Channel history: required for REDACT (third/redact-atl). Bridge sets +H 50:1d on
+	 * bridged channels when BRIDGE_IRC_OPER_PASSWORD is set. Modules: history, chanmodes/history,
+	 * chathistory, history_backend_mem. */
 	history {
 		channel {
 			/* Use defaults — 200 lines max, 31 days retention */
