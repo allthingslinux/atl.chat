@@ -684,11 +684,14 @@ muc_inject_mentions_reserved_nicks = true  -- also match nicks of offline/regist
 
 -- mod_muc_defaults: rooms created at Prosody startup
 local admin_jid_muc = Lua.os.getenv("PROSODY_ADMIN_JID") or ("admin@" .. domain)
+-- Bridge component JID: admin affiliation so it can send XEP-0425 moderation (Dino/Fluux retraction hack)
+local bridge_jid_muc = Lua.os.getenv("PROSODY_BRIDGE_MUC_JID") or ("bridge." .. domain)
 default_mucs = {
     {
         jid_node = "general",
         affiliations = {
             owner = { admin_jid_muc },
+            admin = { bridge_jid_muc },
         },
         config = {
             name = "General",
