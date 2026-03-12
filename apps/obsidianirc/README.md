@@ -28,11 +28,11 @@ just dev
 | Variable | Dev value | Purpose |
 |----------|-----------|---------|
 | `OBSIDIANIRC_PORT` | `8090` | Host port for the web UI |
-| `OBSIDIANIRC_IRC_WS_URL` | `ws://localhost:8000` | Direct WebSocket to UnrealIRCd (no TLS) |
+| `OBSIDIANIRC_IRC_WS_URL` | `ws://127.0.0.1:8000` | Direct WebSocket to UnrealIRCd (no TLS; use 127.0.0.1 to avoid IPv6 localhost) |
 | `OBSIDIANIRC_AUTOJOIN` | `#general` | Channels to auto-join |
 | `OBSIDIANIRC_SERVER_NAME` | `irc.localhost` | Display name in the UI |
 
-The browser connects to `ws://localhost:8000` (IRC WebSocket) and `http://localhost:8090` (ObsidianIRC). Both are on localhost.
+The browser connects to `ws://127.0.0.1:8000` (IRC WebSocket) and `http://localhost:8090` (ObsidianIRC). Use `127.0.0.1` for the WebSocket to avoid IPv6 `localhost` resolution issues.
 
 ## Production
 
