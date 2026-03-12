@@ -341,7 +341,7 @@ class TestSendTyping:
         router.get_mapping_for_discord.return_value = _irc_mapping()
         evt = TypingOut(target_origin="irc", channel_id="111")
         await adapter._send_typing(evt)
-        adapter._client.rawmsg.assert_awaited_once_with("TAGMSG", "#test", tags={"typing": "active"})
+        adapter._client.rawmsg.assert_awaited_once_with("TAGMSG", "#test", tags={"+typing": "active"})
 
     @pytest.mark.asyncio
     async def test_no_mapping_skips(self):
