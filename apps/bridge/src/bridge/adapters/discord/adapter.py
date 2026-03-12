@@ -50,6 +50,8 @@ class DiscordAdapter(AdapterBase):
         self._msgid_resolver = msgid_resolver
         self._queue: asyncio.Queue[MessageOut] = asyncio.Queue()
         self._webhook_cache: TTLCache[str, Webhook] = TTLCache(maxsize=100, ttl=86400)
+        # Message IDs we deleted (relaying from XMPP/IRC) — skip publishing on_raw_message_delete
+        self._recently_deleted_by_us: TTLCache[str, None] = TTLCache(maxsize=500, ttl=5)
         self._channel_locks: dict[str, asyncio.Lock] = {}
         self._bot: commands.Bot | None = None
         self._session: aiohttp.ClientSession | None = None
@@ -108,7 +110,7 @@ class DiscordAdapter(AdapterBase):
     # ------------------------------------------------------------------
 
     async def _handle_delete_out(self, evt: MessageDeleteOut) -> None:
-        await discord_outbound.handle_delete_out(self._bot, evt)
+        await discord_outbound.handle_delete_out(self._bot, evt, self._recently_deleted_by_us)
 
     async def _handle_reaction_out(self, evt: ReactionOut) -> None:
         await discord_outbound.handle_reaction_out(self._bot, evt)
