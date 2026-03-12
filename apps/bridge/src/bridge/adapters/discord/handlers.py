@@ -363,6 +363,12 @@ async def on_raw_message_delete(adapter: DiscordAdapter, payload: RawMessageDele
     if not adapter._is_bridged_channel(channel_id):
         return
 
+    # Skip when we initiated the delete (relaying from XMPP/IRC) — avoids duplicate retraction on XMPP
+    key = f"{channel_id}:{payload.message_id}"
+    if key in adapter._recently_deleted_by_us:
+        logger.debug("Discord: skipping raw_message_delete for {} (we initiated)", payload.message_id)
+        return
+
     author_id = ""
     author_display = ""
     if payload.cached_message:
