@@ -122,3 +122,27 @@ class TestMessageIDTracker:
         """add_discord_id_alias returns False when existing_value not found."""
         tracker = MessageIDTracker()
         assert tracker.add_discord_id_alias("new-discord-id", "nonexistent-xmpp-id") is False
+
+    def test_get_original_origin_irc_for_discord_snowflake(self) -> None:
+        """get_original_origin returns 'irc' when stored with numeric Discord snowflake."""
+        tracker = MessageIDTracker()
+        tracker.store("irc-msg-1", "1481354198271529023")
+        assert tracker.get_original_origin("irc-msg-1") == "irc"
+
+    def test_get_original_origin_xmpp_for_ulid(self) -> None:
+        """get_original_origin returns 'xmpp' when stored with XMPP ULID (XMPP-origin)."""
+        tracker = MessageIDTracker()
+        tracker.store("irc-msg-2", "019cde86-4646-7bbd-8899-47c5795c8c03")
+        assert tracker.get_original_origin("irc-msg-2") == "xmpp"
+
+    def test_get_original_origin_preserved_after_add_discord_id_alias(self) -> None:
+        """get_original_origin stays 'xmpp' after add_discord_id_alias (XMPP-origin)."""
+        tracker = MessageIDTracker()
+        tracker.store("irc-msg-3", "019cde86-4646-7bbd-8899-47c5795c8c03")
+        tracker.add_discord_id_alias("1481383997677506632", "019cde86-4646-7bbd-8899-47c5795c8c03")
+        assert tracker.get_original_origin("irc-msg-3") == "xmpp"
+
+    def test_get_original_origin_nonexistent_returns_none(self) -> None:
+        """get_original_origin returns None for unknown msgid."""
+        tracker = MessageIDTracker()
+        assert tracker.get_original_origin("nonexistent") is None
