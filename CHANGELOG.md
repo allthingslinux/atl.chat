@@ -1,3 +1,25 @@
+# [1.9.0](https://github.com/allthingslinux/atl.chat/compare/v1.8.0...v1.9.0) (2026-03-12)
+
+
+### Bug Fixes
+
+* **discord:** enhance avatar URL validation for Discord compatibility ([daac6aa](https://github.com/allthingslinux/atl.chat/commit/daac6aa85367d4118b2b1464e9d41816f56e2dd6))
+* **xmpp:** ensure real JID is correctly processed for avatar URL resolution ([450dd11](https://github.com/allthingslinux/atl.chat/commit/450dd118f29837cb8c9d176ac51751cdde1d0369))
+
+
+### Features
+
+* **discord:** implement avatar resolution logic for message sending ([204e344](https://github.com/allthingslinux/atl.chat/commit/204e344e1036c2731fb2a5d88689641a46f89dbc))
+* **identity:** add abstract methods for avatar URL resolution across platforms ([5f9eb9d](https://github.com/allthingslinux/atl.chat/commit/5f9eb9d273d8ba070e272e9a6a7231edf244922d))
+* **identity:** add avatar resolution methods for Discord, IRC, and XMPP ([b6c5315](https://github.com/allthingslinux/atl.chat/commit/b6c5315811450361e038d4bb600fbb47c39f8eb8))
+* **identity:** implement avatar retrieval methods for Discord, IRC, and XMPP ([f4aab21](https://github.com/allthingslinux/atl.chat/commit/f4aab21fdb73b618fffee6f70527a649df0a7106))
+* **irc:** implement dynamic avatar URL resolution based on message origin ([ab72499](https://github.com/allthingslinux/atl.chat/commit/ab7249925968572310598aa177ba8cf7b5c86993))
+* **tests:** add additional avatar retrieval mocks for identity in IRC adapter tests ([c9a2134](https://github.com/allthingslinux/atl.chat/commit/c9a213460bf6dff35a626200aead35740eac7d7c))
+* **tests:** add avatar retrieval mocks for identity in IRC adapter tests ([1e86f89](https://github.com/allthingslinux/atl.chat/commit/1e86f893dd5987ef6bc151f819318f6cdbb890a2))
+* **tests:** add avatar retrieval mocks for identity in XMPP adapter tests ([2c29e63](https://github.com/allthingslinux/atl.chat/commit/2c29e6389f64640c195936ab1128a58a4eacaf36))
+* **xmpp:** add data URL decoding for avatar images ([1c0dbad](https://github.com/allthingslinux/atl.chat/commit/1c0dbad5e289703cecdc48834b9fd21a8527c3d4))
+* **xmpp:** implement dynamic avatar URL resolution based on message origin ([ba494e5](https://github.com/allthingslinux/atl.chat/commit/ba494e5b62ae2150d2d0dfccad5443a6e4501552))
+
 # [1.8.0](https://github.com/allthingslinux/atl.chat/compare/v1.7.0...v1.8.0) (2026-03-12)
 
 
