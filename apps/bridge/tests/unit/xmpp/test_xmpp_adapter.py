@@ -32,6 +32,9 @@ def _make_adapter(
 
     identity = AsyncMock()
     identity.discord_to_xmpp = AsyncMock(return_value=identity_nick)
+    identity.avatar_for_discord = AsyncMock(return_value=None)
+    identity.avatar_for_irc = AsyncMock(return_value=None)
+    identity.avatar_for_xmpp = AsyncMock(return_value=None)
 
     adapter = XMPPAdapter(bus, router, identity)
     return adapter, bus, router
