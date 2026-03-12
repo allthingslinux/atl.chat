@@ -132,3 +132,12 @@ class DevIdentityResolver(IdentityResolver):
 
     async def has_xmpp(self, discord_id: str) -> bool:
         return discord_id in self._discord_xmpp
+
+    async def avatar_for_discord(self, discord_id: str) -> str | None:
+        return None
+
+    async def avatar_for_irc(self, nick: str, server: str | None = None) -> str | None:
+        return None
+
+    async def avatar_for_xmpp(self, jid: str) -> str | None:
+        return None
