@@ -155,12 +155,32 @@ class XMPPAdapter(AdapterBase):
                         # Resolve XMPP nick (identity or fallback for dev without Portal)
                         nick = await self._resolve_nick_async(evt)
 
+                        # Resolve avatar: prefer Portal, then evt.avatar_url
+                        avatar_url: str | None = None
+                        if self._identity and evt.author_id:
+                            try:
+                                origin = (evt.raw or {}).get("origin", "")
+                                if origin == "discord":
+                                    avatar_url = await self._identity.avatar_for_discord(evt.author_id)
+                                elif origin == "irc":
+                                    avatar_url = await self._identity.avatar_for_irc(evt.author_id)
+                                elif origin == "xmpp":
+                                    real_jid = (evt.raw or {}).get("real_jid")
+                                    avatar_url = await self._identity.avatar_for_xmpp(
+                                        real_jid if isinstance(real_jid, str) else evt.author_id
+                                    )
+                                else:
+                                    avatar_url = await self._identity.avatar_for_discord(evt.author_id)
+                            except Exception:
+                                pass
+                        avatar_url = avatar_url or evt.avatar_url
+
                         # Publish vCard avatar if provided (returns hash when changed).
                         # Broadcast happens AFTER the message send because
                         # send_message_as_user calls _ensure_puppet_joined first.
                         avatar_hash: str | None = None
-                        if evt.avatar_url:
-                            avatar_hash = await self._component.set_avatar_for_user(evt.author_id, nick, evt.avatar_url)
+                        if avatar_url:
+                            avatar_hash = await self._component.set_avatar_for_user(evt.author_id, nick, avatar_url)
 
                         # Check if this is an edit
                         is_edit = evt.raw.get("is_edit", False)
