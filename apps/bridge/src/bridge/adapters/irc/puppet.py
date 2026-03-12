@@ -55,16 +55,16 @@ class IRCPuppet(pydle.Client):
         """Revert any nick change forced onto this puppet (e.g. NickServ enforcement)."""
         await super().on_nick(old, new)
         if old.lower() == self._initial_nick.lower():
-            logger.warning("IRC puppet: nick changed {} -> {}; reverting", old, new)
+            logger.warning("puppet nick changed {} -> {}; reverting", old, new)
             try:
                 await self.set_nick(self._initial_nick)
             except Exception as exc:
-                logger.exception("IRC puppet: failed to revert nick change: {}", exc)
+                logger.exception("puppet failed to revert nick change: {}", exc)
 
     async def on_connect(self):
         """Handle connection: send pre-join commands and start pinger."""
         await super().on_connect()
-        logger.debug("IRC puppet {} connected", self.nickname)
+        logger.debug("puppet {} connected", self.nickname)
 
         for cmd in self._prejoin_commands:
             raw = cmd.replace("{nick}", self._initial_nick)
@@ -138,7 +138,7 @@ class IRCPuppetManager:
             # Resolve IRC nick from Portal
             nick = await self._identity.discord_to_irc(discord_id)
             if not nick:
-                logger.debug("No IRC nick for Discord user {}", discord_id)
+                logger.debug("no nick for Discord user {}", discord_id)
                 return None
 
             # Create and connect puppet with backoff retry
@@ -152,7 +152,7 @@ class IRCPuppetManager:
             if await self._connect_puppet_with_backoff(puppet):
                 self._puppets[discord_id] = puppet
                 puppet.touch()
-                logger.info("Created IRC puppet {} for Discord user {}", nick, discord_id)
+                logger.info("created puppet {} for Discord user {}", nick, discord_id)
                 return puppet
 
             return None
@@ -211,16 +211,16 @@ class IRCPuppetManager:
         """Send message via puppet. Joins channel if needed. Sets METADATA avatar if supported."""
         puppet = await self.get_or_create_puppet(discord_id)
         if not puppet:
-            logger.debug("IRC puppet: no puppet for discord_id={}; message not sent", discord_id)
+            logger.debug("puppet: no puppet for discord_id={}; message not sent", discord_id)
             return
 
         # Ensure puppet has joined the target channel before sending
         if channel not in puppet.channels:
             try:
                 await puppet.join(channel)
-                logger.debug("IRC puppet: {} joined {}", puppet.nickname, channel)
+                logger.debug("puppet {} joined {}", puppet.nickname, channel)
             except Exception as exc:
-                logger.warning("IRC puppet: {} failed to join {}: {}", puppet.nickname, channel, exc)
+                logger.warning("puppet {} failed to join {}: {}", puppet.nickname, channel, exc)
                 return
 
         # Set avatar via METADATA before first message (when URL changed)
@@ -231,7 +231,7 @@ class IRCPuppetManager:
             for chunk in split_irc_message(content, max_bytes=450):
                 await puppet.message(channel, chunk)
             puppet.touch()
-            logger.info("IRC puppet: sent to {} as {}", channel, puppet.nickname)
+            logger.info("puppet sent to {} as {}", channel, puppet.nickname)
         except Exception as exc:
             logger.exception("Puppet send failed for {}: {}", discord_id, exc)
 
@@ -278,7 +278,7 @@ class IRCPuppetManager:
                 for discord_id in to_remove:
                     puppet = self._puppets.pop(discord_id)
                     await puppet.disconnect()
-                    logger.info("Disconnected idle IRC puppet for {}", discord_id)
+                    logger.info("disconnected idle puppet for {}", discord_id)
 
             except asyncio.CancelledError:
                 break

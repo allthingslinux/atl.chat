@@ -36,18 +36,18 @@ Each adapter logs connection events and errors. Key log patterns to watch for:
 
 | Pattern | Meaning |
 |---|---|
-| `Discord: connected` | Discord adapter connected successfully |
-| `IRC: connected to <host>` | IRC adapter connected to the server |
-| `XMPP: session started` | XMPP adapter established a session |
+| `[Discord]` `bot ready` | Discord adapter connected successfully |
+| `[IRC]` `connected to <host>` | IRC adapter connected to the server |
+| `[XMPP]` `component started` | XMPP adapter established a session |
 
 ### Common error patterns
 
 | Pattern | Meaning | Resolution |
 |---|---|---|
-| `Discord: authentication failed` | Invalid or expired Discord token | Regenerate `DISCORD_TOKEN` in the Discord Developer Portal |
-| `IRC: connection refused` | IRC server unreachable | Verify UnrealIRCd is running with `just status` |
-| `XMPP: auth failed` | Wrong XMPP password | Check `XMPP_BRIDGE_PASSWORD` matches Prosody config |
-| `Router: no mapping for <origin>` | Message from an unmapped channel | Add the channel to the `mappings` list in config |
+| `[Discord]` auth/token errors | Invalid or expired Discord token | Regenerate `DISCORD_TOKEN` in the Discord Developer Portal |
+| `[IRC]` connection refused | IRC server unreachable | Verify UnrealIRCd is running with `just status` |
+| `[XMPP]` auth/connect errors | Wrong XMPP password | Check `XMPP_BRIDGE_PASSWORD` matches Prosody config |
+| `[Relay]` no mapping | Message from an unmapped channel | Add the channel to the `mappings` list in config |
 
 ### Viewing full logs
 
@@ -59,7 +59,7 @@ docker logs --follow atl-bridge
 docker logs --tail 200 atl-bridge
 
 # Filter for a specific adapter
-docker logs atl-bridge 2>&1 | grep "IRC:"
+docker logs atl-bridge 2>&1 | grep "\[IRC\]"
 ```
 
 ## Portal integration

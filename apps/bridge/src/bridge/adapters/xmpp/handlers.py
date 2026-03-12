@@ -131,7 +131,7 @@ def on_groupchat_message(comp: XMPPComponent, msg: Any) -> None:
 
     mapping = comp._router.get_mapping_for_xmpp(room_jid)
     if not mapping:
-        logger.debug("XMPP: no mapping for room {}; message from {} not bridged", room_jid, nick)
+        logger.debug("no mapping for room {}; message from {} not bridged", room_jid, nick)
         return
 
     # Skip XEP-0424 retraction messages: _on_retraction handles them; do not bridge fallback body
@@ -292,7 +292,7 @@ def on_groupchat_message(comp: XMPPComponent, msg: Any) -> None:
         avatar_url=avatar_url,
         raw=raw_data if raw_data else {},
     )
-    logger.info("XMPP message bridged: room={} author={}", room_jid, nick)
+    logger.info("message bridged: room={} author={}", room_jid, nick)
     comp._bus.publish("xmpp", evt)
 
 
@@ -311,7 +311,7 @@ def on_reactions(comp: XMPPComponent, msg: Any) -> None:
 
     # Skip our own echoed reactions (from puppets) to prevent doubling
     if should_suppress_echo(comp, room_jid, nick):
-        logger.debug("Skipping XMPP reaction echo from our component ({})", nick)
+        logger.debug("skipping reaction echo from our component ({})", nick)
         return
 
     reactions = msg.get_plugin("reactions", check=True)
@@ -350,7 +350,7 @@ def on_reactions(comp: XMPPComponent, msg: Any) -> None:
             author_display=nick,
             raw={"is_remove": True},
         )
-        logger.info("XMPP reaction removal bridged: room={} author={} emoji={}", room_jid, nick, emoji)
+        logger.info("reaction removal bridged: room={} author={} emoji={}", room_jid, nick, emoji)
         comp._bus.publish("xmpp", evt)
     for emoji in added:
         _, evt = reaction_in(
@@ -361,7 +361,7 @@ def on_reactions(comp: XMPPComponent, msg: Any) -> None:
             author_id=nick,
             author_display=nick,
         )
-        logger.info("XMPP reaction bridged: room={} author={} emoji={}", room_jid, nick, emoji)
+        logger.info("reaction bridged: room={} author={} emoji={}", room_jid, nick, emoji)
         comp._bus.publish("xmpp", evt)
 
 
@@ -372,10 +372,10 @@ async def _send_moderation_for_retraction(comp: XMPPComponent, room_jid: str, ta
         if plugin:
             # Component must set explicit 'from' for Prosody; otherwise stream error (invalid-from).
             await plugin.moderate(JID(room_jid), target_msg_id, ifrom=JID(comp._component_jid))
-            logger.debug("XMPP: sent moderation for retraction {} in {}", target_msg_id, room_jid)
+            logger.debug("sent moderation for retraction {} in {}", target_msg_id, room_jid)
     except Exception as exc:
         logger.debug(
-            "XMPP: moderation for retraction {} failed (bridge may not be moderator): {}",
+            "moderation for retraction {} failed (bridge may not be moderator): {}",
             target_msg_id,
             exc,
         )
@@ -403,7 +403,7 @@ def on_retraction(comp: XMPPComponent, msg: Any) -> None:
 
     # Skip our own echoed retractions (from puppets) to prevent loop/doubling
     if should_suppress_echo(comp, room_jid, nick):
-        logger.debug("Skipping XMPP retraction echo from our component ({})", nick)
+        logger.debug("skipping retraction echo from our component ({})", nick)
         return
 
     retract = msg.get_plugin("retract", check=True)
@@ -420,7 +420,7 @@ def on_retraction(comp: XMPPComponent, msg: Any) -> None:
 
     discord_id = comp._msgid_tracker.get_discord_id(target_msg_id)
     if not discord_id:
-        logger.debug("No Discord msgid for XMPP retraction {}; skip", target_msg_id)
+        logger.debug("no Discord msgid for retraction {}; skip", target_msg_id)
         return
 
     from bridge.events import message_delete
@@ -432,7 +432,7 @@ def on_retraction(comp: XMPPComponent, msg: Any) -> None:
         author_id=nick or "",
         author_display=nick or "",
     )
-    logger.info("XMPP retraction bridged: room={} author={} message={}", room_jid, nick, target_msg_id)
+    logger.info("retraction bridged: room={} author={} message={}", room_jid, nick, target_msg_id)
     comp._bus.publish("xmpp", evt)
 
     # Option 1 hack: also send XEP-0425 moderation so Dino (and similar clients) delete locally.
@@ -470,7 +470,7 @@ def on_moderated_message(comp: XMPPComponent, msg: Any) -> None:
     # Skip when we initiated this moderation (XEP-0424→0425 promotion); already relayed
     dedupe_key = f"{room_jid}:{target_msg_id}"
     if dedupe_key in comp._recently_moderated_by_us:
-        logger.debug("XMPP: skipping moderation echo for {} (we initiated)", target_msg_id)
+        logger.debug("skipping moderation echo for {} (we initiated)", target_msg_id)
         return
 
     # Dedupe: multiple handlers and MUC occupant copies fire for the same moderation
@@ -496,7 +496,7 @@ def on_moderated_message(comp: XMPPComponent, msg: Any) -> None:
         author_id=moderator,
         author_display=moderator,
     )
-    logger.info("XMPP moderation bridged: room={} moderator={} message={}", room_jid, moderator, target_msg_id)
+    logger.info("moderation bridged: room={} moderator={} message={}", room_jid, moderator, target_msg_id)
     comp._bus.publish("xmpp", evt)
 
 
@@ -555,7 +555,7 @@ def try_handle_moderation(comp: XMPPComponent, msg: Any, room_jid: str) -> None:
         author_id=moderator,
         author_display=moderator,
     )
-    logger.info("XMPP moderation bridged: room={} moderator={} target={}", room_jid, moderator, target_msg_id)
+    logger.info("moderation bridged: room={} moderator={} target={}", room_jid, moderator, target_msg_id)
     comp._bus.publish("xmpp", evt)
 
 
@@ -652,7 +652,7 @@ async def handle_ibb_stream(comp: XMPPComponent, stream: Any) -> None:
         # Find mapping for this room
         mapping = comp._router.get_mapping_for_xmpp(room_jid)
         if not mapping:
-            logger.warning("No mapping for XMPP room {}", room_jid)
+            logger.warning("no mapping for room {}", room_jid)
             return
 
         # Publish a message event through the bus so the relay routes to

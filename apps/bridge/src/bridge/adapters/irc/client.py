@@ -62,18 +62,18 @@ async def _connect_with_backoff(
             delay = min(_BACKOFF_MAX, _BACKOFF_MIN)
             jitter = random.uniform(0.5, 1.5)
             wait = delay * jitter
-            logger.info("IRC disconnected, reconnecting in {:.1f}s", wait)
+            logger.info("disconnected, reconnecting in {:.1f}s", wait)
             await asyncio.sleep(wait)
         except Exception as exc:
             attempt += 1
             if attempt >= _MAX_ATTEMPTS:
-                logger.exception("IRC connect failed after {} attempts", _MAX_ATTEMPTS)
+                logger.exception("connect failed after {} attempts", _MAX_ATTEMPTS)
                 raise
             delay = min(_BACKOFF_MAX, _BACKOFF_MIN * (2 ** (attempt - 1)))
             jitter = random.uniform(0.5, 1.5)
             wait = delay * jitter
             logger.warning(
-                "IRC connect failed (attempt {}): {}, retrying in {:.1f}s",
+                "connect failed (attempt {}): {}, retrying in {:.1f}s",
                 attempt,
                 exc,
                 wait,
@@ -165,12 +165,12 @@ class IRCClient(pydle.Client):
         """After connect, join channels and start consumer."""
         await super().on_connect()
         self._ready = False
-        logger.info("IRC connected to {}", self._server)
+        logger.info("connected to {}", self._server)
         for channel in self._channels:
             try:
                 await self.join(channel)
             except Exception as exc:
-                logger.warning("IRC: failed to join {}: {} (will retry on next reconnect)", channel, exc)
+                logger.warning("failed to join {}: {} (will retry on next reconnect)", channel, exc)
         await self._ensure_channels_permanent()
         self._consumer_task = asyncio.create_task(self._consume_outbound())
         # Fallback: if no PONG within 10s, mark ready anyway (some servers don't echo PING)
@@ -190,7 +190,7 @@ class IRCClient(pydle.Client):
             await asyncio.sleep(1)  # Allow server to process OPER
             # Set bot mode on ourselves so we appear as a bot to IRC users
             await self.rawmsg("MODE", self.nickname, "+B")
-            logger.info("IRC: set +B (bot mode) on {}", self.nickname)
+            logger.info("set +B (bot mode) on {}", self.nickname)
             for channel in self._channels:
                 await self.rawmsg("MODE", channel, "+P")
                 await self.rawmsg("MODE", channel, "+H", "50:1d")  # Required for REDACT (chathistory)
@@ -202,7 +202,7 @@ class IRCClient(pydle.Client):
         await asyncio.sleep(10)
         if not self._ready:
             self._ready = True
-            logger.debug("IRC ready (fallback timeout)")
+            logger.debug("ready (fallback timeout)")
 
     async def on_raw_005(self, message):
         """After 005 ISUPPORT, parse NICKLEN/CASEMAPPING and send PING for ready detection."""
@@ -215,14 +215,14 @@ class IRCClient(pydle.Client):
                 try:
                     server_nicklen = int(token_str.split("=", 1)[1])
                     self._server_nicklen = min(server_nicklen, 23)
-                    logger.debug("IRC ISUPPORT: NICKLEN={} (effective={})", server_nicklen, self._server_nicklen)
+                    logger.debug("ISUPPORT: NICKLEN={} (effective={})", server_nicklen, self._server_nicklen)
                 except (ValueError, IndexError):
                     pass
             elif token_str.startswith("CASEMAPPING="):
                 mapping_val = token_str.split("=", 1)[1].lower()
                 if mapping_val in ("ascii", "rfc1459", "rfc1459-strict"):
                     self._server_casemapping = mapping_val
-                    logger.debug("IRC ISUPPORT: CASEMAPPING={}", self._server_casemapping)
+                    logger.debug("ISUPPORT: CASEMAPPING={}", self._server_casemapping)
         await self.rawmsg("PING", "ready")
 
     # ------------------------------------------------------------------
@@ -254,12 +254,12 @@ class IRCClient(pydle.Client):
         params = getattr(message, "params", [])
         if len(params) >= 2 and params[0] == "REDACT" and params[1] == "UNKNOWN_MSGID":
             logger.debug(
-                "IRC: FAIL REDACT UNKNOWN_MSGID (expected for duplicate delete) target={}",
+                "FAIL REDACT UNKNOWN_MSGID (expected for duplicate delete) target={}",
                 params[2] if len(params) > 2 else "?",
             )
             return
         # Log other FAIL codes at debug
-        logger.debug("IRC: FAIL {} params={}", params[0] if params else "?", params)
+        logger.debug("FAIL {} params={}", params[0] if params else "?", params)
 
     # ------------------------------------------------------------------
     # Ready detection
@@ -271,7 +271,7 @@ class IRCClient(pydle.Client):
         params = getattr(message, "params", [])
         if params and "ready" in (str(p) for p in params):
             self._ready = True
-            logger.debug("IRC ready (PONG received)")
+            logger.debug("ready (PONG received)")
 
     # ------------------------------------------------------------------
     # PRIVMSG tag extraction (coupling: sets _message_tags for on_message)
@@ -284,7 +284,7 @@ class IRCClient(pydle.Client):
             params = getattr(message, "params", [])
             target = params[0] if params else "?"
             logger.debug(
-                "IRC: PRIVMSG to {} with tags={}",
+                "PRIVMSG to {} with tags={}",
                 target,
                 self._message_tags,
             )
@@ -316,12 +316,12 @@ class IRCClient(pydle.Client):
 
     async def on_capability_message_tags_available(self, value):
         """Request message-tags (required for msgid on PRIVMSG/RELAYMSG)."""
-        logger.info("IRC: requesting message-tags capability (value={})", value)
+        logger.info("requesting message-tags capability (value={})", value)
         return True
 
     async def on_capability_message_tags_5_0_available(self, value):
         """Request message-tags when UnrealIRCd advertises as message-tags:5.0."""
-        logger.info("IRC: requesting message-tags:5.0 capability (value={})", value)
+        logger.info("requesting message-tags:5.0 capability (value={})", value)
         return True
 
     async def on_raw_cap_ls(self, params):
@@ -332,19 +332,19 @@ class IRCClient(pydle.Client):
             return
         batch = params[0].strip()
         if batch == "*":
-            logger.debug("IRC: skipping CAP LS sentinel '*' (multi-line; waiting for real batches)")
+            logger.debug("skipping CAP LS sentinel '*' (multi-line; waiting for real batches)")
             return
         await super().on_raw_cap_ls(params)
         # Ensure we request message-tags; UnrealIRCd may send it in a later batch but we need it for msgid.
         caps = getattr(self, "_capabilities", {})
         if caps.get("message-tags") is None and "message-tags" not in getattr(self, "_capabilities_requested", set()):
-            logger.debug("IRC: explicitly requesting message-tags (required for msgid)")
+            logger.debug("explicitly requesting message-tags (required for msgid)")
             self._capabilities_requested.add("message-tags")
             await self.rawmsg("CAP", "REQ", "message-tags")
 
     async def on_capability_message_tags_enabled(self):
         """Log when message-tags capability is negotiated (required for msgid on PRIVMSG)."""
-        logger.info("IRC: message-tags capability negotiated")
+        logger.info("message-tags capability negotiated")
 
     async def on_capability_draft_message_redaction_available(self, value):
         """Request draft/message-redaction for REDACT (message deletion)."""
@@ -352,7 +352,7 @@ class IRCClient(pydle.Client):
 
     async def on_capability_draft_relaymsg_enabled(self):
         """Log when draft/relaymsg is negotiated."""
-        logger.debug("IRC: draft/relaymsg capability negotiated")
+        logger.debug("draft/relaymsg capability negotiated")
 
     async def on_capability_labeled_response_available(self, value):
         """Request labeled-response for echo correlation (Requirement 11.5)."""
@@ -360,7 +360,7 @@ class IRCClient(pydle.Client):
 
     async def on_capability_labeled_response_enabled(self):
         """Log when labeled-response is negotiated."""
-        logger.debug("IRC: labeled-response capability negotiated")
+        logger.debug("labeled-response capability negotiated")
 
     def _has_labeled_response(self) -> bool:
         """Check if labeled-response capability was negotiated."""
@@ -386,7 +386,7 @@ class IRCClient(pydle.Client):
 
     async def on_capability_bot_enabled(self):
         """Log when bot capability is negotiated."""
-        logger.debug("IRC: bot capability negotiated")
+        logger.debug("bot capability negotiated")
 
     async def on_capability_draft_multiline_available(self, value):
         """Request draft/multiline for sending multi-line messages as a single batch."""
@@ -394,7 +394,7 @@ class IRCClient(pydle.Client):
 
     async def on_capability_draft_multiline_enabled(self):
         """Log when draft/multiline is negotiated."""
-        logger.info("IRC: draft/multiline capability negotiated — multi-line batches enabled")
+        logger.info("draft/multiline capability negotiated — multi-line batches enabled")
 
     def _has_multiline(self) -> bool:
         """Check if draft/multiline capability was negotiated."""
@@ -412,7 +412,7 @@ class IRCClient(pydle.Client):
 
     async def on_capability_draft_chathistory_enabled(self):
         """Log when draft/chathistory is negotiated."""
-        logger.info("IRC: draft/chathistory capability negotiated — reconnect history enabled")
+        logger.info("draft/chathistory capability negotiated — reconnect history enabled")
 
     def _has_chathistory(self) -> bool:
         """Check if draft/chathistory capability was negotiated."""
@@ -434,7 +434,7 @@ class IRCClient(pydle.Client):
                 break
             await asyncio.sleep(0.5)
         if not self._has_chathistory():
-            logger.debug("IRC: draft/chathistory not negotiated; skipping reconnect history fetch")
+            logger.debug("draft/chathistory not negotiated; skipping reconnect history fetch")
             return
         limit = str(cfg.irc_chathistory_limit)
         for channel in self._channels:
@@ -443,9 +443,9 @@ class IRCClient(pydle.Client):
                 continue
             try:
                 await self.rawmsg("CHATHISTORY", "AFTER", channel, f"timestamp={last}", limit)
-                logger.info("IRC: requested CHATHISTORY AFTER {} since {}", channel, last)
+                logger.info("requested CHATHISTORY AFTER {} since {}", channel, last)
             except Exception as exc:
-                logger.warning("IRC: CHATHISTORY request failed for {}: {}", channel, exc)
+                logger.warning("CHATHISTORY request failed for {}: {}", channel, exc)
 
     # ------------------------------------------------------------------
     # BATCH handler (chathistory batch tracking)
@@ -463,13 +463,13 @@ class IRCClient(pydle.Client):
             batch_type = params[1] if len(params) > 1 else ""
             if batch_type == "chathistory":
                 self._chathistory_batches.add(ref)
-                logger.debug("IRC: chathistory batch started ref={}", ref)
+                logger.debug("chathistory batch started ref={}", ref)
         elif ref_tag.startswith("-"):
             # Batch end: -ref
             ref = ref_tag[1:]
             if ref in self._chathistory_batches:
                 self._chathistory_batches.discard(ref)
-                logger.debug("IRC: chathistory batch ended ref={}", ref)
+                logger.debug("chathistory batch ended ref={}", ref)
 
     async def on_capability_draft_relaymsg_available(self, value):
         """Request draft/relaymsg for stateless bridging."""
@@ -509,7 +509,7 @@ class IRCClient(pydle.Client):
 
     def queue_message(self, evt: MessageOut):
         """Queue outbound message."""
-        logger.info("IRC: queued message for channel={}", evt.channel_id)
+        logger.info("queued message for channel={}", evt.channel_id)
         self._outbound.put_nowait(evt)
 
     # ------------------------------------------------------------------

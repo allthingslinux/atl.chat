@@ -45,20 +45,20 @@ async def _connect_xmpp_with_backoff(
             delay = min(_XMPP_BACKOFF_MAX, _XMPP_BACKOFF_MIN)
             jitter = random.uniform(0.8, 1.5)
             wait = delay * jitter
-            logger.info("XMPP component disconnected, reconnecting in {:.1f}s", wait)
+            logger.info("component disconnected, reconnecting in {:.1f}s", wait)
             await asyncio.sleep(wait)
         except asyncio.CancelledError:
             raise
         except Exception as exc:
             attempt += 1
             if attempt >= _XMPP_MAX_ATTEMPTS:
-                logger.exception("XMPP connect failed after {} attempts", _XMPP_MAX_ATTEMPTS)
+                logger.exception("connect failed after {} attempts", _XMPP_MAX_ATTEMPTS)
                 raise
             delay = min(_XMPP_BACKOFF_MAX, _XMPP_BACKOFF_MIN * (2 ** (attempt - 1)))
             jitter = random.uniform(0.5, 1.5)
             wait = delay * jitter
             logger.warning(
-                "XMPP connect failed (attempt {}): {}, retrying in {:.1f}s",
+                "connect failed (attempt {}): {}, retrying in {:.1f}s",
                 attempt,
                 exc,
                 wait,
@@ -102,7 +102,7 @@ class XMPPAdapter(AdapterBase):
         """Queue MessageOut, MessageDeleteOut, or ReactionOut for XMPP send."""
         if isinstance(evt, (MessageOut, MessageDeleteOut, ReactionOut)):
             if isinstance(evt, MessageOut):
-                logger.info("XMPP: queued message for channel={}", evt.channel_id)
+                logger.info("queued message for channel={}", evt.channel_id)
             self._outbound.put_nowait(evt)
 
     def _resolve_nick(self, evt: MessageOut | MessageDeleteOut | ReactionOut) -> str:
@@ -133,24 +133,24 @@ class XMPPAdapter(AdapterBase):
             try:
                 evt = await self._outbound.get()
                 if isinstance(evt, MessageDeleteOut):
-                    logger.debug("XMPP: dequeued MessageDeleteOut discord_id={}", evt.message_id)
+                    logger.debug("dequeued MessageDeleteOut discord_id={}", evt.message_id)
                     await self._handle_delete_out(evt)
                     await asyncio.sleep(0.25)
                     continue
                 if isinstance(evt, ReactionOut):
-                    logger.debug("XMPP: dequeued ReactionOut discord_id={} emoji={}", evt.message_id, evt.emoji)
+                    logger.debug("dequeued ReactionOut discord_id={} emoji={}", evt.message_id, evt.emoji)
                     await self._handle_reaction_out(evt)
                     await asyncio.sleep(0.25)
                     continue
                 mapping = self._router.get_mapping_for_discord(evt.channel_id)
                 if not mapping or not mapping.xmpp:
-                    logger.warning("XMPP send skipped: no mapping for channel {}", evt.channel_id)
+                    logger.warning("send skipped: no mapping for channel {}", evt.channel_id)
                 elif not self._component:
-                    logger.warning("XMPP send skipped: no component (channel={})", evt.channel_id)
+                    logger.warning("send skipped: no component (channel={})", evt.channel_id)
                 else:
                     async with self._send_lock:
                         muc_jid = mapping.xmpp.muc_jid
-                        logger.debug("XMPP: processing MessageOut discord_id={} -> {}", evt.message_id, muc_jid)
+                        logger.debug("processing MessageOut discord_id={} -> {}", evt.message_id, muc_jid)
 
                         # Resolve XMPP nick (identity or fallback for dev without Portal)
                         nick = await self._resolve_nick_async(evt)
@@ -171,7 +171,7 @@ class XMPPAdapter(AdapterBase):
                                 self._component._msgid_tracker.get_xmpp_id(lookup_id) if lookup_id else None
                             )
                             logger.debug(
-                                "XMPP: edit lookup discord_msg_id={} lookup_id={} -> xmpp_id={}",
+                                "edit lookup discord_msg_id={} lookup_id={} -> xmpp_id={}",
                                 evt.message_id,
                                 lookup_id,
                                 original_xmpp_id,
@@ -181,13 +181,13 @@ class XMPPAdapter(AdapterBase):
                                     evt.author_id, muc_jid, evt.content, nick, original_xmpp_id
                                 )
                                 logger.info(
-                                    "XMPP: sent correction for Discord msg {} -> xmpp id {}",
+                                    "sent correction for Discord msg {} -> xmpp id {}",
                                     evt.message_id,
                                     original_xmpp_id,
                                 )
                             else:
                                 logger.warning(
-                                    "XMPP: cannot send correction: Discord message {} not in tracker "
+                                    "cannot send correction: Discord message {} not in tracker "
                                     "(original may have been sent before bridge started or mapping expired)",
                                     evt.message_id,
                                 )
@@ -213,20 +213,20 @@ class XMPPAdapter(AdapterBase):
                             processed = extract_code_blocks(content)
                             had_paste = False
                             if processed.blocks:
-                                logger.debug("XMPP: found {} code block(s), uploading to paste", len(processed.blocks))
+                                logger.debug("found {} code block(s), uploading to paste", len(processed.blocks))
                                 for i, block in enumerate(processed.blocks):
                                     url = await upload_paste(block.content, lang=block.lang)
                                     if url:
                                         label = url
                                         had_paste = True
-                                        logger.debug("XMPP: paste block {} uploaded -> {}", i, url)
+                                        logger.debug("paste block {} uploaded -> {}", i, url)
                                     else:
                                         snippet = block.content.replace("\n", " ").strip()[:80]
                                         label = f"[code] (paste failed) {snippet}…"
-                                        logger.warning("XMPP: paste block {} upload failed, using inline snippet", i)
+                                        logger.warning("paste block {} upload failed, using inline snippet", i)
                                     processed.text = processed.text.replace(f"{{PASTE_{i}}}", label)
                                 content = processed.text
-                                logger.debug("XMPP: paste replaced content -> {!r}", content[:120])
+                                logger.debug("paste replaced content -> {!r}", content[:120])
                             else:
                                 content = processed.text
 
@@ -253,12 +253,12 @@ class XMPPAdapter(AdapterBase):
                             # Skip if content came from a paste upload — it's not an image.
                             is_media = False
                             if not had_paste and content and content.strip().startswith(("http://", "https://")):
-                                logger.debug("XMPP: probing bare URL for image reupload: {}", content.strip()[:80])
+                                logger.debug("probing bare URL for image reupload: {}", content.strip()[:80])
                                 new_url = await self._component.reupload_extensionless_image(
                                     content.strip(),
                                 )
                                 if new_url:
-                                    logger.info("XMPP: reuploaded extensionless image -> {}", new_url)
+                                    logger.info("reuploaded extensionless image -> {}", new_url)
                                     content = new_url
                                     is_media = True
 
@@ -287,7 +287,7 @@ class XMPPAdapter(AdapterBase):
                                 spoiler_reason=evt.raw.get("spoiler_reason"),
                             )
                             if xmpp_msg_id:
-                                logger.info("XMPP: sent message to {} as {}", muc_jid, nick)
+                                logger.info("sent message to {} as {}", muc_jid, nick)
                                 if is_discord_origin:
                                     logger.debug(
                                         "Stored Discord→XMPP mapping: discord_id={} -> xmpp_id={}",
@@ -323,7 +323,7 @@ class XMPPAdapter(AdapterBase):
             except asyncio.CancelledError:
                 break
             except Exception as exc:
-                logger.exception("XMPP send failed: {}", exc)
+                logger.exception("send failed: {}", exc)
 
     async def _handle_delete_out(self, evt: MessageDeleteOut) -> None:
         """Send XMPP retraction for deleted message.
@@ -342,7 +342,7 @@ class XMPPAdapter(AdapterBase):
         if not target_xmpp_id:
             target_xmpp_id = tracker.get_xmpp_id(evt.message_id)
         if not target_xmpp_id:
-            logger.debug("No XMPP msgid for Discord message {}; skip retraction", evt.message_id)
+            logger.debug("no msgid for Discord message {}; skip retraction", evt.message_id)
             return
 
         muc_jid = mapping.xmpp.muc_jid
@@ -367,8 +367,7 @@ class XMPPAdapter(AdapterBase):
         target_xmpp_id = self._component._msgid_tracker.get_xmpp_id_for_reaction(evt.message_id)
         if not target_xmpp_id:
             logger.warning(
-                "No XMPP msgid for reaction on Discord msg {}; "
-                "original may be from XMPP (ensure store) or mapping expired",
+                "no msgid for reaction on Discord msg {}; original may be from XMPP (ensure store) or mapping expired",
                 evt.message_id,
             )
             return
@@ -397,16 +396,16 @@ class XMPPAdapter(AdapterBase):
         port = _get_component_port()
 
         if not component_jid or not secret or not server:
-            logger.warning("XMPP component config incomplete; XMPP adapter disabled")
+            logger.warning("component config incomplete; adapter disabled")
             return
 
         if not self._identity:
-            logger.info("XMPP adapter running without Portal (dev mode): using fallback nicks")
+            logger.info("adapter running without Portal (dev mode): using fallback nicks")
 
         mappings = self._router.all_mappings()
         xmpp_mappings = [m for m in mappings if m.xmpp]
         if not xmpp_mappings:
-            logger.warning("No XMPP mappings; XMPP adapter disabled")
+            logger.warning("no mappings; adapter disabled")
             return
 
         self._component = XMPPComponent(
@@ -424,7 +423,7 @@ class XMPPAdapter(AdapterBase):
         self._consumer_task = asyncio.create_task(self._outbound_consumer())
         # Reconnect loop: connect with backoff on failure, retry on disconnect
         self._component_task = asyncio.create_task(_connect_xmpp_with_backoff(self._component, host=server, port=port))
-        logger.info("XMPP component started: {} (reconnect enabled)", component_jid)
+        logger.info("component started: {} (reconnect enabled)", component_jid)
 
     async def stop(self) -> None:
         """Stop XMPP component."""

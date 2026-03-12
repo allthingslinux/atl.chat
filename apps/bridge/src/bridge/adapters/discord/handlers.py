@@ -103,7 +103,7 @@ async def on_message(adapter: DiscordAdapter, message: Message) -> None:
             avatar_url=avatar_url,
         )
         logger.info(
-            "Discord voice message bridged: channel={} author={}",
+            "voice message bridged: channel={} author={}",
             channel_id,
             message.author.display_name or message.author.name,
         )
@@ -135,7 +135,7 @@ async def on_message(adapter: DiscordAdapter, message: Message) -> None:
                 raw=att_raw,
             )
             logger.info(
-                "Discord attachment bridged: channel={} author={} file={}",
+                "attachment bridged: channel={} author={} file={}",
                 channel_id,
                 message.author.display_name or message.author.name,
                 attachment.filename,
@@ -196,7 +196,7 @@ async def on_message(adapter: DiscordAdapter, message: Message) -> None:
         raw=raw,
     )
     logger.info(
-        "Discord message bridged: channel={} author={}",
+        "message bridged: channel={} author={}",
         channel_id,
         message.author.display_name or message.author.name,
     )
@@ -230,7 +230,7 @@ async def on_raw_message_edit(adapter: DiscordAdapter, payload) -> None:
     avatar_url = str(message.author.display_avatar.url) if message.author.display_avatar else None
 
     msg_id = str(getattr(message, "id", None) or payload.message_id)
-    logger.debug("Discord edit received: channel={} msg_id={}", channel_id, msg_id)
+    logger.debug("edit received: channel={} msg_id={}", channel_id, msg_id)
     _, evt = message_in(
         origin="discord",
         channel_id=channel_id,
@@ -250,7 +250,7 @@ async def on_raw_message_edit(adapter: DiscordAdapter, payload) -> None:
 async def on_reaction_add(adapter: DiscordAdapter, payload) -> None:
     """Handle Discord reaction add; publish for Relay to route to IRC/XMPP."""
     if not payload.emoji.is_unicode_emoji():
-        logger.debug("Skipping custom Discord emoji: {}", payload.emoji.name)
+        logger.debug("skipping custom emoji: {}", payload.emoji.name)
         return
     # Only relay normal reactions; filter out burst/super reactions.
     reaction_type = getattr(payload, "type", None)
@@ -281,9 +281,7 @@ async def on_reaction_add(adapter: DiscordAdapter, payload) -> None:
         author_id=str(payload.user_id),
         author_display=author_display,
     )
-    logger.info(
-        "Discord reaction bridged: channel={} author={} emoji={}", channel_id, author_display, str(payload.emoji)
-    )
+    logger.info("reaction bridged: channel={} author={} emoji={}", channel_id, author_display, str(payload.emoji))
     adapter._bus.publish("discord", evt)
 
 
@@ -329,7 +327,7 @@ async def on_reaction_remove(adapter: DiscordAdapter, payload) -> None:
         raw={"is_remove": True},
     )
     logger.info(
-        "Discord reaction removal bridged: channel={} author={} emoji={}",
+        "reaction removal bridged: channel={} author={} emoji={}",
         channel_id,
         author_display,
         str(payload.emoji),
@@ -366,7 +364,7 @@ async def on_raw_message_delete(adapter: DiscordAdapter, payload: RawMessageDele
     # Skip when we initiated the delete (relaying from XMPP/IRC) — avoids duplicate retraction on XMPP
     key = f"{channel_id}:{payload.message_id}"
     if key in adapter._recently_deleted_by_us:
-        logger.debug("Discord: skipping raw_message_delete for {} (we initiated)", payload.message_id)
+        logger.debug("skipping raw_message_delete for {} (we initiated)", payload.message_id)
         return
 
     author_id = ""
@@ -390,9 +388,9 @@ async def on_raw_message_delete(adapter: DiscordAdapter, payload: RawMessageDele
         author_id=author_id,
         author_display=author_display,
     )
-    logger.info("Discord message delete bridged: channel={} message_id={}", channel_id, payload.message_id)
+    logger.info("message delete bridged: channel={} message_id={}", channel_id, payload.message_id)
     logger.debug(
-        "Discord: publishing message_delete channel={} message_id={} -> relay (IRC needs msgid for REDACT)",
+        "publishing message_delete channel={} message_id={} -> relay (IRC needs msgid for REDACT)",
         channel_id,
         payload.message_id,
     )
@@ -406,7 +404,7 @@ async def on_raw_bulk_message_delete(adapter: DiscordAdapter, payload: RawBulkMe
         return
 
     cached = {m.id: m for m in payload.cached_messages}
-    logger.info("Discord bulk delete bridged: channel={} count={}", channel_id, len(payload.message_ids))
+    logger.info("bulk delete bridged: channel={} count={}", channel_id, len(payload.message_ids))
     for message_id in payload.message_ids:
         author_id = ""
         author_display = ""

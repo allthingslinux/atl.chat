@@ -135,7 +135,7 @@ async def handle_message(client: IRCClient, target: str, source: str, message: s
     # and should NOT be suppressed.
     in_chathistory = tags.get("batch") in client._chathistory_batches if tags.get("batch") else False
     if not in_chathistory and is_history_replay(tags):
-        logger.debug("IRC: discarding history replay message from {} in {}", source, target)
+        logger.debug("discarding history replay message from {} in {}", source, target)
         return
 
     message_id = msgid or f"irc:{client._server}:{target}:{source}:{id(message)}"
@@ -161,33 +161,33 @@ async def handle_message(client: IRCClient, target: str, source: str, message: s
             discord_id = client._pending_labels.pop(label)
             if msgid:
                 client._msgid_tracker.store(msgid, discord_id)
-                logger.debug("IRC: label={} correlated msgid {} -> {} for REDACT/edit", label, msgid, discord_id)
+                logger.debug("label={} correlated msgid {} -> {} for REDACT/edit", label, msgid, discord_id)
             else:
-                logger.debug("IRC: label={} matched but no msgid tag on echo", label)
+                logger.debug("label={} matched but no msgid tag on echo", label)
         elif msgid:
             try:
                 discord_id = client._pending_sends.get_nowait()
                 client._msgid_tracker.store(msgid, discord_id)  # irc_msgid, discord_id
-                logger.debug("IRC: stored msgid {} -> {} for REDACT/edit correlation", msgid, discord_id)
+                logger.debug("stored msgid {} -> {} for REDACT/edit correlation", msgid, discord_id)
             except asyncio.QueueEmpty:
                 logger.debug(
-                    "IRC: RELAYMSG echo had msgid {} but no pending_send (queue empty); cannot correlate",
+                    "RELAYMSG echo had msgid {} but no pending_send (queue empty); cannot correlate",
                     msgid,
                 )
         elif is_relaymsg_echo(client, client._server, target, source, tags) or _is_relayed_by_us(client, tags):
             logger.info(
-                "IRC: RELAYMSG echo received for {} in {} but no msgid tag (UnrealIRCd message-ids may not add msgid to relaymsg)",
+                "RELAYMSG echo received for {} in {} but no msgid tag (UnrealIRCd message-ids may not add msgid to relaymsg)",
                 source,
                 target,
             )
             logger.debug(
-                "IRC: RELAYMSG echo tags={} (empty => server may not send tags or message-tags cap not negotiated)",
+                "RELAYMSG echo tags={} (empty => server may not send tags or message-tags cap not negotiated)",
                 tags,
             )
         return  # Skip publishing our own echoed messages to prevent doubling
 
     if msgid:
-        logger.debug("IRC: external message with msgid={} from {}", msgid, source)
+        logger.debug("external message with msgid={} from {}", msgid, source)
 
     _, evt = message_in(
         origin="irc",
@@ -200,7 +200,7 @@ async def handle_message(client: IRCClient, target: str, source: str, message: s
         is_action=False,
         raw={"tags": tags, "irc_msgid": msgid, "irc_reply_to": reply_to},
     )
-    logger.info("IRC message bridged: channel={} author={}", target, source)
+    logger.info("message bridged: channel={} author={}", target, source)
     client._bus.publish("irc", evt)
 
     # Track last message timestamp for CHATHISTORY AFTER on reconnect
@@ -239,7 +239,7 @@ async def handle_ctcp_action(client: IRCClient, by: str, target: str, message: s
         message_id=f"irc:{client._server}:{target}:{by}:{id(message)}",
         is_action=True,
     )
-    logger.info("IRC action bridged: channel={} author={}", target, by)
+    logger.info("action bridged: channel={} author={}", target, by)
     client._bus.publish("irc", evt)
 
 
@@ -283,7 +283,7 @@ async def handle_tagmsg(client: IRCClient, message: object) -> None:
         discord_id = client._msgid_tracker.get_discord_id(reply_to)
         if not discord_id:
             logger.debug(
-                "IRC reaction dropped: no discord_id for reply_to={} (msgid not in tracker; echo may lack msgid)",
+                "reaction dropped: no discord_id for reply_to={} (msgid not in tracker; echo may lack msgid)",
                 reply_to,
             )
         elif discord_id:
@@ -300,7 +300,7 @@ async def handle_tagmsg(client: IRCClient, message: object) -> None:
                 author_id=nick,
                 author_display=nick,
             )
-            logger.info("IRC reaction bridged: channel={} author={} emoji={}", target, nick, react)
+            logger.info("reaction bridged: channel={} author={} emoji={}", target, nick, react)
             client._bus.publish("irc", evt)
     elif unreact and reply_to:
         # Remove reaction (IRCv3 +draft/unreact)
@@ -309,7 +309,7 @@ async def handle_tagmsg(client: IRCClient, message: object) -> None:
         discord_id = client._msgid_tracker.get_discord_id(reply_to)
         if not discord_id:
             logger.debug(
-                "IRC unreact dropped: no discord_id for reply_to={} (msgid not in tracker)",
+                "unreact dropped: no discord_id for reply_to={} (msgid not in tracker)",
                 reply_to,
             )
         elif discord_id:
@@ -324,7 +324,7 @@ async def handle_tagmsg(client: IRCClient, message: object) -> None:
                 author_display=nick,
                 raw={"is_remove": True},
             )
-            logger.info("IRC reaction removal bridged: channel={} author={} emoji={}", target, nick, unreact)
+            logger.info("reaction removal bridged: channel={} author={} emoji={}", target, nick, unreact)
             client._bus.publish("irc", evt)
     elif typing_val == "active":
         from bridge.events import typing_in
@@ -343,7 +343,7 @@ async def handle_redact(client: IRCClient, message: object) -> None:
     if len(params) < 2:
         return
     target, irc_msgid = params[0], params[1]
-    logger.debug("IRC: received REDACT target={} msgid={}", target, irc_msgid)
+    logger.debug("received REDACT target={} msgid={}", target, irc_msgid)
     if not target.startswith("#"):
         return
     mapping = client._router.get_mapping_for_irc(client._server, target)
@@ -355,7 +355,7 @@ async def handle_redact(client: IRCClient, message: object) -> None:
     source = getattr(message, "source", "") or ""
     nick = source.split("!")[0] if "!" in source else source
     if nick and client.nickname and nick.lower() == client.nickname.lower():
-        logger.debug("IRC: skipping REDACT echo from our nick {} (we initiated)", nick)
+        logger.debug("skipping REDACT echo from our nick {} (we initiated)", nick)
         return
 
     # REDACT on reaction TAGMSG → reaction removal
@@ -373,14 +373,14 @@ async def handle_redact(client: IRCClient, message: object) -> None:
             author_display=nick or author_id,
             raw={"is_remove": True},
         )
-        logger.info("IRC REDACT (reaction) bridged: channel={} emoji={}", target, emoji)
+        logger.info("REDACT (reaction) bridged: channel={} emoji={}", target, emoji)
         client._bus.publish("irc", evt)
         return
 
     discord_id = client._msgid_tracker.get_discord_id(irc_msgid)
     if not discord_id:
         logger.debug(
-            "No Discord msgid for IRC REDACT {}; skip (msgid never stored or expired)",
+            "no Discord msgid for REDACT {}; skip (msgid never stored or expired)",
             irc_msgid,
         )
         return
@@ -401,7 +401,7 @@ async def handle_redact(client: IRCClient, message: object) -> None:
         author_display=nick,
         raw=raw,
     )
-    logger.info("IRC REDACT (message) bridged: channel={} msgid={}", target, irc_msgid)
+    logger.info("REDACT (message) bridged: channel={} msgid={}", target, irc_msgid)
     client._bus.publish("irc", evt)
 
 
@@ -436,11 +436,11 @@ async def handle_nick(client: IRCClient, old: str, new: str) -> None:
         return
     if old.lower() == initial.lower() and new.lower() != initial.lower():
         # Our nick was changed away from the initial — revert it
-        logger.warning("IRC: main connection nick changed {} -> {}; reverting to {}", old, new, initial)
+        logger.warning("main connection nick changed {} -> {}; reverting to {}", old, new, initial)
         try:
             await client.set_nick(initial)
         except Exception as exc:
-            logger.exception("IRC: failed to revert nick change: {}", exc)
+            logger.exception("failed to revert nick change: {}", exc)
 
 
 async def handle_chghost(client: IRCClient, message: Any) -> None:
@@ -450,7 +450,7 @@ async def handle_chghost(client: IRCClient, message: Any) -> None:
         nick = message.source
         new_user = message.params[0]
         new_host = message.params[1]
-        logger.debug("IRC CHGHOST: {} -> {}@{}", nick, new_user, new_host)
+        logger.debug("CHGHOST: {} -> {}@{}", nick, new_user, new_host)
 
 
 async def handle_setname(client: IRCClient, message: Any) -> None:
@@ -459,7 +459,7 @@ async def handle_setname(client: IRCClient, message: Any) -> None:
     if message.params:
         nick = message.source
         new_realname = message.params[0]
-        logger.debug("IRC SETNAME: {} -> {}", nick, new_realname)
+        logger.debug("SETNAME: {} -> {}", nick, new_realname)
 
 
 # ---------------------------------------------------------------------------
@@ -512,17 +512,17 @@ async def handle_nick_collision(client: IRCClient, message: object, *, error_cod
         # ERR_ERRONEUSNICKNAME: re-sanitize and retry
         sanitized = _sanitize_nick_for_retry(attempted_nick)
         if sanitized != attempted_nick:
-            logger.warning("IRC: ERR_ERRONEUSNICKNAME for '{}'; retrying with '{}'", attempted_nick, sanitized)
+            logger.warning("ERR_ERRONEUSNICKNAME for '{}'; retrying with '{}'", attempted_nick, sanitized)
             try:
                 await client.set_nick(sanitized)
             except Exception as exc:
-                logger.exception("IRC: failed to set sanitized nick '{}': {}", sanitized, exc)
+                logger.exception("failed to set sanitized nick '{}': {}", sanitized, exc)
         return
 
     # ERR_NICKNAMEINUSE (433): try suffix escalation
     if attempt >= _MAX_NICK_RETRIES:
         logger.warning(
-            "IRC: all nick collision retries exhausted for '{}'; keeping current nick",
+            "all nick collision retries exhausted for '{}'; keeping current nick",
             attempted_nick,
         )
         client._nick_collision_attempts = 0
@@ -538,7 +538,7 @@ async def handle_nick_collision(client: IRCClient, message: object, *, error_cod
     new_nick = generate_collision_nick(base, attempt, max_len=client._server_nicklen)
     client._nick_collision_attempts = attempt + 1
     logger.info(
-        "IRC: ERR_NICKNAMEINUSE for '{}'; trying '{}' (attempt {}/{})",
+        "ERR_NICKNAMEINUSE for '{}'; trying '{}' (attempt {}/{})",
         attempted_nick,
         new_nick,
         attempt + 1,
@@ -547,7 +547,7 @@ async def handle_nick_collision(client: IRCClient, message: object, *, error_cod
     try:
         await client.set_nick(new_nick)
     except Exception as exc:
-        logger.exception("IRC: failed to set collision nick '{}': {}", new_nick, exc)
+        logger.exception("failed to set collision nick '{}': {}", new_nick, exc)
 
 
 # ---------------------------------------------------------------------------
@@ -564,9 +564,9 @@ async def set_puppet_away(client: IRCClient, is_offline: bool) -> None:
     try:
         if is_offline:
             await client.rawmsg("AWAY", "User is offline on Discord")
-            logger.debug("IRC: set AWAY for puppet {}", client.nickname)
+            logger.debug("set AWAY for puppet {}", client.nickname)
         else:
             await client.rawmsg("AWAY")
-            logger.debug("IRC: cleared AWAY for puppet {}", client.nickname)
+            logger.debug("cleared AWAY for puppet {}", client.nickname)
     except Exception as exc:
-        logger.debug("IRC: AWAY command failed for {}: {}", client.nickname, exc)
+        logger.debug("AWAY command failed for {}: {}", client.nickname, exc)

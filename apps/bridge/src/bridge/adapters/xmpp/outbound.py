@@ -174,10 +174,10 @@ async def send_message_as_user(
 
         msg.send()
 
-        logger.debug("Sent XMPP message {} from {} to {}", msg_id, user_jid, muc_jid)
+        logger.debug("sent message {} from {} to {}", msg_id, user_jid, muc_jid)
         return msg_id
     except Exception as exc:
-        logger.exception("Failed to send XMPP message as {}: {}", user_jid, exc)
+        logger.exception("failed to send message as {}: {}", user_jid, exc)
         return ""
 
 
@@ -227,7 +227,7 @@ async def send_reaction_as_user(
         msg.enable("no-store")
         msg.send()
         logger.info(
-            "XMPP: sent reaction {} (full set: {}) to message {} in room {} (from IRC/Discord)",
+            "sent reaction {} (full set: {}) to message {} in room {} (from IRC/Discord)",
             "removal" if is_remove else emoji,
             prev_set or "empty",
             target_msg_id,
@@ -271,7 +271,7 @@ async def send_retraction_as_user(
         fb["for"] = "urn:xmpp:message-retract:1"
         msg.enable("store")
         msg.send()
-        logger.info("XMPP: sent retraction for message {} to room {} (from IRC/Discord)", target_msg_id, muc_jid)
+        logger.info("sent retraction for message {} to room {} (from IRC/Discord)", target_msg_id, muc_jid)
     except Exception as exc:
         logger.exception("Failed to send retraction: {}", exc)
 
@@ -305,7 +305,7 @@ async def send_retraction_as_bridge(
         fb["for"] = "urn:xmpp:message-retract:1"
         msg.enable("store")
         msg.send()
-        logger.info("XMPP: sent retraction for message {} to room {} (from bridge)", target_msg_id, muc_jid)
+        logger.info("sent retraction for message {} to room {} (from bridge)", target_msg_id, muc_jid)
     except Exception as exc:
         logger.exception("Failed to send retraction from bridge: {}", exc)
 
@@ -346,11 +346,11 @@ async def send_correction_as_user(
             msg["replace"]["id"] = original_xmpp_id
         msg.send()
         logger.debug(
-            "Sent XMPP correction: replace_id={} from={} to={} body_len={}",
+            "sent correction: replace_id={} from={} to={} body_len={}",
             original_xmpp_id,
             user_jid,
             muc_jid,
             len(content),
         )
     except Exception as exc:
-        logger.exception("Failed to send XMPP correction as {}: {}", user_jid, exc)
+        logger.exception("failed to send correction as {}: {}", user_jid, exc)

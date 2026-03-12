@@ -118,12 +118,14 @@ async def fetch_media_to_temp(session: aiohttp.ClientSession | None, url: str) -
         total = 0
         async with session.get(fetch_url, timeout=aiohttp.ClientTimeout(total=MEDIA_FETCH_TIMEOUT)) as resp:
             if resp.status != 200:
+                logger.debug("media fetch failed: {} status={}", url[:80], resp.status)
                 os.unlink(path)
                 return None
             with open(path, "wb") as f:
                 async for chunk in resp.content.iter_chunked(8192):
                     total += len(chunk)
                     if total > MEDIA_SIZE_LIMIT:
+                        logger.debug("media fetch truncated: {} exceeded {} bytes", url[:80], MEDIA_SIZE_LIMIT)
                         f.close()
                         os.unlink(path)
                         return None
@@ -165,7 +167,7 @@ async def upload_file(bot: commands.Bot | None, channel_id: str, data: bytes, fi
 
     channel = bot.get_channel(int(channel_id))
     if not channel or not isinstance(channel, TextChannel):
-        logger.warning("Discord channel {} not found", channel_id)
+        logger.warning("channel {} not found", channel_id)
         return
 
     try:

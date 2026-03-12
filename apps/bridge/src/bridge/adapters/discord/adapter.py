@@ -246,7 +246,7 @@ class DiscordAdapter(AdapterBase):
             try:
                 evt = await self._queue.get()
                 logger.debug(
-                    "Discord: dequeued MessageOut discord_id={} channel={} author={}",
+                    "dequeued MessageOut discord_id={} channel={} author={}",
                     evt.message_id,
                     evt.channel_id,
                     evt.author_display,
@@ -260,7 +260,7 @@ class DiscordAdapter(AdapterBase):
                 if is_edit and replace_id and self._bot:
                     resolved = self._resolve_discord_message_id(replace_id, origin)
                     logger.debug(
-                        "Discord: edit resolve replace_id={} origin={} -> discord_id={}",
+                        "edit resolve replace_id={} origin={} -> discord_id={}",
                         replace_id,
                         origin,
                         resolved,
@@ -276,15 +276,15 @@ class DiscordAdapter(AdapterBase):
                             edited = await self._webhook_edit(evt.channel_id, int(resolved), edit_content)
                         if edited:
                             discord_msg_id = int(resolved)
-                            logger.info("Discord: edited message {} via webhook (replace_id={})", resolved, replace_id)
+                            logger.info("edited message {} via webhook (replace_id={})", resolved, replace_id)
                         else:
-                            logger.warning("Discord: webhook edit failed for message {}", resolved)
+                            logger.warning("webhook edit failed for message {}", resolved)
 
                 # Send as new message if not edited
                 if discord_msg_id is None:
                     content = evt.content
                     logger.debug(
-                        "Discord: sending new message channel={} author={} content={!r}",
+                        "sending new message channel={} author={} content={!r}",
                         evt.channel_id,
                         evt.author_display,
                         content[:80],
@@ -321,14 +321,14 @@ class DiscordAdapter(AdapterBase):
                         )
                     if discord_msg_id:
                         logger.info(
-                            "Discord: sent webhook message {} channel={} author={}",
+                            "sent webhook message {} channel={} author={}",
                             discord_msg_id,
                             evt.channel_id,
                             evt.author_display,
                         )
                     else:
                         logger.warning(
-                            "Discord: webhook send returned no message id channel={} author={}",
+                            "webhook send returned no message id channel={} author={}",
                             evt.channel_id,
                             evt.author_display,
                         )
@@ -410,7 +410,7 @@ class DiscordAdapter(AdapterBase):
         """Start Discord bot and queue consumer."""
         token = os.environ.get("BRIDGE_DISCORD_TOKEN")
         if not token:
-            logger.warning("BRIDGE_DISCORD_TOKEN not set; Discord adapter disabled")
+            logger.warning("BRIDGE_DISCORD_TOKEN not set; adapter disabled")
             return
 
         intents = Intents.default()
@@ -424,7 +424,7 @@ class DiscordAdapter(AdapterBase):
 
         @bot.event
         async def on_ready() -> None:
-            logger.info("Discord bot ready: {}", bot.user)
+            logger.info("bot ready: {}", bot.user)
 
         @bot.event
         async def on_message(message: Message) -> None:

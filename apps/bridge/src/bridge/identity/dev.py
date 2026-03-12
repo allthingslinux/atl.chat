@@ -5,6 +5,8 @@ from __future__ import annotations
 import os
 import re
 
+from loguru import logger
+
 from bridge.identity.base import IdentityResolver
 
 _IRC_NICK_RE = re.compile(r"[^a-zA-Z0-9_\-\[\]\\`^{}|]")
@@ -41,6 +43,7 @@ class DevIdentityResolver(IdentityResolver):
 
         # Seed from env var for backward compatibility
         raw = os.environ.get("BRIDGE_DEV_IRC_NICK_MAP", "").strip()
+        seeded = 0
         for pair in raw.split(",") if raw else []:
             part = pair.strip()
             if ":" in part:
@@ -49,6 +52,9 @@ class DevIdentityResolver(IdentityResolver):
                 nick = _sanitize_irc_nick(nick.strip())
                 if discord_id and nick:
                     self._discord_irc[discord_id] = nick
+                    seeded += 1
+        if seeded:
+            logger.info("dev identity seeded {} Discord↔IRC mappings from BRIDGE_DEV_IRC_NICK_MAP", seeded)
 
     # -- Programmatic mapping helpers ----------------------------------------
 

@@ -81,6 +81,12 @@ def _lazy_content_filter(content: str, ctx: TransformContext) -> str | None:
         return content  # empty → pass through unchanged
     for pat in _compiled_filters:
         if pat.search(content):
+            logger.debug(
+                "content filter dropped message: {} -> {} (matched {!r})",
+                ctx.origin,
+                ctx.target,
+                pat.pattern[:60] + "..." if len(pat.pattern) > 60 else pat.pattern,
+            )
             return None  # drop
     return content
 
@@ -186,13 +192,13 @@ class Relay:
 
         mapping = self._get_mapping_for_origin(evt.origin, evt.channel_id, fallback_discord=True)
         if not mapping:
-            logger.warning("Relay: no mapping for {} channel {}", evt.origin, evt.channel_id)
+            logger.warning("no mapping for {} channel {}", evt.origin, evt.channel_id)
             return
 
         channel_id = mapping.discord_channel_id
 
         def emit_message(target: str) -> object:
-            logger.info("Relay: {} -> {} channel={}", evt.origin, target, channel_id)
+            logger.info("{} -> {} channel={}", evt.origin, target, channel_id)
 
             # Build TransformContext from event fields
             ctx = TransformContext(
@@ -249,7 +255,7 @@ class Relay:
                 raw=out_raw,
             )
             logger.debug(
-                "Relay: emitting MessageOut target={} author={} content={!r}",
+                "emitting MessageOut target={} author={} content={!r}",
                 target,
                 evt.author_display,
                 content[:80],
@@ -262,13 +268,11 @@ class Relay:
         """Route ReactionIn to IRC and XMPP."""
         mapping = self._get_mapping_for_origin(evt.origin, evt.channel_id)
         if not mapping:
-            logger.debug("Relay: no mapping for reaction from {} channel {}", evt.origin, evt.channel_id)
+            logger.debug("no mapping for reaction from {} channel {}", evt.origin, evt.channel_id)
             return
 
         def emit(target: str) -> object:
-            logger.debug(
-                "Relay: reaction {} -> {} emoji={} author={}", evt.origin, target, evt.emoji, evt.author_display
-            )
+            logger.debug("reaction {} -> {} emoji={} author={}", evt.origin, target, evt.emoji, evt.author_display)
             _, out_evt = reaction_out(
                 target_origin=target,
                 channel_id=mapping.discord_channel_id,
@@ -298,15 +302,15 @@ class Relay:
         """Route MessageDelete to IRC and XMPP for REDACT/retraction."""
         mapping = self._get_mapping_for_origin(evt.origin, evt.channel_id)
         if not mapping:
-            logger.debug("Relay: no mapping for delete from {} channel {}", evt.origin, evt.channel_id)
+            logger.debug("no mapping for delete from {} channel {}", evt.origin, evt.channel_id)
             return
 
-        logger.info("Relay: delete {} -> all targets message_id={}", evt.origin, evt.message_id)
+        logger.info("delete {} -> all targets message_id={}", evt.origin, evt.message_id)
 
         def emit(target: str) -> object:
             if target == "xmpp" and evt.raw.get("skip_xmpp"):
                 return None  # XMPP-origin retraction already sent; avoid duplicate notice
-            logger.debug("Relay: emitting MessageDeleteOut target={} message_id={}", target, evt.message_id)
+            logger.debug("emitting MessageDeleteOut target={} message_id={}", target, evt.message_id)
             _, out_evt = message_delete_out(
                 target_origin=target,
                 channel_id=mapping.discord_channel_id,

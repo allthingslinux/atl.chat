@@ -40,30 +40,30 @@ async def consume_outbound(client: IRCClient) -> None:
     while True:
         try:
             evt = await client._outbound.get()
-            logger.debug("IRC: dequeued message discord_id={} channel={}", evt.message_id, evt.channel_id)
+            logger.debug("dequeued message discord_id={} channel={}", evt.message_id, evt.channel_id)
             # Wait for token before sending (flood control)
             wait = client._throttle.acquire()
             if wait > 0:
-                logger.debug("IRC: throttle wait {:.2f}s for channel={}", wait, evt.channel_id)
+                logger.debug("throttle wait {:.2f}s for channel={}", wait, evt.channel_id)
                 await asyncio.sleep(wait)
             client._throttle.use_token()  # Consume (guaranteed after acquire wait)
             await send_message(client, evt)
         except asyncio.CancelledError:
             break
         except Exception as exc:
-            logger.exception("IRC send failed: {}", exc)
+            logger.exception("send failed: {}", exc)
 
 
 async def send_message(client: IRCClient, evt: MessageOut) -> None:
     """Send message to IRC. Uses RELAYMSG when available (stateless bridging)."""
     mapping = client._router.get_mapping_for_discord(evt.channel_id)
     if not mapping or not mapping.irc:
-        logger.warning("IRC send skipped: no mapping for channel {}", evt.channel_id)
+        logger.warning("send skipped: no mapping for channel {}", evt.channel_id)
         return
 
     target = mapping.irc.channel
     content = evt.content
-    logger.debug("IRC: send_message start target={} content={!r}", target, content[:80])
+    logger.debug("send_message start target={} content={!r}", target, content[:80])
 
     # Add reply tag if replying and we have irc_msgid
     reply_tags = None
@@ -71,32 +71,32 @@ async def send_message(client: IRCClient, evt: MessageOut) -> None:
         irc_msgid = client._msgid_tracker.get_irc_msgid(evt.reply_to_id)
         if irc_msgid:
             reply_tags = {"+draft/reply": irc_msgid}
-            logger.debug("IRC: reply tag set for irc_msgid={}", irc_msgid)
+            logger.debug("reply tag set for irc_msgid={}", irc_msgid)
         else:
             # Do NOT strip > quote fallback: server denies +draft/reply (CLIENTTAGDENY),
             # so IRC clients ignore the tag. Keep the quote so users see reply context
             # even when the server doesn't support threaded replies.
-            logger.debug("IRC: reply_to_id={} has no irc_msgid in tracker", evt.reply_to_id)
+            logger.debug("reply_to_id={} has no irc_msgid in tracker", evt.reply_to_id)
 
     # Extract fenced code blocks and upload them to a paste service
     processed = extract_code_blocks(content)
     if processed.blocks:
-        logger.debug("IRC: found {} code block(s), uploading to paste", len(processed.blocks))
+        logger.debug("found {} code block(s), uploading to paste", len(processed.blocks))
         from bridge.formatting.paste import upload_paste
 
         for i, block in enumerate(processed.blocks):
             url = await upload_paste(block.content, lang=block.lang)
             if url:
                 label = url
-                logger.debug("IRC: paste block {} uploaded -> {}", i, url)
+                logger.debug("paste block {} uploaded -> {}", i, url)
             else:
                 # Upload failed — inline a truncated snippet so nothing is silently lost
                 snippet = block.content.replace("\n", " ").strip()[:80]
                 label = f"[code] (paste failed) {snippet}…"
-                logger.warning("IRC: paste block {} upload failed, using inline snippet", i)
+                logger.warning("paste block {} upload failed, using inline snippet", i)
             processed.text = processed.text.replace(f"{{PASTE_{i}}}", label)
         content = processed.text
-        logger.info("IRC: paste replaced content -> {!r}", content[:120])
+        logger.info("paste replaced content -> {!r}", content[:120])
     else:
         content = processed.text
 
@@ -104,7 +104,7 @@ async def send_message(client: IRCClient, evt: MessageOut) -> None:
     content = content.replace("\r", "").replace("\x00", "")
 
     chunks = split_irc_lines(content, max_bytes=450)
-    logger.debug("IRC: split into {} chunk(s) for {}", len(chunks), target)
+    logger.debug("split into {} chunk(s) for {}", len(chunks), target)
 
     # Spoofed nick for RELAYMSG: display/discord (Valware requires '/' in nick).
     # When RELAYMSG is available, messages appear to come from the spoofed nick
@@ -114,7 +114,7 @@ async def send_message(client: IRCClient, evt: MessageOut) -> None:
 
     use_relaymsg = client._has_relaymsg()
     is_action = getattr(evt, "is_action", False)
-    logger.debug("IRC: use_relaymsg={} spoofed_nick={} is_action={}", use_relaymsg, spoofed_nick, is_action)
+    logger.debug("use_relaymsg={} spoofed_nick={} is_action={}", use_relaymsg, spoofed_nick, is_action)
 
     # --- Multiline batch: wrap multiple chunks in a BATCH when draft/multiline is available ---
     use_multiline = len(chunks) > 1 and not is_action and client._has_multiline()
@@ -122,11 +122,11 @@ async def send_message(client: IRCClient, evt: MessageOut) -> None:
     if use_multiline:
         batch_ref = client._next_batch_ref()
         await client.rawmsg("BATCH", f"+{batch_ref}", "draft/multiline", target)
-        logger.debug("IRC: started multiline batch ref={} for {} chunks", batch_ref, len(chunks))
+        logger.debug("started multiline batch ref={} for {} chunks", batch_ref, len(chunks))
 
     try:
         for i, chunk in enumerate(chunks):
-            logger.debug("IRC: sending chunk {}/{} to {} -> {!r}", i + 1, len(chunks), target, chunk[:80])
+            logger.debug("sending chunk {}/{} to {} -> {!r}", i + 1, len(chunks), target, chunk[:80])
 
             # Generate labeled-response tag for first chunk (echo correlation, Req 11.5)
             label_tag: dict[str, str] | None = None
@@ -134,7 +134,7 @@ async def send_message(client: IRCClient, evt: MessageOut) -> None:
                 label = client._next_label()
                 label_tag = {"label": label}
                 client._pending_labels[label] = evt.message_id
-                logger.debug("IRC: attached label={} for echo correlation (discord_id={})", label, evt.message_id)
+                logger.debug("attached label={} for echo correlation (discord_id={})", label, evt.message_id)
 
             # Merge reply tags, label tag, and batch tag for first chunk
             first_chunk_tags: dict[str, str] | None = None
@@ -170,7 +170,7 @@ async def send_message(client: IRCClient, evt: MessageOut) -> None:
                 else:
                     await client.message(target, prefixed)
                 if i == 0:
-                    logger.info("IRC: sent CTCP ACTION to {} as {}", target, spoofed_nick)
+                    logger.info("sent CTCP ACTION to {} as {}", target, spoofed_nick)
             elif use_relaymsg:
                 # RELAYMSG #channel spoofed_nick :message
                 tags_to_send = first_chunk_tags if first_chunk_tags else None
@@ -179,7 +179,7 @@ async def send_message(client: IRCClient, evt: MessageOut) -> None:
                 else:
                     await client.rawmsg("RELAYMSG", target, spoofed_nick, chunk)
                 if i == 0:
-                    logger.info("IRC: sent RELAYMSG to {} as {}", target, spoofed_nick)
+                    logger.info("sent RELAYMSG to {} as {}", target, spoofed_nick)
                     client._recent_relaymsg_sends[(client._server, target, spoofed_nick)] = None
             else:
                 # PRIVMSG fallback: prefix message with configurable remote nick format
@@ -191,7 +191,7 @@ async def send_message(client: IRCClient, evt: MessageOut) -> None:
                 else:
                     await client.message(target, prefixed)
                 if i == 0:
-                    logger.info("IRC: sent PRIVMSG to {} as {}", target, spoofed_nick)
+                    logger.info("sent PRIVMSG to {} as {}", target, spoofed_nick)
             # Only store mapping for first chunk (echo will have msgid)
             if i == 0:
                 client._pending_sends.put_nowait(evt.message_id)
@@ -204,6 +204,6 @@ async def send_message(client: IRCClient, evt: MessageOut) -> None:
         if use_multiline and batch_ref:
             try:
                 await client.rawmsg("BATCH", f"-{batch_ref}")
-                logger.debug("IRC: closed multiline batch ref={}", batch_ref)
+                logger.debug("closed multiline batch ref={}", batch_ref)
             except Exception as exc:
-                logger.warning("IRC: failed to close multiline batch ref={}: {}", batch_ref, exc)
+                logger.warning("failed to close multiline batch ref={}: {}", batch_ref, exc)

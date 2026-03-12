@@ -36,7 +36,7 @@ async def handle_delete_out(
     try:
         msg = await channel.fetch_message(int(evt.message_id))
         await msg.delete()
-        logger.info("Discord: deleted message {} (from IRC REDACT / XMPP retraction)", evt.message_id)
+        logger.info("deleted message {} (from IRC REDACT / XMPP retraction)", evt.message_id)
     except Exception as exc:
         logger.debug("Could not delete Discord message {}: {}", evt.message_id, exc)
 
@@ -53,10 +53,10 @@ async def handle_reaction_out(bot: commands.Bot | None, evt: ReactionOut) -> Non
         msg = await channel.fetch_message(int(evt.message_id))
         if is_remove:
             await msg.remove_reaction(evt.emoji, bot.user)
-            logger.info("Discord: removed reaction {} from message {} (from IRC/XMPP)", evt.emoji, evt.message_id)
+            logger.info("removed reaction {} from message {} (from IRC/XMPP)", evt.emoji, evt.message_id)
         else:
             await msg.add_reaction(evt.emoji)
-            logger.info("Discord: added reaction {} to message {} (from IRC/XMPP)", evt.emoji, evt.message_id)
+            logger.info("added reaction {} to message {} (from IRC/XMPP)", evt.emoji, evt.message_id)
     except Exception as exc:
         logger.debug(
             "Could not {} reaction on {}: {}",

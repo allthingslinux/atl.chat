@@ -393,12 +393,20 @@ class Dispatcher:
 
     def register(self, target: EventTarget) -> None:
         """Register an event target (adapter)."""
+        from loguru import logger
+
         self._targets.append(target)
+        name = getattr(target, "name", type(target).__name__)
+        logger.debug("registered adapter: {}", name)
 
     def unregister(self, target: EventTarget) -> None:
         """Unregister an event target."""
+        from loguru import logger
+
         if target in self._targets:
             self._targets.remove(target)
+            name = getattr(target, "name", type(target).__name__)
+            logger.debug("unregistered adapter: {}", name)
 
     def dispatch(self, source: str, evt: object) -> None:
         """Dispatch event to all targets that accept it."""
@@ -414,14 +422,14 @@ class Dispatcher:
                     target.push_event(source, evt)
                     elapsed = time.perf_counter() - t0
                     logger.debug(
-                        "Bus: dispatched {evt_type} from {source} -> {target} in {elapsed:.4f}s",
-                        evt_type=evt_type,
-                        source=source,
-                        target=target,
-                        elapsed=elapsed,
+                        "dispatched {} from {} -> {} in {:.4f}s",
+                        evt_type,
+                        source,
+                        getattr(target, "name", type(target).__name__),
+                        elapsed,
                     )
             except Exception as exc:
-                logger.exception("Bus: failed to dispatch {} from {} to {}: {}", evt_type, source, target, exc)
+                logger.exception("failed to dispatch {} from {} to {}: {}", evt_type, source, target, exc)
 
 
 dispatcher = Dispatcher()

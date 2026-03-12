@@ -72,10 +72,10 @@ async def get_or_create_webhook(
         try:
             channel = await bot.fetch_channel(int(channel_id))
         except Exception as exc:
-            logger.warning("Discord channel {} not found (get_channel and fetch_channel): {}", channel_id, exc)
+            logger.warning("channel {} not found (get_channel and fetch_channel): {}", channel_id, exc)
             return None
     if not channel or not isinstance(channel, TextChannel):
-        logger.warning("Discord channel {} not found or not a text channel", channel_id)
+        logger.warning("channel {} not found or not a text channel", channel_id)
         return None
 
     webhook = webhook_cache.get(channel_id)
@@ -158,5 +158,5 @@ async def webhook_edit(
         )
         return True
     except Exception as exc:
-        logger.debug("Could not edit Discord message {}: {}", discord_message_id, exc)
+        logger.debug("could not edit message {}: {}", discord_message_id, exc)
         return False

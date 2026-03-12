@@ -64,7 +64,7 @@ class IRCAdapter(AdapterBase):
         if isinstance(evt, MessageDeleteOut) and evt.target_origin == "irc":
             if self._client:
                 logger.debug(
-                    "IRC: received MessageDeleteOut channel={} message_id={}",
+                    "received MessageDeleteOut channel={} message_id={}",
                     evt.channel_id,
                     evt.message_id,
                 )
@@ -87,7 +87,7 @@ class IRCAdapter(AdapterBase):
             elif self._client:
                 self._client.queue_message(evt)
             else:
-                logger.warning("IRC MessageOut dropped: no client (channel={})", evt.channel_id)
+                logger.warning("MessageOut dropped: no client (channel={})", evt.channel_id)
 
     async def _send_reaction(self, evt: ReactionOut) -> None:
         """Send IRC TAGMSG with +draft/react for add, or +draft/unreact for removal (IRCv3 spec)."""
@@ -101,7 +101,7 @@ class IRCAdapter(AdapterBase):
 
         irc_msgid = self._msgid_tracker.get_irc_msgid(evt.message_id)
         if not irc_msgid:
-            logger.debug("No IRC msgid for reaction on {}; skip", evt.message_id)
+            logger.debug("no msgid for reaction on {}; skip", evt.message_id)
             return
 
         if is_remove:
@@ -111,7 +111,7 @@ class IRCAdapter(AdapterBase):
                     target,
                     tags={"+draft/reply": irc_msgid, "+draft/unreact": evt.emoji},
                 )
-                logger.info("IRC: sent reaction removal {} on message {}", evt.emoji, evt.message_id)
+                logger.info("sent reaction removal {} on message {}", evt.emoji, evt.message_id)
             except Exception as exc:
                 logger.exception("Reaction unreact TAGMSG failed: {}", exc)
             return
@@ -123,7 +123,7 @@ class IRCAdapter(AdapterBase):
                 target,
                 tags={"+draft/reply": irc_msgid, "+draft/react": evt.emoji},
             )
-            logger.info("IRC: sent reaction {} to channel {}", evt.emoji, target)
+            logger.info("sent reaction {} to channel {}", evt.emoji, target)
         except Exception as exc:
             logger.exception("Reaction TAGMSG failed: {}", exc)
 
@@ -157,21 +157,21 @@ class IRCAdapter(AdapterBase):
             return
         if not cfg.irc_redact_enabled:
             logger.debug(
-                "IRC: skipping REDACT for message {} (irc_redact_enabled=false; UnrealIRCd third/redact crashes)",
+                "skipping REDACT for message {} (irc_redact_enabled=false; UnrealIRCd third/redact crashes)",
                 evt.message_id,
             )
             return
         caps = getattr(self._client, "_capabilities", {})
         if not caps.get("draft/message-redaction"):
             logger.info(
-                "IRC: skipping REDACT for Discord message {} (draft/message-redaction not negotiated)",
+                "skipping REDACT for Discord message {} (draft/message-redaction not negotiated)",
                 evt.message_id,
             )
             return
         irc_msgid = self._msgid_tracker.get_irc_msgid(evt.message_id)
         if not irc_msgid:
             logger.info(
-                "IRC: skipping REDACT for Discord message {} (no IRC msgid stored; echo may lack msgid tag)",
+                "skipping REDACT for Discord message {} (no IRC msgid stored; echo may lack msgid tag)",
                 evt.message_id,
             )
             return
@@ -181,8 +181,8 @@ class IRCAdapter(AdapterBase):
         target = mapping.irc.channel
         try:
             await self._client.rawmsg("REDACT", target, irc_msgid)
-            logger.info("IRC: sent REDACT for message {} to channel {}", evt.message_id, target)
-            logger.debug("IRC: REDACT irc_msgid={} -> discord_id={}", irc_msgid, evt.message_id)
+            logger.info("sent REDACT for message {} to channel {}", evt.message_id, target)
+            logger.debug("REDACT irc_msgid={} -> discord_id={}", irc_msgid, evt.message_id)
         except Exception as exc:
             logger.exception("REDACT failed: {}", exc)
 
@@ -220,7 +220,7 @@ class IRCAdapter(AdapterBase):
         mappings = self._router.all_mappings()
         irc_mappings = [m for m in mappings if m.irc]
         if not irc_mappings:
-            logger.warning("No IRC mappings; IRC adapter disabled")
+            logger.warning("no mappings; adapter disabled")
             return
 
         m = irc_mappings[0]
@@ -278,12 +278,12 @@ class IRCAdapter(AdapterBase):
             )
             pm = self._puppet_manager
             await pm.start()
-            logger.info("IRC puppet manager started (idle timeout: {}h)", idle_timeout)
+            logger.info("puppet manager started (idle timeout: {}h)", idle_timeout)
             # Main connection receives puppet PRIVMSGs; skip to prevent Discord echo
             self._client._puppet_nick_check = lambda n, m=pm: n in m.get_puppet_nicks()
 
         logger.info(
-            "IRC connection started: {}:{}, channels {}",
+            "connection started: {}:{}, channels {}",
             m.irc.server,
             m.irc.port,
             channels,

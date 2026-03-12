@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Protocol
 
 from cachetools import TTLCache
+from loguru import logger
 
 from bridge.adapters.irc.msgid import MessageIDTracker
 
@@ -74,10 +75,12 @@ class DefaultMessageIDResolver:
     def register_irc(self, tracker: MessageIDTracker) -> None:
         """Register IRC message ID tracker (called by IRCAdapter)."""
         self._irc_tracker = tracker
+        logger.debug("msgid resolver: IRC tracker registered")
 
     def register_xmpp(self, component: XMPPComponent) -> None:
         """Register XMPP component (called by XMPPAdapter when component is created)."""
         self._xmpp_component = component
+        logger.debug("msgid resolver: XMPP component registered")
 
     def get_discord_id(self, source: str, source_id: str) -> str | None:
         if source == "irc" and self._irc_tracker:

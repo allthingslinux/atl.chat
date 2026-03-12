@@ -47,7 +47,7 @@ class ChannelRouter:
         """Load mappings from config dict (from config.mappings)."""
         raw = config.get("mappings")
         if not isinstance(raw, list):
-            logger.warning("Router: no mappings list in config; using empty mappings")
+            logger.warning("no mappings list in config; using empty mappings")
             self._mappings = []
             self._by_discord = {}
             self._by_irc = {}
@@ -122,7 +122,7 @@ class ChannelRouter:
         irc_count = sum(1 for m in mappings if m.irc)
         xmpp_count = sum(1 for m in mappings if m.xmpp)
         logger.info(
-            "Router: loaded {} mappings ({} IRC, {} XMPP){}",
+            "loaded {} mappings ({} IRC, {} XMPP){}",
             len(mappings),
             irc_count,
             xmpp_count,

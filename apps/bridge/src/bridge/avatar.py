@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import httpx
 from cachetools import TTLCache
+from loguru import logger
 
 from bridge.config import cfg
 
@@ -54,7 +55,8 @@ def resolve_xmpp_avatar_url(base_domain: str, node: str) -> str | None:
                 public_url = f"{public_base}{path}"
                 cache[cache_key] = public_url
                 return public_url
-        except Exception:
+        except Exception as exc:
+            logger.debug("avatar probe failed for {}@{} ({}): {}", node, base_domain, path, exc)
             continue
 
     cache[cache_key] = None

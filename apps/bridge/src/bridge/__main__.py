@@ -89,6 +89,35 @@ def _intercept_logging(level: str) -> None:
         logging.getLogger(noisy).setLevel(logging.WARNING)
 
 
+def _prefix_for_logger_name(name: str) -> str:
+    """Map logger name to a component prefix for log output."""
+    if name.startswith("pydle"):
+        return "[IRC]"
+    if "adapters.irc" in name:
+        return "[IRC]"
+    if "adapters.xmpp" in name:
+        return "[XMPP]"
+    if "adapters.discord" in name:
+        return "[Discord]"
+    if "gateway.relay" in name:
+        return "[Relay]"
+    if "core" in name:
+        return "[Bus]"
+    if "config" in name:
+        return "[Config]"
+    if "identity" in name:
+        return "[Identity]"
+    if "gateway" in name:
+        return "[Gateway]"
+    return "[Bridge]"
+
+
+def _patcher_add_prefix(record: dict[str, Any]) -> None:
+    """Loguru patcher: set prefix based on logger name for consistent log filtering."""
+    record.setdefault("extra", {})
+    record["extra"]["prefix"] = _prefix_for_logger_name(record.get("name", ""))
+
+
 def _safe_message_filter(record: Any) -> bool:
     """Escape braces/angles in log messages to prevent format/tag errors."""
     if isinstance(record.get("message"), str):
@@ -101,7 +130,8 @@ def _safe_message_filter(record: Any) -> bool:
 def setup_logging(verbose: bool = False) -> None:
     """Configure loguru. Replace default logging.
     Level: verbose=True or LOG_LEVEL=DEBUG enables DEBUG; otherwise INFO.
-    Intercepts pydle logs and routes them through loguru for protocol debugging."""
+    Intercepts pydle logs and routes them through loguru for protocol debugging.
+    Adds component prefix ([IRC], [XMPP], [Discord], etc.) for grep-friendly filtering."""
     level = "INFO"
     if verbose:
         level = "DEBUG"
@@ -111,10 +141,11 @@ def setup_logging(verbose: bool = False) -> None:
             level = env_level
 
     logger.remove()
+    logger.configure(patcher=_patcher_add_prefix)
     logger.add(
         sys.stderr,
         level=level,
-        format=("<green>{time:HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan> | {message}"),
+        format=("<green>{time:HH:mm:ss}</green> | <level>{level: <8}</level> | {extra[prefix]} | {message}"),
         filter=_safe_message_filter,
     )
     _intercept_logging(level)
