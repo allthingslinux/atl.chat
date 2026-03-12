@@ -1,3 +1,19 @@
+# [1.8.0](https://github.com/allthingslinux/atl.chat/compare/v1.7.0...v1.8.0) (2026-03-12)
+
+
+### Bug Fixes
+
+* **container:** inline build arguments in Dockerfile to ensure cache invalidation ([00c3020](https://github.com/allthingslinux/atl.chat/commit/00c3020add6174adea3317f8496aeaa7c66faf1d))
+* **discord:** update reply button label to remove arrow for improved clarity ([d2a8723](https://github.com/allthingslinux/atl.chat/commit/d2a87230283302ccd1285da3b15ef2fe631e3a61))
+* **env:** update ObsidianIRC WebSocket URL to use wss for secure connections ([559d09f](https://github.com/allthingslinux/atl.chat/commit/559d09f8e58a525b66f283659365939572d3eca1))
+* **env:** update WebSocket URL in development environment to use 127.0.0.1 ([19fd7e8](https://github.com/allthingslinux/atl.chat/commit/19fd7e8a67fcf97285baa195d8a0106e4cd32d83))
+* **justfile:** remove unnecessary --no-deps flag from rebuild-clean command for cleaner build process ([0ee0fad](https://github.com/allthingslinux/atl.chat/commit/0ee0fad94dc88f2ce88bc53b9d3ac1a201373609))
+
+
+### Features
+
+* **logging:** enhance log output with component prefixes for better filtering ([914d84b](https://github.com/allthingslinux/atl.chat/commit/914d84bc1d410d988d4de493e6a90399a50d5d20))
+
 # [1.7.0](https://github.com/allthingslinux/atl.chat/compare/v1.6.0...v1.7.0) (2026-03-12)
 
 
