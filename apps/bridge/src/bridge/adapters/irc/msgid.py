@@ -14,6 +14,11 @@ class MessageMapping(NamedTuple):
     timestamp: float
 
 
+def _is_discord_snowflake(value: str) -> bool:
+    """Return True if value looks like a Discord snowflake (numeric)."""
+    return value.isdigit()
+
+
 class MessageIDTracker:
     """Track IRC msgid <-> Discord message ID mappings with TTL."""
 
@@ -21,6 +26,7 @@ class MessageIDTracker:
         self._ttl = ttl_seconds
         self._irc_to_discord: dict[str, MessageMapping] = {}
         self._discord_to_irc: dict[str, MessageMapping] = {}
+        self._irc_msgid_origin: dict[str, str] = {}  # "irc" | "xmpp" for REDACT skip logic
         self._last_cleanup: float = 0.0
         self._cleanup_interval: float = 60.0  # cleanup at most once per minute
 
@@ -33,6 +39,8 @@ class MessageIDTracker:
         )
         self._irc_to_discord[irc_msgid] = mapping
         self._discord_to_irc[discord_id] = mapping
+        # XMPP-origin messages store xmpp_id (ULID); Discord/IRC-origin store numeric snowflake
+        self._irc_msgid_origin[irc_msgid] = "irc" if _is_discord_snowflake(discord_id) else "xmpp"
 
     def get_discord_id(self, irc_msgid: str) -> str | None:
         """Get Discord message ID from IRC msgid."""
@@ -45,6 +53,15 @@ class MessageIDTracker:
         self._cleanup()
         mapping = self._discord_to_irc.get(discord_id)
         return mapping.irc_msgid if mapping else None
+
+    def get_original_origin(self, irc_msgid: str) -> str | None:
+        """Return 'irc' or 'xmpp' if known; None if msgid unknown or expired.
+
+        Used to skip relaying IRC REDACT back to XMPP when the message originated
+        from XMPP (avoids duplicate retraction notices).
+        """
+        self._cleanup()
+        return self._irc_msgid_origin.get(irc_msgid)
 
     def add_discord_id_alias(self, new_discord_id: str, existing_value: str) -> bool:
         """Add Discord ID as alias and update irc_msgid -> discord_id for get_discord_id.
@@ -81,6 +98,7 @@ class MessageIDTracker:
         expired_irc = [msgid for msgid, mapping in self._irc_to_discord.items() if mapping.timestamp < cutoff]
         for msgid in expired_irc:
             del self._irc_to_discord[msgid]
+            self._irc_msgid_origin.pop(msgid, None)
 
         # Clean Discord -> IRC
         expired_discord = [
