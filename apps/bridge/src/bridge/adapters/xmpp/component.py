@@ -203,6 +203,8 @@ class XMPPComponent(ComponentXMPP):
         self._seen_retraction_ids: TTLCache[str, None] = TTLCache(maxsize=200, ttl=60)
         # Moderation we initiated (XEP-0424→0425 promotion): skip relaying the echo
         self._recently_moderated_by_us: TTLCache[str, None] = TTLCache(maxsize=200, ttl=10)
+        # Fire-and-forget moderation tasks (RUF006: keep reference to prevent GC)
+        self._moderation_tasks: set[asyncio.Task[None]] = set()
         # MUC status code handling (Requirement 26)
         self._banned_rooms: set[str] = set()  # MUC JIDs we've been banned from (status 301)
         self._auto_rejoin: bool = True  # Whether to auto-rejoin after kick/removal
