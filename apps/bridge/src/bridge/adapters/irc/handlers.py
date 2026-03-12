@@ -271,7 +271,7 @@ async def handle_tagmsg(client: IRCClient, message: object) -> None:
     reply_to = tags.get("+draft/reply")
     react = tags.get("+draft/react")
     unreact = tags.get("+draft/unreact")
-    typing_val = tags.get("typing")
+    typing_val = tags.get("+typing") or tags.get("typing")  # IRCv3: +typing (client-only)
 
     source = getattr(message, "source", "") or ""
     nick = source.split("!")[0] if "!" in source else source
@@ -350,12 +350,18 @@ async def handle_redact(client: IRCClient, message: object) -> None:
     if not mapping:
         return
 
+    # Skip our own REDACT echo — we initiated the delete (XMPP retraction / Discord delete).
+    # Re-bridging would cause Discord to try deleting an already-deleted message (404).
+    source = getattr(message, "source", "") or ""
+    nick = source.split("!")[0] if "!" in source else source
+    if nick and client.nickname and nick.lower() == client.nickname.lower():
+        logger.debug("IRC: skipping REDACT echo from our nick {} (we initiated)", nick)
+        return
+
     # REDACT on reaction TAGMSG → reaction removal
     reaction_key = client._reaction_tracker.get_reaction_key(irc_msgid)
     if reaction_key:
         discord_id, emoji, author_id = reaction_key
-        source = getattr(message, "source", "") or ""
-        nick = source.split("!")[0] if "!" in source else source
         from bridge.events import reaction_in
 
         _, evt = reaction_in(
@@ -378,9 +384,14 @@ async def handle_redact(client: IRCClient, message: object) -> None:
             irc_msgid,
         )
         return
-    source = getattr(message, "source", "") or ""
-    nick = source.split("!")[0] if "!" in source else source
     from bridge.events import message_delete
+
+    # Skip relaying to XMPP when the message originated from XMPP — the retraction
+    # was already sent there; relaying IRC REDACT back would cause a duplicate notice.
+    original_origin = client._msgid_tracker.get_original_origin(irc_msgid)
+    raw: dict[str, Any] = {}
+    if original_origin == "xmpp":
+        raw["skip_xmpp"] = True
 
     _, evt = message_delete(
         origin="irc",
@@ -388,6 +399,7 @@ async def handle_redact(client: IRCClient, message: object) -> None:
         message_id=discord_id,
         author_id=nick,
         author_display=nick,
+        raw=raw,
     )
     logger.info("IRC REDACT (message) bridged: channel={} msgid={}", target, irc_msgid)
     client._bus.publish("irc", evt)
