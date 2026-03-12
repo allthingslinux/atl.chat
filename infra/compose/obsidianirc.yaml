@@ -17,7 +17,7 @@ services:
       dockerfile: Containerfile
       args:
         VITE_DEFAULT_IRC_SERVER: ${OBSIDIANIRC_IRC_WS_URL:-wss://irc.atl.chat/ws}
-        VITE_DEFAULT_IRC_SERVER_NAME: "ATL IRC"
+        VITE_DEFAULT_IRC_SERVER_NAME: ${OBSIDIANIRC_SERVER_NAME:-ATL IRC}
         VITE_DEFAULT_IRC_CHANNELS: ${OBSIDIANIRC_AUTOJOIN:-#general}
         VITE_HIDE_SERVER_LIST: "true"
     container_name: atl-obsidianirc
