@@ -170,6 +170,26 @@ class DiscordAdapter(AdapterBase):
     def _resolve_xmpp_avatar_fallback(self, evt: MessageOut) -> str | None:
         return discord_avatar.resolve_xmpp_avatar_fallback(evt, self._router)
 
+    async def _resolve_avatar_for_send(self, evt: MessageOut) -> str | None:
+        """Resolve avatar URL: prefer Portal, then evt.avatar_url, then XMPP fallback."""
+        if self._identity and evt.author_id:
+            origin = (evt.raw or {}).get("origin", "")
+            try:
+                if origin == "discord":
+                    url = await self._identity.avatar_for_discord(evt.author_id)
+                elif origin == "irc":
+                    url = await self._identity.avatar_for_irc(evt.author_id)
+                elif origin == "xmpp":
+                    real_jid = (evt.raw or {}).get("real_jid")
+                    url = await self._identity.avatar_for_xmpp(real_jid if isinstance(real_jid, str) else evt.author_id)
+                else:
+                    url = await self._identity.avatar_for_discord(evt.author_id)
+                if url:
+                    return url
+            except Exception as exc:
+                logger.debug("Portal avatar lookup failed for {}: {}", evt.author_id, exc)
+        return evt.avatar_url or self._resolve_xmpp_avatar_fallback(evt)
+
     # ------------------------------------------------------------------
     # Webhook delegation
     # ------------------------------------------------------------------
@@ -308,7 +328,7 @@ class DiscordAdapter(AdapterBase):
                             reply_to_discord_id,
                         )
                     async with self._get_channel_lock(evt.channel_id):
-                        avatar_url = evt.avatar_url or self._resolve_xmpp_avatar_fallback(evt)
+                        avatar_url = await self._resolve_avatar_for_send(evt)
                         discord_msg_id = await self._webhook_send(
                             evt.channel_id,
                             evt.author_display,
