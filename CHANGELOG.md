@@ -1,3 +1,34 @@
+# [1.7.0](https://github.com/allthingslinux/atl.chat/compare/v1.6.0...v1.7.0) (2026-03-12)
+
+
+### Bug Fixes
+
+* **discord:** improve channel retrieval by adding API fallback ([ec56591](https://github.com/allthingslinux/atl.chat/commit/ec56591613886147d9bfc92c0372dc558f06a281))
+* **discord:** skip processing of raw message deletes initiated by the adapter ([3fa76de](https://github.com/allthingslinux/atl.chat/commit/3fa76de8f4bdcdca1952047753ba6f7383266a39))
+* **irc:** correct TAGMSG syntax for typing status ([4f89a06](https://github.com/allthingslinux/atl.chat/commit/4f89a061d434840aea854723a072db7cd8cd9c13))
+* **irc:** correct TAGMSG syntax for typing status ([baca405](https://github.com/allthingslinux/atl.chat/commit/baca40558d386ec982054f8d5e53a3363c009e4a))
+* **irc:** enhance REDACT handling to prevent duplicate processing ([c073cd2](https://github.com/allthingslinux/atl.chat/commit/c073cd293dd5b50ef581ce9ad49ed54a154c7650))
+* **irc:** update TAGMSG syntax for typing status in tests ([20bf046](https://github.com/allthingslinux/atl.chat/commit/20bf046aba03b09876d963c78b05bc30527a54ac))
+* **relay:** prevent duplicate XMPP retraction notices ([fa55dd2](https://github.com/allthingslinux/atl.chat/commit/fa55dd2010a6a5a040eb815ec90fe32791ab0aaa))
+
+
+### Features
+
+* **bridge:** add configuration to promote XEP-0424 user retraction to moderation ([990f3ae](https://github.com/allthingslinux/atl.chat/commit/990f3ae18e1ae0bce0406e530f7a72690572e71e))
+* **config:** add support for message redaction by authors ([6243d37](https://github.com/allthingslinux/atl.chat/commit/6243d371bf6cbafcb968ae2382bc2830bc352bc0))
+* **container:** update Containerfile and compose configuration for improved server management ([151f2c8](https://github.com/allthingslinux/atl.chat/commit/151f2c82949f218086ec73034ded501665988e74))
+* **discord:** add caching for recently deleted messages in DiscordAdapter ([828f11a](https://github.com/allthingslinux/atl.chat/commit/828f11a9fad4430f4dc365427458413a0e445c9a))
+* **discord:** enhance message deletion handling with recently deleted tracking ([5f18bc4](https://github.com/allthingslinux/atl.chat/commit/5f18bc4201cbae8979e277b31d3d175dd5057f46))
+* **events:** add raw parameter to message_delete function for enhanced message handling ([de43c3a](https://github.com/allthingslinux/atl.chat/commit/de43c3a5589a4bd949d130dd6c72e49e2875978a))
+* **irc:** add origin tracking for IRC message IDs ([4728905](https://github.com/allthingslinux/atl.chat/commit/4728905edb329361f445f3555f8c23cf78fbce6d))
+* **prosody:** add bridge component JID for MUC admin affiliation ([972daec](https://github.com/allthingslinux/atl.chat/commit/972daec0b7983aa8aabdba894657ec139e5bb379))
+* **xmpp:** add cache for recently moderated messages to improve echo handling ([9858684](https://github.com/allthingslinux/atl.chat/commit/9858684cf3bac6ac4830ac3226bcf3393396adfb))
+* **xmpp:** add promote retraction to moderation feature ([d65635e](https://github.com/allthingslinux/atl.chat/commit/d65635e9c2cce212078eb9e636a371f090335dc1))
+* **xmpp:** add support for fire-and-forget moderation tasks ([143f478](https://github.com/allthingslinux/atl.chat/commit/143f478799a9b6d00814673617036c7d3c466c2d))
+* **xmpp:** enhance message deletion handling to support user retraction ([365fe7e](https://github.com/allthingslinux/atl.chat/commit/365fe7ebcfe2677051a9c85592b7083a767d2ca0))
+* **xmpp:** implement moderation request for message retraction ([60a2651](https://github.com/allthingslinux/atl.chat/commit/60a2651762e9a2d41a3fb5c358421ec6476ac5fe))
+* **xmpp:** update retraction fallback message and enhance message ID handling ([3a40e1c](https://github.com/allthingslinux/atl.chat/commit/3a40e1c3b099f9c1911c5053f245e54332ab5618))
+
 # [1.6.0](https://github.com/allthingslinux/atl.chat/compare/v1.5.0...v1.6.0) (2026-03-11)
 
 
