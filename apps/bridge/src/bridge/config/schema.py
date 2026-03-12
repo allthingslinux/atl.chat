@@ -72,6 +72,10 @@ class XMPPConfig:
     avatar_base_url: str | None = None
     avatar_public_url: str | None = None
     auto_rejoin: bool = True
+    # When True, also send XEP-0425 moderation when receiving XEP-0424 user retraction.
+    # This makes Dino (and other clients that only accept moderation in MUC) delete locally.
+    # Requires bridge component JID to be a MUC moderator.
+    promote_retraction_to_moderation: bool = True
 
 
 @dataclass
@@ -146,6 +150,7 @@ def _build_xmpp_config(data: dict[str, Any]) -> XMPPConfig:
         avatar_base_url=base.strip() if isinstance(base, str) and base and base.strip() else None,
         avatar_public_url=public.strip() if isinstance(public, str) and public and public.strip() else None,
         auto_rejoin=bool(data.get("xmpp_auto_rejoin", True)),
+        promote_retraction_to_moderation=bool(data.get("xmpp_promote_retraction_to_moderation", True)),
     )
 
 
@@ -377,6 +382,10 @@ class Config:
     @property
     def xmpp_auto_rejoin(self) -> bool:
         return self.xmpp.auto_rejoin
+
+    @property
+    def xmpp_promote_retraction_to_moderation(self) -> bool:
+        return self.xmpp.promote_retraction_to_moderation
 
 
 cfg: Config = Config({})
