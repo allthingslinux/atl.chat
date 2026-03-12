@@ -20,8 +20,8 @@ if TYPE_CHECKING:
     from bridge.adapters.xmpp.component import XMPPComponent
 
 #: Fallback body text included in retraction stanzas for clients that
-#: do not support XEP-0424 Message Retraction.
-RETRACTION_FALLBACK_BODY = "This person retracted a previous message."
+#: do not support XEP-0424 Message Retraction (XEP-0424 §3 Example 4).
+RETRACTION_FALLBACK_BODY = "/me retracted a previous message, but it's unsupported by your client."
 
 
 async def send_message_as_user(
@@ -265,6 +265,7 @@ async def send_retraction_as_user(
             mbody=RETRACTION_FALLBACK_BODY,
             mtype="groupchat",
         )
+        msg["id"] = f"bridge-retract-{uuid.uuid4().hex}"
         msg["retract"]["id"] = target_msg_id
         fb = msg.enable("fallback")
         fb["for"] = "urn:xmpp:message-retract:1"
@@ -298,6 +299,7 @@ async def send_retraction_as_bridge(
             mbody=RETRACTION_FALLBACK_BODY,
             mtype="groupchat",
         )
+        msg["id"] = f"bridge-retract-{uuid.uuid4().hex}"
         msg["retract"]["id"] = target_msg_id
         fb = msg.enable("fallback")
         fb["for"] = "urn:xmpp:message-retract:1"
@@ -339,6 +341,7 @@ async def send_correction_as_user(
                 mbody=content[:4000],
                 mtype="groupchat",
             )
+            msg["id"] = f"bridge-correct-{uuid.uuid4().hex}"
             msg.enable("replace")
             msg["replace"]["id"] = original_xmpp_id
         msg.send()
