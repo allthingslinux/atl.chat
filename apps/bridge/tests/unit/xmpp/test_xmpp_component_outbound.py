@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from bridge.adapters.xmpp import XMPPComponent, XMPPMessageIDTracker, _escape_jid_node
+from bridge.adapters.xmpp.outbound import RETRACTION_FALLBACK_BODY
 from cachetools import TTLCache
 
 pytestmark = pytest.mark.filterwarnings("ignore::pytest.PytestUnraisableExceptionWarning")
@@ -297,7 +298,7 @@ class TestSendRetractionAsUser:
         # Assert — message was created with fallback body text
         comp.make_message.assert_called_once()
         call_kwargs = comp.make_message.call_args
-        assert call_kwargs[1]["mbody"] == "This person retracted a previous message."
+        assert call_kwargs[1]["mbody"] == RETRACTION_FALLBACK_BODY
         assert call_kwargs[1]["mtype"] == "groupchat"
         # retract element set
         mock_msg.__getitem__.assert_any_call("retract")
