@@ -75,6 +75,10 @@ just dev
 just prod
 ```
 
+### Bridge ↔ Portal token
+
+When using the bridge with Portal for identity resolution, use the same secret for both: set `BRIDGE_PORTAL_TOKEN` (atl.chat) and `BRIDGE_SERVICE_TOKEN` (Portal) to the same value.
+
 ### First Boot: SRA Bootstrap
 
 After starting the production stack for the first time, you must manually bootstrap the Services Root Administrator (SRA) to avoid being locked out of IRC services:

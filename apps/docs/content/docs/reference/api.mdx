@@ -71,20 +71,21 @@ Prosody exposes a REST API via [`mod_http_admin_api`](https://modules.prosody.im
 |---|---|
 | Base URL | `http://atl-xmpp-server:5280` |
 | Protocol | REST over HTTP |
-| Authentication | OAuth2 Bearer token (via `mod_http_oauth2`) or HTTP Basic |
+| Authentication | Bearer token (via `mod_tokenauth`) — **primary for Portal**. OAuth2 Bearer (via `mod_http_oauth2`) or HTTP Basic also supported. |
 | Module | `mod_http_admin_api` (loaded per-VirtualHost, not globally) |
 
-The `mod_http_oauth2` module generates Bearer tokens using the Resource Owner Password Grant. These tokens are also usable for OAUTHBEARER SASL authentication.
+**Portal integration:** Use `PROSODY_REST_TOKEN` (Bearer) for Portal. Generate a token with `just prosody-token` or `prosodyctl shell` (see Prosody configuration docs). Legacy `PROSODY_REST_USERNAME` / `PROSODY_REST_PASSWORD` (HTTP Basic) are deprecated for Portal — Prosody 13+ with `mod_http_admin_api` uses Bearer auth via `mod_tokenauth`.
 
-### Environment variables
+### Environment variables (Portal)
 
 | Variable | Description | Default |
 |---|---|---|
 | `PROSODY_REST_URL` | Prosody REST API base URL | `http://atl-xmpp-server:5280` |
-| `PROSODY_REST_USERNAME` | REST admin username (JID) | `admin@atl.chat` |
-| `PROSODY_REST_PASSWORD` | REST admin password | `change_me_prosody_rest_password` |
+| `PROSODY_REST_TOKEN` | Bearer token for `mod_http_admin_api` (primary for Portal) | — |
+| `PROSODY_REST_USERNAME` | REST admin username (JID) — *legacy, HTTP Basic* | `admin@atl.chat` |
+| `PROSODY_REST_PASSWORD` | REST admin password — *legacy, HTTP Basic* | `change_me_prosody_rest_password` |
 
-> **Warning:** Change `PROSODY_REST_PASSWORD` before production deployment. This credential grants admin-level access to XMPP user management.
+> **Warning:** `PROSODY_REST_TOKEN` (or `PROSODY_REST_PASSWORD` if using legacy Basic auth) grants admin-level access to XMPP user management. Change from defaults before production deployment.
 
 ## Portal Bridge API
 

@@ -457,12 +457,13 @@ These variables are pre-defined for the external ATL Portal service that connect
 | `IRC_UNREAL_RPC_USER` | UnrealIRCd RPC username (matches `WEBPANEL_RPC_USER`) | No | `adminpanel` |
 | `IRC_UNREAL_RPC_PASSWORD` | UnrealIRCd RPC password (matches `WEBPANEL_RPC_PASSWORD`) | No | `change_me_webpanel_password` |
 | `PROSODY_REST_URL` | Prosody REST API URL | No | `http://atl-xmpp-server:5280` |
-| `PROSODY_REST_USERNAME` | Prosody REST admin username | No | `admin@atl.chat` |
-| `PROSODY_REST_PASSWORD` | Prosody REST admin password | No | `change_me_prosody_rest_password` |
+| `PROSODY_REST_TOKEN` | Bearer token for mod_http_admin_api (Portal uses this; generate with `just prosody-token`) | No | — |
+| `PROSODY_REST_USERNAME` | Prosody REST admin username — *legacy, HTTP Basic; prefer PROSODY_REST_TOKEN* | No | `admin@atl.chat` |
+| `PROSODY_REST_PASSWORD` | Prosody REST admin password — *legacy, HTTP Basic; prefer PROSODY_REST_TOKEN* | No | `change_me_prosody_rest_password` |
 | `IRC_SERVER` | IRC server hostname for Portal connections | No | `irc.atl.chat` |
 | `IRC_PORT` | IRC TLS port for Portal connections | No | `6697` |
 
-> **Warning:** `IRC_UNREAL_RPC_PASSWORD`, `PROSODY_REST_PASSWORD`, and `IRC_UNREAL_RPC_USER` are administrative credentials. If you deploy the Portal alongside this stack, ensure these match the corresponding service passwords and are changed from defaults.
+> **Warning:** `IRC_UNREAL_RPC_PASSWORD`, `PROSODY_REST_TOKEN` (or `PROSODY_REST_PASSWORD` if using legacy Basic auth), and `IRC_UNREAL_RPC_USER` are administrative credentials. If you deploy the Portal alongside this stack, ensure these match the corresponding service configuration and are changed from defaults. Portal expects `PROSODY_REST_TOKEN` (Bearer) for Prosody — use `just prosody-token` to generate.
 
 ## `.env.dev` overlay — variables overridden for local development
 

@@ -121,7 +121,7 @@ See `config.example.yaml` for the full schema. In the monorepo, `just init` gene
 |----------|----------|-------------|
 | `BRIDGE_DISCORD_TOKEN` | Yes | Discord bot token |
 | `BRIDGE_PORTAL_BASE_URL` | Yes | Portal API URL |
-| `BRIDGE_PORTAL_TOKEN` | Yes | Portal service token |
+| `BRIDGE_PORTAL_TOKEN` | Yes | Portal service token. Must match Portal's `BRIDGE_SERVICE_TOKEN` (same secret, different env var names). |
 | `BRIDGE_XMPP_COMPONENT_JID` | Yes | Component JID (e.g. `bridge.atl.chat`) |
 | `BRIDGE_XMPP_COMPONENT_SECRET` | Yes | Prosody component secret |
 | `BRIDGE_XMPP_COMPONENT_SERVER` | No | Component host (default: `localhost`) |

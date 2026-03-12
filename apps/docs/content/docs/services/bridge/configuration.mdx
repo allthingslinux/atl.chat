@@ -76,6 +76,8 @@ BRIDGE_PORTAL_BASE_URL=https://portal.atl.tools
 BRIDGE_PORTAL_TOKEN=your-portal-api-token
 ```
 
+> **Token mapping:** Use the same secret for both sides. Set `BRIDGE_PORTAL_TOKEN` (atl.chat bridge) and `BRIDGE_SERVICE_TOKEN` (Portal) to the same value. The bridge sends this token as a Bearer credential; Portal expects it in `BRIDGE_SERVICE_TOKEN`.
+
 When Portal is not configured, the bridge runs in dev mode with fallback nick resolution — bridged messages use the originating platform's display name with a platform suffix.
 
 The Portal client includes:
