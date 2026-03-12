@@ -568,6 +568,40 @@ class TestRelay:
         assert irc_deletes[0].message_id == "msg-999"
         assert len(xmpp_deletes) == 1
 
+    def test_relay_skips_xmpp_for_message_delete_when_skip_xmpp(self):
+        """IRC REDACT of XMPP-origin message: emit to Discord only, skip XMPP (avoid duplicate)."""
+        bus = Bus()
+        router = ChannelRouter()
+        config = {
+            "mappings": [
+                {
+                    "discord_channel_id": "123",
+                    "irc": {"server": "s", "channel": "#c", "port": 6667, "tls": False},
+                    "xmpp": {"muc_jid": "room@conf.example.com"},
+                }
+            ]
+        }
+        router.load_from_config(config)
+        relay = Relay(bus, router)
+        irc_adapter = MockAdapter("irc")
+        xmpp_adapter = MockAdapter("xmpp")
+        discord_adapter = MockAdapter("discord")
+        bus.register(relay)
+        bus.register(irc_adapter)
+        bus.register(xmpp_adapter)
+        bus.register(discord_adapter)
+
+        _, evt = message_delete("irc", "s/#c", "msg-999", author_id="admin", raw={"skip_xmpp": True})
+        bus.publish("irc", evt)
+
+        irc_deletes = [e for _, e in irc_adapter.received_events if isinstance(e, MessageDeleteOut)]
+        xmpp_deletes = [e for _, e in xmpp_adapter.received_events if isinstance(e, MessageDeleteOut)]
+        discord_deletes = [e for _, e in discord_adapter.received_events if isinstance(e, MessageDeleteOut)]
+        assert len(irc_deletes) == 0  # origin=irc, skip self
+        assert len(xmpp_deletes) == 0  # skip_xmpp=True
+        assert len(discord_deletes) == 1
+        assert discord_deletes[0].message_id == "msg-999"
+
     def test_relay_routes_reactions(self):
         """Discord reaction produces ReactionOut to IRC and XMPP."""
         bus = Bus()
