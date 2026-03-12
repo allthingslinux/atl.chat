@@ -271,3 +271,18 @@ class PortalIdentityResolver(IdentityResolver):
     async def has_xmpp(self, discord_id: str) -> bool:
         jid = await self.discord_to_xmpp(discord_id)
         return jid is not None
+
+    async def avatar_for_discord(self, discord_id: str) -> str | None:
+        data = await self._get_discord(discord_id)
+        url = data.get("avatar_url") if data else None
+        return url if isinstance(url, str) and url else None
+
+    async def avatar_for_irc(self, nick: str, server: str | None = None) -> str | None:
+        data = await self._get_irc(nick, server)
+        url = data.get("avatar_url") if data else None
+        return url if isinstance(url, str) and url else None
+
+    async def avatar_for_xmpp(self, jid: str) -> str | None:
+        data = await self._get_xmpp(jid)
+        url = data.get("avatar_url") if data else None
+        return url if isinstance(url, str) and url else None
