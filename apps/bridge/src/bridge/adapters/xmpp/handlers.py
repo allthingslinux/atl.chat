@@ -270,13 +270,16 @@ def on_groupchat_message(comp: XMPPComponent, msg: Any) -> None:
     # Build avatar URL: try PEP first, then vCard as fallback. Base from room domain (muc.atl.chat → atl.chat);
     # path from real JID localpart (alice@atl.chat → /pep_avatar/alice). User domain irrelevant.
     avatar_url: str | None = None
+    real_jid: str | None = None
     muc = _get_muc_plugin(comp)
     if muc and nick:
         real_jid = muc.get_jid_property(room_jid, nick, "jid")
         if real_jid:
+            real_jid = str(real_jid)
+            raw_data["real_jid"] = real_jid
             room_domain = JID(room_jid).domain
             base_domain = room_domain[4:] if room_domain.startswith("muc.") else room_domain
-            node = JID(str(real_jid)).local
+            node = JID(real_jid).local
             avatar_url = comp._resolve_avatar_url(base_domain, node)
 
     _, evt = message_in(
