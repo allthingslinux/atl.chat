@@ -287,6 +287,28 @@ async def test_on_message_delete_skips_unbridged(bus: Bus, router: ChannelRouter
 
 
 @pytest.mark.asyncio
+async def test_on_message_delete_skips_when_we_initiated_delete(bus: Bus, router: ChannelRouter) -> None:
+    """When we deleted the message (relaying from XMPP/IRC), skip publishing to avoid duplicate retraction."""
+    from bridge.adapters.discord import DiscordAdapter
+
+    adapter = DiscordAdapter(bus, router, identity_resolver=None)
+    published = []
+    bus.publish = lambda s, e: published.append((s, e))  # type: ignore[method-assign]
+
+    # Simulate we just deleted this message (handle_delete_out added it)
+    adapter._recently_deleted_by_us["123:999"] = None
+
+    payload = MagicMock()
+    payload.channel_id = 123
+    payload.message_id = 999
+    payload.cached_message = MagicMock()
+    payload.cached_message.author.id = 111
+
+    await adapter._on_raw_message_delete(payload)
+    assert len(published) == 0
+
+
+@pytest.mark.asyncio
 async def test_queue_consumer_edits_when_resolve_succeeds(bus: Bus, router: ChannelRouter) -> None:
     """When replace_id resolves, queue consumer calls _webhook_edit instead of send."""
     from bridge.adapters.discord import DiscordAdapter
