@@ -365,8 +365,26 @@ def on_reactions(comp: XMPPComponent, msg: Any) -> None:
         comp._bus.publish("xmpp", evt)
 
 
+async def _send_moderation_for_retraction(comp: XMPPComponent, room_jid: str, target_msg_id: str) -> None:
+    """Send XEP-0425 moderation request so Dino (and similar) delete locally. Fire-and-forget."""
+    try:
+        plugin = comp.plugin.get("xep_0425", None)
+        if plugin:
+            # Component must set explicit 'from' for Prosody; otherwise stream error (invalid-from).
+            await plugin.moderate(JID(room_jid), target_msg_id, ifrom=JID(comp._component_jid))
+            logger.debug("XMPP: sent moderation for retraction {} in {}", target_msg_id, room_jid)
+    except Exception as exc:
+        logger.debug(
+            "XMPP: moderation for retraction {} failed (bridge may not be moderator): {}",
+            target_msg_id,
+            exc,
+        )
+
+
 def on_retraction(comp: XMPPComponent, msg: Any) -> None:
     """Handle XMPP message retraction; emit to bus."""
+    from bridge.config import cfg
+
     from_jid = str(msg["from"]) if msg["from"] else ""
     if "/" in from_jid:
         room_jid = from_jid.split("/")[0]
@@ -417,12 +435,22 @@ def on_retraction(comp: XMPPComponent, msg: Any) -> None:
     logger.info("XMPP retraction bridged: room={} author={} message={}", room_jid, nick, target_msg_id)
     comp._bus.publish("xmpp", evt)
 
+    # Option 1 hack: also send XEP-0425 moderation so Dino (and similar clients) delete locally.
+    # Requires bridge component JID to be a MUC moderator.
+    if cfg.xmpp_promote_retraction_to_moderation and target_msg_id:
+        comp._recently_moderated_by_us[dedupe_key] = None
+        task = asyncio.create_task(_send_moderation_for_retraction(comp, room_jid, target_msg_id))
+        comp._moderation_tasks.add(task)
+        task.add_done_callback(comp._moderation_tasks.discard)
+
 
 def on_moderated_message(comp: XMPPComponent, msg: Any) -> None:
     """Handle XEP-0425 moderator retraction; emit delete to bus."""
     from_jid = str(msg["from"]) if msg["from"] else ""
-    # Moderation messages come from the bare room JID (no nick resource)
-    room_jid = from_jid.split("/")[0] if "/" in from_jid else from_jid
+    # XEP-0425 §5: only moderation from the MUC service (bare room JID) is legitimate
+    if "/" in from_jid:
+        return  # From occupant; discard (spoofing)
+    room_jid = from_jid
     if not room_jid:
         return
 
@@ -439,8 +467,13 @@ def on_moderated_message(comp: XMPPComponent, msg: Any) -> None:
         logger.debug("XEP-0425 moderation missing retract id; skip")
         return
 
-    # Dedupe: multiple handlers and MUC occupant copies fire for the same moderation
+    # Skip when we initiated this moderation (XEP-0424→0425 promotion); already relayed
     dedupe_key = f"{room_jid}:{target_msg_id}"
+    if dedupe_key in comp._recently_moderated_by_us:
+        logger.debug("XMPP: skipping moderation echo for {} (we initiated)", target_msg_id)
+        return
+
+    # Dedupe: multiple handlers and MUC occupant copies fire for the same moderation
     if dedupe_key in comp._seen_moderation_ids:
         return
     comp._seen_moderation_ids[dedupe_key] = None
@@ -498,6 +531,9 @@ def try_handle_moderation(comp: XMPPComponent, msg: Any, room_jid: str) -> None:
 
     # Dedupe: MUC delivers to each occupant and multiple handlers fire per stanza
     dedupe_key = f"{room_jid}:{target_msg_id}"
+    # Skip when we initiated this moderation (XEP-0424→0425 promotion); already relayed
+    if dedupe_key in comp._recently_moderated_by_us:
+        return
     if dedupe_key in comp._seen_moderation_ids:
         return
     comp._seen_moderation_ids[dedupe_key] = None
@@ -554,8 +590,12 @@ def on_raw_groupchat(comp: XMPPComponent, msg: Any) -> None:
     if not has_moderation:
         return
 
-    from_jid = msg["from"] if hasattr(msg, "__getitem__") else xml.get("from", "")
-    room_jid = str(from_jid).split("/")[0] if from_jid else ""
+    from_val = msg["from"] if hasattr(msg, "__getitem__") else None
+    from_jid = str(from_val) if from_val else (str(xml.get("from", "")) if xml is not None else "")
+    # XEP-0425 §5: only moderation from the MUC service (bare room JID) is legitimate
+    if "/" in from_jid:
+        return  # From occupant; discard (spoofing)
+    room_jid = from_jid
     if not room_jid:
         return
 
