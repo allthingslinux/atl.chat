@@ -67,6 +67,13 @@ async def get_or_create_webhook(
     when multiple messages target the same channel simultaneously.
     """
     channel = bot.get_channel(int(channel_id))
+    if not channel:
+        # get_channel uses cache; cache can be empty on connect/reconnect. Fallback to API.
+        try:
+            channel = await bot.fetch_channel(int(channel_id))
+        except Exception as exc:
+            logger.warning("Discord channel {} not found (get_channel and fetch_channel): {}", channel_id, exc)
+            return None
     if not channel or not isinstance(channel, TextChannel):
         logger.warning("Discord channel {} not found or not a text channel", channel_id)
         return None
