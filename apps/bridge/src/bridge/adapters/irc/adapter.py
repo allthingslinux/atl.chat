@@ -146,7 +146,7 @@ class IRCAdapter(AdapterBase):
             await self._client.rawmsg(
                 "TAGMSG",
                 target,
-                tags={"typing": "active"},
+                tags={"+typing": "active"},
             )
         except Exception as exc:
             logger.debug("Typing TAGMSG failed: {}", exc)
