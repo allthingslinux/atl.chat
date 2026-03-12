@@ -290,7 +290,7 @@ class TestOnRawTagmsg:
     async def test_publishes_typing_on_typing_tag(self):
         client, bus, router = _make_client()
         router.get_mapping_for_irc.return_value = MagicMock(discord_channel_id="111")
-        msg = _mock_message(params=["#test"], tags={"typing": "active"}, source="user!u@h")
+        msg = _mock_message(params=["#test"], tags={"+typing": "active"}, source="user!u@h")
         await client.on_raw_tagmsg(msg)
         bus.publish.assert_called_once()
         _, evt = bus.publish.call_args[0]
@@ -358,6 +358,16 @@ class TestOnRawRedact:
         client, bus, router = _make_client()
         router.get_mapping_for_irc.return_value = MagicMock(discord_channel_id="111")
         await client.on_raw_redact(_mock_message(params=["#test", "unknown-irc-id"]))
+        bus.publish.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_skips_own_redact_echo(self):
+        """Skip REDACT when source is our bridge nick (we initiated the delete)."""
+        client, bus, router = _make_client(nick="bridge")
+        client.nickname = "bridge"  # Simulate connected state (pydle sets this on connect)
+        router.get_mapping_for_irc.return_value = MagicMock(discord_channel_id="111")
+        client._msgid_tracker.store("irc-id", "discord-id")
+        await client.on_raw_redact(_mock_message(params=["#test", "irc-id"], source="bridge!bridge@bridge.atl.chat"))
         bus.publish.assert_not_called()
 
     @pytest.mark.asyncio
