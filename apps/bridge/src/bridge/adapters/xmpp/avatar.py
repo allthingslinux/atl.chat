@@ -5,6 +5,7 @@ All functions receive the component instance as the first parameter.
 
 from __future__ import annotations
 
+import base64
 import hashlib
 from typing import TYPE_CHECKING
 from xml.etree import ElementTree as ET
@@ -19,6 +20,21 @@ if TYPE_CHECKING:
     from bridge.adapters.xmpp.component import XMPPComponent
 
 
+def _decode_data_url(url: str) -> bytes | None:
+    """Decode data: URL (e.g. from Portal user.image) to bytes."""
+    if not url.strip().lower().startswith("data:"):
+        return None
+    try:
+        # data:image/png;base64,<payload>
+        parts = url.split(",", 1)
+        if len(parts) != 2:
+            return None
+        payload = parts[1]
+        return base64.b64decode(payload)
+    except Exception:
+        return None
+
+
 def resolve_avatar_url(comp: XMPPComponent, base_domain: str, node: str) -> str | None:
     """Resolve avatar URL: try /pep_avatar/ first, then /avatar/ (vCard) as fallback. Cached."""
     from bridge.avatar import resolve_xmpp_avatar_url
@@ -27,16 +43,19 @@ def resolve_avatar_url(comp: XMPPComponent, base_domain: str, node: str) -> str 
 
 
 async def fetch_avatar_bytes(comp: XMPPComponent, avatar_url: str) -> bytes | None:
-    """Download avatar image from URL."""
+    """Download avatar image from URL, or decode data: URL (e.g. Portal base64)."""
+    decoded = _decode_data_url(avatar_url)
+    if decoded is not None:
+        return decoded
     if not comp._session:
         return None
     try:
         async with comp._session.get(avatar_url, timeout=aiohttp.ClientTimeout(total=10)) as resp:
             if resp.status == 200:
                 return await resp.read()
-            logger.warning("Failed to fetch avatar from {}: status {}", avatar_url, resp.status)
+            logger.warning("Failed to fetch avatar from {}: status {}", avatar_url[:80], resp.status)
     except Exception as exc:
-        logger.exception("Error fetching avatar from {}: {}", avatar_url, exc)
+        logger.exception("Error fetching avatar from {}: {}", avatar_url[:80], exc)
     return None
 
 
