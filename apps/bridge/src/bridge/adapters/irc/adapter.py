@@ -205,11 +205,29 @@ class IRCAdapter(AdapterBase):
             return
 
         if has_irc:
+            avatar_url: str | None = None
+            if evt.author_id:
+                try:
+                    origin = (evt.raw or {}).get("origin", "")
+                    if origin == "discord":
+                        avatar_url = await self._identity.avatar_for_discord(evt.author_id)
+                    elif origin == "irc":
+                        avatar_url = await self._identity.avatar_for_irc(evt.author_id)
+                    elif origin == "xmpp":
+                        real_jid = (evt.raw or {}).get("real_jid")
+                        avatar_url = await self._identity.avatar_for_xmpp(
+                            real_jid if isinstance(real_jid, str) else evt.author_id
+                        )
+                    else:
+                        avatar_url = await self._identity.avatar_for_discord(evt.author_id)
+                except Exception:
+                    pass
+            avatar_url = avatar_url or evt.avatar_url
             await self._puppet_manager.send_message(
                 evt.author_id,
                 mapping.irc.channel,
                 evt.content,
-                avatar_url=evt.avatar_url,
+                avatar_url=avatar_url,
             )
         elif self._client:
             # Fallback to main connection
