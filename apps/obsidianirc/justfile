@@ -21,5 +21,5 @@ rebuild:
 
 # Rebuild from scratch (no Docker cache — use when build args change)
 rebuild-clean:
-    {{ compose }} build --no-cache --no-deps atl-obsidianirc
+    {{ compose }} build --no-cache atl-obsidianirc
     {{ compose }} up -d --no-deps --force-recreate atl-obsidianirc
