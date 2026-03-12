@@ -19,7 +19,13 @@ WORKDIR /app
 COPY upstream/package*.json ./
 RUN npm ci
 COPY upstream/ .
-RUN npm run build
+# Inline build args in RUN so Docker invalidates cache when they change
+# (RUN cache uses command string, not ENV; without this, cached layers can serve stale config)
+RUN VITE_DEFAULT_IRC_SERVER="$VITE_DEFAULT_IRC_SERVER" \
+    VITE_DEFAULT_IRC_SERVER_NAME="$VITE_DEFAULT_IRC_SERVER_NAME" \
+    VITE_DEFAULT_IRC_CHANNELS="$VITE_DEFAULT_IRC_CHANNELS" \
+    VITE_HIDE_SERVER_LIST="$VITE_HIDE_SERVER_LIST" \
+    npm run build
 
 FROM nginx:alpine
 
