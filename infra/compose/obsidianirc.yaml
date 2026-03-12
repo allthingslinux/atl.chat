@@ -39,12 +39,6 @@ services:
     ports:
       - "${OBSIDIANIRC_PORT:-8090}:80"
 
-    env_file:
-      - path: ../../.env
-        required: false
-      - path: ../../.env.dev
-        required: false
-
     logging:
       driver: json-file
       options:

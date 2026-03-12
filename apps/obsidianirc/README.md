@@ -10,55 +10,72 @@ Modern IRC web client for All Things Linux, built from the [ObsidianIRC](https:/
 - Single-server mode (multi-server UI hidden)
 - Pre-configured for ATL IRC
 
-## Configuration
+## Local Development
 
-The client is built with ATL defaults baked in via Vite build args:
+`just dev` loads `.env` then `.env.dev`; build args are baked in at image build time.
 
-- **Server:** `wss://irc.atl.chat/ws` (or `OBSIDIANIRC_IRC_WS_URL` from `.env`)
-- **Auto-join:** `#general` (or `OBSIDIANIRC_AUTOJOIN` from `.env`)
-- **Server list:** Hidden (single-server mode)
-
-## Usage
-
-### Development
+**Prerequisites:** Copy `.env.dev.example` to `.env.dev` if you haven't already.
 
 ```bash
-# Start the stack (includes ObsidianIRC)
+# Start the stack (loads .env + .env.dev)
 just dev
 
 # Access at http://localhost:8090
 ```
 
-### Production
+**Dev defaults** (from `.env.dev`):
+
+| Variable | Dev value | Purpose |
+|----------|-----------|---------|
+| `OBSIDIANIRC_PORT` | `8090` | Host port for the web UI |
+| `OBSIDIANIRC_IRC_WS_URL` | `ws://localhost:8000` | Direct WebSocket to UnrealIRCd (no TLS) |
+| `OBSIDIANIRC_AUTOJOIN` | `#general` | Channels to auto-join |
+| `OBSIDIANIRC_SERVER_NAME` | `irc.localhost` | Display name in the UI |
+
+The browser connects to `ws://localhost:8000` (IRC WebSocket) and `http://localhost:8090` (ObsidianIRC). Both are on localhost.
+
+## Production
+
+`just prod` loads `.env` only. WebSocket URL goes through NPM (TLS termination).
 
 ```bash
 # Start the stack
 just prod
 
-# Access at http://<your-domain>:8090
+# Access at https://irc.atl.chat (or your configured domain)
 ```
 
-### Rebuilding
+**Prod defaults** (from `.env`):
 
-If you modify the Containerfile or want to pull upstream changes:
+| Variable | Prod value | Purpose |
+|----------|------------|---------|
+| `OBSIDIANIRC_PORT` | `8090` | Host port (or omit if behind reverse proxy) |
+| `OBSIDIANIRC_IRC_WS_URL` | `wss://irc.atl.chat/ws` | WebSocket via NPM (TLS) |
+| `OBSIDIANIRC_AUTOJOIN` | `#general` | Channels to auto-join |
+| `OBSIDIANIRC_SERVER_NAME` | `ATL IRC` | Display name in the UI |
+
+## Rebuilding
+
+Build args are baked in at build time. Rebuild when you change `.env` / `.env.dev` or the Containerfile:
 
 ```bash
-# Rebuild the image
+# Rebuild and restart
 just obsidianirc rebuild
 
-# Rebuild without cache (clean build)
+# Rebuild without cache (use when switching dev ↔ prod or after upstream changes)
 just obsidianirc rebuild-clean
 ```
 
 ## Environment Variables
 
-Set in `.env` or `.env.dev`:
+Set in `.env` (production) or `.env.dev` (development overlay):
 
-```bash
-OBSIDIANIRC_PORT=8090                           # Host port
-OBSIDIANIRC_IRC_WS_URL=wss://irc.atl.chat/ws   # WebSocket URL
-OBSIDIANIRC_AUTOJOIN=#general                   # Auto-join channels
-```
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `OBSIDIANIRC_PORT` | `8090` | Host port for the web UI |
+| `OBSIDIANIRC_IRC_WS_URL` | `wss://irc.atl.chat/ws` | WebSocket URL (baked into build) |
+| `OBSIDIANIRC_SERVER_NAME` | `ATL IRC` | Server name shown in the UI |
+| `OBSIDIANIRC_AUTOJOIN` | `#general` | Comma-separated channels to auto-join |
 
 ## Upstream
 
