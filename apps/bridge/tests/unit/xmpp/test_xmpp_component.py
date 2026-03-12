@@ -33,6 +33,8 @@ def make_component(router=None, bus=None):
     comp._reactions_by_user = TTLCache(maxsize=2000, ttl=3600)
     comp._seen_moderation_ids = TTLCache(maxsize=200, ttl=60)
     comp._seen_retraction_ids = TTLCache(maxsize=200, ttl=60)
+    comp._recently_moderated_by_us = TTLCache(maxsize=200, ttl=10)
+    comp._moderation_tasks = set()
     comp._banned_rooms = set()
     comp._auto_rejoin = True
     comp._confirmed_mucs = set()
@@ -478,7 +480,9 @@ class TestOnRetraction:
         router.get_mapping_for_xmpp.return_value = mapping
         return router
 
-    def test_retraction_publishes_message_delete(self):
+    @patch("bridge.config.cfg")
+    def test_retraction_publishes_message_delete(self, mock_cfg):
+        mock_cfg.xmpp_promote_retraction_to_moderation = False  # Avoid create_task in sync test
         router = self._make_router()
         bus = MagicMock()
         comp = make_component(router=router, bus=bus)
