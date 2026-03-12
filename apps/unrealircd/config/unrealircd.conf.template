@@ -526,21 +526,15 @@ listen {
 	}
 }
 
-/* WebSocket port — TLS terminated at NPM; UnrealIRCd receives plaintext WebSocket */
+/* WebSocket port — dev: TLS direct (wss://); prod: TLS terminated at NPM, plain */
 listen {
 	ip *;
 	port 8000;
 	options {
-		/* tls; */ /* Disabled: SSL is terminated at NPM */
+		${IRC_WEBSOCKET_OPTIONS_LINE}
 		websocket { type text; }
 	}
-	/* tls-options {
-		certificate "/home/unrealircd/unrealircd/certs/live/${IRC_DOMAIN}/fullchain.pem";
-		key "/home/unrealircd/unrealircd/certs/live/${IRC_DOMAIN}/privkey.pem";
-		options {
-			no-client-certificate;
-		}
-	} */
+	${IRC_WEBSOCKET_TLS_OPTIONS}
 }
 
 set {

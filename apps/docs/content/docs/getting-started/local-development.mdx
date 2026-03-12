@@ -111,7 +111,14 @@ After `just dev` completes, verify each service is running:
    # Expected: 200
    ```
 
-5. Test WebPanel (port 8080):
+5. Test ObsidianIRC (port 8090):
+
+   ```bash
+   curl -s -o /dev/null -w "%{http_code}" http://localhost:8090
+   # Expected: 200
+   ```
+
+6. Test WebPanel (port 8080):
 
    ```bash
    curl -s -o /dev/null -w "%{http_code}" http://localhost:8080
@@ -173,6 +180,15 @@ The Lounge runs in private mode. You need to create a user before you can log in
 ```bash
 just lounge add <username>
 ```
+
+### ObsidianIRC: "Firefox can't establish a connection" to wss://127.0.0.1:8000
+
+In dev, ObsidianIRC connects to the IRC WebSocket over TLS with a self-signed certificate. Firefox blocks WebSocket connections to untrusted certs without prompting. Add a certificate exception first:
+
+1. Open a new tab and go to `https://127.0.0.1:8000/`
+2. When Firefox shows "Connection Not Secure", click **Advanced**
+3. Click **Accept the Risk and Continue**
+4. Reload ObsidianIRC at `http://localhost:8090` and connect again
 
 ## Related pages
 

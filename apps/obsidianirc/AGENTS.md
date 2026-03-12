@@ -50,6 +50,10 @@ Baked into the image at build time:
 
 Defined in `infra/compose/obsidianirc.yaml`. Depends on `atl-irc-server` (UnrealIRCd).
 
+## Dev: Self-signed cert (Firefox)
+
+In dev, the WebSocket uses `wss://127.0.0.1:8000` with a self-signed cert. Firefox blocks WebSocket connections to untrusted certs without prompting. Add an exception first: visit `https://127.0.0.1:8000/` → Advanced → Accept the Risk and Continue. Then ObsidianIRC will connect.
+
 ## Related
 
 - [infra/compose/obsidianirc.yaml](../../infra/compose/obsidianirc.yaml)

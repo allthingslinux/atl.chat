@@ -170,6 +170,10 @@ sudo ufw status 2>/dev/null || sudo iptables -L -n 2>/dev/null | head -20
 
 Resolution: to allow external connections, set `ATL_CHAT_IP=0.0.0.0` in `.env` and restart. Ensure your firewall allows the relevant ports.
 
+#### 6. ObsidianIRC / Firefox: "Can't establish connection" to wss://127.0.0.1:8000
+
+In dev, ObsidianIRC connects to the IRC WebSocket over TLS with a self-signed certificate. Firefox blocks WebSocket connections to untrusted certs without prompting. Add a certificate exception first: visit `https://127.0.0.1:8000/` → Advanced → Accept the Risk and Continue, then reload ObsidianIRC at `http://localhost:8090`.
+
 ## Atheme (IRC services)
 
 Container: `atl-irc-services` · Shares network with `atl-irc-server` (port 8081 for HTTP API)

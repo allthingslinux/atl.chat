@@ -91,6 +91,21 @@ prepare_config() {
   export IRC_SSL_CERT_PATH="${IRC_SSL_CERT_PATH:-/home/unrealircd/unrealircd/certs/live/${IRC_DOMAIN:-irc.localhost}/fullchain.pem}"
   export IRC_SSL_KEY_PATH="${IRC_SSL_KEY_PATH:-/home/unrealircd/unrealircd/certs/live/${IRC_DOMAIN:-irc.localhost}/privkey.pem}"
 
+  # WebSocket TLS: dev uses direct wss:// (TLS on port 8000); prod uses NPM termination (plain)
+  if [ "${ATL_ENVIRONMENT:-}" = "dev" ]; then
+    export IRC_WEBSOCKET_OPTIONS_LINE="tls;"
+    export IRC_WEBSOCKET_TLS_OPTIONS="tls-options {
+		certificate \"/home/unrealircd/unrealircd/certs/live/${IRC_DOMAIN:-irc.localhost}/fullchain.pem\";
+		key \"/home/unrealircd/unrealircd/certs/live/${IRC_DOMAIN:-irc.localhost}/privkey.pem\";
+		options {
+			no-client-certificate;
+		}
+	}"
+  else
+    export IRC_WEBSOCKET_OPTIONS_LINE="/* tls; */ /* Disabled: SSL is terminated at NPM */"
+    export IRC_WEBSOCKET_TLS_OPTIONS="/* tls-options disabled for NPM */"
+  fi
+
   # Cloak keys (fallback to example keys for dev if unset - regenerate for production)
   export IRC_CLOAK_KEY_1="${IRC_CLOAK_KEY_1:-daa0ad2a69ba7683a2cdb02499f2e98b0729423bb7578d1f1dfbcdfe015f1f8b554b13203289c83D}"
   export IRC_CLOAK_KEY_2="${IRC_CLOAK_KEY_2:-899874eda706ee805bd34792bfd7bd62711f1938dea920c8bdf8396fe136ab6a83785a3ce54eB298}"
@@ -180,7 +195,7 @@ prepare_config() {
     log_info "Preparing bridge configuration from template..."
     local temp_file="/tmp/bridge-config.yaml.tmp"
     envsubst < "$bridge_template" > "$temp_file"
-    if cp "$temp_file" "$bridge_config" 2>/dev/null || sudo cp "$temp_file" "$bridge_config" 2>/dev/null; then
+    if cp "$temp_file" "$bridge_config" 2> /dev/null || sudo cp "$temp_file" "$bridge_config" 2> /dev/null; then
       log_success "Bridge configuration prepared"
     else
       log_warning "Could not write bridge config to $bridge_config"
@@ -189,7 +204,7 @@ prepare_config() {
   elif [ ! -f "$bridge_config" ]; then
     log_warning "Bridge config not found. Copy apps/bridge/config.example.yaml to apps/bridge/config.yaml and customize."
     if [ -f "$PROJECT_ROOT/apps/bridge/config.example.yaml" ]; then
-      cp "$PROJECT_ROOT/apps/bridge/config.example.yaml" "$bridge_config" 2>/dev/null || true
+      cp "$PROJECT_ROOT/apps/bridge/config.example.yaml" "$bridge_config" 2> /dev/null || true
       log_info "Copied config.example.yaml to apps/bridge/config.yaml - edit with your Discord channel ID"
     fi
   fi
@@ -202,7 +217,7 @@ prepare_config() {
     mkdir -p "$(dirname "$lounge_config")"
     local temp_file="/tmp/thelounge-config.js.tmp"
     envsubst < "$lounge_template" > "$temp_file"
-    if cp "$temp_file" "$lounge_config" 2>/dev/null || sudo cp "$temp_file" "$lounge_config" 2>/dev/null; then
+    if cp "$temp_file" "$lounge_config" 2> /dev/null || sudo cp "$temp_file" "$lounge_config" 2> /dev/null; then
       log_success "The Lounge configuration prepared"
     else
       log_warning "Could not write The Lounge config to $lounge_config"

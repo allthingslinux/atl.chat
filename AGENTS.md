@@ -132,6 +132,7 @@ Docker daemon must be started manually: `sudo dockerd &>/tmp/dockerd.log &`. For
 
 ### Gotchas
 
+- **ObsidianIRC + Firefox (dev):** The WebSocket at `wss://127.0.0.1:8000` uses a self-signed cert. Firefox blocks it without prompting. Visit `https://127.0.0.1:8000/` first, accept the cert exception, then reload ObsidianIRC.
 - **`CLOUDFLARE_DNS_API_TOKEN` warning**: Docker Compose emits a warning about this unset variable — safe to ignore in dev (cert-manager is not needed locally).
 - **`pnpm install` build scripts warning**: esbuild/sharp/workerd build scripts are blocked by default. They have fallback binaries and the warning is non-blocking.
 - **`apps/web` lint (`ultracite check`)**: Currently fails due to biome config expecting a `.gitignore` in `apps/web/`. This is a pre-existing issue. `pnpm run build` (Next.js build) works fine.
