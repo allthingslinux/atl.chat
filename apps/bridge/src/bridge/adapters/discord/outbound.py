@@ -19,13 +19,20 @@ if TYPE_CHECKING:
     from bridge.identity import IdentityResolver
 
 
-async def handle_delete_out(bot: commands.Bot | None, evt: MessageDeleteOut) -> None:
+async def handle_delete_out(
+    bot: commands.Bot | None,
+    evt: MessageDeleteOut,
+    recently_deleted: dict[str, None] | None = None,
+) -> None:
     """Delete Discord message when IRC REDACT or XMPP retraction received."""
     if not bot:
         return
     channel = bot.get_channel(int(evt.channel_id))
     if not channel or not isinstance(channel, TextChannel):
         return
+    key = f"{evt.channel_id}:{evt.message_id}"
+    if recently_deleted is not None:
+        recently_deleted[key] = None  # Mark before delete so on_raw_message_delete can skip
     try:
         msg = await channel.fetch_message(int(evt.message_id))
         await msg.delete()
