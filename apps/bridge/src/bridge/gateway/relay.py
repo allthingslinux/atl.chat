@@ -304,6 +304,8 @@ class Relay:
         logger.info("Relay: delete {} -> all targets message_id={}", evt.origin, evt.message_id)
 
         def emit(target: str) -> object:
+            if target == "xmpp" and evt.raw.get("skip_xmpp"):
+                return None  # XMPP-origin retraction already sent; avoid duplicate notice
             logger.debug("Relay: emitting MessageDeleteOut target={} message_id={}", target, evt.message_id)
             _, out_evt = message_delete_out(
                 target_origin=target,
