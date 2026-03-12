@@ -34,7 +34,7 @@ def _avatar_url_ok_for_discord(url: str | None) -> bool:
 
 
 def _reply_button_view(author: str, content: str | None, url: str) -> View:
-    """Build Unifier/lightning style link button: ↪️ Author · content (truncated).
+    """Build Unifier/lightning style link button: Author · content (truncated).
 
     This creates a clickable button below the webhook message that links back
     to the original message being replied to. It's the Discord equivalent of
@@ -46,7 +46,7 @@ def _reply_button_view(author: str, content: str | None, url: str) -> View:
     if len(label) > REPLY_BUTTON_MAX_LABEL:
         label = label[: REPLY_BUTTON_MAX_LABEL - 3] + "..."
     view = View()
-    view.add_item(Button(style=ButtonStyle.link, label=f"↪️ {label}", url=url))
+    view.add_item(Button(style=ButtonStyle.link, label=label, url=url))
     return view
 
 
