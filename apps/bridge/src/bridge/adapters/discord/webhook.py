@@ -27,9 +27,11 @@ def _ensure_valid_username(name: str) -> str:
 
 
 def _avatar_url_ok_for_discord(url: str | None) -> bool:
-    """True if avatar URL is publicly fetchable by Discord (not internal)."""
+    """True if avatar URL is publicly fetchable by Discord (not internal or data:)."""
     if not url:
         return False
+    if url.strip().lower().startswith("data:"):
+        return False  # Discord cannot fetch data: URLs
     return not any(h in url.lower() for h in _AVATAR_INTERNAL_HOSTS)
 
 
