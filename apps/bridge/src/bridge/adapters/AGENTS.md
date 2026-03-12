@@ -71,7 +71,7 @@ Env: `BRIDGE_IRC_NICK` (default: `bridge`).
 - `on_disconnect` — reconnects with exponential backoff via `_connect_with_backoff`.
 - Outbound queue consumed by `_consume_outbound`; uses `TokenBucket` for flood control.
 - **RELAYMSG**: When server advertises `draft/relaymsg` or `overdrivenetworks.com/relaymsg`, main-connection sends use `RELAYMSG #channel nick/d :message`. Echo detection: skip messages with matching relaymsg tag.
-- Typing: `TAGMSG` with `typing=active`, throttled to once per 3 seconds.
+- Typing: `TAGMSG` with `+typing=active`, throttled to once per 3 seconds.
 - Reactions: add via `TAGMSG` with `+draft/reply` + `+draft/react`; remove via `+draft/unreact`.
 - Deletes: `REDACT` command with original IRC msgid.
 
