@@ -49,5 +49,9 @@ irc_use_sasl: false
 irc_sasl_user: ''
 irc_sasl_password: ''
 
+# XMPP: when receiving XEP-0424 user retraction, also send XEP-0425 moderation
+# so Dino (and similar clients) delete locally. Requires bridge component JID to be MUC moderator.
+xmpp_promote_retraction_to_moderation: true
+
 # Message content filtering (regex list; matching messages are not bridged)
 # content_filter_regex: ["spam", "\\bblocked\\b"]
