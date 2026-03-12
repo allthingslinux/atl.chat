@@ -75,3 +75,20 @@ class IdentityResolver(ABC):
     async def has_xmpp(self, discord_id: str) -> bool:
         """Return ``True`` if the Discord user has a linked XMPP identity."""
         ...
+
+    # -- Avatar (Portal user.image) -------------------------------------------
+
+    @abstractmethod
+    async def avatar_for_discord(self, discord_id: str) -> str | None:
+        """Return avatar URL for Discord user (from Portal), or ``None``."""
+        ...
+
+    @abstractmethod
+    async def avatar_for_irc(self, nick: str, server: str | None = None) -> str | None:
+        """Return avatar URL for IRC nick (from Portal), or ``None``."""
+        ...
+
+    @abstractmethod
+    async def avatar_for_xmpp(self, jid: str) -> str | None:
+        """Return avatar URL for XMPP JID (from Portal), or ``None``."""
+        ...
