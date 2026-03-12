@@ -216,16 +216,27 @@ class TestHandleDeleteOut:
         comp.send_retraction_as_bridge.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_sends_retraction_from_bridge(self):
-        """Retractions are sent from the bridge listener JID, not a puppet."""
+    async def test_sends_retraction_as_user_when_author_known(self):
+        """When author_id present, send retraction as user puppet (Fluux compatibility)."""
         adapter, _, router = _make_adapter(identity_nick="xmpp_nick")
         comp = _mock_component()
         adapter._component = comp
         router.get_mapping_for_discord.return_value = _xmpp_mapping()
         evt = MessageDeleteOut(target_origin="xmpp", channel_id="111", message_id="m1", author_id="u1")
         await adapter._handle_delete_out(evt)
+        comp.send_retraction_as_user.assert_awaited_once_with("u1", "room@conf.example.com", "xmpp-msg-1", "xmpp_nick")
+        comp.send_retraction_as_bridge.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_sends_retraction_from_bridge_when_no_author(self):
+        """When author unknown (e.g. uncached Discord delete), use bridge JID."""
+        adapter, _, router = _make_adapter(identity_nick="xmpp_nick")
+        comp = _mock_component()
+        adapter._component = comp
+        router.get_mapping_for_discord.return_value = _xmpp_mapping()
+        evt = MessageDeleteOut(target_origin="xmpp", channel_id="111", message_id="m1")
+        await adapter._handle_delete_out(evt)
         comp.send_retraction_as_bridge.assert_awaited_once_with("room@conf.example.com", "xmpp-msg-1")
-        # Must NOT use puppet-based retraction
         comp.send_retraction_as_user.assert_not_called()
 
 
@@ -558,7 +569,7 @@ class TestOutboundConsumer:
         evt = MessageDeleteOut(target_origin="xmpp", channel_id="111", message_id="m1", author_id="u1")
         await _run_consumer_once(adapter, evt)
 
-        comp.send_retraction_as_bridge.assert_awaited_once()
+        comp.send_retraction_as_user.assert_awaited_once_with("u1", "room@conf.example.com", "xmpp-msg-1", "xmpp_nick")
 
     @pytest.mark.asyncio
     async def test_reaction_out_dispatched_to_handle_reaction(self):
@@ -724,8 +735,8 @@ class TestEdgeCases:
     # --- XMPPAdapter: no identity resolver ---
 
     @pytest.mark.asyncio
-    async def test_handle_delete_out_no_identity_uses_bridge(self):
-        """Without identity resolver (dev mode), delete still uses bridge listener."""
+    async def test_handle_delete_out_no_identity_uses_author_fallback(self):
+        """Without identity resolver, use author_id/author_display as nick for retraction."""
         bus = MagicMock(spec=Bus)
         router = MagicMock(spec=ChannelRouter)
         adapter = XMPPAdapter(bus, router, identity_resolver=None)
@@ -734,7 +745,8 @@ class TestEdgeCases:
         router.get_mapping_for_discord.return_value = _xmpp_mapping()
         evt = MessageDeleteOut(target_origin="xmpp", channel_id="111", message_id="m1", author_id="u1")
         await adapter._handle_delete_out(evt)
-        comp.send_retraction_as_bridge.assert_awaited_once_with("room@conf.example.com", "xmpp-msg-1")
+        comp.send_retraction_as_user.assert_awaited_once_with("u1", "room@conf.example.com", "xmpp-msg-1", "u1")
+        comp.send_retraction_as_bridge.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_handle_reaction_out_no_identity_uses_fallback_nick(self):
