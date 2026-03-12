@@ -328,9 +328,9 @@ class XMPPAdapter(AdapterBase):
     async def _handle_delete_out(self, evt: MessageDeleteOut) -> None:
         """Send XMPP retraction for deleted message.
 
-        Sends retraction with stanza-id (XEP-0424 §5.1, Gajim) and, when different,
-        with origin-id so clients that match on origin-id (e.g. Converse.js) also
-        remove the message. Each id is sent at most once.
+        When author_id or author_display is available, sends retraction as the user's
+        puppet so clients like Fluux (which match sender to original author) apply it.
+        Otherwise falls back to bridge JID (e.g. uncached Discord deletes).
         """
         if not self._component:
             return
@@ -338,21 +338,24 @@ class XMPPAdapter(AdapterBase):
         if not mapping or not mapping.xmpp:
             return
         tracker = self._component._msgid_tracker
-        # Prefer stanza-id (XEP-0424 §5.1 for MUC); fall back to origin-id.
-        # Only send ONE retraction — sending both causes duplicate "unsupported
-        # retraction" fallback messages on clients like Dino that lack XEP-0424.
         target_xmpp_id = tracker.get_xmpp_id_for_reaction(evt.message_id)
         if not target_xmpp_id:
             target_xmpp_id = tracker.get_xmpp_id(evt.message_id)
         if not target_xmpp_id:
             logger.debug("No XMPP msgid for Discord message {}; skip retraction", evt.message_id)
             return
-        # Send retraction from the bridge listener JID — it's already in the MUC,
-        # so no puppet join is needed (avoids nick conflicts like "admin_bridge").
-        await self._component.send_retraction_as_bridge(
-            mapping.xmpp.muc_jid,
-            target_xmpp_id,
-        )
+
+        muc_jid = mapping.xmpp.muc_jid
+        if evt.author_id or evt.author_display:
+            nick = await self._resolve_nick_async(evt)
+            await self._component.send_retraction_as_user(
+                evt.author_id or "unknown",
+                muc_jid,
+                target_xmpp_id,
+                nick,
+            )
+        else:
+            await self._component.send_retraction_as_bridge(muc_jid, target_xmpp_id)
 
     async def _handle_reaction_out(self, evt: ReactionOut) -> None:
         """Send XMPP reaction for ReactionOut."""
