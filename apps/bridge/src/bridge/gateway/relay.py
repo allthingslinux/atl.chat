@@ -230,6 +230,8 @@ class Relay:
                 "origin": evt.origin,
                 "xmpp_id_aliases": evt.raw.get("xmpp_id_aliases", []),
             }
+            if evt.origin == "xmpp" and evt.raw.get("real_jid"):
+                out_raw["real_jid"] = evt.raw["real_jid"]
             # Pass through media dimensions for XEP-0446 file metadata
             if evt.raw.get("media_width"):
                 out_raw["media_width"] = evt.raw["media_width"]
