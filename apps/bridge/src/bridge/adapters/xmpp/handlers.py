@@ -277,11 +277,8 @@ def on_groupchat_message(comp: XMPPComponent, msg: Any) -> None:
     real_jid: str | None = None
     muc = _get_muc_plugin(comp)
     if muc and nick:
-        real_jid = muc.get_jid_property(room_jid, nick, "jid")
-        if real_jid:
-            real_jid = str(real_jid)
-        else:
-            real_jid = _muc_nick_to_bare_jid(nick, room_jid)
+        jid_prop = muc.get_jid_property(room_jid, nick, "jid")
+        real_jid = str(jid_prop) if jid_prop else _muc_nick_to_bare_jid(nick, room_jid)
         if real_jid:
             raw_data["real_jid"] = real_jid
             room_domain = JID(room_jid).domain
