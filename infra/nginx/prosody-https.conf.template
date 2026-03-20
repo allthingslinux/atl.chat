@@ -34,7 +34,7 @@ server {
         proxy_buffering off;
     }
 
-    # BOSH, WebSocket, Converse.js, status, etc.
+    # BOSH, WebSocket, status, etc.
     location / {
         proxy_pass http://atl-xmpp-server:5280;
         proxy_http_version 1.1;
