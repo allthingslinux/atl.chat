@@ -51,6 +51,35 @@ def _escape_jid_node(node: str) -> str:
     return "".join(_JID_ESCAPE_MAP.get(c, c) for c in node)
 
 
+def _unescape_jid_node(node: str) -> str:
+    """Unescape a JID node per XEP-0106 inverse (\\XX -> char)."""
+    return re.sub(r"\\([0-9a-fA-F]{2})", lambda m: chr(int(m.group(1), 16)), node)
+
+
+def _muc_nick_to_bare_jid(nick: str, room_jid: str) -> str | None:
+    """Derive bare JID from MUC nick for Portal identity lookups.
+
+    When the nick is an escaped JID (e.g. kaizen\\40xmpp.localhost), unescape to kaizen@xmpp.localhost.
+    When the nick is plain (e.g. kaizen), derive domain from room: muc.xmpp.localhost -> xmpp.localhost.
+    Returns None if the result would be invalid.
+    """
+    if not nick:
+        return None
+    if "\\40" in nick or "\\2f" in nick or "\\3a" in nick:
+        # Escaped JID form (contains @, /, or :) — unescape to get bare JID
+        unescaped = _unescape_jid_node(nick)
+        if "@" in unescaped and "/" not in unescaped:
+            return unescaped
+    # Plain nick — derive domain from MUC room (muc.xmpp.localhost -> xmpp.localhost)
+    try:
+        domain = str(JID(room_jid).domain)
+        if domain.startswith("muc."):
+            domain = domain[4:]
+        return f"{nick}@{domain}"
+    except Exception:
+        return None
+
+
 # ---------------------------------------------------------------------------
 # Shared constants used by submodules
 # ---------------------------------------------------------------------------
