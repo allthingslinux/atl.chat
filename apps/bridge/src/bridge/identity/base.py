@@ -92,3 +92,20 @@ class IdentityResolver(ABC):
     async def avatar_for_xmpp(self, jid: str) -> str | None:
         """Return avatar URL for XMPP JID (from Portal), or ``None``."""
         ...
+
+    # -- Canonical display username ----------------------------------------
+
+    @abstractmethod
+    async def username_for_discord(self, discord_id: str) -> str | None:
+        """Return canonical Portal username for Discord user, or ``None``."""
+        ...
+
+    @abstractmethod
+    async def username_for_irc(self, nick: str, server: str | None = None) -> str | None:
+        """Return canonical Portal username for IRC nick, or ``None``."""
+        ...
+
+    @abstractmethod
+    async def username_for_xmpp(self, jid: str) -> str | None:
+        """Return canonical Portal username for XMPP JID, or ``None``."""
+        ...
