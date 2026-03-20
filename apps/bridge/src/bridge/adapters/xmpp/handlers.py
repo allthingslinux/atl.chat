@@ -13,7 +13,11 @@ from typing import TYPE_CHECKING, Any
 from loguru import logger
 from slixmpp import JID
 
-from bridge.adapters.xmpp.component import SID_NS, _capture_stanza_id_from_echo
+from bridge.adapters.xmpp.component import (
+    SID_NS,
+    _capture_stanza_id_from_echo,
+    _muc_nick_to_bare_jid,
+)
 from bridge.events import message_in
 
 if TYPE_CHECKING:
@@ -276,17 +280,23 @@ def on_groupchat_message(comp: XMPPComponent, msg: Any) -> None:
         real_jid = muc.get_jid_property(room_jid, nick, "jid")
         if real_jid:
             real_jid = str(real_jid)
+        else:
+            real_jid = _muc_nick_to_bare_jid(nick, room_jid)
+        if real_jid:
             raw_data["real_jid"] = real_jid
             room_domain = JID(room_jid).domain
             base_domain = room_domain[4:] if room_domain.startswith("muc.") else room_domain
             node = JID(real_jid).local
             avatar_url = comp._resolve_avatar_url(base_domain, node)
 
+    # Use localpart as author_display when nick is escaped JID (kaizen\40xmpp.localhost -> kaizen)
+    author_display = nick.split("\\40")[0] if "\\40" in nick else nick
+
     _, evt = message_in(
         origin="xmpp",
         channel_id=room_jid,
         author_id=nick,
-        author_display=nick,
+        author_display=author_display,
         content=body,
         message_id=xmpp_msg_id,
         reply_to_id=reply_to_id,
