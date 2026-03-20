@@ -46,7 +46,9 @@ prepare_config() {
     exit 1
   fi
 
-  # Load .env (base), then .env.dev (overrides) only if in dev
+  local init_mode="${ATL_INIT_MODE:-dev}"
+
+  # Load .env (base) then mode overlay.
   if [ -f "$PROJECT_ROOT/.env" ]; then
     log_info "Loading environment variables from .env"
     set -a
@@ -54,13 +56,11 @@ prepare_config() {
     source "$PROJECT_ROOT/.env"
     set +a
   fi
-  # Only load .env.dev if it exists AND ATL_ENVIRONMENT is dev.
-  # This prevents dev overrides from leaking into production config generation.
-  if [ -f "$PROJECT_ROOT/.env.dev" ] && [ "${ATL_ENVIRONMENT:-}" = "dev" ]; then
-    log_info "Loading .env.dev overrides (ATL_ENVIRONMENT=dev)"
+  if [ -f "$PROJECT_ROOT/.env.$init_mode" ]; then
+    log_info "Loading .env.$init_mode overrides"
     set -a
-    # shellcheck disable=SC1091
-    source "$PROJECT_ROOT/.env.dev"
+    # shellcheck disable=SC1090
+    source "$PROJECT_ROOT/.env.$init_mode"
     set +a
   fi
   log_info "Environment variables loaded"
@@ -72,17 +72,19 @@ prepare_config() {
   # The Lounge: WebIRC password (must match UnrealIRCd proxy block); TLS verify; janitor retention
   export THELOUNGE_WEBIRC_PASSWORD="${THELOUNGE_WEBIRC_PASSWORD:-change_me_thelounge_webirc}"
   export THELOUNGE_DELETE_UPLOADS_AFTER_MINUTES="${THELOUNGE_DELETE_UPLOADS_AFTER_MINUTES:-1440}"
-  IRC_LOUNGE_REJECT_UNAUTHORIZED="$([ "${ATL_ENVIRONMENT:-}" = "dev" ] && echo "false" || echo "true")"
-  export IRC_LOUNGE_REJECT_UNAUTHORIZED
+  export IRC_LOUNGE_REJECT_UNAUTHORIZED="${IRC_LOUNGE_REJECT_UNAUTHORIZED:-false}"
 
   # Bridge: IRC server hostname inside Docker network; Prosody domain for MUC JID
   export IRC_BRIDGE_SERVER="${IRC_BRIDGE_SERVER:-atl-irc-server}"
   export BRIDGE_IRC_OPER_PASSWORD="${BRIDGE_IRC_OPER_PASSWORD:-change_me_bridge_oper}"
   export PROSODY_DOMAIN="${PROSODY_DOMAIN:-${XMPP_DOMAIN:-xmpp.localhost}}"
+  # UnrealIRCd services link/ulines target; defaults to Atheme server name.
+  # Prevents blank `link {}` / `ulines { ; }` output when IRC_SERVICES_SERVER is omitted.
+  export IRC_SERVICES_SERVER="${IRC_SERVICES_SERVER:-${ATHEME_SERVER_NAME:-services.${IRC_ROOT_DOMAIN:-atl.chat}}}"
   # Discord channel ID for bridge mappings (set in .env to survive prepare-config runs)
   export BRIDGE_DISCORD_CHANNEL_ID="${BRIDGE_DISCORD_CHANNEL_ID:-REPLACE_WITH_DISCORD_CHANNEL_ID}"
-  # IRC TLS verify: false for dev (self-signed certs), true for prod
-  export IRC_TLS_VERIFY="${BRIDGE_IRC_TLS_VERIFY:-${IRC_TLS_VERIFY:-$([ "${ATL_ENVIRONMENT:-}" = "dev" ] && echo "false" || echo "true")}}"
+  # IRC TLS verification is explicit and can be overridden by bridge-specific var.
+  export IRC_TLS_VERIFY="${BRIDGE_IRC_TLS_VERIFY:-${IRC_TLS_VERIFY:-false}}"
   # XMPP avatar: bridge needs internal URL to HEAD-check (Docker cannot reach xmpp.localhost)
   export XMPP_AVATAR_BASE_URL="${XMPP_AVATAR_BASE_URL:-}"
   # XMPP avatar: public URL that Discord can fetch (e.g. https://xmpp.atl.chat)
@@ -91,8 +93,8 @@ prepare_config() {
   export IRC_SSL_CERT_PATH="${IRC_SSL_CERT_PATH:-/home/unrealircd/unrealircd/certs/live/${IRC_DOMAIN:-irc.localhost}/fullchain.pem}"
   export IRC_SSL_KEY_PATH="${IRC_SSL_KEY_PATH:-/home/unrealircd/unrealircd/certs/live/${IRC_DOMAIN:-irc.localhost}/privkey.pem}"
 
-  # WebSocket TLS: dev uses direct wss:// (TLS on port 8000); prod uses NPM termination (plain)
-  if [ "${ATL_ENVIRONMENT:-}" = "dev" ]; then
+  # WebSocket TLS is explicit per environment via IRC_WEBSOCKET_USE_TLS.
+  if [ "${IRC_WEBSOCKET_USE_TLS:-true}" = "true" ]; then
     export IRC_WEBSOCKET_OPTIONS_LINE="tls;"
     export IRC_WEBSOCKET_TLS_OPTIONS="tls-options {
 		certificate \"/home/unrealircd/unrealircd/certs/live/${IRC_DOMAIN:-irc.localhost}/fullchain.pem\";
@@ -104,6 +106,34 @@ prepare_config() {
   else
     export IRC_WEBSOCKET_OPTIONS_LINE="/* tls; */ /* Disabled: SSL is terminated at NPM */"
     export IRC_WEBSOCKET_TLS_OPTIONS="/* tls-options disabled for NPM */"
+  fi
+
+  # GeoIP classic downloads remote DB files at startup. In local/dev this often
+  # times out or fails in restricted egress environments, so disable by default.
+  local geoip_classic_enabled="${IRC_ENABLE_GEOIP_CLASSIC:-}"
+  if [ -z "$geoip_classic_enabled" ]; then
+    if [ "$init_mode" = "dev" ]; then
+      geoip_classic_enabled="false"
+    else
+      geoip_classic_enabled="true"
+    fi
+  fi
+
+  if [ "$geoip_classic_enabled" = "true" ]; then
+    export IRC_GEOIP_CLASSIC_MODULE_LINE='loadmodule "geoip_classic";'
+    export IRC_GEOIP_CLASSIC_BLOCK='@if module-loaded("geoip_classic")
+set {
+	geoip-classic {
+		ipv4-database "https://www.unrealircd.org/files/geo/classic/GeoIP.dat" { url-refresh 14d; url-fail warn; }
+		ipv6-database "https://www.unrealircd.org/files/geo/classic/GeoIPv6.dat" { url-refresh 14d; url-fail warn; }
+		asn-ipv4-database "https://www.unrealircd.org/files/geo/classic/GeoIPASNum.dat" { url-refresh 14d; url-fail warn; }
+		asn-ipv6-database "https://www.unrealircd.org/files/geo/classic/GeoIPASNumv6.dat" { url-refresh 14d; url-fail warn; }
+	}
+}
+@endif'
+  else
+    export IRC_GEOIP_CLASSIC_MODULE_LINE='/* loadmodule "geoip_classic"; */ /* Disabled via IRC_ENABLE_GEOIP_CLASSIC */'
+    export IRC_GEOIP_CLASSIC_BLOCK='/* geoip_classic disabled: set IRC_ENABLE_GEOIP_CLASSIC=true to enable remote GeoIP DB downloads */'
   fi
 
   # Cloak keys (fallback to example keys for dev if unset - regenerate for production)
