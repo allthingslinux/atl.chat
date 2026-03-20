@@ -88,8 +88,8 @@ Full property reference (see root AGENTS.md for the table). Additional propertie
 
 | Variable | Purpose |
 |----------|---------|
-| `BRIDGE_PORTAL_BASE_URL` / `BRIDGE_PORTAL_URL` | Portal API base URL (identity resolution) |
-| `BRIDGE_PORTAL_TOKEN` / `BRIDGE_PORTAL_API_TOKEN` | Bearer token for Portal API |
+| `BRIDGE_PORTAL_BASE_URL` | Portal API base URL (identity resolution) |
+| `BRIDGE_PORTAL_TOKEN` | Bearer token for Portal API |
 | `BRIDGE_DISCORD_TOKEN` | Discord bot token |
 | `BRIDGE_IRC_NICK` | Main IRC connection nick (default: `bridge`) |
 | `BRIDGE_XMPP_COMPONENT_JID` | XMPP component JID |
