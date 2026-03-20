@@ -47,7 +47,7 @@ These variables are not in `.env.example` — they are computed by `prepare-conf
 
 | Variable | Description | Logic |
 |---|---|---|
-| `IRC_LOUNGE_REJECT_UNAUTHORIZED` | Whether The Lounge rejects self-signed TLS certificates from UnrealIRCd | `false` when `ATL_ENVIRONMENT=dev`, `true` otherwise |
+| `IRC_LOUNGE_REJECT_UNAUTHORIZED` | Whether The Lounge rejects self-signed TLS certificates from UnrealIRCd | Explicit via `.env` / `.env.dev` / `.env.prod` |
 
 In development, self-signed certificates are used for the IRC server, so TLS verification is disabled. In production, this defaults to `true` so that The Lounge only connects to UnrealIRCd if the TLS certificate is valid.
 
