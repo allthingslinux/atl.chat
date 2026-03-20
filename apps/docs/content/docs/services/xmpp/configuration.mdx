@@ -180,7 +180,7 @@ Key points about the VirtualHost:
 - `http_admin_api` is loaded only on the VirtualHost (not globally) so the REST API is scoped to this domain
 - `default_bookmarks` auto-joins new users to the `#general` MUC room
 - SSL certificates follow the Let's Encrypt directory layout (`certs/live/<domain>/`)
-- Converse.js BOSH/WebSocket URLs are dynamically derived from `PROSODY_HTTP_EXTERNAL_URL` when set
+- BOSH/WebSocket URLs are dynamically derived from `PROSODY_HTTP_EXTERNAL_URL` when set
 
 ## Component blocks
 
@@ -365,7 +365,7 @@ Prosody serves HTTP responses with hardened headers:
 | `X-Content-Type-Options` | `nosniff` |
 | `X-XSS-Protection` | `1; mode=block` |
 | `Referrer-Policy` | `strict-origin-when-cross-origin` |
-| `Content-Security-Policy` | Allows `self`, Converse.js CDN, and XMPP endpoints |
+| `Content-Security-Policy` | Allows `self` and XMPP endpoints (connect-src for BOSH/WebSocket) |
 
 ## Audit findings and recommendations
 
