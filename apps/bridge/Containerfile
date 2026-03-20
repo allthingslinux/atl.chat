@@ -26,6 +26,11 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1
 
+# Healthcheck relies on pgrep.
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends procps && \
+    rm -rf /var/lib/apt/lists/*
+
 # ============================================================================
 # STAGE 2: Build
 # ============================================================================
