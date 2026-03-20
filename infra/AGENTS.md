@@ -32,3 +32,4 @@ All services use `cap_drop: ALL` + `security_opt: no-new-privileges:true`. Servi
 ## Related
 
 - [Monorepo AGENTS.md](../AGENTS.md)
+- [apps/fluux-messenger/AGENTS.md](../apps/fluux-messenger/AGENTS.md)
