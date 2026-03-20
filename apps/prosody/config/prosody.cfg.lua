@@ -1,7 +1,7 @@
--- Plugin paths for community and custom modules
+-- Plugin paths: custom_plugins first so patched mod_http_admin_api (password create/update) overrides community
 plugin_paths = {
+    "/var/lib/prosody/custom_plugins",
     "/usr/local/lib/prosody/prosody-modules-enabled",
-    "/var/lib/prosody/custom_plugins"
 }
 
 plugin_server = "https://modules.prosody.im/rocks/"
@@ -104,7 +104,6 @@ modules_enabled = {
     "bosh",          -- BOSH (HTTP binding) for web clients (XEP-0124, XEP-0206)
     "websocket",     -- WebSocket connections for web clients (RFC 7395)
     "http_files",    -- Static file serving over HTTP
-    "conversejs",    -- Converse.js web client at /conversejs (auto-config from VirtualHost)
     "http_status",   -- HTTP status API for monitoring
     "http_logging",  -- Apache-style HTTP access logs for Prosody's built-in HTTP server (modules.prosody.im/mod_http_logging)
     -- "proxy65", -- Disabled here; provided via dedicated Component `proxy.atl.chat`
@@ -329,7 +328,7 @@ proxy65_interfaces = { "*" }
 -- HTTP server-level options and module configuration
 -- Docs: https://prosody.im/doc/http
 
--- External URL advertised to clients and components (Converse.js BOSH/WebSocket, etc.)
+-- External URL advertised to clients and components (BOSH/WebSocket, etc.)
 -- When behind reverse proxy, omit port. For direct dev access on :5280, set PROSODY_HTTP_EXTERNAL_URL.
 local __http_host = Lua.os.getenv("PROSODY_HTTP_HOST") or
     Lua.os.getenv("PROSODY_DOMAIN") or Lua.os.getenv("XMPP_DOMAIN") or "localhost"
@@ -364,9 +363,8 @@ http_headers = {
     ["X-Frame-Options"] = "DENY",
     ["X-Content-Type-Options"] = "nosniff",
     ["Referrer-Policy"] = "strict-origin-when-cross-origin",
-    -- Allow Converse.js CDN and XMPP endpoints for mod_conversejs
     ["Content-Security-Policy"] =
-    "default-src 'self'; script-src 'self' https://cdn.conversejs.org 'unsafe-inline'; style-src 'self' https://cdn.conversejs.org 'unsafe-inline'; img-src 'self' data: https://cdn.conversejs.org; connect-src 'self' https: wss:; frame-ancestors 'none'"
+        "default-src 'self'; connect-src 'self' https: wss:; frame-ancestors 'none'"
 }
 
 -- HTTP File Upload (XEP-0363)
@@ -395,7 +393,6 @@ http_paths = {
     pastebin = "/paste",
     bosh = "/http-bind",
     websocket = "/xmpp-websocket",
-    conversejs = "/conversejs",
     status = "/status"
 }
 
@@ -539,9 +536,9 @@ oauth2_require_code_challenge = true -- Enforce PKCE for security
 
 -- Dynamic client registration key (required; fail loudly if unset or still placeholder in prod)
 local __oauth2_key = Lua.os.getenv("PROSODY_OAUTH2_REGISTRATION_KEY")
-local __env = Lua.os.getenv("ATL_ENVIRONMENT") or
-    (Lua.os.getenv("XMPP_DOMAIN") == "xmpp.localhost" and "dev") or "prod"
-if not __oauth2_key or __oauth2_key == "" or (__env ~= "dev" and __oauth2_key:match("^change_me_")) then
+local __is_dev_domain = (Lua.os.getenv("XMPP_DOMAIN") == "xmpp.localhost")
+local __allow_placeholder_key = Lua.os.getenv("PROSODY_ALLOW_PLACEHOLDER_KEY") == "true"
+if not __oauth2_key or __oauth2_key == "" or (not __is_dev_domain and not __allow_placeholder_key and __oauth2_key:match("^change_me_")) then
     error("PROSODY_OAUTH2_REGISTRATION_KEY must be set to a secure value in .env")
 end
 oauth2_registration_key = __oauth2_key
@@ -604,16 +601,6 @@ allow_registration = Lua.os.getenv("PROSODY_ALLOW_REGISTRATION") == "true"
 VirtualHost(domain)
 http_host = __http_host
 
--- Converse.js: override BOSH/WebSocket URLs when PROSODY_HTTP_EXTERNAL_URL is set (direct :5280 dev access).
--- module:http_url() derives from request Host, which omits port and can be wrong (e.g. localhost vs xmpp.localhost).
-local __converse_base = Lua.os.getenv("PROSODY_HTTP_EXTERNAL_URL")
-if __converse_base and __converse_base ~= "" then
-    conversejs_options = {
-        bosh_service_url = (__converse_base:gsub("/$", "")) .. "/http-bind",
-        websocket_url = (__converse_base:gsub("/$", ""):gsub("^http", "ws")) .. "/xmpp-websocket",
-    }
-end
-
 ssl = {
     key = Lua.os.getenv("PROSODY_SSL_KEY") or
         ("certs/live/" .. domain .. "/privkey.pem"),
@@ -657,7 +644,7 @@ modules_enabled = {
     -- "muc_local_only",
     "pastebin", -- Intercept large MUC messages, replace with paste URL (modules.prosody.im/mod_pastebin)
     "muc_limits",      -- Rate-limit room events (joins, nicks, messages) to prevent floods (modules.prosody.im/mod_muc_limits)
-    "muc_moderation",  -- XEP-0425: Message moderation (delete/hide messages; requires moderator role; Converse.js, Gajim, Cheogram)
+    "muc_moderation",  -- XEP-0425: Message moderation (delete/hide messages; requires moderator role; Gajim, Cheogram, etc.)
     "muc_mam_hints",   -- XEP-0334: Respect store/no-permanent-store hints for MAM archiving (modules.prosody.im/mod_muc_mam_hints)
     "muc_mam_markers", -- XEP-0333: Archive chat markers (displayed/received) in MUC MAM per spec (modules.prosody.im/mod_muc_mam_markers)
     "muc_markers",     -- Rewrites message id to stanza-id for XEP-0333; helps XEP-0444 reactions match (modules.prosody.im/mod_muc_markers)
@@ -669,9 +656,8 @@ modules_enabled = {
     "muc_local_only",  -- Restrict MUC rooms to local users only; deny federated access (modules.prosody.im/mod_muc_local_only)
 }
 
--- mod_muc_webchat_url: advertise Converse.js deep-link in room disco#info
--- {node} is substituted with the room's local part (e.g. "general")
-muc_webchat_baseurl = "https://" .. __http_host .. "/conversejs#converse/room?jid={jid}"
+-- mod_muc_webchat_url: advertise web chat deep-link in room disco#info; {jid} is substituted with room JID
+muc_webchat_baseurl = Lua.os.getenv("XMPP_WEBCHAT_URL")
 
 -- mod_muc_local_only: restrict listed rooms to local users only (deny federated access)
 muc_local_only = { "general@muc." .. domain }
