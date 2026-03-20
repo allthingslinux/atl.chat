@@ -191,9 +191,10 @@ async def handle_message(client: IRCClient, target: str, source: str, message: s
         logger.debug("external message with msgid={} from {}", msgid, source)
 
     author_display = source
-    if getattr(client, "_identity", None):
+    identity = getattr(client, "_identity", None)
+    if identity:
         with contextlib.suppress(Exception):
-            canonical = await client._identity.username_for_irc(source, client._server)
+            canonical = await identity.username_for_irc(source, client._server)
             if canonical:
                 author_display = canonical
 
@@ -239,9 +240,10 @@ async def handle_ctcp_action(client: IRCClient, by: str, target: str, message: s
 
     content = f"* {by} {message}"
     author_display = by
-    if getattr(client, "_identity", None):
+    identity = getattr(client, "_identity", None)
+    if identity:
         with contextlib.suppress(Exception):
-            canonical = await client._identity.username_for_irc(by, client._server)
+            canonical = await identity.username_for_irc(by, client._server)
             if canonical:
                 author_display = canonical
     _, evt = message_in(
@@ -314,9 +316,10 @@ async def handle_tagmsg(client: IRCClient, message: object) -> None:
                 author_id=nick,
                 author_display=nick,
             )
-            if getattr(client, "_identity", None):
+            identity = getattr(client, "_identity", None)
+            if identity:
                 with contextlib.suppress(Exception):
-                    canonical = await client._identity.username_for_irc(nick, client._server)
+                    canonical = await identity.username_for_irc(nick, client._server)
                     if canonical:
                         evt.author_display = canonical
             logger.info("reaction bridged: channel={} author={} emoji={}", target, nick, react)
@@ -343,9 +346,10 @@ async def handle_tagmsg(client: IRCClient, message: object) -> None:
                 author_display=nick,
                 raw={"is_remove": True},
             )
-            if getattr(client, "_identity", None):
+            identity = getattr(client, "_identity", None)
+            if identity:
                 with contextlib.suppress(Exception):
-                    canonical = await client._identity.username_for_irc(nick, client._server)
+                    canonical = await identity.username_for_irc(nick, client._server)
                     if canonical:
                         evt.author_display = canonical
             logger.info("reaction removal bridged: channel={} author={} emoji={}", target, nick, unreact)
@@ -425,9 +429,10 @@ async def handle_redact(client: IRCClient, message: object) -> None:
         author_display=nick,
         raw=raw,
     )
-    if getattr(client, "_identity", None):
+    identity = getattr(client, "_identity", None)
+    if identity:
         with contextlib.suppress(Exception):
-            canonical = await client._identity.username_for_irc(nick, client._server)
+            canonical = await identity.username_for_irc(nick, client._server)
             if canonical:
                 evt.author_display = canonical
     logger.info("REDACT (message) bridged: channel={} msgid={}", target, irc_msgid)
