@@ -1,0 +1,25 @@
+services:
+  atl-irc-server:
+    env_file:
+      - path: ./.env.prod
+        required: false
+  atl-irc-webpanel:
+    env_file:
+      - path: ./.env.prod
+        required: false
+  atl-xmpp-server:
+    env_file:
+      - path: ./.env.prod
+        required: false
+  atl-bridge:
+    env_file:
+      - path: ./.env.prod
+        required: false
+  atl-thelounge:
+    env_file:
+      - path: ./.env.prod
+        required: false
+  atl-fluux-messenger:
+    env_file:
+      - path: ./.env.prod
+        required: false
