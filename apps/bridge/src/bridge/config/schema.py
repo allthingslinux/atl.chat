@@ -19,7 +19,6 @@ _ENV_OVERRIDE_KEYS = (
     "BRIDGE_IRC_REDACT_ENABLED",
     "BRIDGE_RELAYMSG_CLEAN_NICKS",
     "BRIDGE_IRC_TLS_VERIFY",
-    "ATL_ENVIRONMENT",
 )
 
 
@@ -134,8 +133,6 @@ def _build_irc_config(data: dict[str, Any], env: dict[str, str]) -> IRCConfig:
     parsed_tls = _parse_bool_env(env_tls)
     if parsed_tls is not None:
         kw["tls_verify"] = parsed_tls
-    elif env.get("ATL_ENVIRONMENT") == "dev":
-        kw["tls_verify"] = bool(data.get("irc_tls_verify", False))
     else:
         kw["tls_verify"] = bool(data.get("irc_tls_verify", True))
 
