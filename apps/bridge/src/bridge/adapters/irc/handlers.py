@@ -7,6 +7,7 @@ following the same pattern as the Discord and XMPP adapter handlers.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
@@ -189,11 +190,18 @@ async def handle_message(client: IRCClient, target: str, source: str, message: s
     if msgid:
         logger.debug("external message with msgid={} from {}", msgid, source)
 
+    author_display = source
+    if getattr(client, "_identity", None):
+        with contextlib.suppress(Exception):
+            canonical = await client._identity.username_for_irc(source, client._server)
+            if canonical:
+                author_display = canonical
+
     _, evt = message_in(
         origin="irc",
         channel_id=mapping.discord_channel_id,
         author_id=source,
-        author_display=source,
+        author_display=author_display,
         content=message,
         message_id=message_id,
         reply_to_id=discord_reply_to,
@@ -230,11 +238,17 @@ async def handle_ctcp_action(client: IRCClient, by: str, target: str, message: s
         return
 
     content = f"* {by} {message}"
+    author_display = by
+    if getattr(client, "_identity", None):
+        with contextlib.suppress(Exception):
+            canonical = await client._identity.username_for_irc(by, client._server)
+            if canonical:
+                author_display = canonical
     _, evt = message_in(
         origin="irc",
         channel_id=mapping.discord_channel_id,
         author_id=by,
-        author_display=by,
+        author_display=author_display,
         content=content,
         message_id=f"irc:{client._server}:{target}:{by}:{id(message)}",
         is_action=True,
@@ -300,6 +314,11 @@ async def handle_tagmsg(client: IRCClient, message: object) -> None:
                 author_id=nick,
                 author_display=nick,
             )
+            if getattr(client, "_identity", None):
+                with contextlib.suppress(Exception):
+                    canonical = await client._identity.username_for_irc(nick, client._server)
+                    if canonical:
+                        evt.author_display = canonical
             logger.info("reaction bridged: channel={} author={} emoji={}", target, nick, react)
             client._bus.publish("irc", evt)
     elif unreact and reply_to:
@@ -324,6 +343,11 @@ async def handle_tagmsg(client: IRCClient, message: object) -> None:
                 author_display=nick,
                 raw={"is_remove": True},
             )
+            if getattr(client, "_identity", None):
+                with contextlib.suppress(Exception):
+                    canonical = await client._identity.username_for_irc(nick, client._server)
+                    if canonical:
+                        evt.author_display = canonical
             logger.info("reaction removal bridged: channel={} author={} emoji={}", target, nick, unreact)
             client._bus.publish("irc", evt)
     elif typing_val == "active":
@@ -401,6 +425,11 @@ async def handle_redact(client: IRCClient, message: object) -> None:
         author_display=nick,
         raw=raw,
     )
+    if getattr(client, "_identity", None):
+        with contextlib.suppress(Exception):
+            canonical = await client._identity.username_for_irc(nick, client._server)
+            if canonical:
+                evt.author_display = canonical
     logger.info("REDACT (message) bridged: channel={} msgid={}", target, irc_msgid)
     client._bus.publish("irc", evt)
 
