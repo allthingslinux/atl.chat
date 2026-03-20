@@ -1,19 +1,20 @@
-"""Discord webhook utilities: get/create, send, edit, reply button (AUDIT §2.B)."""
+"""Discord webhook utilities: get/create, send, edit, reply subtext (OOYE-style)."""
 
 from __future__ import annotations
 
-from discord import AllowedMentions, ButtonStyle, File, TextChannel
+from discord import AllowedMentions, File, TextChannel
 from discord.ext import commands
-from discord.ui import Button, View
 from discord.webhook import Webhook
 from loguru import logger
+
+from bridge.adapters.discord.reply_emoji import get_reply_prefix
 
 # Webhook username: 2-32 chars (AUDIT §3)
 MIN_USERNAME_LEN = 2
 MAX_USERNAME_LEN = 32
 WEBHOOK_NAME = "ATL Bridge"
 DISCORD_WEBHOOKS_PER_CHANNEL = 10
-REPLY_BUTTON_MAX_LABEL = 77
+REPLY_CONTENT_MAX = 50
 _ALLOWED_MENTIONS = AllowedMentions(everyone=False, roles=False)
 _AVATAR_INTERNAL_HOSTS = ("atl-xmpp-server", "localhost", "127.0.0.1")
 
@@ -35,21 +36,41 @@ def _avatar_url_ok_for_discord(url: str | None) -> bool:
     return not any(h in url.lower() for h in _AVATAR_INTERNAL_HOSTS)
 
 
-def _reply_button_view(author: str, content: str | None, url: str) -> View:
-    """Build Unifier/lightning style link button: Author · content (truncated).
+def _build_reply_line(
+    reply_to_id: str,
+    channel_id: str,
+    guild_id: str | None,
+    author: str | None,
+    content: str | None,
+) -> str:
+    """Build an OOYE-style reply subtext line prepended above the message.
 
-    This creates a clickable button below the webhook message that links back
-    to the original message being replied to. It's the Discord equivalent of
-    IRC's "> quote | reply" pattern — since webhooks can't use Discord's native
-    reply feature, this button provides visual reply context.
+    Produces:  -# > <:L1:id><:L2:id> https://discord.com/channels/.../... **Author**: preview...
+    Falls back to ↪ if the application emojis haven't been uploaded yet.
+    Uses Discord's -# (subtext) syntax so it renders subtle, like native replies.
     """
-    content_clean = (content or "").replace("\n", " ").strip()
-    label = f"{author} · {content_clean}" if content_clean else author
-    if len(label) > REPLY_BUTTON_MAX_LABEL:
-        label = label[: REPLY_BUTTON_MAX_LABEL - 3] + "..."
-    view = View()
-    view.add_item(Button(style=ButtonStyle.link, label=label, url=url))
-    return view
+    prefix = get_reply_prefix()
+    if guild_id:
+        jump_url = f"https://discord.com/channels/{guild_id}/{channel_id}/{reply_to_id}"
+        link_part = f"{prefix} {jump_url}"
+    else:
+        link_part = prefix
+
+    author_part = f"**{author}**" if author else ""
+
+    if not content:
+        content_part = ""
+    else:
+        content_clean = content.replace("\n", " ").strip()
+        if content_clean:
+            preview = content_clean[:REPLY_CONTENT_MAX]
+            suffix = "..." if len(content_clean) > REPLY_CONTENT_MAX else ""
+            content_part = f": {preview}{suffix}"
+        else:
+            content_part = ""
+
+    inner = " ".join(p for p in [link_part, author_part] if p) + content_part
+    return f"-# > {inner}\n"
 
 
 async def get_or_create_webhook(
@@ -125,8 +146,22 @@ async def webhook_send(
     reply_content: str | None = None,
     file: File | None = None,
 ) -> int | None:
-    """Send message via webhook. Optional file attachment, Unifier/lightning style link button for replies."""
+    """Send message via webhook with optional file attachment.
+
+    When reply_to_id is set, prepends an OOYE-style -# > subtext line above
+    the message instead of a button, matching Discord's native reply appearance.
+    """
     send_avatar_url = avatar_url if _avatar_url_ok_for_discord(avatar_url) else None
+
+    if reply_to_id:
+        guild_id: str | None = None
+        if bot:
+            channel = bot.get_channel(int(channel_id))
+            if channel and isinstance(channel, TextChannel) and channel.guild:
+                guild_id = str(channel.guild.id)
+        reply_line = _build_reply_line(reply_to_id, channel_id, guild_id, reply_author, reply_content)
+        content = reply_line + (content or "")
+
     send_kw: dict = {
         "content": content[:2000] if content else None,
         "username": _ensure_valid_username(author_display),
@@ -136,12 +171,6 @@ async def webhook_send(
     }
     if file is not None:
         send_kw["file"] = file
-    if reply_to_id and bot:
-        channel = bot.get_channel(int(channel_id))
-        if channel and isinstance(channel, TextChannel) and channel.guild:
-            jump_url = f"https://discord.com/channels/{channel.guild.id}/{channel_id}/{reply_to_id}"
-            author = reply_author or "Unknown"
-            send_kw["view"] = _reply_button_view(author, reply_content, jump_url)
     msg = await webhook.send(**send_kw)
     return int(msg.id) if msg else None
 

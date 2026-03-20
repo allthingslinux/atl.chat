@@ -19,6 +19,7 @@ from bridge.adapters.discord import avatar as discord_avatar
 from bridge.adapters.discord import handlers as discord_handlers
 from bridge.adapters.discord import media as discord_media
 from bridge.adapters.discord import outbound as discord_outbound
+from bridge.adapters.discord import reply_emoji as discord_reply_emoji
 from bridge.adapters.discord import webhook as discord_webhook
 from bridge.events import (
     MessageDeleteOut,
@@ -248,6 +249,17 @@ class DiscordAdapter(AdapterBase):
             ref_msg = await channel.fetch_message(int(reply_to_id))
             author = ref_msg.author.display_name or getattr(ref_msg.author, "name", "Unknown")
             content = ref_msg.content or None
+            if not content and ref_msg.attachments:
+                # Media-only message: show a representative emoji as preview
+                ctype = (ref_msg.attachments[0].content_type or "").lower()
+                if ctype.startswith("image/"):
+                    content = "🖼️"
+                elif ctype.startswith("video/"):
+                    content = "🎞️"
+                elif ctype.startswith("audio/"):
+                    content = "🎶"
+                else:
+                    content = "📄"
             return (author, content)
         except Exception as exc:
             logger.debug("Could not fetch reply context for {}: {}", reply_to_id, exc)
@@ -445,6 +457,7 @@ class DiscordAdapter(AdapterBase):
         @bot.event
         async def on_ready() -> None:
             logger.info("bot ready: {}", bot.user)
+            await discord_reply_emoji.setup_reply_emojis(bot)
 
         @bot.event
         async def on_message(message: Message) -> None:
