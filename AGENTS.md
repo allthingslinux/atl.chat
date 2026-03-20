@@ -28,7 +28,7 @@ apps/
 └── fluux-messenger/ # Fluux XMPP messenger (nginx, Docker)
 
 infra/
-├── compose/        # Compose fragments: irc, xmpp, bridge, thelounge, obsidianirc, cert-manager, networks
+├── compose/        # Compose fragments: irc, xmpp, bridge, thelounge, obsidianirc, fluux-messenger, cert-manager, networks
 ├── nginx/          # Nginx config for Prosody HTTPS
 └── turn-standalone/
 
@@ -84,7 +84,7 @@ docs/               # Static assets (examples/unrealircd/tls/)
 - [apps/web/AGENTS.md](apps/web/AGENTS.md)
 - [apps/webpanel/AGENTS.md](apps/webpanel/AGENTS.md)
 - [apps/docs/AGENTS.md](apps/docs/AGENTS.md)
-- [apps/fluux-messenger/](apps/fluux-messenger/)
+- [apps/fluux-messenger/AGENTS.md](apps/fluux-messenger/AGENTS.md)
 - [infra/AGENTS.md](infra/AGENTS.md)
 - [scripts/AGENTS.md](scripts/AGENTS.md)
 - [tests/AGENTS.md](tests/AGENTS.md)
@@ -116,6 +116,7 @@ Docker daemon must be started manually: `sudo dockerd &>/tmp/dockerd.log &`. For
 | XMPP HTTP | 5280 | Prosody BOSH/WebSocket |
 | XMPP HTTPS | 5281 | Prosody (via nginx) |
 | The Lounge | 9000 | Web IRC client (private mode; needs user created via `just lounge add`) |
+| Fluux messenger | 8091 / 8443 | XMPP web client (HTTP / HTTPS host ports → nginx in container) |
 | Dozzle | 8082 | Docker log viewer (dev profile only) |
 | Next.js | 3000 | Web app (runs locally, not Docker) |
 
