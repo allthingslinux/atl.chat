@@ -29,8 +29,6 @@ services:
     env_file:
       - path: ../../.env
         required: false
-      - path: ../../.env.dev
-        required: false
     environment:
       - LOG_LEVEL
       - BRIDGE_DISCORD_TOKEN
@@ -43,7 +41,6 @@ services:
       - BRIDGE_IRC_NICK
       - BRIDGE_IRC_OPER_PASSWORD
       - BRIDGE_IRC_REDACT_ENABLED
-      - ATL_ENVIRONMENT
       - BRIDGE_IRC_TLS_VERIFY
       - BRIDGE_RELAYMSG_CLEAN_NICKS
       - XMPP_AVATAR_BASE_URL
@@ -60,7 +57,7 @@ services:
     networks:
       - atl-chat
     healthcheck:
-      test: ["CMD", "pgrep", "-f", "bridge.__main__"]
+      test: ["CMD", "pgrep", "-f", "bridge --config"]
       interval: 30s
       timeout: 10s
       retries: 3
