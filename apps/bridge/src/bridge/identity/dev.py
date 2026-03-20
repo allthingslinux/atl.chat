@@ -141,3 +141,12 @@ class DevIdentityResolver(IdentityResolver):
 
     async def avatar_for_xmpp(self, jid: str) -> str | None:
         return None
+
+    async def username_for_discord(self, discord_id: str) -> str | None:
+        return None
+
+    async def username_for_irc(self, nick: str, server: str | None = None) -> str | None:
+        return None
+
+    async def username_for_xmpp(self, jid: str) -> str | None:
+        return None
