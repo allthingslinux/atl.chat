@@ -1,0 +1,35 @@
+--- a/include/atheme/services.h
++++ b/include/atheme/services.h
+@@ -50,6 +50,7 @@ struct nicksvs
+ 	bool            spam;
+ 	bool            no_nick_ownership;
+ 	bool		bad_password_message;
++	bool            no_irc_register;   /* block REGISTER from IRC; allow JSON-RPC/Portal only */
+ 	char *          nick;
+ 	char *          user;
+ 	char *          host;
+--- a/modules/nickserv/main.c
++++ b/modules/nickserv/main.c
+@@ -150,6 +150,7 @@ mod_init(struct module ATHEME_VATTR_UNUSED *const restrict m)
+ 	add_bool_conf_item("SPAM", &nicksvs.me->conf_table, 0, &nicksvs.spam, false);
+ 	add_bool_conf_item("NO_NICK_OWNERSHIP", &nicksvs.me->conf_table, 0, &nicksvs.no_nick_ownership, false);
+ 	add_bool_conf_item("BAD_PASSWORD_MESSAGE", &nicksvs.me->conf_table, 0, &nicksvs.bad_password_message, false);
++	add_bool_conf_item("NO_IRC_REGISTER", &nicksvs.me->conf_table, 0, &nicksvs.no_irc_register, false);
+ 	add_duration_conf_item("EXPIRE", &nicksvs.me->conf_table, 0, &nicksvs.expiry, "d", 0);
+ 	add_duration_conf_item("ENFORCE_EXPIRE", &nicksvs.me->conf_table, 0, &nicksvs.enforce_expiry, "d", 0);
+ 	add_duration_conf_item("ENFORCE_DELAY", &nicksvs.me->conf_table, 0, &nicksvs.enforce_delay, "s", 30);
+--- a/modules/nickserv/register.c
++++ b/modules/nickserv/register.c
+@@ -35,6 +35,12 @@ ns_cmd_register(struct sourceinfo *si, int parc, char *parv[])
+ 		return;
+ 	}
+
++	if (si->su != NULL && nicksvs.no_irc_register)
++	{
++		command_fail(si, fault_noprivs, _("Registration is only available through the web portal. Please visit the portal to create an account."));
++		return;
++	}
++
+ 	if (nicksvs.no_nick_ownership || si->su == NULL)
+ 	{
+ 		account = parv[0];
