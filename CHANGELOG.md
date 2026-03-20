@@ -1,3 +1,36 @@
+# [1.10.0](https://github.com/allthingslinux/atl.chat/compare/v1.9.0...v1.10.0) (2026-03-20)
+
+
+### Bug Fixes
+
+* **bridge:** apps/bridge/config.template.yaml ([8c2f8d5](https://github.com/allthingslinux/atl.chat/commit/8c2f8d5e1121057812b5981cebfd59d3128e2a06))
+* **bridge:** apps/bridge/Containerfile ([3162a5c](https://github.com/allthingslinux/atl.chat/commit/3162a5cc603fbd43afde8fee1efb84dc39a53485))
+* **bridge:** apps/bridge/src/bridge/__main__.py ([19a7a12](https://github.com/allthingslinux/atl.chat/commit/19a7a127e04678eb3c82d111360758d26f62f620))
+* **bridge:** apps/bridge/src/bridge/adapters/discord/handlers.py ([90421bf](https://github.com/allthingslinux/atl.chat/commit/90421bfe3134355b1b3df15f529f285e544408ff))
+* **bridge:** apps/bridge/src/bridge/adapters/irc/adapter.py ([9fbd7ed](https://github.com/allthingslinux/atl.chat/commit/9fbd7edc80bf0f174c91a690a3710211880b82b1))
+* **bridge:** apps/bridge/src/bridge/adapters/irc/client.py ([728083d](https://github.com/allthingslinux/atl.chat/commit/728083d86488eb2e229211befe82d48392b29450))
+* **bridge:** apps/bridge/src/bridge/adapters/irc/handlers.py ([8fa2750](https://github.com/allthingslinux/atl.chat/commit/8fa275038feb35c2376c80e1401c3744ee5a16e6))
+* **bridge:** apps/bridge/src/bridge/adapters/xmpp/__init__.py ([1f99aa9](https://github.com/allthingslinux/atl.chat/commit/1f99aa9a1bca370aab57cead0ed3050fd3877ff3))
+* **bridge:** apps/bridge/src/bridge/adapters/xmpp/component.py ([0df9b7e](https://github.com/allthingslinux/atl.chat/commit/0df9b7eea1b8946428bbceaf70a7118b7b1708fc))
+* **bridge:** apps/bridge/src/bridge/adapters/xmpp/handlers.py ([d414a2e](https://github.com/allthingslinux/atl.chat/commit/d414a2ea776f454c897233b7c08c641e42bbc685))
+* **bridge:** apps/bridge/src/bridge/config/schema.py ([4218f3b](https://github.com/allthingslinux/atl.chat/commit/4218f3b376127be91e5dca866bef7187a74bfc79))
+* **bridge:** apps/bridge/src/bridge/gateway/relay.py ([c608ad8](https://github.com/allthingslinux/atl.chat/commit/c608ad80511fecb7e25ed74a276b78a5c9589977))
+* **bridge:** apps/bridge/src/bridge/identity/base.py ([31f53d1](https://github.com/allthingslinux/atl.chat/commit/31f53d14d3afce736583c6292d15d1ad8875fcb5))
+* **bridge:** apps/bridge/src/bridge/identity/dev.py ([c0eacdb](https://github.com/allthingslinux/atl.chat/commit/c0eacdb4d3310dec290a5033f8118dd11ec77d9c))
+* **bridge:** apps/bridge/src/bridge/identity/portal.py ([bace8e4](https://github.com/allthingslinux/atl.chat/commit/bace8e47131c071f61c63eee318e1fac91e87118))
+* **bridge:** apps/bridge/tests/property/test_config_roundtrip_properties.py ([c60340c](https://github.com/allthingslinux/atl.chat/commit/c60340cfc9e531ef9ee7bc884205098c359c504d))
+* **bridge:** apps/bridge/tests/unit/irc/test_irc_adapter.py ([ea202f8](https://github.com/allthingslinux/atl.chat/commit/ea202f81677f697cd4921c8016e903b29e59941c))
+* **bridge:** apps/bridge/tests/unit/misc/test_main.py ([ac0b782](https://github.com/allthingslinux/atl.chat/commit/ac0b782923c7138fdee5562414efaa559bdf08bf))
+* **bridge:** apps/bridge/tests/unit/xmpp/test_xmpp_component_outbound.py ([e680d3d](https://github.com/allthingslinux/atl.chat/commit/e680d3d2afd7681caa9d3194373df60c08f2c94b))
+
+
+### Features
+
+* **prosody:** add apps/prosody/custom_plugins/mod_http_admin_api.lua ([f6c9a63](https://github.com/allthingslinux/atl.chat/commit/f6c9a63c8692be140764ef3d819ab60e751a157a))
+* **xmpp:** apps/prosody/config/prosody.cfg.lua ([76dfd1b](https://github.com/allthingslinux/atl.chat/commit/76dfd1ba4205063355792834253673185e183a00))
+* **xmpp:** apps/prosody/docker-entrypoint.sh ([14e2d79](https://github.com/allthingslinux/atl.chat/commit/14e2d79291907031559ad939a886f2715014ea29))
+* **xmpp:** apps/prosody/modules.list ([44095e7](https://github.com/allthingslinux/atl.chat/commit/44095e7e6a779d5e04b5069456061bd14a78b1ea))
+
 # [1.9.0](https://github.com/allthingslinux/atl.chat/compare/v1.8.0...v1.9.0) (2026-03-12)
 
 
