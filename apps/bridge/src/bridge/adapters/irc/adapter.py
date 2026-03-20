@@ -195,6 +195,14 @@ class IRCAdapter(AdapterBase):
         if not mapping or not mapping.irc:
             return
 
+        origin = (evt.raw or {}).get("origin", "")
+        # Puppets are keyed by Discord ID; only Discord-origin messages have author_id = Discord snowflake.
+        # XMPP/IRC origin: author_id is MUC nick or IRC nick, not Discord ID — use main connection.
+        if origin in ("xmpp", "irc"):
+            if self._client:
+                self._client.queue_message(evt)
+            return
+
         # Check if user has IRC identity; fall back to main connection on Portal failure
         try:
             has_irc = await self._identity.has_irc(evt.author_id)
@@ -261,6 +269,7 @@ class IRCAdapter(AdapterBase):
             channels=channels,
             msgid_tracker=self._msgid_tracker,
             reaction_tracker=self._reaction_tracker,
+            identity_resolver=self._identity,
             throttle_limit=cfg.irc_throttle_limit,
             rejoin_delay=cfg.irc_rejoin_delay,
             auto_rejoin=cfg.irc_auto_rejoin,
