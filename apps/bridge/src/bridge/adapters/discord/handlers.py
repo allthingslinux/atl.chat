@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import time
 from typing import TYPE_CHECKING
 
@@ -84,6 +85,12 @@ async def on_message(adapter: DiscordAdapter, message: Message) -> None:
     if not adapter._is_bridged_channel(channel_id):
         return
 
+    canonical_username: str | None = None
+    if adapter._identity:
+        with contextlib.suppress(Exception):
+            canonical_username = await adapter._identity.username_for_discord(str(message.author.id))
+    author_display = canonical_username or message.author.display_name or message.author.name
+
     # Voice messages: relay the audio attachment URL or a placeholder.
     if _is_voice_message(message):
         avatar_url = str(message.author.display_avatar.url) if message.author.display_avatar else None
@@ -96,7 +103,7 @@ async def on_message(adapter: DiscordAdapter, message: Message) -> None:
             origin="discord",
             channel_id=channel_id,
             author_id=str(message.author.id),
-            author_display=message.author.display_name or message.author.name,
+            author_display=author_display,
             content=voice_content,
             message_id=str(message.id),
             is_action=False,
@@ -127,7 +134,7 @@ async def on_message(adapter: DiscordAdapter, message: Message) -> None:
                 origin="discord",
                 channel_id=channel_id,
                 author_id=str(message.author.id),
-                author_display=message.author.display_name or message.author.name,
+                author_display=author_display,
                 content=getattr(attachment, "proxy_url", None) or attachment.url,
                 message_id=f"{message.id}_attachment_{attachment.id}",
                 is_action=False,
@@ -186,7 +193,7 @@ async def on_message(adapter: DiscordAdapter, message: Message) -> None:
         origin="discord",
         channel_id=channel_id,
         author_id=str(message.author.id),
-        author_display=message.author.display_name or message.author.name,
+        author_display=author_display,
         content=content,
         message_id=str(message.id),
         reply_to_id=str(message.reference.message_id) if message.reference else None,
@@ -227,6 +234,12 @@ async def on_raw_message_edit(adapter: DiscordAdapter, payload) -> None:
     if not content.strip():
         return
 
+    canonical_username: str | None = None
+    if adapter._identity:
+        with contextlib.suppress(Exception):
+            canonical_username = await adapter._identity.username_for_discord(str(message.author.id))
+    author_display = canonical_username or message.author.display_name or message.author.name
+
     avatar_url = str(message.author.display_avatar.url) if message.author.display_avatar else None
 
     msg_id = str(getattr(message, "id", None) or payload.message_id)
@@ -235,7 +248,7 @@ async def on_raw_message_edit(adapter: DiscordAdapter, payload) -> None:
         origin="discord",
         channel_id=channel_id,
         author_id=str(message.author.id),
-        author_display=message.author.display_name or message.author.name,
+        author_display=author_display,
         content=content,
         message_id=msg_id,
         reply_to_id=str(message.reference.message_id) if message.reference else None,
@@ -270,6 +283,11 @@ async def on_reaction_add(adapter: DiscordAdapter, payload) -> None:
     if not user and adapter._bot:
         user = await fetch_user(adapter, payload.user_id)
     author_display = user.display_name if user else str(payload.user_id)
+    if adapter._identity:
+        with contextlib.suppress(Exception):
+            canonical_username = await adapter._identity.username_for_discord(str(payload.user_id))
+            if canonical_username:
+                author_display = canonical_username
 
     from bridge.events import reaction_in
 
@@ -314,6 +332,11 @@ async def on_reaction_remove(adapter: DiscordAdapter, payload) -> None:
 
     user = await fetch_user(adapter, payload.user_id)
     author_display = user.display_name if user else str(payload.user_id)
+    if adapter._identity:
+        with contextlib.suppress(Exception):
+            canonical_username = await adapter._identity.username_for_discord(str(payload.user_id))
+            if canonical_username:
+                author_display = canonical_username
 
     from bridge.events import reaction_in
 
