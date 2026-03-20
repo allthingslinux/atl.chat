@@ -76,6 +76,13 @@ status:
 lint:
     pre-commit run --all-files
 
+# Ruff + basedpyright (bridge and other in-repo Python; excludes tests — see pyproject.toml)
+[group('Verification')]
+py-check:
+    uv run ruff check .
+    uv run ruff format --check .
+    uv run basedpyright
+
 # Run security scans (Gitleaks, Trivy)
 [group('Verification')]
 scan:
