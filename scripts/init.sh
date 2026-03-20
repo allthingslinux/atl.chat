@@ -8,20 +8,12 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
-
-# Load environment variables: .env (base) then .env.dev (overrides for just dev)
-if [ -f "$PROJECT_ROOT/.env" ]; then
-  set -a
-  # shellcheck disable=SC1091
-  source "$PROJECT_ROOT/.env"
-  set +a
+INIT_MODE="${1:-dev}"
+if [ "$INIT_MODE" != "dev" ] && [ "$INIT_MODE" != "prod" ]; then
+  echo "Usage: $0 [dev|prod]"
+  exit 1
 fi
-if [ -f "$PROJECT_ROOT/.env.dev" ]; then
-  set -a
-  # shellcheck disable=SC1091
-  source "$PROJECT_ROOT/.env.dev"
-  set +a
-fi
+INIT_OVERLAY_FILE="$PROJECT_ROOT/.env.$INIT_MODE"
 
 # Ensure Atheme JSON-RPC port has a default (for existing .env without it)
 export ATHEME_HTTPD_PORT="${ATHEME_HTTPD_PORT:-8081}"
@@ -48,6 +40,21 @@ log_warning() {
 
 log_error() {
   echo -e "${RED}[ERROR]${NC} $1"
+}
+
+load_env_files() {
+  if [ -f "$PROJECT_ROOT/.env" ]; then
+    set -a
+    # shellcheck disable=SC1091
+    source "$PROJECT_ROOT/.env"
+    set +a
+  fi
+  if [ -f "$INIT_OVERLAY_FILE" ]; then
+    set -a
+    # shellcheck disable=SC1090
+    source "$INIT_OVERLAY_FILE"
+    set +a
+  fi
 }
 
 # Function to create directory structure
@@ -250,15 +257,8 @@ generate_dev_certs() {
 prepare_config_files() {
   log_info "Preparing configuration files from templates..."
 
-  # Load environment variables from .env if it exists
-  if [ -f "$PROJECT_ROOT/.env" ]; then
-    log_info "Loading environment variables from .env"
-    set -a
-    # shellcheck disable=SC1091
-    source "$PROJECT_ROOT/.env"
-    set +a
-    log_info "Environment variables loaded"
-  fi
+  load_env_files
+  log_info "Environment variables loaded (.env + .env.$INIT_MODE when present)"
 
   # IRC cert paths: use shared data/certs (Let's Encrypt layout), matching Prosody
   export IRC_SSL_CERT_PATH="${IRC_SSL_CERT_PATH:-/home/unrealircd/unrealircd/certs/live/${IRC_DOMAIN:-irc.localhost}/fullchain.pem}"
@@ -309,6 +309,7 @@ prepare_config_files() {
   # Run prepare-config.sh (UnrealIRCd, Atheme, Bridge config from templates)
   if [ -f "$SCRIPT_DIR/prepare-config.sh" ]; then
     log_info "Running prepare-config.sh (bridge config, etc.)..."
+    export ATL_INIT_MODE="$INIT_MODE"
     # shellcheck source=prepare-config.sh
     "$SCRIPT_DIR/prepare-config.sh" || log_warning "prepare-config.sh reported issues"
   fi
@@ -372,6 +373,7 @@ show_next_steps() {
 main() {
   log_info "ATL Chat Infrastructure Initialization"
   log_info "======================================"
+  log_info "Mode: $INIT_MODE"
 
   # Check if we're running as root (for permission info)
   if [ "$(id -u)" = "0" ]; then
@@ -380,6 +382,9 @@ main() {
 
   # Check Docker availability
   check_docker
+
+  # Load env before any mode-dependent setup.
+  load_env_files
 
   # Create directory structure
   create_directories
@@ -390,8 +395,12 @@ main() {
   # Set up CA certificate bundle
   setup_ca_bundle
 
-  # Generate dev certs
-  generate_dev_certs
+  # Generate self-signed certs only for local development.
+  if [ "$INIT_MODE" = "dev" ]; then
+    generate_dev_certs
+  else
+    log_info "Skipping dev certificate generation in prod mode"
+  fi
 
   # Create .env if needed
   create_env_template
@@ -407,5 +416,5 @@ main() {
 
 # Run main function
 if [[ ${BASH_SOURCE[0]} == "${0}" ]]; then
-  main "$@"
+  main
 fi
