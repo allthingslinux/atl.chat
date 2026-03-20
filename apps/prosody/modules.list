@@ -17,7 +17,6 @@ mod_muc_mention_notifications
 mod_muc_local_only
 mod_default_bookmarks
 mod_muc_thread_polyfill
-mod_conversejs
 mod_http_avatar
 mod_http_status
 mod_measure_modules
@@ -37,7 +36,7 @@ mod_reload_modules
 mod_pubsub_subscription
 mod_pubsub_feeds
 mod_groups_internal
-mod_http_admin_api
+# mod_http_admin_api — replaced by custom_plugins/mod_http_admin_api.lua (patched for Portal password provisioning)
 mod_http_logging
 mod_http_oauth2
 mod_support_contact
