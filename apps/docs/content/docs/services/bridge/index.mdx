@@ -79,7 +79,7 @@ Validation runs on load and on SIGHUP reload — every mapping must be a dict wi
 
 | Key | Type | Default | Description |
 |---|---|---|---|
-| `irc_tls_verify` | bool | `true` (prod) / `false` (dev) | Verify IRC TLS certificates. Overridden by `BRIDGE_IRC_TLS_VERIFY` env var, or set to `false` when `ATL_ENVIRONMENT=dev` |
+| `irc_tls_verify` | bool | `true` | Verify IRC TLS certificates. Overridden by `BRIDGE_IRC_TLS_VERIFY` env var |
 | `irc_use_sasl` | bool | `false` | Use SASL PLAIN for IRC authentication |
 | `irc_sasl_user` | string | `""` | SASL username |
 | `irc_sasl_password` | string | `""` | SASL password |
@@ -100,7 +100,6 @@ Several config keys can be overridden at runtime via environment variables witho
 | `BRIDGE_IRC_TLS_VERIFY` | `irc_tls_verify` | `true`/`false` |
 | `BRIDGE_IRC_REDACT_ENABLED` | `irc_redact_enabled` | `true`/`false` |
 | `BRIDGE_RELAYMSG_CLEAN_NICKS` | `irc_relaymsg_clean_nicks` | `true`/`false` |
-| `ATL_ENVIRONMENT` | `irc_tls_verify` | When set to `dev`, TLS verify defaults to `false` |
 
 ### Config reload
 
