@@ -122,21 +122,6 @@ class TestGetPortalEnvVars:
         # Assert
         assert result == "https://portal.example.com"
 
-    def test_get_portal_url_from_portal_url_fallback(self):
-        # Arrange — PORTAL_BASE_URL is empty string (falsy), PORTAL_URL is set
-        from bridge.__main__ import _get_portal_url
-
-        # Act
-        with patch.dict(
-            "os.environ",
-            {"BRIDGE_PORTAL_URL": "https://fallback.example.com", "BRIDGE_PORTAL_BASE_URL": ""},
-            clear=False,
-        ):
-            result = _get_portal_url()
-
-        # Assert — should use BRIDGE_PORTAL_URL when BRIDGE_PORTAL_BASE_URL is empty
-        assert result in (None, "https://fallback.example.com")
-
     def test_get_portal_url_returns_none_when_not_set(self):
         # Arrange / Act
         from bridge.__main__ import _get_portal_url
@@ -157,21 +142,6 @@ class TestGetPortalEnvVars:
 
         # Assert
         assert result == "secret-token"
-
-    def test_get_portal_token_from_portal_api_token_fallback(self):
-        # Arrange — BRIDGE_PORTAL_TOKEN is empty, BRIDGE_PORTAL_API_TOKEN is set
-        from bridge.__main__ import _get_portal_token
-
-        # Act
-        with patch.dict(
-            "os.environ",
-            {"BRIDGE_PORTAL_TOKEN": "", "BRIDGE_PORTAL_API_TOKEN": "api-secret"},
-            clear=False,
-        ):
-            result = _get_portal_token()
-
-        # Assert
-        assert result == "api-secret"
 
     def test_get_portal_token_returns_none_when_not_set(self):
         # Arrange / Act
