@@ -8,7 +8,7 @@ import hashlib
 import os
 import random
 from collections.abc import Callable
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 import pydle
 from cachetools import TTLCache
@@ -19,6 +19,9 @@ from bridge.adapters.irc.throttle import TokenBucket
 from bridge.config import cfg
 from bridge.events import MessageOut
 from bridge.gateway import Bus, ChannelRouter
+
+if TYPE_CHECKING:
+    from bridge.identity import IdentityResolver
 
 # IRC color codes (Mirc color palette indices 2-13; skip 0=white, 1=black for readability)
 _IRC_NICK_COLORS = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
@@ -115,6 +118,7 @@ class IRCClient(pydle.Client):
         channels: list[str],
         msgid_tracker: MessageIDTracker,
         reaction_tracker: ReactionTracker,
+        identity_resolver: IdentityResolver | None = None,
         throttle_limit: int = 10,
         rejoin_delay: float = 5,
         auto_rejoin: bool = True,
@@ -123,6 +127,7 @@ class IRCClient(pydle.Client):
         super().__init__(nick, **kwargs)
         self._bus = bus
         self._router = router
+        self._identity = identity_resolver
         self._server = server
         self._channels = channels
         self._initial_nick = nick  # for nick revert after forced rename
@@ -180,7 +185,7 @@ class IRCClient(pydle.Client):
             asyncio.create_task(self._fetch_chathistory())  # noqa: RUF006
 
     async def _ensure_channels_permanent(self) -> None:
-        """OPER up, set +B (bot mode), and set +P (permanent) on bridged channels."""
+        """OPER up and set +P/+H channel modes on bridged channels."""
         oper_password = os.environ.get("BRIDGE_IRC_OPER_PASSWORD", "").strip()
         if not oper_password:
             return
@@ -188,9 +193,6 @@ class IRCClient(pydle.Client):
         try:
             await self.rawmsg("OPER", oper_name, oper_password)
             await asyncio.sleep(1)  # Allow server to process OPER
-            # Set bot mode on ourselves so we appear as a bot to IRC users
-            await self.rawmsg("MODE", self.nickname, "+B")
-            logger.info("set +B (bot mode) on {}", self.nickname)
             for channel in self._channels:
                 await self.rawmsg("MODE", channel, "+P")
                 await self.rawmsg("MODE", channel, "+H", "50:1d")  # Required for REDACT (chathistory)
