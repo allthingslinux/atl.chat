@@ -33,7 +33,7 @@ loadmodule "nickserv/mark";	/* MARK command */
 loadmodule "nickserv/freeze";	/* FREEZE command */
 loadmodule "nickserv/listchans";	/* LISTCHANS command */
 loadmodule "nickserv/listgroups";      /* LISTGROUPS command */
-#loadmodule "nickserv/register";	/* REGISTER command — disabled: registration via Portal/SSO only */
+loadmodule "nickserv/register";	/* REGISTER command — IRC blocked by no_irc_register; Portal/JSON-RPC can register */
 loadmodule "nickserv/regnolimit";      /* Bypass registration limits (REGNOLIMIT) */
 #loadmodule "nickserv/resetpass";	/* Password reset (RESETPASS command) — disabled: password managed via Portal */
 loadmodule "nickserv/restrict";	/* RESTRICT command */
@@ -372,10 +372,10 @@ uplink "${IRC_DOMAIN}" {
 
 /* ---------- Service bots ---------- */
 nickserv {
-	nick = "${ATHEME_NICKSERV_NICK}";
-	user = "${ATHEME_NICKSERV_USER}";
-	host = "${ATHEME_NICKSERV_HOST}";
-	real = "${ATHEME_NICKSERV_REAL}";
+	nick = "NickServ";
+	user = "services";
+	host = "${ATHEME_SERVER_NAME}";
+	real = "Nickname Service";
 	aliases {
 		"ID" = "IDENTIFY";
 		"MYACCESS" = "LISTCHANS";
@@ -405,13 +405,15 @@ nickserv {
 	shorthelp = "IDENTIFY LOGOUT GHOST INFO STATUS SET";
 	listownmail_canon;
 	bad_password_message;
+	/* Block /msg NickServ REGISTER; allow only via Portal/JSON-RPC */
+	no_irc_register;
 };
 
 chanserv {
-	nick = "${ATHEME_CHANSERV_NICK}";
-	user = "${ATHEME_CHANSERV_USER}";
-	host = "${ATHEME_CHANSERV_HOST}";
-	real = "${ATHEME_CHANSERV_REAL}";
+	nick = "ChanServ";
+	user = "services";
+	host = "${ATHEME_SERVER_NAME}";
+	real = "Channel Service";
 	aliases {
 	};
 	access {
@@ -461,10 +463,10 @@ chanfix {
 */
 
 global {
-	nick = "${ATHEME_GLOBAL_NICK}";
-	user = "${ATHEME_GLOBAL_USER}";
-	host = "${ATHEME_GLOBAL_HOST}";
-	real = "${ATHEME_GLOBAL_REAL}";
+	nick = "Global";
+	user = "services";
+	host = "${ATHEME_SERVER_NAME}";
+	real = "Network Announcements";
 	aliases {
 	};
 	access {
@@ -488,10 +490,10 @@ infoserv {
 */
 
 operserv {
-	nick = "${ATHEME_OPERSERV_NICK}";
-	user = "${ATHEME_OPERSERV_USER}";
-	host = "${ATHEME_OPERSERV_HOST}";
-	real = "${ATHEME_OPERSERV_REAL}";
+	nick = "OperServ";
+	user = "services";
+	host = "${ATHEME_SERVER_NAME}";
+	real = "Operator Service";
 	aliases {
 		"AKILL" = "AKILL";
 		"GLINE" = "AKILL";
@@ -503,10 +505,10 @@ operserv {
 };
 
 saslserv {
-	nick = "${ATHEME_SASLSERV_NICK}";
-	user = "${ATHEME_SASLSERV_USER}";
-	host = "${ATHEME_SASLSERV_HOST}";
-	real = "${ATHEME_SASLSERV_REAL}";
+	nick = "SaslServ";
+	user = "services";
+	host = "${ATHEME_SERVER_NAME}";
+	real = "SASL Authentication Service";
 	#hide_server_names;
 };
 
@@ -569,10 +571,10 @@ botserv {
 */
 
 groupserv {
-	nick = "${ATHEME_GROUPSERV_NICK}";
-	user = "${ATHEME_GROUPSERV_USER}";
-	host = "${ATHEME_GROUPSERV_HOST}";
-	real = "${ATHEME_GROUPSERV_REAL}";
+	nick = "GroupServ";
+	user = "services";
+	host = "${ATHEME_SERVER_NAME}";
+	real = "Group Management Service";
 	aliases {
 		"APPROVE" = "ACTIVATE";
 		"DENY" = "REJECT";
@@ -586,10 +588,10 @@ groupserv {
 };
 
 hostserv {
-	nick = "${ATHEME_HOSTSERV_NICK}";
-	user = "${ATHEME_HOSTSERV_USER}";
-	host = "${ATHEME_HOSTSERV_HOST}";
-	real = "${ATHEME_HOSTSERV_REAL}";
+	nick = "HostServ";
+	user = "services";
+	host = "${ATHEME_SERVER_NAME}";
+	real = "vHost Service";
 	aliases {
 		"APPROVE" = "ACTIVATE";
 		"DENY" = "REJECT";
@@ -605,10 +607,10 @@ hostserv {
 };
 
 helpserv {
-	nick = "${ATHEME_HELPSERV_NICK}";
-	user = "${ATHEME_HELPSERV_USER}";
-	host = "${ATHEME_HELPSERV_HOST}";
-	real = "${ATHEME_HELPSERV_REAL}";
+	nick = "HelpServ";
+	user = "services";
+	host = "${ATHEME_SERVER_NAME}";
+	real = "Help Service";
 	aliases {
 		"HELP" = "HELPME";
 		"SUPPORT" = "HELPME";
@@ -636,10 +638,10 @@ statserv {
 */
 
 alis {
-	nick = "${ATHEME_ALIS_NICK}";
-	user = "${ATHEME_ALIS_USER}";
-	host = "${ATHEME_ALIS_HOST}";
-	real = "${ATHEME_ALIS_REAL}";
+	nick = "ALIS";
+	user = "services";
+	host = "${ATHEME_SERVER_NAME}";
+	real = "Channel Listing Service";
 	aliases {
 		"FIND" = "LIST";
 		"SEARCH" = "LIST";
