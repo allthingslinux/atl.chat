@@ -205,7 +205,8 @@ class PortalIdentityResolver(IdentityResolver):
         except KeyError:
             logger.debug("Identity cache miss: discord_id={}", discord_id)
             data = await self._client.get_identity_by_discord(discord_id)
-            self._cache[key] = data
+            if data is not None:
+                self._cache[key] = data
             return data
 
     async def _get_irc(self, nick: str, server: str | None) -> dict[str, Any] | None:
@@ -215,7 +216,8 @@ class PortalIdentityResolver(IdentityResolver):
         except KeyError:
             logger.debug("Identity cache miss: irc nick={} server={}", nick, server)
             data = await self._client.get_identity_by_irc_nick(nick, server=server)
-            self._cache[key] = data
+            if data is not None:
+                self._cache[key] = data
             return data
 
     async def _get_xmpp(self, jid: str) -> dict[str, Any] | None:
@@ -225,7 +227,8 @@ class PortalIdentityResolver(IdentityResolver):
         except KeyError:
             logger.debug("Identity cache miss: xmpp jid={}", jid)
             data = await self._client.get_identity_by_xmpp_jid(jid)
-            self._cache[key] = data
+            if data is not None:
+                self._cache[key] = data
             return data
 
     async def discord_to_irc(self, discord_id: str) -> str | None:
@@ -286,3 +289,18 @@ class PortalIdentityResolver(IdentityResolver):
         data = await self._get_xmpp(jid)
         url = data.get("avatar_url") if data else None
         return url if isinstance(url, str) and url else None
+
+    async def username_for_discord(self, discord_id: str) -> str | None:
+        data = await self._get_discord(discord_id)
+        username = data.get("username") if data else None
+        return username if isinstance(username, str) and username else None
+
+    async def username_for_irc(self, nick: str, server: str | None = None) -> str | None:
+        data = await self._get_irc(nick, server)
+        username = data.get("username") if data else None
+        return username if isinstance(username, str) and username else None
+
+    async def username_for_xmpp(self, jid: str) -> str | None:
+        data = await self._get_xmpp(jid)
+        username = data.get("username") if data else None
+        return username if isinstance(username, str) and username else None
