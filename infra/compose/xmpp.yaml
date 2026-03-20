@@ -23,8 +23,6 @@ services:
     env_file:
       - path: ../../.env
         required: false
-      - path: ../../.env.dev
-        required: false
 
     environment:
       - PROSODY_DOMAIN=${XMPP_DOMAIN}
@@ -32,6 +30,7 @@ services:
       - PROSODY_UPLOAD_EXTERNAL_URL=${PROSODY_UPLOAD_EXTERNAL_URL}
       - PROSODY_HTTP_EXTERNAL_URL=${PROSODY_HTTP_EXTERNAL_URL:-}
       - PROSODY_PROXY_ADDRESS=${PROSODY_PROXY_ADDRESS}
+      - XMPP_WEBCHAT_URL=${XMPP_WEBCHAT_URL:-}
       - PROSODY_SSL_KEY=${PROSODY_SSL_KEY}
       - PROSODY_SSL_CERT=${PROSODY_SSL_CERT}
 
