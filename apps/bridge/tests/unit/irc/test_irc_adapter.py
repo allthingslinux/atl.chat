@@ -501,6 +501,27 @@ class TestSendViaPuppet:
         await adapter._send_via_puppet(evt)
         cast(MagicMock, adapter._client).queue_message.assert_called_once_with(evt)
 
+    @pytest.mark.asyncio
+    async def test_xmpp_origin_uses_main_connection_without_has_irc(self):
+        """XMPP-origin messages use main connection (RELAYMSG); puppets keyed by Discord ID."""
+        adapter, _, router = _make_adapter()
+        adapter._puppet_manager = AsyncMock()
+        adapter._client = _mock_client()
+        router.get_mapping_for_discord.return_value = _irc_mapping()
+        evt = MessageOut(
+            target_origin="irc",
+            channel_id="111",
+            author_id="kaizen\\40xmpp.localhost",
+            author_display="kaizen",
+            content="hi",
+            message_id="m1",
+            raw={"origin": "xmpp", "real_jid": "kaizen@xmpp.localhost"},
+        )
+        await adapter._send_via_puppet(evt)
+        cast(MagicMock, adapter._client).queue_message.assert_called_once_with(evt)
+        assert adapter._identity is not None
+        adapter._identity.has_irc.assert_not_awaited()
+
 
 # ---------------------------------------------------------------------------
 # start
