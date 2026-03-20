@@ -246,7 +246,7 @@ def _get_portal_url() -> str | None:
     """Read Portal base URL from env."""
     import os
 
-    return os.environ.get("BRIDGE_PORTAL_BASE_URL") or os.environ.get("BRIDGE_PORTAL_URL")
+    return os.environ.get("BRIDGE_PORTAL_BASE_URL")
 
 
 def _dev_irc_puppets_enabled() -> bool:
@@ -260,7 +260,7 @@ def _get_portal_token() -> str | None:
     """Read Portal API token from env."""
     import os
 
-    return os.environ.get("BRIDGE_PORTAL_TOKEN") or os.environ.get("BRIDGE_PORTAL_API_TOKEN")
+    return os.environ.get("BRIDGE_PORTAL_TOKEN")
 
 
 async def _run(
