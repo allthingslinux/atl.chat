@@ -148,7 +148,7 @@ Configuration files for UnrealIRCd, Atheme, the Bridge, and The Lounge are gener
 
 1. You define environment variables in `.env` (production) and optionally `.env.dev` (development overrides).
 2. `just init` (or `just dev`) runs `scripts/init.sh`, which calls `scripts/prepare-config.sh`.
-3. `prepare-config.sh` sources `.env` (and `.env.dev` if `ATL_ENVIRONMENT=dev`), then runs `envsubst` on each template file:
+3. `prepare-config.sh` sources `.env` plus mode overlay (`.env.dev` for `init.sh dev`, `.env.prod` for `init.sh prod`), then runs `envsubst` on each template file:
    - `apps/unrealircd/config/unrealircd.conf.template` → `unrealircd.conf`
    - `apps/atheme/config/atheme.conf.template` → `atheme.conf`
    - `apps/bridge/config.template.yaml` → `config.yaml`
