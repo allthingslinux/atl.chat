@@ -28,22 +28,28 @@ set export := true
 [group('Orchestration')]
 init:
     @echo "Initializing project (data dirs, config, dev certs)..."
-    ./scripts/init.sh
+    ./scripts/init.sh dev
 
 # Spin up the local development stack
 [group('Orchestration')]
 dev:
+    @if docker compose -f compose.yaml -f compose.dev-override.yaml --env-file .env --env-file .env.dev ps --services --status running | rg -q "."; then \
+        echo "Error: atl.chat containers are already running."; \
+        echo "Run 'just down' (and/or 'just down-prod') before running 'just dev' again."; \
+        echo "Running services:"; \
+        docker compose -f compose.yaml -f compose.dev-override.yaml --env-file .env --env-file .env.dev ps --services --status running | sed 's/^/  - /'; \
+        exit 1; \
+    fi
     @echo "Initializing Development Environment..."
-    @set -a && . ./.env.dev && set +a && \
-     ./scripts/init.sh
-    docker compose --env-file .env --env-file .env.dev --profile dev up -d
+    ./scripts/init.sh dev
+    docker compose -f compose.yaml -f compose.dev-override.yaml --env-file .env --env-file .env.dev --profile dev up -d
 
 # Spin up the production stack
 [group('Orchestration')]
 prod:
     @echo "Initializing Production Environment..."
-    export ATL_ENVIRONMENT=prod && ./scripts/init.sh
-    docker compose --env-file .env up -d
+    ./scripts/init.sh prod
+    docker compose -f compose.yaml -f compose.prod-override.yaml --env-file .env --env-file .env.prod up -d
 
 # Stop all services
 [group('Orchestration')]
@@ -53,7 +59,7 @@ down:
 # Stop production services
 [group('Orchestration')]
 down-prod:
-    docker compose -p atl-chat-prod down
+    docker compose -f compose.yaml -f compose.prod-override.yaml --env-file .env --env-file .env.prod down
 
 # View logs (follow)
 [group('Orchestration')]
@@ -101,6 +107,6 @@ prosody-token:
 
 # Clean up unused Docker resources
 [group('Maintenance')]
-clean:
+docker-system-clean:
     docker system prune -f
     docker volume prune -f
