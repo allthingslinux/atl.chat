@@ -8,7 +8,13 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from bridge.adapters.xmpp import XMPPComponent, XMPPMessageIDTracker, _escape_jid_node
+from bridge.adapters.xmpp import (
+    XMPPComponent,
+    XMPPMessageIDTracker,
+    _escape_jid_node,
+    _muc_nick_to_bare_jid,
+    _unescape_jid_node,
+)
 from bridge.adapters.xmpp.outbound import RETRACTION_FALLBACK_BODY
 from cachetools import TTLCache
 
@@ -31,6 +37,32 @@ class TestEscapeJidNode:
         assert _escape_jid_node("a b") == "a\\20b"
         assert _escape_jid_node("user@host") == "user\\40host"
         assert _escape_jid_node("a\\b") == "a\\5cb"
+
+
+class TestUnescapeJidNode:
+    """XEP-0106 inverse: unescape \\XX sequences for MUC nick -> bare JID."""
+
+    def test_unescapes_to_bare_jid(self):
+        assert _unescape_jid_node("kaizen\\40xmpp.localhost") == "kaizen@xmpp.localhost"
+        assert _unescape_jid_node("a\\20b") == "a b"
+
+    def test_passes_through_unescaped(self):
+        assert _unescape_jid_node("Nick") == "Nick"
+
+
+class TestMucNickToBareJid:
+    """MUC nick -> bare JID derivation for Portal identity lookups."""
+
+    def test_escaped_jid_nick(self):
+        assert (
+            _muc_nick_to_bare_jid("kaizen\\40xmpp.localhost", "general@muc.xmpp.localhost") == "kaizen@xmpp.localhost"
+        )
+
+    def test_plain_nick_derives_domain_from_room(self):
+        assert _muc_nick_to_bare_jid("kaizen", "general@muc.xmpp.localhost") == "kaizen@xmpp.localhost"
+
+    def test_empty_nick_returns_none(self):
+        assert _muc_nick_to_bare_jid("", "general@muc.xmpp.localhost") is None
 
 
 # ---------------------------------------------------------------------------
