@@ -12,7 +12,8 @@ Next.js 16 · React 19 · Fumadocs (MDX) · Tailwind CSS 4 · Cloudflare Workers
 
 ```
 app/
-├── layout.tsx, global.css
+├── layout.tsx
+├── global.css
 ├── api/search/route.ts
 ├── llms.txt/route.ts, llms-full.txt/route.ts
 ├── llms.mdx/docs/[[...slug]]/route.ts
