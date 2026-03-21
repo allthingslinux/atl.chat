@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import os
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import aiohttp
 from cachetools import TTLCache
@@ -60,6 +60,16 @@ class DiscordAdapter(AdapterBase):
         self._bot_task: asyncio.Task | None = None
         self._typing_throttle: dict[str, float] = {}  # channel_id -> last_sent
         self._typing_publish_throttle: dict[str, float] = {}  # channel_id -> last_published
+        self._background_tasks: set[asyncio.Task[Any]] = set()
+
+    def _track_task(self, task: asyncio.Task[Any]) -> None:
+        self._background_tasks.add(task)
+        task.add_done_callback(self._background_tasks.discard)
+        task.add_done_callback(self._on_task_done)
+
+    def _on_task_done(self, task: asyncio.Task[Any]) -> None:
+        if not task.cancelled() and (exc := task.exception()):
+            logger.error("background task failed: {}", exc)
 
     @property
     def name(self) -> str:
@@ -82,13 +92,13 @@ class DiscordAdapter(AdapterBase):
     def push_event(self, source: str, evt: object) -> None:
         """Queue MessageOut for webhook send, or handle MessageDeleteOut/ReactionOut/TypingOut."""
         if isinstance(evt, MessageDeleteOut) and evt.target_origin == "discord":
-            asyncio.create_task(self._handle_delete_out(evt))  # noqa: RUF006
+            self._track_task(asyncio.create_task(self._handle_delete_out(evt)))
             return
         if isinstance(evt, ReactionOut) and evt.target_origin == "discord":
-            asyncio.create_task(self._handle_reaction_out(evt))  # noqa: RUF006
+            self._track_task(asyncio.create_task(self._handle_reaction_out(evt)))
             return
         if isinstance(evt, TypingOut) and evt.target_origin == "discord":
-            asyncio.create_task(self._handle_typing_out(evt))  # noqa: RUF006
+            self._track_task(asyncio.create_task(self._handle_typing_out(evt)))
             return
         if isinstance(evt, MessageOut):
             self._queue.put_nowait(evt)
@@ -168,8 +178,8 @@ class DiscordAdapter(AdapterBase):
     # Avatar delegation
     # ------------------------------------------------------------------
 
-    def _resolve_xmpp_avatar_fallback(self, evt: MessageOut) -> str | None:
-        return discord_avatar.resolve_xmpp_avatar_fallback(evt, self._router)
+    async def _resolve_xmpp_avatar_fallback(self, evt: MessageOut) -> str | None:
+        return await discord_avatar.resolve_xmpp_avatar_fallback(evt, self._router)
 
     async def _resolve_avatar_for_send(self, evt: MessageOut) -> str | None:
         """Resolve avatar URL: prefer Portal, then evt.avatar_url, then XMPP fallback."""
@@ -189,7 +199,7 @@ class DiscordAdapter(AdapterBase):
                     return url
             except Exception as exc:
                 logger.debug("Portal avatar lookup failed for {}: {}", evt.author_id, exc)
-        return evt.avatar_url or self._resolve_xmpp_avatar_fallback(evt)
+        return evt.avatar_url or await self._resolve_xmpp_avatar_fallback(evt)
 
     # ------------------------------------------------------------------
     # Webhook delegation
