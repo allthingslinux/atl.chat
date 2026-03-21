@@ -196,17 +196,6 @@ def main() -> None:
     router = ChannelRouter()
     router.load_from_config(config.raw)
 
-    # SIGHUP reload — use bus.publish (AUDIT §5)
-    def on_sighup(*a: object, **kw: object) -> None:
-        config = reload_config(args.config)
-        router.load_from_config(config.raw)
-        rebuild_content_filters()
-        _, evt = config_reload()
-        bus.publish("main", evt)
-        logger.info("Config reloaded (SIGHUP)")
-
-    signal.signal(signal.SIGHUP, on_sighup)
-
     # Relay: MessageIn -> MessageOut for other protocols
     relay = Relay(bus, router)
     bus.register(relay)
@@ -237,9 +226,9 @@ def main() -> None:
     try:
         import uvloop
 
-        uvloop.run(_run(bus, router, identity_resolver, portal_client))
+        uvloop.run(_run(bus, router, identity_resolver, portal_client, args.config))
     except ImportError:
-        asyncio.run(_run(bus, router, identity_resolver, portal_client))
+        asyncio.run(_run(bus, router, identity_resolver, portal_client, args.config))
 
 
 def _get_portal_url() -> str | None:
@@ -268,8 +257,25 @@ async def _run(
     router: ChannelRouter,
     identity_resolver: IdentityResolver | None,
     portal_client: PortalClient | None = None,
+    config_path: Path = Path("config.yaml"),
 ) -> None:
     """Async run loop. Start adapters and wait."""
+    # Register SIGHUP handler inside the running event loop so the callback
+    # executes cooperatively (not from a signal interrupt context), eliminating
+    # the data race with concurrently-running coroutines.
+    if sys.platform != "win32":
+        loop = asyncio.get_running_loop()
+
+        def _do_reload() -> None:
+            config = reload_config(config_path)
+            router.load_from_config(config.raw)
+            rebuild_content_filters()
+            _, evt = config_reload()
+            bus.publish("main", evt)
+            logger.info("Config reloaded (SIGHUP)")
+
+        loop.add_signal_handler(signal.SIGHUP, _do_reload)
+
     # Open shared HTTP connection pool before any identity lookups
     if portal_client is not None:
         await portal_client.aopen()
