@@ -196,7 +196,7 @@ async def on_message(adapter: DiscordAdapter, message: Message) -> None:
         author_display=author_display,
         content=content,
         message_id=str(message.id),
-        reply_to_id=str(message.reference.message_id) if message.reference else None,
+        reply_to_id=str(message.reference.message_id) if message.reference and message.reference.message_id else None,
         is_edit=False,
         is_action=is_action,
         avatar_url=avatar_url,
@@ -213,11 +213,24 @@ async def on_message(adapter: DiscordAdapter, message: Message) -> None:
 async def on_raw_message_edit(adapter: DiscordAdapter, payload) -> None:
     """Handle Discord message edits via raw event (fires for cached and uncached messages)."""
     message = payload.message
-    if is_bridge_echo(message):
-        return
 
     channel_id = str(payload.channel_id)
     if not adapter._is_bridged_channel(channel_id):
+        return
+
+    # payload.message is None when the message isn't in Discord's cache — fetch it.
+    if message is None:
+        if not adapter._bot:
+            return
+        try:
+            channel = adapter._bot.get_channel(payload.channel_id)
+            if not isinstance(channel, TextChannel):
+                return
+            message = await channel.fetch_message(payload.message_id)
+        except Exception:
+            return
+
+    if is_bridge_echo(message):
         return
 
     content = message.content or ""
@@ -251,7 +264,7 @@ async def on_raw_message_edit(adapter: DiscordAdapter, payload) -> None:
         author_display=author_display,
         content=content,
         message_id=msg_id,
-        reply_to_id=str(message.reference.message_id) if message.reference else None,
+        reply_to_id=str(message.reference.message_id) if message.reference and message.reference.message_id else None,
         is_edit=True,
         is_action=False,
         avatar_url=avatar_url,
@@ -429,6 +442,12 @@ async def on_raw_bulk_message_delete(adapter: DiscordAdapter, payload: RawBulkMe
     cached = {m.id: m for m in payload.cached_messages}
     logger.info("bulk delete bridged: channel={} count={}", channel_id, len(payload.message_ids))
     for message_id in payload.message_ids:
+        # Skip when we initiated the delete (relaying from XMPP/IRC) — avoids duplicate retraction
+        key = f"{channel_id}:{message_id}"
+        if key in adapter._recently_deleted_by_us:
+            logger.debug("skipping bulk raw_message_delete for {} (we initiated)", message_id)
+            continue
+
         author_id = ""
         author_display = ""
         if message_id in cached:
