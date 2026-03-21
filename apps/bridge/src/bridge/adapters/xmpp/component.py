@@ -216,10 +216,12 @@ class XMPPComponent(ComponentXMPP):
         self._session: aiohttp.ClientSession | None = None
         self._ibb_streams: dict[str, asyncio.Task] = {}  # sid -> handler task
         self._msgid_tracker = XMPPMessageIDTracker()  # Track message IDs for edits
-        self._puppets_joined: set[tuple[str, str]] = set()  # (muc_jid, user_jid) — avoid re-join
+        self._puppets_joined: TTLCache[tuple[str, str], None] = TTLCache(
+            maxsize=10000, ttl=86400
+        )  # (muc_jid, user_jid) — avoid re-join
         # Track which (muc_jid, user_jid) pairs have had their avatar hash broadcast
         # so we don't re-broadcast on every message.  Cleared when avatar changes.
-        self._avatar_broadcast_done: set[tuple[str, str]] = set()
+        self._avatar_broadcast_done: TTLCache[tuple[str, str], None] = TTLCache(maxsize=10000, ttl=86400)
         # Dedupe: MUC delivers same message to each occupant (listener + puppets) — process once
         self._seen_msg_ids: TTLCache[tuple[str, str], None] = TTLCache(maxsize=500, ttl=60)
         # Fallback echo detection when get_jid_property returns None (MUC may not expose real JID)
@@ -234,6 +236,8 @@ class XMPPComponent(ComponentXMPP):
         self._recently_moderated_by_us: TTLCache[str, None] = TTLCache(maxsize=200, ttl=10)
         # Fire-and-forget moderation tasks (RUF006: keep reference to prevent GC)
         self._moderation_tasks: set[asyncio.Task[None]] = set()
+        # General fire-and-forget background tasks (e.g. rejoin scheduling)
+        self._background_tasks: set[asyncio.Task[None]] = set()
         # MUC status code handling (Requirement 26)
         self._banned_rooms: set[str] = set()  # MUC JIDs we've been banned from (status 301)
         self._auto_rejoin: bool = True  # Whether to auto-rejoin after kick/removal
@@ -378,7 +382,7 @@ class XMPPComponent(ComponentXMPP):
         if key in self._puppets_joined:
             return
         await self.join_muc_as_user(muc_jid, nick)
-        self._puppets_joined.add(key)
+        self._puppets_joined[key] = None
 
     async def join_muc_as_user(self, muc_jid: str, nick: str) -> None:
         """Join MUC as a specific user JID. Retries with nick_bridge if primary nick conflicts."""
@@ -431,10 +435,10 @@ class XMPPComponent(ComponentXMPP):
 
     # --- Inbound handlers (delegate to handlers.py) ---
 
-    def _on_groupchat_message(self, msg: Any) -> None:
+    async def _on_groupchat_message(self, msg: Any) -> None:
         from bridge.adapters.xmpp.handlers import on_groupchat_message
 
-        on_groupchat_message(self, msg)
+        await on_groupchat_message(self, msg)
 
     def _on_reactions(self, msg: Any) -> None:
         from bridge.adapters.xmpp.handlers import on_reactions
@@ -600,10 +604,10 @@ class XMPPComponent(ComponentXMPP):
 
     # --- Avatar (delegate to avatar.py) ---
 
-    def _resolve_avatar_url(self, base_domain: str, node: str) -> str | None:
+    async def _resolve_avatar_url(self, base_domain: str, node: str) -> str | None:
         from bridge.adapters.xmpp.avatar import resolve_avatar_url
 
-        return resolve_avatar_url(self, base_domain, node)
+        return await resolve_avatar_url(self, base_domain, node)
 
     async def _fetch_avatar_bytes(self, avatar_url: str) -> bytes | None:
         from bridge.adapters.xmpp.avatar import fetch_avatar_bytes
