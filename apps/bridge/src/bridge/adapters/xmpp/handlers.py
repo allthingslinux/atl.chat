@@ -88,7 +88,7 @@ def should_suppress_echo(comp: XMPPComponent, room_jid: str, nick: str) -> bool:
     return bool(is_listener_nick(nick))
 
 
-def on_groupchat_message(comp: XMPPComponent, msg: Any) -> None:
+async def on_groupchat_message(comp: XMPPComponent, msg: Any) -> None:
     """Handle MUC message; emit MessageIn."""
     # Skip MUC history playback (delayed delivery)
     if msg.get_plugin("delay", check=True):
@@ -289,7 +289,7 @@ def on_groupchat_message(comp: XMPPComponent, msg: Any) -> None:
             room_domain = JID(room_jid).domain
             base_domain = room_domain[4:] if room_domain.startswith("muc.") else room_domain
             node = JID(real_jid).local
-            avatar_url = comp._resolve_avatar_url(base_domain, node)
+            avatar_url = await comp._resolve_avatar_url(base_domain, node)
 
     # Use localpart as author_display when nick is escaped JID (kaizen\40xmpp.localhost -> kaizen)
     author_display = nick.split("\\40")[0] if "\\40" in nick else nick
@@ -660,8 +660,22 @@ def on_chatstate_paused(comp: XMPPComponent, msg: Any) -> None:
     _emit_typing_from_xmpp(comp, msg, "done")
 
 
+_IBB_MAX_CONCURRENT_STREAMS = 5
+
+
 def on_ibb_stream_start(comp: XMPPComponent, stream: Any) -> None:
-    """Handle incoming IBB stream; log for now."""
+    """Handle incoming IBB stream; enforce per-component concurrency limit."""
+    if len(comp._ibb_streams) >= _IBB_MAX_CONCURRENT_STREAMS:
+        logger.warning(
+            "IBB stream limit ({}) reached; rejecting new stream sid={} from {}",
+            _IBB_MAX_CONCURRENT_STREAMS,
+            stream.sid,
+            stream.peer,
+        )
+        with contextlib.suppress(Exception):
+            stream.close()
+        return
+
     logger.info(
         "IBB stream from {}: sid={} block_size={}",
         stream.peer,
@@ -849,14 +863,23 @@ def _handle_nick_modified(comp: XMPPComponent, room_jid: str, new_nick: str) -> 
 
 def _remove_puppet_entries(comp: XMPPComponent, room_jid: str) -> None:
     """Remove all puppet join entries for a given MUC room."""
-    to_remove = {key for key in comp._puppets_joined if key[0] == room_jid}
-    comp._puppets_joined -= to_remove
+    to_remove = [key for key in comp._puppets_joined if key[0] == room_jid]
+    for key in to_remove:
+        comp._puppets_joined.pop(key, None)
 
 
 def _schedule_rejoin(comp: XMPPComponent, room_jid: str) -> None:
     """Schedule an async rejoin attempt for a MUC room."""
     logger.info("Scheduling rejoin for MUC {}", room_jid)
-    asyncio.ensure_future(_rejoin_muc(comp, room_jid))  # noqa: RUF006
+    task = asyncio.ensure_future(_rejoin_muc(comp, room_jid))
+    comp._background_tasks.add(task)
+    task.add_done_callback(comp._background_tasks.discard)
+
+    def _on_done(t: asyncio.Task[None]) -> None:
+        if not t.cancelled() and (exc := t.exception()):
+            logger.error("background task failed: {}", exc)
+
+    task.add_done_callback(_on_done)
 
 
 async def _rejoin_muc(comp: XMPPComponent, room_jid: str) -> None:
