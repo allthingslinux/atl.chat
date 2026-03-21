@@ -296,11 +296,12 @@ class ReactionOut:
 
 @dataclass
 class TypingIn:
-    """User started typing — relay to other protocols."""
+    """User started or stopped typing — relay to other protocols."""
 
     origin: str
     channel_id: str
     user_id: str
+    state: str = "active"  # "active" | "done"
     raw: dict[str, Any] = field(default_factory=dict)
 
 
@@ -310,6 +311,7 @@ class TypingOut:
 
     target_origin: str
     channel_id: str
+    state: str = "active"  # "active" | "done"
     raw: dict[str, Any] = field(default_factory=dict)
 
 
@@ -376,13 +378,13 @@ def reaction_out(
 
 
 @event("typing_in")
-def typing_in(origin: str, channel_id: str, user_id: str) -> TypingIn:
-    return TypingIn(origin=origin, channel_id=channel_id, user_id=user_id)
+def typing_in(origin: str, channel_id: str, user_id: str, state: str = "active") -> TypingIn:
+    return TypingIn(origin=origin, channel_id=channel_id, user_id=user_id, state=state)
 
 
 @event("typing_out")
-def typing_out(target_origin: str, channel_id: str) -> TypingOut:
-    return TypingOut(target_origin=target_origin, channel_id=channel_id)
+def typing_out(target_origin: str, channel_id: str, state: str = "active") -> TypingOut:
+    return TypingOut(target_origin=target_origin, channel_id=channel_id, state=state)
 
 
 class Dispatcher:

@@ -295,7 +295,7 @@ class Relay:
             return
 
         def emit(target: str) -> object:
-            _, out_evt = typing_out(target_origin=target, channel_id=mapping.discord_channel_id)
+            _, out_evt = typing_out(target_origin=target, channel_id=mapping.discord_channel_id, state=evt.state)
             return out_evt
 
         self._emit_targets(mapping, evt.origin, emit)

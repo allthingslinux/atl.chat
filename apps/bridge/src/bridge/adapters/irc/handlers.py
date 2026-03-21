@@ -354,13 +354,14 @@ async def handle_tagmsg(client: IRCClient, message: object) -> None:
                         evt.author_display = canonical
             logger.info("reaction removal bridged: channel={} author={} emoji={}", target, nick, unreact)
             client._bus.publish("irc", evt)
-    elif typing_val == "active":
+    elif typing_val in ("active", "done"):
         from bridge.events import typing_in
 
         _, evt = typing_in(
             origin="irc",
             channel_id=f"{client._server}/{target}",
             user_id=nick or "unknown",
+            state=typing_val,
         )
         client._bus.publish("irc", evt)
 

@@ -374,3 +374,23 @@ async def send_composing_as_bridge(comp: XMPPComponent, muc_jid: str) -> None:
         logger.debug("sent chatstate composing to {}", muc_jid)
     except Exception as exc:
         logger.debug("chatstate composing send failed for {}: {}", muc_jid, exc)
+
+
+async def send_paused_as_bridge(comp: XMPPComponent, muc_jid: str) -> None:
+    """Send XEP-0085 <paused/> chatstate from the bridge listener to the MUC.
+
+    Clears the composing indicator on XMPP clients. Uses XEP-0334 no-store hint.
+    """
+    bridge_jid = f"bridge@{comp._component_jid}"
+    try:
+        msg = comp.make_message(
+            mto=JID(muc_jid),
+            mfrom=JID(bridge_jid),
+            mtype="groupchat",
+        )
+        msg["chat_state"] = "paused"
+        msg.enable("no-store")
+        msg.send()
+        logger.debug("sent chatstate paused to {}", muc_jid)
+    except Exception as exc:
+        logger.debug("chatstate paused send failed for {}: {}", muc_jid, exc)

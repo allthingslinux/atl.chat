@@ -297,6 +297,8 @@ class XMPPComponent(ComponentXMPP):
         self.add_event_handler("ibb_stream_start", self._on_ibb_stream_start)
         self.add_event_handler("ibb_stream_end", self._on_ibb_stream_end)
         self.add_event_handler("chatstate_composing", self._on_chatstate_composing)
+        self.add_event_handler("chatstate_paused", self._on_chatstate_paused)
+        self.add_event_handler("chatstate_active", self._on_chatstate_paused)  # active = typing stopped
         self.add_event_handler("session_start", self._on_session_start)
         self.add_event_handler("disconnected", self._on_disconnected)
         self.add_event_handler(f"muc::{'*'}::got_online", self._on_muc_presence)
@@ -478,6 +480,11 @@ class XMPPComponent(ComponentXMPP):
 
         on_chatstate_composing(self, msg)
 
+    def _on_chatstate_paused(self, msg: Any) -> None:
+        from bridge.adapters.xmpp.handlers import on_chatstate_paused
+
+        on_chatstate_paused(self, msg)
+
     async def _handle_ibb_stream(self, stream: Any) -> None:
         from bridge.adapters.xmpp.handlers import handle_ibb_stream
 
@@ -556,6 +563,11 @@ class XMPPComponent(ComponentXMPP):
         from bridge.adapters.xmpp.outbound import send_composing_as_bridge
 
         await send_composing_as_bridge(self, muc_jid)
+
+    async def send_paused_as_bridge(self, muc_jid: str) -> None:
+        from bridge.adapters.xmpp.outbound import send_paused_as_bridge
+
+        await send_paused_as_bridge(self, muc_jid)
 
     # --- Media (delegate to media.py) ---
 

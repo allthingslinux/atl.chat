@@ -87,6 +87,7 @@ class XMPPAdapter(AdapterBase):
         self._consumer_task: asyncio.Task[None] | None = None
         self._component_task: asyncio.Future[None] | None = None
         self._xmpp_typing_throttle: dict[str, float] = {}  # muc_jid -> last_sent
+        self._xmpp_paused_tasks: dict[str, asyncio.Task] = {}  # muc_jid -> auto-paused task
 
     @property
     def name(self) -> str:
@@ -416,19 +417,40 @@ class XMPPAdapter(AdapterBase):
         )
 
     async def _handle_typing_out(self, evt: TypingOut) -> None:
-        """Send XEP-0085 composing chatstate to XMPP MUC (throttled 3s)."""
+        """Send XEP-0085 composing/paused chatstate to XMPP MUC (throttled 3s; auto-paused after 6s)."""
         if not self._component:
             return
         mapping = self._router.get_mapping_for_discord(evt.channel_id)
         if not mapping or not mapping.xmpp:
             return
         muc_jid = mapping.xmpp.muc_jid
+
+        if evt.state == "done":
+            if task := self._xmpp_paused_tasks.pop(muc_jid, None):
+                task.cancel()
+            await self._component.send_paused_as_bridge(muc_jid)
+            return
+
         now = time.time()
         last = self._xmpp_typing_throttle.get(muc_jid, 0)
         if now - last < 3:
             return
         self._xmpp_typing_throttle[muc_jid] = now
         await self._component.send_composing_as_bridge(muc_jid)
+
+        # Schedule auto-paused after 6s (matches ObsidianIRC auto-clear)
+        if task := self._xmpp_paused_tasks.pop(muc_jid, None):
+            task.cancel()
+        self._xmpp_paused_tasks[muc_jid] = asyncio.create_task(self._auto_paused_xmpp(muc_jid))
+
+    async def _auto_paused_xmpp(self, muc_jid: str) -> None:
+        """Send <paused/> after 6s unless cancelled by a new typing event."""
+        await asyncio.sleep(6.0)
+        self._xmpp_paused_tasks.pop(muc_jid, None)
+        if not self._component:
+            return
+        await self._component.send_paused_as_bridge(muc_jid)
+        logger.debug("auto-sent chatstate paused to {}", muc_jid)
 
     async def start(self) -> None:
         """Start XMPP component."""

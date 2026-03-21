@@ -617,8 +617,8 @@ def on_raw_groupchat(comp: XMPPComponent, msg: Any) -> None:
     try_handle_moderation(comp, msg, room_jid)
 
 
-def on_chatstate_composing(comp: XMPPComponent, msg: Any) -> None:
-    """Handle XEP-0085 <composing/>; emit TypingIn to bus."""
+def _emit_typing_from_xmpp(comp: XMPPComponent, msg: Any, state: str) -> None:
+    """Shared handler for XEP-0085 chatstates; emits TypingIn to bus."""
     from_jid = str(msg["from"]) if msg["from"] else ""
     if "/" not in from_jid:
         return  # Must be from a MUC occupant (room/nick)
@@ -640,9 +640,19 @@ def on_chatstate_composing(comp: XMPPComponent, msg: Any) -> None:
 
     from bridge.events import typing_in
 
-    _, evt = typing_in(origin="xmpp", channel_id=room_jid, user_id=nick)
-    logger.debug("typing bridged: room={} nick={}", room_jid, nick)
+    _, evt = typing_in(origin="xmpp", channel_id=room_jid, user_id=nick, state=state)
+    logger.debug("typing {} bridged: room={} nick={}", state, room_jid, nick)
     comp._bus.publish("xmpp", evt)
+
+
+def on_chatstate_composing(comp: XMPPComponent, msg: Any) -> None:
+    """Handle XEP-0085 <composing/>; emit TypingIn(state='active') to bus."""
+    _emit_typing_from_xmpp(comp, msg, "active")
+
+
+def on_chatstate_paused(comp: XMPPComponent, msg: Any) -> None:
+    """Handle XEP-0085 <paused/> or <active/>; emit TypingIn(state='done') to bus."""
+    _emit_typing_from_xmpp(comp, msg, "done")
 
 
 def on_ibb_stream_start(comp: XMPPComponent, stream: Any) -> None:

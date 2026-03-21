@@ -42,6 +42,7 @@ class IRCAdapter(AdapterBase):
         self._puppet_tasks: set[asyncio.Task] = set()
         self._msgid_tracker = MessageIDTracker(ttl_seconds=3600)
         self._reaction_tracker = ReactionTracker(ttl_seconds=3600)
+        self._typing_done_tasks: dict[str, asyncio.Task] = {}  # irc_channel -> auto-done task
         if msgid_resolver:
             msgid_resolver.register_irc(self._msgid_tracker)
 
@@ -128,8 +129,22 @@ class IRCAdapter(AdapterBase):
             logger.exception("Reaction TAGMSG failed: {}", exc)
 
     async def _send_typing(self, evt: TypingOut) -> None:
-        """Send IRC TAGMSG with +typing=active for Discord typing (throttled 3s)."""
+        """Send IRC TAGMSG with +typing=active/done (throttled 3s; auto-done after 6s)."""
         if not self._client:
+            return
+
+        mapping = self._router.get_mapping_for_discord(evt.channel_id)
+        if not mapping or not mapping.irc:
+            return
+        target = mapping.irc.channel
+
+        if evt.state == "done":
+            if task := self._typing_done_tasks.pop(target, None):
+                task.cancel()
+            try:
+                await self._client.rawmsg("TAGMSG", target, tags={"+typing": "done"})
+            except Exception as exc:
+                logger.debug("Typing done TAGMSG failed for {}: {}", target, exc)
             return
 
         now = time.time()
@@ -137,19 +152,28 @@ class IRCAdapter(AdapterBase):
         if now - last < 3:
             return
         self._client._typing_last = now
-
-        mapping = self._router.get_mapping_for_discord(evt.channel_id)
-        if not mapping or not mapping.irc:
-            return
-        target = mapping.irc.channel
         try:
-            await self._client.rawmsg(
-                "TAGMSG",
-                target,
-                tags={"+typing": "active"},
-            )
+            await self._client.rawmsg("TAGMSG", target, tags={"+typing": "active"})
         except Exception as exc:
             logger.debug("Typing TAGMSG failed: {}", exc)
+            return
+
+        # Schedule auto-done after 6s (matches ObsidianIRC auto-clear)
+        if task := self._typing_done_tasks.pop(target, None):
+            task.cancel()
+        self._typing_done_tasks[target] = asyncio.create_task(self._auto_done_irc(target))
+
+    async def _auto_done_irc(self, target: str) -> None:
+        """Send +typing=done after 6s unless cancelled by a new typing event."""
+        await asyncio.sleep(6.0)
+        self._typing_done_tasks.pop(target, None)
+        if not self._client:
+            return
+        try:
+            await self._client.rawmsg("TAGMSG", target, tags={"+typing": "done"})
+            logger.debug("auto-sent +typing=done to {}", target)
+        except Exception as exc:
+            logger.debug("auto +typing=done failed for {}: {}", target, exc)
 
     async def _send_redact(self, evt: MessageDeleteOut) -> None:
         """Send REDACT to IRC when Discord message is deleted (requires draft/message-redaction)."""
