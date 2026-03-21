@@ -232,6 +232,14 @@ class IRCPuppetManager:
                 await puppet.message(channel, chunk)
             puppet.touch()
             logger.info("puppet sent to {} as {}", channel, puppet.nickname)
+        except (OSError, ConnectionError) as exc:
+            logger.warning(
+                "Puppet send failed for {} (connection error); evicting dead puppet: {}",
+                discord_id,
+                exc,
+            )
+            self._puppets.pop(discord_id, None)
+            self._puppet_locks.pop(discord_id, None)
         except Exception as exc:
             logger.exception("Puppet send failed for {}: {}", discord_id, exc)
 
@@ -277,6 +285,7 @@ class IRCPuppetManager:
 
                 for discord_id in to_remove:
                     puppet = self._puppets.pop(discord_id)
+                    self._puppet_locks.pop(discord_id, None)
                     await puppet.disconnect()
                     logger.info("disconnected idle puppet for {}", discord_id)
 
