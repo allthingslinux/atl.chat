@@ -99,15 +99,18 @@ def on_groupchat_message(comp: XMPPComponent, msg: Any) -> None:
     nick = msg["mucnick"] if msg["mucnick"] else ""
     from_jid = str(msg["from"]) if msg["from"] else ""
 
-    # Convert XMPP spoilers to Discord format
-    # XEP-0382: <spoiler>hint</spoiler> — hint is optional warning text
-    spoiler_hint: str | None = None
+    # Detect XEP-0382 spoiler element and record in raw_data for the pipeline.
+    # The pipeline's unwrap_spoiler (XMPP branch) checks raw["spoiler"] to set
+    # ctx.spoiler, then wrap_spoiler re-applies the correct target syntax
+    # (||…|| for Discord, fg==bg color for IRC, XEP-0382 element for XMPP).
+    is_spoiler = False
+    spoiler_reason: str | None = None
     if msg.get_plugin("spoiler", check=True):
-        hint_text = ""
+        is_spoiler = True
         with contextlib.suppress(AttributeError, TypeError):
-            hint_text = (msg["spoiler"].xml.text or "").strip()
-        spoiler_hint = hint_text
-        body = f"{hint_text}: ||{body}||" if hint_text else f"||{body}||"
+            hint = (msg["spoiler"].xml.text or "").strip()
+            if hint:
+                spoiler_reason = hint
 
     # XEP-0066 OOB: extract file URL from <x xmlns="jabber:x:oob"><url/></x>
     # Clients often put the same URL in both body and oob; avoid duplicating
@@ -241,8 +244,10 @@ def on_groupchat_message(comp: XMPPComponent, msg: Any) -> None:
     raw_data: dict[str, Any] = {}
     if unstyled:
         raw_data["unstyled"] = True
-    if spoiler_hint is not None:
-        raw_data["spoiler_hint"] = spoiler_hint
+    if is_spoiler:
+        raw_data["spoiler"] = True
+        if spoiler_reason:
+            raw_data["spoiler_reason"] = spoiler_reason
     if replace_id:
         raw_data["replace_id"] = replace_id
     if reply_to_xmpp_id:
