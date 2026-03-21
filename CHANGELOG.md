@@ -1,3 +1,22 @@
+# [1.11.0](https://github.com/allthingslinux/atl.chat/compare/v1.10.0...v1.11.0) (2026-03-21)
+
+
+### Bug Fixes
+
+* **relay:** forward spoiler and reply_quoted fields from evt.raw to ctx.raw ([189d4f8](https://github.com/allthingslinux/atl.chat/commit/189d4f860ac831b9b30337e0b0ae5f08b9536bac))
+* **xmpp:** set raw["spoiler"] instead of raw["spoiler_hint"] for XEP-0382 ([1200e86](https://github.com/allthingslinux/atl.chat/commit/1200e86e6bc54e8f1ca0954619dffb2055fd9cea))
+* **xmpp:** use XEP-0461 proper API for replies with author JID and quoted fallback ([a798b4c](https://github.com/allthingslinux/atl.chat/commit/a798b4cb440db928684ac35ed02319a4c2bbdb2b))
+
+
+### Features
+
+* **bridge:** add +typing=done propagation with auto-clear timers ([2ba7b29](https://github.com/allthingslinux/atl.chat/commit/2ba7b29c619dae0b140dddab425aaf551da1d789))
+* **bridge:** add XMPP typing support via XEP-0085 ([b5679b1](https://github.com/allthingslinux/atl.chat/commit/b5679b1658bf31f416d95f5f617e49610d9e3d40))
+* **bridge:** replace reply button with OOYE-style -# > subtext ([1a6e9d2](https://github.com/allthingslinux/atl.chat/commit/1a6e9d28eef69fa823fdf4e32157479f3c144391))
+* **pipeline:** include spoiler_reason as hint prefix in Discord wrap_spoiler ([876c58c](https://github.com/allthingslinux/atl.chat/commit/876c58c0b49f80e239d858bcfa18668651c7c15a))
+* **xmpp:** handle chatstate_inactive and thread reply author/body through send_message_as_user ([835ff21](https://github.com/allthingslinux/atl.chat/commit/835ff2195a9d5c16860b92e39411a2fe05c14316))
+* **xmpp:** pass reply author nick and body from event raw to outbound send ([d070afe](https://github.com/allthingslinux/atl.chat/commit/d070afe14a1aea232ed62e6db1c7a910a3faa36f))
+
 # [1.10.0](https://github.com/allthingslinux/atl.chat/compare/v1.9.0...v1.10.0) (2026-03-20)
 
 
