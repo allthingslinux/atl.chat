@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import time
+import uuid
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
@@ -139,7 +141,7 @@ async def handle_message(client: IRCClient, target: str, source: str, message: s
         logger.debug("discarding history replay message from {} in {}", source, target)
         return
 
-    message_id = msgid or f"irc:{client._server}:{target}:{source}:{id(message)}"
+    message_id = msgid or f"irc-{int(time.time_ns())}-{uuid.uuid4().hex[:8]}"
 
     # Resolve reply_to to Discord message ID if available
     discord_reply_to = None
@@ -252,7 +254,7 @@ async def handle_ctcp_action(client: IRCClient, by: str, target: str, message: s
         author_id=by,
         author_display=author_display,
         content=content,
-        message_id=f"irc:{client._server}:{target}:{by}:{id(message)}",
+        message_id=f"irc-{int(time.time_ns())}-{uuid.uuid4().hex[:8]}",
         is_action=True,
     )
     logger.info("action bridged: channel={} author={}", target, by)
