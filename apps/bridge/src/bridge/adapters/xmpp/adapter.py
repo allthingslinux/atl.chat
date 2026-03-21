@@ -349,7 +349,7 @@ class XMPPAdapter(AdapterBase):
                             bcast_key = (muc_jid, user_jid)
                             if bcast_key not in self._component._avatar_broadcast_done:
                                 await self._component._broadcast_avatar_presence(user_jid, avatar_hash)
-                                self._component._avatar_broadcast_done.add(bcast_key)
+                                self._component._avatar_broadcast_done[bcast_key] = None
 
                 await asyncio.sleep(0.25)
             except asyncio.CancelledError:
