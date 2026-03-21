@@ -126,7 +126,7 @@ async def upload_paste(content: str, lang: str = "") -> str | None:
         content = content[:_MAX_CHARS]
         logger.warning("paste: content truncated to {} chars", _MAX_CHARS)
 
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     try:
         url = await loop.run_in_executor(
             None,
