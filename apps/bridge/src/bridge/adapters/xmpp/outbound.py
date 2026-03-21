@@ -40,6 +40,8 @@ async def send_message_as_user(
     media_height: int | None = None,
     spoiler: bool = False,
     spoiler_reason: str | None = None,
+    reply_to_author_nick: str | None = None,
+    reply_to_body: str | None = None,
 ) -> str:
     """Send message to MUC from a specific Discord user's JID. Returns XMPP message ID.
 
@@ -90,30 +92,38 @@ async def send_message_as_user(
 
         if reply_to_id:
             try:
-                reply = msg.enable("reply")
-                reply["to"] = JID(muc_jid)
+                from slixmpp.plugins.xep_0461.stanza import Reply as _Reply
+
+                reply: _Reply = msg.enable("reply")  # type: ignore[assignment]
+                # XEP-0461 §3: 'to' SHOULD be the full JID of the quoted author.
+                # For MUC groupchat that is room@muc/nick. Use author nick if known,
+                # otherwise fall back to the bare room JID (still valid per spec).
+                if reply_to_author_nick:
+                    escaped_reply_nick = _escape_jid_node(reply_to_author_nick)
+                    reply["to"] = JID(f"{muc_jid}/{escaped_reply_nick}")
+                else:
+                    reply["to"] = JID(muc_jid)
                 reply["id"] = reply_to_id
-            except Exception:
-                pass
 
-            try:
-                ref = msg.enable("reference")
-                ref["type"] = "reply"
-                ref["uri"] = f"xmpp:{muc_jid}?id={reply_to_id}"
-            except Exception:
-                pass
-
-            fallback_prefix = "> [reply]\n"
-            original_body = msg["body"] or ""
-            msg["body"] = fallback_prefix + original_body
-            try:
-                fb = msg.enable("fallback")
-                fb["for"] = "urn:xmpp:reply:0"
-                fb_body = fb.enable("body")
-                fb_body["start"] = 0
-                fb_body["end"] = len(fallback_prefix)
-            except Exception:
-                pass
+                # Add quoted fallback so non-XEP-0461 clients see "> nick:\n> text\n"
+                # add_quoted_fallback() prepends the quote block to msg["body"] and
+                # attaches the XEP-0428 <fallback for="urn:xmpp:reply:0"> element.
+                if reply_to_body is not None:
+                    reply.add_quoted_fallback(
+                        reply_to_body[:200],  # truncate to avoid oversized stanzas
+                        nickname=reply_to_author_nick,
+                    )
+                else:
+                    # Minimal fallback for when quoted content is unavailable
+                    fallback_prefix = "> [reply]\n"
+                    msg["body"] = fallback_prefix + (msg["body"] or "")
+                    fb = msg.enable("fallback")
+                    fb["for"] = "urn:xmpp:reply:0"
+                    fb_body = fb.enable("body")
+                    fb_body["start"] = 0
+                    fb_body["end"] = len(fallback_prefix)
+            except Exception as exc:
+                logger.debug("XEP-0461 reply stanza attach failed: {}", exc)
 
         # Add origin-id (XEP-0359) so MUC preserves it
         if msg_id:
