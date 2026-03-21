@@ -210,6 +210,8 @@ class Relay:
                     "reply_quoted_content": evt.raw.get("reply_quoted_content"),
                     "reply_quoted_author": evt.raw.get("reply_quoted_author"),
                     "unstyled": evt.raw.get("unstyled"),
+                    "spoiler": evt.raw.get("spoiler"),
+                    "spoiler_reason": evt.raw.get("spoiler_reason"),
                 },
             )
 
@@ -236,6 +238,11 @@ class Relay:
             if evt.raw.get("media_width"):
                 out_raw["media_width"] = evt.raw["media_width"]
                 out_raw["media_height"] = evt.raw["media_height"]
+            # Propagate reply quoted metadata so XMPP adapter can build XEP-0461 fallback
+            if evt.raw.get("reply_quoted_author"):
+                out_raw["reply_quoted_author"] = evt.raw["reply_quoted_author"]
+            if evt.raw.get("reply_quoted_content"):
+                out_raw["reply_quoted_content"] = evt.raw["reply_quoted_content"]
             # Propagate reply_fallback_added from pipeline context
             if ctx.raw.get("reply_fallback_added"):
                 out_raw["reply_fallback_added"] = True
