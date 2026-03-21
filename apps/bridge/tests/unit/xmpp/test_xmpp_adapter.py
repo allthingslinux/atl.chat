@@ -409,6 +409,8 @@ class TestOutboundConsumer:
             media_height=None,
             spoiler=False,
             spoiler_reason=None,
+            reply_to_author_nick=None,
+            reply_to_body=None,
         )
 
     @pytest.mark.asyncio
@@ -463,6 +465,8 @@ class TestOutboundConsumer:
             media_height=None,
             spoiler=False,
             spoiler_reason=None,
+            reply_to_author_nick=None,
+            reply_to_body=None,
         )
 
     @pytest.mark.asyncio
@@ -541,6 +545,8 @@ class TestOutboundConsumer:
             media_height=None,
             spoiler=False,
             spoiler_reason=None,
+            reply_to_author_nick=None,
+            reply_to_body=None,
         )
 
     @pytest.mark.asyncio
@@ -974,4 +980,6 @@ class TestConsumerGuardConditions:
             media_height=None,
             spoiler=False,
             spoiler_reason=None,
+            reply_to_author_nick=None,
+            reply_to_body=None,
         )
