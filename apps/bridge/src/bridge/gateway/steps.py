@@ -140,6 +140,8 @@ def wrap_spoiler(content: str, ctx: TransformContext) -> str:
         return content
 
     if ctx.target == "discord":
+        if ctx.spoiler_reason:
+            return f"{ctx.spoiler_reason}: ||{content}||"
         return f"||{content}||"
 
     if ctx.target == "irc":
