@@ -35,11 +35,11 @@ def _decode_data_url(url: str) -> bytes | None:
         return None
 
 
-def resolve_avatar_url(comp: XMPPComponent, base_domain: str, node: str) -> str | None:
+async def resolve_avatar_url(comp: XMPPComponent, base_domain: str, node: str) -> str | None:
     """Resolve avatar URL: try /pep_avatar/ first, then /avatar/ (vCard) as fallback. Cached."""
     from bridge.avatar import resolve_xmpp_avatar_url
 
-    return resolve_xmpp_avatar_url(base_domain, node)
+    return await resolve_xmpp_avatar_url(base_domain, node)
 
 
 async def fetch_avatar_bytes(comp: XMPPComponent, avatar_url: str) -> bytes | None:
@@ -108,7 +108,9 @@ async def set_avatar_for_user(
 
         comp._avatar_cache[discord_id] = avatar_hash
         # Avatar changed — clear broadcast tracker so all MUCs get the new hash
-        comp._avatar_broadcast_done = {k for k in comp._avatar_broadcast_done if k[1] != user_jid}
+        stale = [k for k in comp._avatar_broadcast_done if k[1] == user_jid]
+        for k in stale:
+            comp._avatar_broadcast_done.pop(k, None)
         logger.info("Set vCard avatar for {} (hash: {})", user_jid, avatar_hash[:8])
         return avatar_hash
     except Exception as exc:

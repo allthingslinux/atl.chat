@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from bridge.gateway import ChannelRouter
 
 
-def resolve_xmpp_avatar_fallback(evt: MessageOut, router: ChannelRouter) -> str | None:
+async def resolve_xmpp_avatar_fallback(evt: MessageOut, router: ChannelRouter) -> str | None:
     """Try to resolve an XMPP avatar for IRC-origin messages with no avatar.
 
     Uses the IRC nick as the XMPP node (localpart) and probes Prosody's
@@ -28,4 +28,4 @@ def resolve_xmpp_avatar_fallback(evt: MessageOut, router: ChannelRouter) -> str 
     base_domain = xmpp_domain_from_muc_jid(mapping.xmpp.muc_jid)
     # Use IRC nick (author_display) as XMPP node — common for users on both protocols
     node = evt.author_display.lower()
-    return resolve_xmpp_avatar_url(base_domain, node)
+    return await resolve_xmpp_avatar_url(base_domain, node)

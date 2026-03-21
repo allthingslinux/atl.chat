@@ -19,7 +19,7 @@ def _get_cache() -> TTLCache[tuple[str, str], str | None]:
     return _avatar_url_cache
 
 
-def resolve_xmpp_avatar_url(base_domain: str, node: str) -> str | None:
+async def resolve_xmpp_avatar_url(base_domain: str, node: str) -> str | None:
     """Resolve avatar URL: probe internally, return public URL for external consumers.
 
     The bridge probes Prosody via the internal ``xmpp_avatar_base_url`` (Docker hostname),
@@ -47,17 +47,18 @@ def resolve_xmpp_avatar_url(base_domain: str, node: str) -> str | None:
     public_base = cfg.xmpp_avatar_public_url
     public_base = public_base.rstrip("/") if public_base else f"https://{base_domain}"
 
-    for path in (f"/pep_avatar/{node}", f"/avatar/{node}"):
-        probe_url = f"{probe_base}{path}"
-        try:
-            r = httpx.head(probe_url, follow_redirects=True, timeout=1.5)
-            if r.status_code == 200:
-                public_url = f"{public_base}{path}"
-                cache[cache_key] = public_url
-                return public_url
-        except Exception as exc:
-            logger.debug("avatar probe failed for {}@{} ({}): {}", node, base_domain, path, exc)
-            continue
+    async with httpx.AsyncClient() as client:
+        for path in (f"/pep_avatar/{node}", f"/avatar/{node}"):
+            probe_url = f"{probe_base}{path}"
+            try:
+                r = await client.head(probe_url, follow_redirects=True, timeout=1.5)
+                if r.status_code == 200:
+                    public_url = f"{public_base}{path}"
+                    cache[cache_key] = public_url
+                    return public_url
+            except Exception as exc:
+                logger.debug("avatar probe failed for {}@{} ({}): {}", node, base_domain, path, exc)
+                continue
 
     cache[cache_key] = None
     return None
