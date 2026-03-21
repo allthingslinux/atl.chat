@@ -299,6 +299,7 @@ class XMPPComponent(ComponentXMPP):
         self.add_event_handler("chatstate_composing", self._on_chatstate_composing)
         self.add_event_handler("chatstate_paused", self._on_chatstate_paused)
         self.add_event_handler("chatstate_active", self._on_chatstate_paused)  # active = typing stopped
+        self.add_event_handler("chatstate_inactive", self._on_chatstate_paused)  # inactive = user switched away
         self.add_event_handler("session_start", self._on_session_start)
         self.add_event_handler("disconnected", self._on_disconnected)
         self.add_event_handler(f"muc::{'*'}::got_online", self._on_muc_presence)
@@ -508,6 +509,8 @@ class XMPPComponent(ComponentXMPP):
         media_height: int | None = None,
         spoiler: bool = False,
         spoiler_reason: str | None = None,
+        reply_to_author_nick: str | None = None,
+        reply_to_body: str | None = None,
     ) -> str:
         from bridge.adapters.xmpp.outbound import send_message_as_user
 
@@ -526,6 +529,8 @@ class XMPPComponent(ComponentXMPP):
             media_height=media_height,
             spoiler=spoiler,
             spoiler_reason=spoiler_reason,
+            reply_to_author_nick=reply_to_author_nick,
+            reply_to_body=reply_to_body,
         )
 
     async def send_reaction_as_user(
