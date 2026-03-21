@@ -152,7 +152,8 @@ class TestOnGroupchatMessage:
 
         bus.publish.assert_not_called()
 
-    def test_spoiler_body_wrapped(self):
+    def test_spoiler_body_unchanged(self):
+        """XEP-0382: body is left clean; spoiler flag moves to raw for the pipeline."""
         router = self._make_router()
         bus = MagicMock()
         comp = make_component(router=router, bus=bus)
@@ -161,15 +162,15 @@ class TestOnGroupchatMessage:
         comp._on_groupchat_message(msg)
 
         _, evt = bus.publish.call_args[0]
-        assert evt.content == "||secret||"
+        assert evt.content == "secret"
+        assert evt.raw.get("spoiler") is True
 
     def test_spoiler_with_hint(self):
-        """XEP-0382: spoiler with hint text prepended."""
+        """XEP-0382: hint stored in raw spoiler_reason; body unchanged."""
         router = self._make_router()
         bus = MagicMock()
         comp = make_component(router=router, bus=bus)
 
-        # Create a mock spoiler plugin with xml.text for the hint
         spoiler_plugin = MockPlugin()
         from types import SimpleNamespace
 
@@ -179,8 +180,9 @@ class TestOnGroupchatMessage:
         comp._on_groupchat_message(msg)
 
         _, evt = bus.publish.call_args[0]
-        assert evt.content == "Plot twist: ||they all die||"
-        assert evt.raw.get("spoiler_hint") == "Plot twist"
+        assert evt.content == "they all die"
+        assert evt.raw.get("spoiler") is True
+        assert evt.raw.get("spoiler_reason") == "Plot twist"
 
     def test_oob_url_used_as_content_when_body_empty(self):
         """XEP-0066 OOB: when body is empty, OOB URL becomes content."""
