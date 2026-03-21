@@ -147,11 +147,13 @@ class PortalClient:
                 )
             raise exc
 
-        # Success or non-connection error — reset breaker
-        self._consecutive_failures = 0
         if resp.status_code == 404:
+            # Successful response (user not found) — reset breaker
+            self._consecutive_failures = 0
             return None
-        resp.raise_for_status()
+        resp.raise_for_status()  # raises on 5xx; do not reset breaker for server errors
+        # 2xx success — reset breaker
+        self._consecutive_failures = 0
         return self._extract(resp.json())
 
     # -- public API (unchanged signatures) -----------------------------------
