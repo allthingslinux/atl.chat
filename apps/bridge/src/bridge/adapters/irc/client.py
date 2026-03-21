@@ -8,7 +8,7 @@ import hashlib
 import os
 import random
 from collections.abc import Callable
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar
 
 import pydle
 from cachetools import TTLCache
@@ -143,7 +143,7 @@ class IRCClient(pydle.Client):
         self._message_tags: dict[str, str | bool | None] = {}  # set in on_raw_privmsg from message.tags
         self._puppet_nick_check: Callable[[str], bool] | None = None  # set by adapter for echo detection
         # Fallback echo detection when relaymsg tag missing (e.g. via irc-services)
-        self._recent_relaymsg_sends: TTLCache[tuple[str, str], None] = TTLCache(maxsize=100, ttl=5)
+        self._recent_relaymsg_sends: TTLCache[tuple[str, str, str], None] = TTLCache(maxsize=100, ttl=5)
         # labeled-response: label counter and pending label→discord_id mapping for echo correlation.
         # When we send a RELAYMSG/PRIVMSG with a label tag, the server echoes it back with the
         # same label. We match the echo's label to the discord_id we stored, enabling reliable
@@ -161,6 +161,21 @@ class IRCClient(pydle.Client):
         self._last_message_times: dict[str, str] = {}
         # Active chathistory batch references — messages in these batches bypass history replay suppression
         self._chathistory_batches: set[str] = set()
+        # Track fire-and-forget background tasks to prevent GC and log exceptions
+        self._background_tasks: set[asyncio.Task[Any]] = set()
+
+    # ------------------------------------------------------------------
+    # Background task tracking
+    # ------------------------------------------------------------------
+
+    def _track_task(self, task: asyncio.Task[Any]) -> None:
+        self._background_tasks.add(task)
+        task.add_done_callback(self._background_tasks.discard)
+        task.add_done_callback(self._on_task_done)
+
+    def _on_task_done(self, task: asyncio.Task[Any]) -> None:
+        if not task.cancelled() and (exc := task.exception()):
+            logger.error("background task failed: {}", exc)
 
     # ------------------------------------------------------------------
     # Connection lifecycle
@@ -179,10 +194,10 @@ class IRCClient(pydle.Client):
         await self._ensure_channels_permanent()
         self._consumer_task = asyncio.create_task(self._consume_outbound())
         # Fallback: if no PONG within 10s, mark ready anyway (some servers don't echo PING)
-        asyncio.create_task(self._ready_fallback())  # noqa: RUF006
+        self._track_task(asyncio.create_task(self._ready_fallback()))
         # Fetch missed messages via CHATHISTORY on reconnect (if we have prior timestamps)
         if self._last_message_times:
-            asyncio.create_task(self._fetch_chathistory())  # noqa: RUF006
+            self._track_task(asyncio.create_task(self._fetch_chathistory()))
 
     async def _ensure_channels_permanent(self) -> None:
         """OPER up and set +P/+H channel modes on bridged channels."""
