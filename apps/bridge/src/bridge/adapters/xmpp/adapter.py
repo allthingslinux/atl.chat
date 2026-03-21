@@ -228,6 +228,8 @@ class XMPPAdapter(AdapterBase):
                                 reply_to_xmpp_id = self._component._msgid_tracker.get_xmpp_id_for_reaction(
                                     evt.reply_to_id
                                 )
+                            reply_to_author_nick: str | None = evt.raw.get("reply_quoted_author")
+                            reply_to_body: str | None = evt.raw.get("reply_quoted_content")
 
                             # Send new message; store mapping before send so stanza-id from
                             # MUC echo can update it (required for Discord→XMPP edits)
@@ -313,6 +315,8 @@ class XMPPAdapter(AdapterBase):
                                 media_height=evt.raw.get("media_height"),
                                 spoiler=evt.raw.get("spoiler", False),
                                 spoiler_reason=evt.raw.get("spoiler_reason"),
+                                reply_to_author_nick=reply_to_author_nick,
+                                reply_to_body=reply_to_body,
                             )
                             if xmpp_msg_id:
                                 logger.info("sent message to {} as {}", muc_jid, nick)
