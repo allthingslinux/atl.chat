@@ -220,7 +220,7 @@ class TestMain:
         mock_config.identity_cache_ttl_seconds = 3600
         captured_identity: list = []
 
-        async def _capture_run(bus, router, identity, portal_client=None):
+        async def _capture_run(bus, router, identity, portal_client=None, config_path=None):
             captured_identity.append(identity)
 
         loop = asyncio.new_event_loop()
@@ -262,7 +262,7 @@ class TestMain:
         mock_config.identity_cache_ttl_seconds = 3600
         captured_args: list = []
 
-        async def _capture_run(bus, router, identity, portal_client=None):
+        async def _capture_run(bus, router, identity, portal_client=None, config_path=None):
             captured_args.append((identity, portal_client))
 
         loop = asyncio.new_event_loop()
@@ -311,7 +311,7 @@ class TestMain:
         mock_config.identity_cache_ttl_seconds = 3600
         captured_identity: list = []
 
-        async def _capture_run(bus, router, identity, portal_client=None):
+        async def _capture_run(bus, router, identity, portal_client=None, config_path=None):
             captured_identity.append(identity)
 
         loop = asyncio.new_event_loop()

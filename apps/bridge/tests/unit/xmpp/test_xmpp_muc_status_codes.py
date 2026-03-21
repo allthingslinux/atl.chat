@@ -19,6 +19,7 @@ from bridge.adapters.xmpp.handlers import (
     _remove_puppet_entries,
     on_muc_presence,
 )
+from cachetools import TTLCache
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -29,10 +30,11 @@ def _make_comp(component_jid: str = "bridge.example.com", auto_rejoin: bool = Tr
     """Create a minimal mock XMPPComponent for MUC status code tests."""
     comp = MagicMock()
     comp._component_jid = component_jid
-    comp._puppets_joined = set()
+    comp._puppets_joined = TTLCache(maxsize=10000, ttl=86400)
     comp._banned_rooms = set()
     comp._auto_rejoin = auto_rejoin
     comp._confirmed_mucs = set()
+    comp._background_tasks = set()
     # MUC plugin mock for rejoin
     muc = MagicMock()
     muc.join_muc_wait = AsyncMock()
@@ -171,15 +173,15 @@ class TestStatus301Banned:
 
     def test_removes_puppet_entries(self):
         comp = _make_comp()
-        comp._puppets_joined = {
-            ("room@muc.example.com", "user1@bridge.example.com"),
-            ("room@muc.example.com", "user2@bridge.example.com"),
-            ("other@muc.example.com", "user1@bridge.example.com"),
-        }
+        comp._puppets_joined[("room@muc.example.com", "user1@bridge.example.com")] = None
+        comp._puppets_joined[("room@muc.example.com", "user2@bridge.example.com")] = None
+        comp._puppets_joined[("other@muc.example.com", "user1@bridge.example.com")] = None
         p = _make_presence("room@muc.example.com/bridge", [301])
         on_muc_presence(comp, p)
         # Only the banned room's entries should be removed
-        assert comp._puppets_joined == {("other@muc.example.com", "user1@bridge.example.com")}
+        assert ("room@muc.example.com", "user1@bridge.example.com") not in comp._puppets_joined
+        assert ("room@muc.example.com", "user2@bridge.example.com") not in comp._puppets_joined
+        assert ("other@muc.example.com", "user1@bridge.example.com") in comp._puppets_joined
 
     def test_removes_from_confirmed_mucs(self):
         comp = _make_comp()
@@ -205,7 +207,7 @@ class TestStatus301Banned:
 class TestStatus307Kicked:
     def test_removes_puppet_entries(self):
         comp = _make_comp()
-        comp._puppets_joined = {("room@muc.example.com", "user@bridge.example.com")}
+        comp._puppets_joined[("room@muc.example.com", "user@bridge.example.com")] = None
         p = _make_presence("room@muc.example.com/bridge", [307])
         with patch("bridge.adapters.xmpp.handlers.asyncio.ensure_future"):
             on_muc_presence(comp, p)
@@ -242,7 +244,7 @@ class TestStatus307Kicked:
 class TestStatus321AffiliationChange:
     def test_removes_puppet_entries(self):
         comp = _make_comp()
-        comp._puppets_joined = {("room@muc.example.com", "user@bridge.example.com")}
+        comp._puppets_joined[("room@muc.example.com", "user@bridge.example.com")] = None
         p = _make_presence("room@muc.example.com/bridge", [321])
         with patch("bridge.adapters.xmpp.handlers.asyncio.ensure_future"):
             on_muc_presence(comp, p)
@@ -259,7 +261,7 @@ class TestStatus321AffiliationChange:
 class TestStatus322MembersOnly:
     def test_removes_puppet_entries(self):
         comp = _make_comp()
-        comp._puppets_joined = {("room@muc.example.com", "user@bridge.example.com")}
+        comp._puppets_joined[("room@muc.example.com", "user@bridge.example.com")] = None
         p = _make_presence("room@muc.example.com/bridge", [322])
         with patch("bridge.adapters.xmpp.handlers.asyncio.ensure_future"):
             on_muc_presence(comp, p)
@@ -276,7 +278,7 @@ class TestStatus322MembersOnly:
 class TestStatus332ServerShutdown:
     def test_removes_puppet_entries(self):
         comp = _make_comp()
-        comp._puppets_joined = {("room@muc.example.com", "user@bridge.example.com")}
+        comp._puppets_joined[("room@muc.example.com", "user@bridge.example.com")] = None
         p = _make_presence("room@muc.example.com/bridge", [332])
         on_muc_presence(comp, p)
         assert ("room@muc.example.com", "user@bridge.example.com") not in comp._puppets_joined
@@ -321,12 +323,11 @@ class TestEdgeCases:
     def test_remove_puppet_entries_only_affects_target_room(self):
         """_remove_puppet_entries only removes entries for the specified room."""
         comp = _make_comp()
-        comp._puppets_joined = {
-            ("room1@muc.example.com", "user@bridge.example.com"),
-            ("room2@muc.example.com", "user@bridge.example.com"),
-        }
+        comp._puppets_joined[("room1@muc.example.com", "user@bridge.example.com")] = None
+        comp._puppets_joined[("room2@muc.example.com", "user@bridge.example.com")] = None
         _remove_puppet_entries(comp, "room1@muc.example.com")
-        assert comp._puppets_joined == {("room2@muc.example.com", "user@bridge.example.com")}
+        assert ("room1@muc.example.com", "user@bridge.example.com") not in comp._puppets_joined
+        assert ("room2@muc.example.com", "user@bridge.example.com") in comp._puppets_joined
 
     def test_banned_room_prevents_rejoin(self):
         """If a room is in _banned_rooms, _rejoin_muc should skip it."""

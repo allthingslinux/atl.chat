@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+import asyncio
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from bridge.adapters.xmpp import XMPPComponent, XMPPMessageIDTracker
@@ -27,7 +28,7 @@ def make_component(router=None, bus=None):
     comp._avatar_cache = TTLCache(maxsize=10, ttl=60)
     comp._ibb_streams = {}
     comp._msgid_tracker = XMPPMessageIDTracker()
-    comp._puppets_joined = set()
+    comp._puppets_joined = TTLCache(maxsize=10000, ttl=86400)
     comp._seen_msg_ids = TTLCache(maxsize=500, ttl=60)
     comp._recent_sent_nicks = TTLCache(maxsize=200, ttl=10)
     comp._reactions_by_user = TTLCache(maxsize=2000, ttl=3600)
@@ -119,7 +120,7 @@ class TestOnGroupchatMessage:
         comp = make_component(router=router, bus=bus)
 
         msg = MockMsg(from_jid="room@conf.example.com/nick", body="hello", mucnick="nick", msg_id="xmpp-1")
-        comp._on_groupchat_message(msg)
+        asyncio.run(comp._on_groupchat_message(msg))
 
         bus.publish.assert_called_once()
         source, evt = bus.publish.call_args[0]
@@ -137,7 +138,7 @@ class TestOnGroupchatMessage:
         comp = make_component(router=router, bus=bus)
 
         msg = MockMsg("room@conf.example.com/nick", plugins={"delay": MockPlugin()})
-        comp._on_groupchat_message(msg)
+        asyncio.run(comp._on_groupchat_message(msg))
 
         bus.publish.assert_not_called()
 
@@ -148,7 +149,7 @@ class TestOnGroupchatMessage:
         comp = make_component(router=router, bus=bus)
 
         msg = MockMsg("room@conf.example.com/nick")
-        comp._on_groupchat_message(msg)
+        asyncio.run(comp._on_groupchat_message(msg))
 
         bus.publish.assert_not_called()
 
@@ -159,7 +160,7 @@ class TestOnGroupchatMessage:
         comp = make_component(router=router, bus=bus)
 
         msg = MockMsg("room@conf.example.com/nick", body="secret", plugins={"spoiler": MockPlugin()})
-        comp._on_groupchat_message(msg)
+        asyncio.run(comp._on_groupchat_message(msg))
 
         _, evt = bus.publish.call_args[0]
         assert evt.content == "secret"
@@ -177,7 +178,7 @@ class TestOnGroupchatMessage:
         spoiler_plugin.xml = SimpleNamespace(text="Plot twist")
 
         msg = MockMsg("room@conf.example.com/nick", body="they all die", plugins={"spoiler": spoiler_plugin})
-        comp._on_groupchat_message(msg)
+        asyncio.run(comp._on_groupchat_message(msg))
 
         _, evt = bus.publish.call_args[0]
         assert evt.content == "they all die"
@@ -196,7 +197,7 @@ class TestOnGroupchatMessage:
             plugins={"oob": MockPlugin()},
             oob_url="https://upload.example.com/image.png",
         )
-        comp._on_groupchat_message(msg)
+        asyncio.run(comp._on_groupchat_message(msg))
 
         _, evt = bus.publish.call_args[0]
         assert evt.content == "https://upload.example.com/image.png"
@@ -213,7 +214,7 @@ class TestOnGroupchatMessage:
             plugins={"oob": MockPlugin()},
             oob_url="https://upload.example.com/file.pdf",
         )
-        comp._on_groupchat_message(msg)
+        asyncio.run(comp._on_groupchat_message(msg))
 
         _, evt = bus.publish.call_args[0]
         assert evt.content == "check this out https://upload.example.com/file.pdf"
@@ -231,7 +232,7 @@ class TestOnGroupchatMessage:
             plugins={"oob": MockPlugin()},
             oob_url=url,
         )
-        comp._on_groupchat_message(msg)
+        asyncio.run(comp._on_groupchat_message(msg))
 
         _, evt = bus.publish.call_args[0]
         assert evt.content == url
@@ -250,7 +251,7 @@ class TestOnGroupchatMessage:
                 return super().__getitem__(key)
 
         msg2 = MsgWithReplace("room@conf.example.com/nick", plugins={"replace": replace_plugin})
-        comp._on_groupchat_message(msg2)
+        asyncio.run(comp._on_groupchat_message(msg2))
 
         _, evt = bus.publish.call_args[0]
         assert evt.is_edit is True
@@ -270,7 +271,7 @@ class TestOnGroupchatMessage:
                 return super().__getitem__(key)
 
         msg = MsgWithReply("room@conf.example.com/nick", plugins={"reply": reply_plugin})
-        comp._on_groupchat_message(msg)
+        asyncio.run(comp._on_groupchat_message(msg))
 
         _, evt = bus.publish.call_args[0]
         assert evt.raw.get("reply_to_id") == "reply-target"
@@ -289,7 +290,7 @@ class TestOnGroupchatMessage:
                 return super().__getitem__(key)
 
         msg = MsgWithRef("room@conf.example.com/nick", plugins={"reference": ref_plugin})
-        comp._on_groupchat_message(msg)
+        asyncio.run(comp._on_groupchat_message(msg))
 
         _, evt = bus.publish.call_args[0]
         assert evt.raw.get("reply_to_id") == "ref-target"
@@ -300,7 +301,7 @@ class TestOnGroupchatMessage:
         comp = make_component(router=router)
 
         msg = MockMsg("room@conf.example.com")  # no slash
-        comp._on_groupchat_message(msg)
+        asyncio.run(comp._on_groupchat_message(msg))
 
         router.get_mapping_for_xmpp.assert_called_once_with("room@conf.example.com")
 
@@ -312,7 +313,7 @@ class TestOnGroupchatMessage:
         muc = MagicMock()
         muc.get_jid_property.return_value = "alice@atl.chat"
         comp.plugin = {"xep_0045": muc}  # type: ignore[attr-defined]
-        comp._resolve_avatar_url = lambda b, n: f"https://{b}/pep_avatar/{n}"  # type: ignore[method-assign]
+        comp._resolve_avatar_url = AsyncMock(side_effect=lambda b, n: f"https://{b}/pep_avatar/{n}")  # type: ignore[method-assign]
 
         msg = MockMsg(
             from_jid="room@conf.example.com/nick",
@@ -320,7 +321,7 @@ class TestOnGroupchatMessage:
             mucnick="nick",
             msg_id="xmpp-1",
         )
-        comp._on_groupchat_message(msg)
+        asyncio.run(comp._on_groupchat_message(msg))
 
         _, evt = bus.publish.call_args[0]
         assert evt.avatar_url == "https://conf.example.com/pep_avatar/alice"
@@ -334,13 +335,13 @@ class TestOnGroupchatMessage:
         muc = MagicMock()
         muc.get_jid_property.return_value = "bob@atl.chat"
         comp.plugin = {"xep_0045": muc}  # type: ignore[attr-defined]
-        comp._resolve_avatar_url = lambda b, n: f"https://{b}/pep_avatar/{n}"  # type: ignore[method-assign]
+        comp._resolve_avatar_url = AsyncMock(side_effect=lambda b, n: f"https://{b}/pep_avatar/{n}")  # type: ignore[method-assign]
 
         msg = MockMsg(
             from_jid="room@muc.atl.chat/nick",
             msg_id="xmpp-1",
         )
-        comp._on_groupchat_message(msg)
+        asyncio.run(comp._on_groupchat_message(msg))
 
         _, evt = bus.publish.call_args[0]
         assert evt.avatar_url == "https://atl.chat/pep_avatar/bob"
@@ -355,7 +356,7 @@ class TestOnGroupchatMessage:
         comp.plugin = {"xep_0045": muc}  # type: ignore[attr-defined]
 
         msg = MockMsg("room@conf.example.com/nick", msg_id="xmpp-1")
-        comp._on_groupchat_message(msg)
+        asyncio.run(comp._on_groupchat_message(msg))
 
         _, evt = bus.publish.call_args[0]
         assert evt.avatar_url is None
@@ -364,9 +365,9 @@ class TestOnGroupchatMessage:
         """_resolve_avatar_url tries pep_avatar first, then avatar (vCard) as fallback."""
         comp = make_component()
 
-        with patch("bridge.avatar.resolve_xmpp_avatar_url") as mock_resolve:
+        with patch("bridge.avatar.resolve_xmpp_avatar_url", new_callable=AsyncMock) as mock_resolve:
             mock_resolve.return_value = "https://atl.chat/avatar/alice"
-            url = comp._resolve_avatar_url("atl.chat", "alice")
+            url = asyncio.run(comp._resolve_avatar_url("atl.chat", "alice"))
             assert url == "https://atl.chat/avatar/alice"
             mock_resolve.assert_called_once_with("atl.chat", "alice")
 
@@ -374,9 +375,9 @@ class TestOnGroupchatMessage:
         """_resolve_avatar_url returns None when both URLs return non-200."""
         comp = make_component()
 
-        with patch("bridge.avatar.resolve_xmpp_avatar_url") as mock_resolve:
+        with patch("bridge.avatar.resolve_xmpp_avatar_url", new_callable=AsyncMock) as mock_resolve:
             mock_resolve.return_value = None
-            url = comp._resolve_avatar_url("atl.chat", "alice")
+            url = asyncio.run(comp._resolve_avatar_url("atl.chat", "alice"))
             assert url is None
             mock_resolve.assert_called_once_with("atl.chat", "alice")
 

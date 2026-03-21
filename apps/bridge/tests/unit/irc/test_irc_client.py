@@ -600,7 +600,7 @@ class TestIRCClientEdgeCases:
         with patch.object(type(client).__mro__[1], "on_message", AsyncMock()):
             await client.on_message("#test", "user", "hello")
         _, evt = bus.publish.call_args[0]
-        assert evt.message_id.startswith("irc:")
+        assert evt.message_id.startswith("irc-")
 
 
 # ---------------------------------------------------------------------------

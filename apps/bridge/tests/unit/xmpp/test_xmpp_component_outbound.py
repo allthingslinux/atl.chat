@@ -84,8 +84,8 @@ def make_component(router=None, bus=None) -> Any:
     comp._avatar_cache = TTLCache(maxsize=100, ttl=86400)
     comp._ibb_streams = {}
     comp._msgid_tracker = XMPPMessageIDTracker()
-    comp._puppets_joined = set()
-    comp._avatar_broadcast_done = set()
+    comp._puppets_joined = TTLCache(maxsize=10000, ttl=86400)
+    comp._avatar_broadcast_done = TTLCache(maxsize=10000, ttl=86400)
     comp._recent_sent_nicks = TTLCache(maxsize=200, ttl=10)
     comp._reactions_by_user = TTLCache(maxsize=2000, ttl=3600)
     comp._banned_rooms = set()
