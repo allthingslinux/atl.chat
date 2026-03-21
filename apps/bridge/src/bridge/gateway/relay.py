@@ -218,7 +218,13 @@ class Relay:
             # Run the pipeline
             content = self._pipeline.transform(evt.content, ctx)
             if content is None:
-                return None  # message dropped by content filter
+                logger.info(
+                    "message dropped by content filter: origin={} author={} channel={}",
+                    evt.origin,
+                    evt.author_id,
+                    channel_id,
+                )
+                return None
 
             # Edit suffix: append when target doesn't support native edits
             if evt.is_edit and target not in _NATIVE_EDIT_PROTOCOLS:
