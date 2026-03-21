@@ -157,6 +157,10 @@ class TestWrapSpoiler:
         ctx = TransformContext(origin="irc", target="discord", spoiler=True)
         assert wrap_spoiler("secret", ctx) == "||secret||"
 
+    def test_discord_target_with_reason(self) -> None:
+        ctx = TransformContext(origin="xmpp", target="discord", spoiler=True, spoiler_reason="plot twist")
+        assert wrap_spoiler("secret", ctx) == "plot twist: ||secret||"
+
     def test_irc_target(self) -> None:
         ctx = TransformContext(origin="discord", target="irc", spoiler=True)
         result = wrap_spoiler("secret", ctx)
