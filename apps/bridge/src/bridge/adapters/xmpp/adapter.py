@@ -7,13 +7,14 @@ import contextlib
 import os
 import random
 import re
+import time
 from typing import TYPE_CHECKING
 
 from loguru import logger
 
 from bridge.adapters.base import AdapterBase
 from bridge.adapters.xmpp.component import XMPPComponent, _escape_jid_node
-from bridge.events import MessageDeleteOut, MessageOut, ReactionOut
+from bridge.events import MessageDeleteOut, MessageOut, ReactionOut, TypingOut
 from bridge.gateway import Bus, ChannelRouter
 
 if TYPE_CHECKING:
@@ -85,21 +86,27 @@ class XMPPAdapter(AdapterBase):
         self._component: XMPPComponent | None = None
         self._consumer_task: asyncio.Task[None] | None = None
         self._component_task: asyncio.Future[None] | None = None
+        self._xmpp_typing_throttle: dict[str, float] = {}  # muc_jid -> last_sent
 
     @property
     def name(self) -> str:
         return "xmpp"
 
     def accept_event(self, source: str, evt: object) -> bool:
-        """Accept MessageOut, MessageDeleteOut, or ReactionOut targeting XMPP."""
+        """Accept MessageOut, MessageDeleteOut, ReactionOut, or TypingOut targeting XMPP."""
         if isinstance(evt, MessageOut) and evt.target_origin == "xmpp":
             return True
         if isinstance(evt, MessageDeleteOut) and evt.target_origin == "xmpp":
             return True
-        return isinstance(evt, ReactionOut) and evt.target_origin == "xmpp"
+        if isinstance(evt, ReactionOut) and evt.target_origin == "xmpp":
+            return True
+        return isinstance(evt, TypingOut) and evt.target_origin == "xmpp"
 
     def push_event(self, source: str, evt: object) -> None:
-        """Queue MessageOut, MessageDeleteOut, or ReactionOut for XMPP send."""
+        """Queue MessageOut, MessageDeleteOut, or ReactionOut for XMPP send; fire-and-forget TypingOut."""
+        if isinstance(evt, TypingOut) and evt.target_origin == "xmpp":
+            asyncio.create_task(self._handle_typing_out(evt))  # noqa: RUF006
+            return
         if isinstance(evt, (MessageOut, MessageDeleteOut, ReactionOut)):
             if isinstance(evt, MessageOut):
                 logger.info("queued message for channel={}", evt.channel_id)
@@ -407,6 +414,21 @@ class XMPPAdapter(AdapterBase):
             nick,
             is_remove=is_remove,
         )
+
+    async def _handle_typing_out(self, evt: TypingOut) -> None:
+        """Send XEP-0085 composing chatstate to XMPP MUC (throttled 3s)."""
+        if not self._component:
+            return
+        mapping = self._router.get_mapping_for_discord(evt.channel_id)
+        if not mapping or not mapping.xmpp:
+            return
+        muc_jid = mapping.xmpp.muc_jid
+        now = time.time()
+        last = self._xmpp_typing_throttle.get(muc_jid, 0)
+        if now - last < 3:
+            return
+        self._xmpp_typing_throttle[muc_jid] = now
+        await self._component.send_composing_as_bridge(muc_jid)
 
     async def start(self) -> None:
         """Start XMPP component."""

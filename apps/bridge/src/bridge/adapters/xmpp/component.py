@@ -270,6 +270,7 @@ class XMPPComponent(ComponentXMPP):
         self.register_plugin("xep_0394")  # Message Markup (bold/italic/code spans)
         self.register_plugin("xep_0334")  # Message Processing Hints (no-store for reactions/typing)
         self.register_plugin("xep_0428")  # Fallback Indication (reply fallback bodies)
+        self.register_plugin("xep_0085")  # Chat State Notifications (typing indicators)
 
         # Enable stream resumption for network resilience
         self.plugin["xep_0198"].allow_resume = True
@@ -295,6 +296,7 @@ class XMPPComponent(ComponentXMPP):
         self.add_event_handler("moderated_message", self._on_moderated_message)
         self.add_event_handler("ibb_stream_start", self._on_ibb_stream_start)
         self.add_event_handler("ibb_stream_end", self._on_ibb_stream_end)
+        self.add_event_handler("chatstate_composing", self._on_chatstate_composing)
         self.add_event_handler("session_start", self._on_session_start)
         self.add_event_handler("disconnected", self._on_disconnected)
         self.add_event_handler(f"muc::{'*'}::got_online", self._on_muc_presence)
@@ -471,6 +473,11 @@ class XMPPComponent(ComponentXMPP):
 
         on_muc_presence(self, presence)
 
+    def _on_chatstate_composing(self, msg: Any) -> None:
+        from bridge.adapters.xmpp.handlers import on_chatstate_composing
+
+        on_chatstate_composing(self, msg)
+
     async def _handle_ibb_stream(self, stream: Any) -> None:
         from bridge.adapters.xmpp.handlers import handle_ibb_stream
 
@@ -544,6 +551,11 @@ class XMPPComponent(ComponentXMPP):
         from bridge.adapters.xmpp.outbound import send_correction_as_user
 
         await send_correction_as_user(self, discord_id, muc_jid, content, nick, original_xmpp_id)
+
+    async def send_composing_as_bridge(self, muc_jid: str) -> None:
+        from bridge.adapters.xmpp.outbound import send_composing_as_bridge
+
+        await send_composing_as_bridge(self, muc_jid)
 
     # --- Media (delegate to media.py) ---
 

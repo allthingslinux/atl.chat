@@ -289,7 +289,7 @@ class Relay:
         self._emit_targets(mapping, evt.origin, emit)
 
     def _push_typing(self, evt: TypingIn) -> None:
-        """Route TypingIn to IRC and Discord."""
+        """Route TypingIn to IRC, Discord, and XMPP."""
         mapping = self._get_mapping_for_origin(evt.origin, evt.channel_id)
         if not mapping:
             return

@@ -617,6 +617,34 @@ def on_raw_groupchat(comp: XMPPComponent, msg: Any) -> None:
     try_handle_moderation(comp, msg, room_jid)
 
 
+def on_chatstate_composing(comp: XMPPComponent, msg: Any) -> None:
+    """Handle XEP-0085 <composing/>; emit TypingIn to bus."""
+    from_jid = str(msg["from"]) if msg["from"] else ""
+    if "/" not in from_jid:
+        return  # Must be from a MUC occupant (room/nick)
+
+    room_jid = from_jid.split("/")[0]
+    nick = from_jid.split("/")[1]
+
+    if not nick or not room_jid:
+        return
+
+    mapping = comp._router.get_mapping_for_xmpp(room_jid)
+    if not mapping:
+        return
+
+    if should_suppress_echo(comp, room_jid, nick):
+        return
+    if is_listener_nick(nick):
+        return
+
+    from bridge.events import typing_in
+
+    _, evt = typing_in(origin="xmpp", channel_id=room_jid, user_id=nick)
+    logger.debug("typing bridged: room={} nick={}", room_jid, nick)
+    comp._bus.publish("xmpp", evt)
+
+
 def on_ibb_stream_start(comp: XMPPComponent, stream: Any) -> None:
     """Handle incoming IBB stream; log for now."""
     logger.info(
