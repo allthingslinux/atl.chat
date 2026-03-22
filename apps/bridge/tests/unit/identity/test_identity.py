@@ -319,7 +319,7 @@ class TestDevIdentityResolver:
     async def test_discord_to_irc_fallback_nick(self):
         with patch.dict(os.environ, {"BRIDGE_DEV_IRC_NICK_MAP": ""}, clear=False):
             resolver = DevIdentityResolver()
-        assert await resolver.discord_to_irc("123456789012345678") == "atl_dev_12345678"
+        assert await resolver.discord_to_irc("123456789012345678") == "atl_dev_789012345678"
         assert await resolver.discord_to_irc("123") == "atl_dev_123"
 
     @pytest.mark.asyncio
@@ -332,7 +332,7 @@ class TestDevIdentityResolver:
             resolver = DevIdentityResolver()
         assert await resolver.discord_to_irc("123456789012345678") == "atl-o"
         assert await resolver.discord_to_irc("987654321098765432") == "atl-user"
-        assert await resolver.discord_to_irc("111111111111111111") == "atl_dev_11111111"
+        assert await resolver.discord_to_irc("111111111111111111") == "atl_dev_111111111111"
 
     @pytest.mark.asyncio
     async def test_has_irc_always_true(self):
