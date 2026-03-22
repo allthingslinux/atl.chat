@@ -10,6 +10,7 @@ import time
 import uuid
 from typing import TYPE_CHECKING
 from xml.etree import ElementTree as ET
+from xml.sax.saxutils import escape as _xml_escape
 
 from loguru import logger
 from slixmpp import JID
@@ -110,7 +111,7 @@ async def send_message_as_user(
                 # attaches the XEP-0428 <fallback for="urn:xmpp:reply:0"> element.
                 if reply_to_body is not None:
                     reply.add_quoted_fallback(
-                        reply_to_body[:200],  # truncate to avoid oversized stanzas
+                        _xml_escape(reply_to_body[:200]),  # XML-escape and truncate to avoid oversized stanzas
                         nickname=reply_to_author_nick,
                     )
                 else:
