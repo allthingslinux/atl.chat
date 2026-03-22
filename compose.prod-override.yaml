@@ -1,3 +1,4 @@
+---
 services:
   atl-irc-server:
     env_file:

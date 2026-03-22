@@ -89,6 +89,15 @@ files = {
       unused = false,  -- Prosody config uses env vars; some locals reserved for future use
    },
    ["apps/prosody/custom_plugins/*.lua"] = {
-      globals = { "module" },  -- Prosody module API global
+      globals = {
+         "module",    -- Prosody module API global
+         "prosody",   -- Prosody runtime global (hosts, sessions, etc.)
+         -- mod_http_admin_api route handler functions (upstream Prosody pattern:
+         -- defined without `local` so they are visible to the route table at EOF)
+         "check_auth", "list_invites", "get_invite_by_id", "create_invite_type",
+         "delete_invite", "list_users", "get_user_by_name", "patch_user",
+         "update_user", "delete_user", "list_groups", "get_group_by_id",
+         "create_group", "update_group", "extend_group", "delete_group",
+      },
    },
 }
