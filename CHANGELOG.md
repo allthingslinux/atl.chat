@@ -1,3 +1,56 @@
+# [1.12.0](https://github.com/allthingslinux/atl.chat/compare/v1.11.0...v1.12.0) (2026-03-22)
+
+
+### Bug Fixes
+
+* **avatar:** replace blocking httpx.head() with async client ([b87efc6](https://github.com/allthingslinux/atl.chat/commit/b87efc6668f73f14cf28633c55f72b1e8c6653aa))
+* **avatar:** use httpx.Timeout positional arg, narrow exception types ([05530fb](https://github.com/allthingslinux/atl.chat/commit/05530fb6902f16c4117d01e7e2b0fe445069bf65))
+* **config:** add _coerce_bool helper to prevent string false evaluating as truthy ([d1be11f](https://github.com/allthingslinux/atl.chat/commit/d1be11fc50b2e17248533f39e286b6ca900114b7))
+* **config:** warn on int-for-bool coercion, log error on YAML parse failure ([c5a0f23](https://github.com/allthingslinux/atl.chat/commit/c5a0f23245173d96b1a5017b9d5f398fd74fc25d))
+* **discord:** add timeout on identity lookup, warn on oversized attachment skip ([f1c8a54](https://github.com/allthingslinux/atl.chat/commit/f1c8a54e8bdde0ad2bc01aa99e2c39f94070aefd))
+* **discord:** filter localhost URLs from avatar resolution ([e0fd2af](https://github.com/allthingslinux/atl.chat/commit/e0fd2af9be8a40b5f14633d3e8ccaea33ddc261c))
+* **discord:** fix fd leak, double-unlink guard, size-limit break, unlink after send ([b42e6f4](https://github.com/allthingslinux/atl.chat/commit/b42e6f43e024ac4492796be72a8c339b47568085))
+* **discord:** guard None reference.message_id and uncached edit messages ([daa740a](https://github.com/allthingslinux/atl.chat/commit/daa740aa4d969ada86f5eb7f46106f580059c935))
+* **discord:** guard QueueEmpty echo label, add per-channel webhook lock, track background tasks ([55a7119](https://github.com/allthingslinux/atl.chat/commit/55a7119917b94c766705bdecaecb9f9cb8b6a566))
+* **discord:** log on silent fetch failure, guard zero attachment dimensions ([207d64a](https://github.com/allthingslinux/atl.chat/commit/207d64a39d61b83add09da25e8e823c18375b028))
+* **discord:** track fire-and-forget tasks and await async avatar resolver ([d32475f](https://github.com/allthingslinux/atl.chat/commit/d32475fea2e848567915bd194d424ed14f5a0e38))
+* **formatting:** exclude PUA sentinel codepoints from plain-text roundtrip test ([6c9d566](https://github.com/allthingslinux/atl.chat/commit/6c9d566cb683b40c95e39ae84c6e090a902fe3bc))
+* **formatting:** handle UnicodeDecodeError in chunk splitter with errors=ignore fallback ([cd566a6](https://github.com/allthingslinux/atl.chat/commit/cd566a67a13b04f67e28178926c53cdd98293957))
+* **gateway:** log error not warning for invalid regex patterns in content filter ([4ac36d6](https://github.com/allthingslinux/atl.chat/commit/4ac36d63119c30a388f280bb0cc9cd744e4659e0))
+* **gateway:** log error on duplicate channel mapping detection ([9de8684](https://github.com/allthingslinux/atl.chat/commit/9de8684f98e73378f4598bf75e86ab0c2fd1edde))
+* **gateway:** validate protocol in msgid resolver, increase cache, add 80pct capacity warning ([f9f64fc](https://github.com/allthingslinux/atl.chat/commit/f9f64fcfd992e5c4ae82d9933ed55e50863293ea))
+* **identity:** add asyncio safety comment for circuit breaker state ([028933a](https://github.com/allthingslinux/atl.chat/commit/028933a52eb69f9bf8be9f44f7996a6995bd775a))
+* **identity:** don't reset circuit breaker on 5xx responses ([ca8105e](https://github.com/allthingslinux/atl.chat/commit/ca8105e33144161a268b93c6f1bd7537eabed9fa))
+* **identity:** use 12-digit suffix for dev IRC nick fallback to reduce collisions ([9cc4dbb](https://github.com/allthingslinux/atl.chat/commit/9cc4dbb48e57e9bf0b2be6d2dd185237ceb06fcc))
+* **irc:** add history replay threshold, fix ISO 8601 Z suffix, atomic label pop, upgrade reactions log ([1a32fa0](https://github.com/allthingslinux/atl.chat/commit/1a32fa051d427ad34a69d71764d4cba0bf661284))
+* **irc:** evict dead puppet connections on send failure ([afdde3b](https://github.com/allthingslinux/atl.chat/commit/afdde3bdfd5f74ac6b3c9877a8e7cb9127e9f303))
+* **irc:** expand paste fallback inline exposure warning log ([2735028](https://github.com/allthingslinux/atl.chat/commit/2735028c641b1cd3ca89818eae4b0ec2dd7f0ad0))
+* **irc:** guard snowflake length check, clean dangling reverse entries ([b618a91](https://github.com/allthingslinux/atl.chat/commit/b618a919d3220fcdfea74cab7a577d53d75eff21))
+* **irc:** replace id(message) fallback ID with time+uuid ([01fbeb0](https://github.com/allthingslinux/atl.chat/commit/01fbeb0b3294008dcd4f218580624072cc83bcb2))
+* **irc:** track all background tasks via _track_task helper ([0cbe3bb](https://github.com/allthingslinux/atl.chat/commit/0cbe3bbd7241b939d8ffb30af46adc2938a6f28f))
+* **irc:** track background tasks and fix TTLCache type annotation ([7808f61](https://github.com/allthingslinux/atl.chat/commit/7808f614e030ef3f81b09df4bea983dc9ae01b12))
+* **irc:** use TTLCache for puppet locks, evict puppet on nick revert failure ([d0859b6](https://github.com/allthingslinux/atl.chat/commit/d0859b6d26673457d3620f5bbc1833eb6d6a996d))
+* **irc:** wrap label counter, local tags var, reset nick collisions on 001, send MODE on 381 ([846c38f](https://github.com/allthingslinux/atl.chat/commit/846c38f4875d7a7fbf9d59ff3f893dc1ff706d64))
+* **main:** register SIGHUP handler inside event loop and add config_path param ([09d27dd](https://github.com/allthingslinux/atl.chat/commit/09d27dd7ec4d99b9246894e3959570e5e75678ee))
+* **main:** register SIGHUP handler inside event loop to avoid signal race ([70463d8](https://github.com/allthingslinux/atl.chat/commit/70463d8e31e39e60af83e953b7d01307d1a5169a))
+* **paste:** use get_running_loop() instead of deprecated get_event_loop() ([be313ad](https://github.com/allthingslinux/atl.chat/commit/be313ad314abb907fbd3d104f8ea194a290bcc28))
+* **relay:** log when content filter drops a message ([5c64307](https://github.com/allthingslinux/atl.chat/commit/5c64307d6f42961da862c4eeffc7cbd4ff8cbc8d))
+* **types:** resolve two basedpyright errors in test files ([2cff06c](https://github.com/allthingslinux/atl.chat/commit/2cff06ca5f84bd1feee9d74b276d781010902fbf))
+* **xmpp:** bound outbound queue to 500, drop oldest on full, cancel stale typing task ([7720a42](https://github.com/allthingslinux/atl.chat/commit/7720a428c5665dbcf6e2d1e53965a0abcef3d943))
+* **xmpp:** bounds-check split results at 4 from_jid call sites ([632a4e1](https://github.com/allthingslinux/atl.chat/commit/632a4e1eb61318f8557dc6a71a40f490874ea54b))
+* **xmpp:** escape reply body before building XEP-0461 fallback element ([5293750](https://github.com/allthingslinux/atl.chat/commit/5293750c3e5702c789edbc0e269bf30ede6747c4))
+* **xmpp:** limit concurrent IBB streams, track rejoin tasks, await async avatar ([898a4ea](https://github.com/allthingslinux/atl.chat/commit/898a4ea6681506ea6461a7f405ef4cdbd69ea781))
+* **xmpp:** narrow avatar exception to specific error types ([90e1f27](https://github.com/allthingslinux/atl.chat/commit/90e1f2731fd688a26df200ff5c1b9d70884f9dab))
+* **xmpp:** replace unbounded sets with TTLCache for puppet join tracking ([52a9ade](https://github.com/allthingslinux/atl.chat/commit/52a9ade45f84b5bce62221383e3204e241690bfd))
+* **xmpp:** throttle _cleanup to at most once per second with monotonic timestamp ([6a52118](https://github.com/allthingslinux/atl.chat/commit/6a52118bffbd1b77cd74d39e04aa8f90de1c6803))
+* **xmpp:** use dict-style assignment for TTLCache avatar broadcast tracking ([1ac9844](https://github.com/allthingslinux/atl.chat/commit/1ac98441c0d1fffacadaa364cbb71ef68ebfe794))
+* **xmpp:** warn on invalid JID node escape sequences, validate muc_nick_to_bare_jid result ([b3d3eeb](https://github.com/allthingslinux/atl.chat/commit/b3d3eebbc3980466d8a04fa25d8c8b0fb238fca1))
+
+
+### Features
+
+* **config:** add irc_history_replay_threshold_seconds config field ([5295453](https://github.com/allthingslinux/atl.chat/commit/5295453cd1ee512b81e074c9b318664fc544c335))
+
 # [1.11.0](https://github.com/allthingslinux/atl.chat/compare/v1.10.0...v1.11.0) (2026-03-21)
 
 
