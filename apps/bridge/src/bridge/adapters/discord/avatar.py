@@ -28,4 +28,8 @@ async def resolve_xmpp_avatar_fallback(evt: MessageOut, router: ChannelRouter) -
     base_domain = xmpp_domain_from_muc_jid(mapping.xmpp.muc_jid)
     # Use IRC nick (author_display) as XMPP node — common for users on both protocols
     node = evt.author_display.lower()
-    return await resolve_xmpp_avatar_url(base_domain, node)
+    url = await resolve_xmpp_avatar_url(base_domain, node)
+    # Never return a localhost/loopback URL to Discord — Discord cannot fetch it.
+    if url and ("localhost" in url or "127.0.0.1" in url):
+        return None
+    return url
