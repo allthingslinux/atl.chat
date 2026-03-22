@@ -94,6 +94,7 @@ class IRCConfig:
     puppet_prejoin_commands: list[str] = field(default_factory=list)
     chathistory_on_reconnect: bool = True
     chathistory_limit: int = 50
+    history_replay_threshold_seconds: int = 30
 
 
 @dataclass
@@ -144,6 +145,7 @@ def _build_irc_config(data: dict[str, Any], env: dict[str, str]) -> IRCConfig:
 
     kw["chathistory_on_reconnect"] = _coerce_bool(data.get("irc_chathistory_on_reconnect"), True)
     kw["chathistory_limit"] = int(data.get("irc_chathistory_limit", 50))
+    kw["history_replay_threshold_seconds"] = int(data.get("irc_history_replay_threshold_seconds", 30))
 
     # --- env overrides for redact_enabled ---
     env_redact = env.get("BRIDGE_IRC_REDACT_ENABLED", "")
@@ -395,6 +397,10 @@ class Config:
     @property
     def irc_chathistory_limit(self) -> int:
         return self.irc.chathistory_limit
+
+    @property
+    def irc_history_replay_threshold_seconds(self) -> int:
+        return self.irc.history_replay_threshold_seconds
 
     # ------------------------------------------------------------------
     # Backward-compatible flat XMPP properties (delegate to self.xmpp)
