@@ -37,6 +37,38 @@ def _parse_bool_env(val: str) -> bool | None:
     return None
 
 
+_BOOL_STRING_MAP: dict[str, bool] = {
+    "true": True,
+    "1": True,
+    "yes": True,
+    "false": False,
+    "0": False,
+    "no": False,
+}
+
+
+def _coerce_bool(val: object, default: bool) -> bool:
+    """Coerce a config value to bool.
+
+    Handles actual bools and ints directly. For strings, maps recognised
+    literals (true/false/yes/no/1/0) to bool; unrecognised strings raise
+    ValueError so a misconfigured YAML string (e.g. "false") is caught
+    rather than silently treated as True.
+    """
+    if isinstance(val, bool):
+        return val
+    if isinstance(val, int):
+        return bool(val)
+    if isinstance(val, str):
+        result = _BOOL_STRING_MAP.get(val.lower())
+        if result is None:
+            raise ValueError(f"Cannot coerce string {val!r} to bool; use true/false/yes/no/1/0")
+        return result
+    if val is None:
+        return default
+    return bool(val)
+
+
 # ---------------------------------------------------------------------------
 # Nested protocol-specific config dataclasses (Design D4)
 # ---------------------------------------------------------------------------
@@ -101,8 +133,8 @@ def _build_irc_config(data: dict[str, Any], env: dict[str, str]) -> IRCConfig:
     kw["throttle_limit"] = int(data.get("irc_throttle_limit", 10))
     kw["message_queue"] = int(data.get("irc_message_queue", 30))
     kw["rejoin_delay"] = float(data.get("irc_rejoin_delay", 5))
-    kw["auto_rejoin"] = bool(data.get("irc_auto_rejoin", True))
-    kw["use_sasl"] = bool(data.get("irc_use_sasl", False))
+    kw["auto_rejoin"] = _coerce_bool(data.get("irc_auto_rejoin"), True)
+    kw["use_sasl"] = _coerce_bool(data.get("irc_use_sasl"), False)
     kw["sasl_user"] = str(data.get("irc_sasl_user", ""))
     kw["sasl_password"] = str(data.get("irc_sasl_password", ""))
     kw["puppet_ping_interval"] = int(data.get("irc_puppet_ping_interval", 120))
@@ -110,7 +142,7 @@ def _build_irc_config(data: dict[str, Any], env: dict[str, str]) -> IRCConfig:
     val = data.get("irc_puppet_prejoin_commands")
     kw["puppet_prejoin_commands"] = [str(c) for c in val] if isinstance(val, list) else []
 
-    kw["chathistory_on_reconnect"] = bool(data.get("irc_chathistory_on_reconnect", True))
+    kw["chathistory_on_reconnect"] = _coerce_bool(data.get("irc_chathistory_on_reconnect"), True)
     kw["chathistory_limit"] = int(data.get("irc_chathistory_limit", 50))
 
     # --- env overrides for redact_enabled ---
@@ -119,14 +151,14 @@ def _build_irc_config(data: dict[str, Any], env: dict[str, str]) -> IRCConfig:
     if parsed is not None:
         kw["redact_enabled"] = parsed
     else:
-        kw["redact_enabled"] = bool(data.get("irc_redact_enabled", False))
+        kw["redact_enabled"] = _coerce_bool(data.get("irc_redact_enabled"), False)
 
     # --- env overrides for relaymsg_clean_nicks ---
     env_clean = env.get("BRIDGE_RELAYMSG_CLEAN_NICKS", "")
     if _parse_bool_env(env_clean) is True:
         kw["relaymsg_clean_nicks"] = True
     else:
-        kw["relaymsg_clean_nicks"] = bool(data.get("irc_relaymsg_clean_nicks", False))
+        kw["relaymsg_clean_nicks"] = _coerce_bool(data.get("irc_relaymsg_clean_nicks"), False)
 
     # --- env overrides for tls_verify ---
     env_tls = env.get("BRIDGE_IRC_TLS_VERIFY", "")
@@ -134,7 +166,7 @@ def _build_irc_config(data: dict[str, Any], env: dict[str, str]) -> IRCConfig:
     if parsed_tls is not None:
         kw["tls_verify"] = parsed_tls
     else:
-        kw["tls_verify"] = bool(data.get("irc_tls_verify", True))
+        kw["tls_verify"] = _coerce_bool(data.get("irc_tls_verify"), True)
 
     return IRCConfig(**kw)
 
@@ -146,8 +178,8 @@ def _build_xmpp_config(data: dict[str, Any]) -> XMPPConfig:
     return XMPPConfig(
         avatar_base_url=base.strip() if isinstance(base, str) and base and base.strip() else None,
         avatar_public_url=public.strip() if isinstance(public, str) and public and public.strip() else None,
-        auto_rejoin=bool(data.get("xmpp_auto_rejoin", True)),
-        promote_retraction_to_moderation=bool(data.get("xmpp_promote_retraction_to_moderation", True)),
+        auto_rejoin=_coerce_bool(data.get("xmpp_auto_rejoin"), True),
+        promote_retraction_to_moderation=_coerce_bool(data.get("xmpp_promote_retraction_to_moderation"), True),
     )
 
 
