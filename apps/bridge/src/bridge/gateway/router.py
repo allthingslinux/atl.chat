@@ -101,7 +101,7 @@ class ChannelRouter:
 
         for m in mappings:
             if m.discord_channel_id in by_discord:
-                logger.warning("Duplicate discord_channel_id: {}", m.discord_channel_id)
+                logger.error("Duplicate discord_channel_id: {}", m.discord_channel_id)
             by_discord[m.discord_channel_id] = m
 
             if m.irc:
