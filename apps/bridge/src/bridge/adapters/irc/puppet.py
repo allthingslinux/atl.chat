@@ -10,6 +10,7 @@ import time
 from typing import TYPE_CHECKING
 
 import pydle
+from cachetools import TTLCache
 from loguru import logger
 
 from bridge.formatting.splitter import split_irc_message
@@ -52,14 +53,26 @@ class IRCPuppet(pydle.Client):
         self.last_activity = time.time()
 
     async def on_nick(self, old: str, new: str) -> None:
-        """Revert any nick change forced onto this puppet (e.g. NickServ enforcement)."""
+        """Revert any nick change forced onto this puppet (e.g. NickServ enforcement).
+
+        On revert failure, logs an error. The manager evicts the puppet so the
+        next message recreates it fresh rather than leaving it with a wrong nick.
+        """
         await super().on_nick(old, new)
         if old.lower() == self._initial_nick.lower():
             logger.warning("puppet nick changed {} -> {}; reverting", old, new)
             try:
                 await self.set_nick(self._initial_nick)
             except Exception as exc:
-                logger.exception("puppet failed to revert nick change: {}", exc)
+                logger.error(
+                    "puppet {} failed to revert nick change ({} -> {}): {}; puppet will be evicted",
+                    self._initial_nick,
+                    old,
+                    new,
+                    exc,
+                )
+                # Signal eviction needed; manager checks this flag in get_or_create_puppet
+                self._evict_on_next_use = True
 
     async def on_connect(self):
         """Handle connection: send pre-join commands and start pinger."""
@@ -111,7 +124,9 @@ class IRCPuppetManager:
         self._ping_interval = ping_interval
         self._prejoin_commands: list[str] = prejoin_commands or []
         self._puppets: dict[str, IRCPuppet] = {}
-        self._puppet_locks: dict[str, asyncio.Lock] = {}  # per-user creation lock
+        # TTLCache prevents unbounded growth; TTL matches puppet idle timeout so locks
+        # for long-absent users are automatically evicted.
+        self._puppet_locks: TTLCache[str, asyncio.Lock] = TTLCache(maxsize=1024, ttl=self._idle_timeout)
         self._cleanup_task: asyncio.Task | None = None
 
     async def get_or_create_puppet(self, discord_id: str) -> IRCPuppet | None:
@@ -122,8 +137,18 @@ class IRCPuppetManager:
         """
         if discord_id in self._puppets:
             puppet = self._puppets[discord_id]
-            puppet.touch()
-            return puppet
+            # Evict puppets that failed to revert their nick — recreate fresh
+            if getattr(puppet, "_evict_on_next_use", False):
+                logger.warning(
+                    "evicting puppet {} (discord_id={}) due to unresolved nick change",
+                    puppet.nickname,
+                    discord_id,
+                )
+                self._puppets.pop(discord_id, None)
+                self._puppet_locks.pop(discord_id, None)
+            else:
+                puppet.touch()
+                return puppet
 
         # Per-user lock: only one coroutine creates the puppet at a time
         if discord_id not in self._puppet_locks:
