@@ -93,7 +93,11 @@ async def send_message(client: IRCClient, evt: MessageOut) -> None:
                 # Upload failed — inline a truncated snippet so nothing is silently lost
                 snippet = block.content.replace("\n", " ").strip()[:80]
                 label = f"[code] (paste failed) {snippet}…"
-                logger.warning("paste block {} upload failed, using inline snippet", i)
+                logger.warning(
+                    "paste block {} upload failed; sending content inline to IRC — "
+                    "operators should check paste service availability (content may be exposed inline)",
+                    i,
+                )
             processed.text = processed.text.replace(f"{{PASTE_{i}}}", label)
         content = processed.text
         logger.info("paste replaced content -> {!r}", content[:120])
