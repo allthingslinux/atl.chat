@@ -354,6 +354,7 @@ class TestOnGroupchatMessage:
         muc = MagicMock()
         muc.get_jid_property.return_value = None
         comp.plugin = {"xep_0045": muc}  # type: ignore[attr-defined]
+        comp._resolve_avatar_url = AsyncMock(return_value=None)  # type: ignore[method-assign]
 
         msg = MockMsg("room@conf.example.com/nick", msg_id="xmpp-1")
         asyncio.run(comp._on_groupchat_message(msg))
