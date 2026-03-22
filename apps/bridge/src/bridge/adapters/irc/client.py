@@ -149,7 +149,7 @@ class IRCClient(pydle.Client):
         # same label. We match the echo's label to the discord_id we stored, enabling reliable
         # msgid→discord_id correlation even when multiple messages are in flight.
         self._label_counter: int = 0
-        self._pending_labels: TTLCache[str, str] = TTLCache(maxsize=200, ttl=30)  # label -> discord_id
+        self._pending_labels: TTLCache[str, str] = TTLCache(maxsize=200, ttl=120)  # label -> discord_id
         # ISUPPORT values (Requirement 11.7, 11.8)
         self._server_nicklen: int = 23  # effective limit: min(server_nicklen, 23)
         self._server_casemapping: str = "rfc1459"  # default per IRC spec
@@ -200,26 +200,29 @@ class IRCClient(pydle.Client):
             self._track_task(asyncio.create_task(self._fetch_chathistory()))
 
     async def _ensure_channels_permanent(self) -> None:
-        """OPER up and set +P/+H channel modes on bridged channels."""
+        """OPER up; channel modes (+P/+H) are set when RPL_YOUREOPER (381) is received."""
         oper_password = os.environ.get("BRIDGE_IRC_OPER_PASSWORD", "").strip()
         if not oper_password:
             return
         oper_name = "bridge"  # Must match oper block in UnrealIRCd
         try:
             await self.rawmsg("OPER", oper_name, oper_password)
-            await asyncio.sleep(1)  # Allow server to process OPER
-            for channel in self._channels:
-                await self.rawmsg("MODE", channel, "+P")
-                await self.rawmsg("MODE", channel, "+H", "50:1d")  # Required for REDACT (chathistory)
-                logger.info("Set {} permanent (+P) and history (+H 50:1d)", channel)
+            # Mode commands are sent in on_raw_381 once the server confirms OPER;
+            # no sleep needed — we wait for the actual RPL_YOUREOPER response.
         except Exception as exc:
-            logger.warning("Could not set channels permanent (OPER/MODE): {}", exc)
+            logger.warning("Could not send OPER: {}", exc)
 
     async def _ready_fallback(self) -> None:
         await asyncio.sleep(10)
         if not self._ready:
             self._ready = True
             logger.debug("ready (fallback timeout)")
+
+    async def on_raw_001(self, message) -> None:
+        """RPL_WELCOME (001): server confirmed our nick — reset collision counter."""
+        await super().on_raw_001(message)
+        self._nick_collision_attempts = 0
+        logger.debug("RPL_WELCOME received; nick collision counter reset")
 
     async def on_raw_005(self, message):
         """After 005 ISUPPORT, parse NICKLEN/CASEMAPPING and send PING for ready detection."""
@@ -259,8 +262,15 @@ class IRCClient(pydle.Client):
         pass
 
     async def on_raw_381(self, message: object) -> None:
-        """RPL_YOUREOPER (381): You are now an IRC Operator. No-op to avoid Unknown command."""
-        pass
+        """RPL_YOUREOPER (381): trigger deferred MODE commands after OPER is confirmed."""
+        logger.info("RPL_YOUREOPER received; setting channel modes")
+        for channel in self._channels:
+            try:
+                await self.rawmsg("MODE", channel, "+P")
+                await self.rawmsg("MODE", channel, "+H", "50:1d")
+                logger.info("Set {} permanent (+P) and history (+H 50:1d)", channel)
+            except Exception as exc:
+                logger.warning("Could not set modes on {}: {}", channel, exc)
 
     async def on_raw_fail(self, message: object) -> None:
         """FAIL (standard-replies): handle REDACT errors gracefully.
@@ -296,14 +306,18 @@ class IRCClient(pydle.Client):
 
     async def on_raw_privmsg(self, message) -> None:
         """Set _message_tags from parsed message so on_message can read msgid/draft/relaymsg."""
-        self._message_tags = getattr(message, "tags", None) or {}
-        if self._message_tags:
+        # Capture tags into a local immediately to avoid sharing across concurrent handlers.
+        # _message_tags is reset to {} before any await so concurrent PRIVMSG processing
+        # cannot overwrite the tags before handle_message reads them.
+        tags = getattr(message, "tags", None) or {}
+        self._message_tags = tags
+        if tags:
             params = getattr(message, "params", [])
             target = params[0] if params else "?"
             logger.debug(
                 "PRIVMSG to {} with tags={}",
                 target,
-                self._message_tags,
+                tags,
             )
         try:
             await super().on_raw_privmsg(message)
@@ -387,7 +401,7 @@ class IRCClient(pydle.Client):
     def _next_label(self) -> str:
         """Generate the next unique label for labeled-response."""
         self._label_counter += 1
-        return f"bridge-{self._label_counter}"
+        return f"bridge-{self._label_counter % 1_000_000}"
 
     # ------------------------------------------------------------------
     # cap-notify, bot, multiline, chathistory capability handlers
