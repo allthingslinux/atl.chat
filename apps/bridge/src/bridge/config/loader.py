@@ -80,7 +80,12 @@ def _validate_field_types(data: dict[str, Any]) -> list[str]:
             continue
         # Python bool is a subclass of int, so check bool fields first
         if bool in expected_types and not isinstance(value, bool) and isinstance(value, int):
-            # int provided where bool expected — coerce silently
+            # int provided where bool expected — warn and coerce
+            logger.warning(
+                "field '{}' has integer value {}; accepted but boolean (true/false) is preferred",
+                key,
+                value,
+            )
             continue
         if not isinstance(value, expected_types):
             type_names = "/".join(t.__name__ for t in expected_types)
