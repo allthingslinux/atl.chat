@@ -127,6 +127,7 @@ class PortalClient:
         # the bridge from blocking message delivery while waiting for Portal
         # timeouts — identity resolution is best-effort, not critical path.
         now = time.monotonic()
+        # No await between check and use; safe in single-threaded asyncio.
         if self._consecutive_failures >= _CIRCUIT_FAIL_THRESHOLD:
             if now < self._circuit_open_until:
                 return None
