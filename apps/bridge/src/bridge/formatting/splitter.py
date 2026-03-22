@@ -11,6 +11,8 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
+from loguru import logger
+
 # Matches fenced code blocks: ```[lang]\n...\n``` (multiline)
 _FENCED_CODE_RE = re.compile(r"```(\w+)?\n(.*?)```|```(.*?)```", re.DOTALL)
 
@@ -116,7 +118,13 @@ def split_irc_message(text: str, max_bytes: int = 450) -> list[str]:
                 end = pos + 1
             end = min(end, total)
 
-        chunks.append(encoded[pos:end].decode("utf-8"))
+        try:
+            chunks.append(encoded[pos:end].decode("utf-8"))
+        except UnicodeDecodeError:
+            logger.debug(
+                "UTF-8 boundary heuristic produced invalid slice at pos={}; falling back to errors=ignore", pos
+            )
+            chunks.append(encoded[pos:end].decode("utf-8", errors="ignore"))
         pos = end
 
     return chunks
