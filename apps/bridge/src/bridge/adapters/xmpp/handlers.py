@@ -130,9 +130,13 @@ async def on_groupchat_message(comp: XMPPComponent, msg: Any) -> None:
             unstyled = True
 
     if "/" in from_jid:
-        room_jid = from_jid.split("/")[0]
+        parts = from_jid.split("/", 1)
+        if len(parts) < 2:
+            logger.debug("on_groupchat_message: malformed from_jid {!r}; skipping", from_jid)
+            return
+        room_jid = parts[0]
         if not nick:
-            nick = from_jid.split("/")[1]
+            nick = parts[1]
     else:
         room_jid = from_jid
 
@@ -315,8 +319,12 @@ def on_reactions(comp: XMPPComponent, msg: Any) -> None:
     """Handle XMPP reactions; emit to bus."""
     from_jid = str(msg["from"]) if msg["from"] else ""
     if "/" in from_jid:
-        room_jid = from_jid.split("/")[0]
-        nick = from_jid.split("/")[1]
+        parts = from_jid.split("/", 1)
+        if len(parts) < 2:
+            logger.debug("on_reactions: malformed from_jid {!r}; skipping", from_jid)
+            return
+        room_jid = parts[0]
+        nick = parts[1]
     else:
         return
 
@@ -402,8 +410,12 @@ def on_retraction(comp: XMPPComponent, msg: Any) -> None:
 
     from_jid = str(msg["from"]) if msg["from"] else ""
     if "/" in from_jid:
-        room_jid = from_jid.split("/")[0]
-        nick = from_jid.split("/")[1]
+        parts = from_jid.split("/", 1)
+        if len(parts) < 2:
+            logger.debug("on_retraction: malformed from_jid {!r}; skipping", from_jid)
+            return
+        room_jid = parts[0]
+        nick = parts[1]
     else:
         # Bare room JID — likely a XEP-0425 moderation announcement
         room_jid = from_jid
@@ -628,8 +640,12 @@ def _emit_typing_from_xmpp(comp: XMPPComponent, msg: Any, state: str) -> None:
     if "/" not in from_jid:
         return  # Must be from a MUC occupant (room/nick)
 
-    room_jid = from_jid.split("/")[0]
-    nick = from_jid.split("/")[1]
+    parts = from_jid.split("/", 1)
+    if len(parts) < 2:
+        logger.debug("_emit_typing_from_xmpp: malformed from_jid {!r}; skipping", from_jid)
+        return
+    room_jid = parts[0]
+    nick = parts[1]
 
     if not nick or not room_jid:
         return
