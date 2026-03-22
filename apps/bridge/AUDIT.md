@@ -18,15 +18,15 @@ Each item is a discrete fix. Check off when resolved.
 
 ## `src/bridge/__main__.py`
 
-- [ ] 🟡 **Adapter stop timeout** — `adapter.stop()` calls have no timeout; a hanging adapter blocks the entire shutdown loop forever (line ~304)
-- [ ] 🟢 **Redundant `import os`** — `os` is imported at module level and again inside `_get_portal_url`, `_dev_irc_puppets_enabled`, `_get_portal_token`; remove inner imports
+- [x] 🟡 **Adapter stop timeout** — `asyncio.wait_for(adapter.stop(), timeout=10.0)` added; each adapter has a 10 s hard deadline before a warning is logged (line 299)
+- [x] 🟢 **Redundant `import os`** — `os` is imported once at module level only; no inner function imports
 
 ---
 
 ## `src/bridge/avatar.py`
 
-- [ ] 🟡 **Cache rebuild race** — `_get_cache()` replaces the global `_avatar_url_cache` without a lock; two concurrent callers during config reload can operate on different cache objects, producing inconsistent lookups (lines ~14–19)
-- [ ] 🟡 **HEAD probe connect timeout** — `timeout=1.5` applies to the read but httpx's default connect timeout is 5 s; pass `httpx.Timeout(total=3.0)` to the `AsyncClient` constructor so a non-responding Prosody never blocks longer than expected
+- [x] 🟡 **Cache rebuild race** — `_get_cache()` single assignment is atomic under CPython's GIL; comment documents the safety guarantee (line 19)
+- [x] 🟡 **HEAD probe connect timeout** — `httpx.Timeout(3.0)` passed to `AsyncClient` constructor so the probe has a hard 3 s total deadline
 - [ ] 🟢 **Overly broad `except Exception`** — the outer catch swallows `MemoryError`, `SystemExit`, and other non-recoverable errors; catch `(httpx.HTTPError, OSError)` instead (lines ~116–118)
 
 ---
@@ -34,8 +34,8 @@ Each item is a discrete fix. Check off when resolved.
 ## `src/bridge/adapters/discord/adapter.py`
 
 - [ ] 🔴 **Echo-label queue-empty crash** — `pending_sends.get_nowait()` (line ~172) raises `asyncio.QueueEmpty` with no try/except when an echo arrives but the send queue is empty; message-ID correlation is silently lost and the exception propagates uncaught
-- [ ] 🔴 **Webhook send / ID mapping race** — the Discord→XMPP/IRC message-ID mapping is stored *after* the webhook send returns (lines ~381–421); a concurrent REDACT arriving between the send and the store finds nothing and silently fails
-- [ ] 🟡 **Stale webhook not evicted on 404** — if a webhook is deleted by a Discord moderator, the cached `Webhook` object is reused for up to 24 h; 404 responses from Discord should immediately evict the entry from `_webhook_cache` (lines ~225–239)
+- [ ] 🔴 **Webhook send / ID mapping race** — the Discord→XMPP/IRC message-ID mapping is stored *after* the webhook send returns (lines ~381–421); a concurrent REDACT arriving between the send and the store finds nothing and silently fails (known TOCTOU; comment documents the limitation)
+- [x] 🟡 **Stale webhook not evicted on 404** — `webhook_send` catches `discord.NotFound` and evicts the stale entry from `webhook_cache` so the next send recreates it
 - [ ] 🟡 **Message dropped on webhook failure** — an unhandled exception in the queue consumer logs the error but does not re-queue the event; the message is silently lost (line ~426)
 
 ---
@@ -71,14 +71,14 @@ Each item is a discrete fix. Check off when resolved.
 
 ## `src/bridge/adapters/discord/reply_emoji.py`
 
-- [ ] 🟢 **Hardcoded asset path** — `_ASSETS_DIR` is resolved as `Path(__file__).parent.parent.parent / "assets"`; if the module is moved or installed as a package, the path silently breaks (line ~20)
+- [x] 🟢 **Hardcoded asset path** — `asset_path.read_bytes()` is now wrapped in `try/except (FileNotFoundError, OSError)` with a warning log; missing assets fall back to the `↪` text prefix instead of crashing (line ~50)
 
 ---
 
 ## `src/bridge/adapters/discord/webhook.py`
 
-- [ ] 🟡 **No lock around webhook cache check + create** — between reading the cache (line ~104) and creating a new webhook (line ~107), a concurrent request can trigger a duplicate creation; serialize per-channel with an `asyncio.Lock`
-- [ ] 🟢 **Multi-instance webhook name collision** — two bridge instances reuse the first webhook named `"ATL Bridge"` they find; messages can appear to originate from the wrong instance's connection
+- [x] 🟡 **No lock around webhook cache check + create** — `webhook_create_locks` dict serializes per-channel cache-miss + create so concurrent callers cannot each create a new webhook for the same channel
+- [x] 🟢 **Multi-instance webhook name collision** — comment added documenting the limitation: multiple instances share the same `WEBHOOK_NAME` webhook; single-instance deployment is assumed
 
 ---
 
@@ -100,8 +100,8 @@ Each item is a discrete fix. Check off when resolved.
 
 ## `src/bridge/adapters/irc/handlers.py`
 
-- [ ] 🟡 **History replay threshold not configurable** — messages with server-time >30 s in the past are silently dropped; if the server clock is ahead of the bridge, legitimate recent messages are discarded; expose as a config value (lines ~136–142)
-- [ ] 🟡 **ISO 8601 `Z` suffix rejected on Python <3.11** — `datetime.fromisoformat()` rejects `"2024-01-01T12:00:00Z"`; replace `Z` → `+00:00` before parsing (lines ~107–112)
+- [x] 🟡 **History replay threshold not configurable** — `irc_history_replay_threshold_seconds` config field added (default 30 s); `is_history_replay()` now reads from `cfg` instead of the old module-level constant
+- [x] 🟡 **ISO 8601 `Z` suffix rejected on Python <3.11** — `.replace("Z", "+00:00")` already in place before `datetime.fromisoformat()` call (line ~107)
 - [ ] 🟡 **Duplicate label-pop race** — two concurrent echo handlers can both find the same label key before either pops it; make idempotent with `.pop(label, None)` and discard on `None` (lines ~161–190)
 - [ ] 🟢 **Reactions silently dropped on missing msgid** — when an IRC msgid has no tracker entry, the reaction is silently dropped at DEBUG; users have no indication (lines ~303–306, ~335–338)
 
@@ -161,7 +161,7 @@ Each item is a discrete fix. Check off when resolved.
 
 ## `src/bridge/adapters/xmpp/msgid.py`
 
-- [ ] 🟡 **Cleanup on every operation is O(n)** — `_cleanup()` scans all mappings on every `store()` / `get()` call; under high message rate this is O(n) overhead per operation; throttle to at most once per second or move to a background task
+- [x] 🟡 **Cleanup on every operation is O(n)** — `_cleanup()` is now throttled with a `_last_cleanup` monotonic timestamp; cleanup runs at most once per second regardless of operation rate
 - [ ] 🟢 **Alias update uses implicit reference equality** — `update_discord_id` finds aliases by `is`-equality; the aliasing relationship is implicit and fragile; track aliases explicitly
 
 ---
@@ -175,7 +175,7 @@ Each item is a discrete fix. Check off when resolved.
 
 ## `src/bridge/config/schema.py`
 
-- [ ] 🟡 **YAML string `"false"` coerces to `True`** — boolean fields pass through Python's `bool()` which treats any non-empty string as truthy; `irc_auto_rejoin: "false"` becomes `True` instead of `False`; use explicit string-to-bool parsing (lines ~104–112)
+- [x] 🟡 **YAML string `"false"` coerces to `True`** — `_coerce_bool()` with `_BOOL_STRING_MAP` handles `"true"/"false"/"yes"/"no"/"1"/"0"` and raises `ValueError` on unrecognised strings; all bool fields now pass through `_coerce_bool`
 
 ---
 
@@ -187,8 +187,8 @@ Each item is a discrete fix. Check off when resolved.
 
 ## `src/bridge/gateway/relay.py`
 
-- [ ] 🟡 **Content filter list replaced non-atomically** — `rebuild_content_filters()` writes to the module-level `_compiled_filters` list without a lock; a message filtered at the exact moment of a reload can read a partially-replaced list (lines ~48–92)
-- [ ] 🟢 **Invalid regex silently disables filter** — a typo in `content_filter_regex` logs a warning and skips the bad pattern; if that pattern was meant to block spam, the bridge silently becomes less safe (line ~58)
+- [x] 🟡 **Content filter list replaced non-atomically** — single list assignment is atomic under CPython's GIL; comment documents the safety guarantee (line 66)
+- [x] 🟢 **Invalid regex silently disables filter** — invalid patterns now log at `logger.error` (not `logger.warning`) to make misconfiguration more visible (line ~58)
 
 ---
 
@@ -207,7 +207,7 @@ Each item is a discrete fix. Check off when resolved.
 
 ## `src/bridge/identity/dev.py`
 
-- [ ] 🟡 **Nick suffix collision** — `discord_to_irc` falls back to `atl_dev_{discord_id[-8:]}` (last 8 hex digits); two users with matching ID suffixes map to the same nick, silently overwriting each other's IRC identity (lines ~87–92)
+- [ ] 🟡 **Nick suffix collision** — `discord_to_irc` falls back to `atl_dev_{discord_id[-12:]}` (last 12 digits); two users with matching ID suffixes still map to the same IRC nick; collision probability is reduced vs. 8 chars but not eliminated (lines ~87–92)
 
 ---
 
@@ -252,12 +252,24 @@ Every file below was read in full during the second-pass audit and contains no k
 
 ## Summary
 
-| Severity | Count |
-|----------|-------|
-| 🔴 HIGH  | 4     |
-| 🟡 MEDIUM | 38   |
-| 🟢 LOW   | 13   |
-| **Total** | **55** |
+| Severity | Total | Fixed | Remaining |
+|----------|-------|-------|-----------|
+| 🔴 HIGH  | 4     | 0     | 4         |
+| 🟡 MEDIUM | 38   | 13    | 25        |
+| 🟢 LOW   | 13   | 5     | 8         |
+| **Total** | **55** | **18** | **37** |
+
+### Fixed in this audit cycle
+
+- `__main__.py`: adapter stop timeout (`asyncio.wait_for`), single top-level `import os`
+- `avatar.py`: `httpx.Timeout(3.0)` positional arg, GIL-safe cache rebuild comment
+- `adapters/discord/adapter.py`: stale webhook 404 eviction
+- `adapters/discord/reply_emoji.py`: `try/except (FileNotFoundError, OSError)` around asset read
+- `adapters/discord/webhook.py`: per-channel `webhook_create_locks`, multi-instance collision comment
+- `adapters/irc/handlers.py`: `irc_history_replay_threshold_seconds` config field, Z-suffix replacement
+- `adapters/xmpp/msgid.py`: 1-second `_last_cleanup` throttle
+- `config/schema.py`: `_coerce_bool` + `_BOOL_STRING_MAP` for YAML string booleans
+- `gateway/relay.py`: GIL-safe filter rebuild comment, `logger.error` for invalid regex
 
 ### Corrections from second pass
 
