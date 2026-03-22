@@ -52,7 +52,15 @@ def _escape_jid_node(node: str) -> str:
 
 
 def _unescape_jid_node(node: str) -> str:
-    """Unescape a JID node per XEP-0106 inverse (\\XX -> char)."""
+    """Unescape a JID node per XEP-0106 inverse (\\XX -> char).
+
+    Only valid 2-digit hex sequences (e.g. \\40 for @) are unescaped.
+    Invalid sequences (non-hex or incomplete) are left as-is and a warning
+    is logged so callers can detect malformed JID node segments.
+    """
+    invalid = re.findall(r"\\(?![0-9a-fA-F]{2})[^\\ ]*", node)
+    if invalid:
+        logger.warning("_unescape_jid_node: invalid escape sequence(s) in {!r}: {}", node, invalid)
     return re.sub(r"\\([0-9a-fA-F]{2})", lambda m: chr(int(m.group(1), 16)), node)
 
 
@@ -68,14 +76,28 @@ def _muc_nick_to_bare_jid(nick: str, room_jid: str) -> str | None:
     if "\\40" in nick or "\\2f" in nick or "\\3a" in nick:
         # Escaped JID form (contains @, /, or :) — unescape to get bare JID
         unescaped = _unescape_jid_node(nick)
-        if "@" in unescaped and "/" not in unescaped:
+        if unescaped and "@" in unescaped and "/" not in unescaped:
             return unescaped
+        logger.warning(
+            "_muc_nick_to_bare_jid: unescaped nick {!r} -> {!r} is not a valid bare JID; skipping",
+            nick,
+            unescaped,
+        )
     # Plain nick — derive domain from MUC room (muc.xmpp.localhost -> xmpp.localhost)
     try:
         domain = str(JID(room_jid).domain)
         if domain.startswith("muc."):
             domain = domain[4:]
-        return f"{nick}@{domain}"
+        result = f"{nick}@{domain}"
+        if not result or "@" not in result:
+            logger.warning(
+                "_muc_nick_to_bare_jid: derived invalid JID {!r} from nick={!r} room={!r}",
+                result,
+                nick,
+                room_jid,
+            )
+            return None
+        return result
     except Exception:
         return None
 
