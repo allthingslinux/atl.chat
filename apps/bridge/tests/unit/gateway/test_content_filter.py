@@ -64,8 +64,8 @@ class TestBuildContentFilters:
         """Invalid patterns produce a loguru warning (captured via stderr)."""
         with patch("bridge.gateway.relay.logger") as mock_logger:
             _build_content_filters([r"[invalid"])
-            mock_logger.warning.assert_called_once()
-            call_args = mock_logger.warning.call_args
+            mock_logger.error.assert_called_once()
+            call_args = mock_logger.error.call_args
             assert "[invalid" in str(call_args)
 
 
