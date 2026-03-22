@@ -48,6 +48,8 @@ def make_component(router=None, bus=None):
 class MockPlugin:
     """Minimal plugin stub with get() support."""
 
+    xml: object = None
+
     def __init__(self, data=None):
         self._data = data or {}
 

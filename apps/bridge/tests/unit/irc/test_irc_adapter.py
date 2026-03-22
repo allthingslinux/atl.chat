@@ -520,7 +520,7 @@ class TestSendViaPuppet:
         await adapter._send_via_puppet(evt)
         cast(MagicMock, adapter._client).queue_message.assert_called_once_with(evt)
         assert adapter._identity is not None
-        adapter._identity.has_irc.assert_not_awaited()
+        cast(AsyncMock, adapter._identity.has_irc).assert_not_awaited()
 
 
 # ---------------------------------------------------------------------------
