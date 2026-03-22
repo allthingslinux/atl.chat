@@ -42,7 +42,10 @@ _INLINE_PATTERNS: list[tuple[re.Pattern[str], Style]] = [
     (re.compile(r"`([^`\n]+)`"), Style.MONOSPACE),
 ]
 
-# Backslash-escape sentinels (PUA codepoints safe for bridge text)
+# Backslash-escape sentinels (PUA codepoints U+E001–U+E006, reserved by this module).
+# Any literal occurrence of these codepoints in input text will be treated as if it
+# were the corresponding backslash-escaped character.  Real Discord/IRC/XMPP messages
+# never contain PUA codepoints, so this is safe in practice.
 _ESC_SENTINELS: dict[str, str] = {
     "\\_": "\ue001",
     "\\*": "\ue002",

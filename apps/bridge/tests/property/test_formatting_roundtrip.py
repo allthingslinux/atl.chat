@@ -18,7 +18,11 @@ from hypothesis import strategies as st
 # Discord: * _ ~ ` |
 # IRC control codes: \x02 \x03 \x0f \x11 \x16 \x1d \x1e \x1f
 # XEP-0393: * _ ~ `
-_FORMATTING_MARKERS = frozenset("*_~`|\x02\x03\x0f\x11\x16\x1d\x1e\x1f")
+# Internal PUA sentinels used by the discord markdown parser for backslash-escape
+# processing (U+E001–U+E006).  These codepoints are consumed and replaced with their
+# literal equivalents (_ * ` ~ | \) during parsing, so they are treated as formatting
+# markers from the converter's perspective and must be excluded from "plain text".
+_FORMATTING_MARKERS = frozenset("*_~`|\x02\x03\x0f\x11\x16\x1d\x1e\x1f\ue001\ue002\ue003\ue004\ue005\ue006")
 
 # All protocol names.
 _protocols = st.sampled_from(["discord", "irc", "xmpp"])
