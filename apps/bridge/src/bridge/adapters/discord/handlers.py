@@ -126,8 +126,14 @@ async def on_message(adapter: DiscordAdapter, message: Message) -> None:
     if message.attachments:
         for attachment in message.attachments:
             att_raw: dict[str, object] = {}
-            # Pass image/video dimensions for XEP-0446 file metadata
-            if attachment.width and attachment.height:
+            # Pass image/video dimensions for XEP-0446 file metadata.
+            # Guard against zero or negative values that could confuse downstream handlers.
+            if (
+                isinstance(attachment.width, int)
+                and isinstance(attachment.height, int)
+                and attachment.width > 0
+                and attachment.height > 0
+            ):
                 att_raw["media_width"] = attachment.width
                 att_raw["media_height"] = attachment.height
             _, att_evt = message_in(
@@ -227,7 +233,13 @@ async def on_raw_message_edit(adapter: DiscordAdapter, payload) -> None:
             if not isinstance(channel, TextChannel):
                 return
             message = await channel.fetch_message(payload.message_id)
-        except Exception:
+        except Exception as exc:
+            logger.warning(
+                "Failed to fetch message {} for edit in channel {}: {}",
+                payload.message_id,
+                payload.channel_id,
+                exc,
+            )
             return
 
     if is_bridge_echo(message):
