@@ -40,11 +40,22 @@ class IRCAdapter(AdapterBase):
         self._task: asyncio.Task | None = None
         self._puppet_manager: IRCPuppetManager | None = None
         self._puppet_tasks: set[asyncio.Task] = set()
+        self._background_tasks: set[asyncio.Task] = set()
         self._msgid_tracker = MessageIDTracker(ttl_seconds=3600)
         self._reaction_tracker = ReactionTracker(ttl_seconds=3600)
         self._typing_done_tasks: dict[str, asyncio.Task] = {}  # irc_channel -> auto-done task
         if msgid_resolver:
             msgid_resolver.register_irc(self._msgid_tracker)
+
+    def _track_task(self, task: asyncio.Task) -> None:
+        """Track a fire-and-forget task to prevent GC and log exceptions."""
+        self._background_tasks.add(task)
+        task.add_done_callback(self._background_tasks.discard)
+        task.add_done_callback(self._on_task_done)
+
+    def _on_task_done(self, task: asyncio.Task) -> None:
+        if not task.cancelled() and (exc := task.exception()):
+            logger.error("background task failed: {}", exc)
 
     @property
     def name(self) -> str:
@@ -69,15 +80,15 @@ class IRCAdapter(AdapterBase):
                     evt.channel_id,
                     evt.message_id,
                 )
-                asyncio.create_task(self._send_redact(evt))  # noqa: RUF006
+                self._track_task(asyncio.create_task(self._send_redact(evt)))
             return
         if isinstance(evt, ReactionOut) and evt.target_origin == "irc":
             if self._client:
-                asyncio.create_task(self._send_reaction(evt))  # noqa: RUF006
+                self._track_task(asyncio.create_task(self._send_reaction(evt)))
             return
         if isinstance(evt, TypingOut) and evt.target_origin == "irc":
             if self._client:
-                asyncio.create_task(self._send_typing(evt))  # noqa: RUF006
+                self._track_task(asyncio.create_task(self._send_typing(evt)))
             return
         if isinstance(evt, MessageOut):
             # Use puppet if identity available, otherwise main connection
