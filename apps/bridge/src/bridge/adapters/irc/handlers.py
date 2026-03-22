@@ -94,7 +94,7 @@ _HISTORY_REPLAY_THRESHOLD_SECONDS = 30
 
 
 def is_history_replay(tags: dict) -> bool:
-    """Return True if the message has a server-time timestamp >30s in the past.
+    """Return True if the message has a server-time timestamp older than _HISTORY_REPLAY_THRESHOLD_SECONDS.
 
     IRC servers with +H (history replay) send old messages on join with a
     ``time`` tag in ISO 8601 format.  We discard these to avoid re-relaying
@@ -123,12 +123,15 @@ async def handle_message(client: IRCClient, target: str, source: str, message: s
     if not mapping:
         return
 
+    # Capture tags immediately into a local before any await to avoid race conditions
+    # where concurrent PRIVMSG handlers overwrite client._message_tags.
+    tags: dict = dict(client._message_tags) if getattr(client, "_message_tags", None) else {}
+    client._message_tags = {}  # reset immediately so concurrent handlers don't share state
+
     # Extract msgid and reply from IRCv3 tags
     msgid = None
     reply_to = None
-    tags = {}
-    if hasattr(client, "_message_tags") and client._message_tags:
-        tags = client._message_tags
+    if tags:
         msgid = tags.get("msgid")
         reply_to = tags.get("+draft/reply")
 
@@ -160,8 +163,8 @@ async def handle_message(client: IRCClient, target: str, source: str, message: s
     ):
         # labeled-response correlation (Req 11.5): use label tag for reliable echo matching
         label = tags.get("label")
-        if label and label in client._pending_labels:
-            discord_id = client._pending_labels.pop(label)
+        discord_id = client._pending_labels.pop(label, None) if label else None
+        if discord_id is not None:
             if msgid:
                 client._msgid_tracker.store(msgid, discord_id)
                 logger.debug("label={} correlated msgid {} -> {} for REDACT/edit", label, msgid, discord_id)
@@ -300,7 +303,7 @@ async def handle_tagmsg(client: IRCClient, message: object) -> None:
             return  # Skip our own echo
         discord_id = client._msgid_tracker.get_discord_id(reply_to)
         if not discord_id:
-            logger.debug(
+            logger.warning(
                 "reaction dropped: no discord_id for reply_to={} (msgid not in tracker; echo may lack msgid)",
                 reply_to,
             )
@@ -332,7 +335,7 @@ async def handle_tagmsg(client: IRCClient, message: object) -> None:
             return  # Skip our own echo
         discord_id = client._msgid_tracker.get_discord_id(reply_to)
         if not discord_id:
-            logger.debug(
+            logger.warning(
                 "unreact dropped: no discord_id for reply_to={} (msgid not in tracker)",
                 reply_to,
             )
@@ -478,6 +481,10 @@ async def handle_nick(client: IRCClient, old: str, new: str) -> None:
             await client.set_nick(initial)
         except Exception as exc:
             logger.exception("failed to revert nick change: {}", exc)
+    elif new.lower() == initial.lower():
+        # Nick successfully set to our desired nick — reset collision counter
+        client._nick_collision_attempts = 0
+        logger.debug("nick confirmed as {}; collision counter reset", new)
 
 
 async def handle_chghost(client: IRCClient, message: Any) -> None:
