@@ -55,13 +55,14 @@ def _build_content_filters(patterns: list[str]) -> list[re.Pattern[str]]:
         try:
             compiled.append(re.compile(pat))
         except re.error as exc:
-            logger.warning("Invalid content_filter_regex '{}': {}", pat, exc)
+            logger.error("Invalid content_filter_regex '{}': {}", pat, exc)
     return compiled
 
 
 def rebuild_content_filters() -> None:
     """Rebuild compiled content filters from config. Called on config load/reload."""
     global _compiled_filters  # noqa: PLW0603
+    # Atomic under CPython GIL; safe for concurrent reads.
     _compiled_filters = _build_content_filters(cfg.content_filter_regex)
 
 
