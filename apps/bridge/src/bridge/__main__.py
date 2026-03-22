@@ -233,22 +233,16 @@ def main() -> None:
 
 def _get_portal_url() -> str | None:
     """Read Portal base URL from env."""
-    import os
-
     return os.environ.get("BRIDGE_PORTAL_BASE_URL")
 
 
 def _dev_irc_puppets_enabled() -> bool:
     """True when BRIDGE_DEV_IRC_PUPPETS is truthy (for local dev without Portal)."""
-    import os
-
     return os.environ.get("BRIDGE_DEV_IRC_PUPPETS", "").lower() in ("1", "true", "yes")
 
 
 def _get_portal_token() -> str | None:
     """Read Portal API token from env."""
-    import os
-
     return os.environ.get("BRIDGE_PORTAL_TOKEN")
 
 
@@ -301,7 +295,10 @@ async def _run(
         for adapter in adapters:
             name = getattr(adapter, "name", adapter.__class__.__name__)
             logger.info("Stopping {} adapter", name)
-            await adapter.stop()
+            try:
+                await asyncio.wait_for(adapter.stop(), timeout=10.0)
+            except TimeoutError:
+                logger.warning("{} adapter did not stop cleanly within 10s", name)
         # Close shared HTTP connection pool
         if portal_client is not None:
             await portal_client.aclose()
