@@ -81,7 +81,7 @@ class XMPPAdapter(AdapterBase):
         self._router = router
         self._identity = identity_resolver
         self._msgid_resolver = msgid_resolver
-        self._outbound: asyncio.Queue[MessageOut | MessageDeleteOut | ReactionOut] = asyncio.Queue()
+        self._outbound: asyncio.Queue[MessageOut | MessageDeleteOut | ReactionOut] = asyncio.Queue(maxsize=500)
         self._send_lock = asyncio.Lock()
         self._component: XMPPComponent | None = None
         self._consumer_task: asyncio.Task[None] | None = None
@@ -111,7 +111,16 @@ class XMPPAdapter(AdapterBase):
         if isinstance(evt, (MessageOut, MessageDeleteOut, ReactionOut)):
             if isinstance(evt, MessageOut):
                 logger.info("queued message for channel={}", evt.channel_id)
-            self._outbound.put_nowait(evt)
+            try:
+                self._outbound.put_nowait(evt)
+            except asyncio.QueueFull:
+                dropped = self._outbound.get_nowait()
+                logger.warning(
+                    "outbound queue full (maxsize={}); dropped oldest item to make room (dropped type={})",
+                    self._outbound.maxsize,
+                    type(dropped).__name__,
+                )
+                self._outbound.put_nowait(evt)
 
     def _resolve_nick(self, evt: MessageOut | MessageDeleteOut | ReactionOut) -> str:
         """Fallback nick when identity resolver unavailable (dev without Portal)."""
