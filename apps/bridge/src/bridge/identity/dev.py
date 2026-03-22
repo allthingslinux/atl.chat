@@ -87,8 +87,8 @@ class DevIdentityResolver(IdentityResolver):
     async def discord_to_irc(self, discord_id: str) -> str | None:
         if discord_id in self._discord_irc:
             return self._discord_irc[discord_id]
-        # Fallback: generate a dev nick from the Discord ID suffix
-        suffix = discord_id[-8:] if len(discord_id) >= 8 else discord_id
+        # Fallback: generate a dev nick from the Discord ID suffix (12 digits reduces collision probability)
+        suffix = discord_id[-12:] if len(discord_id) >= 12 else discord_id
         return f"atl_dev_{suffix}"
 
     async def discord_to_xmpp(self, discord_id: str) -> str | None:
