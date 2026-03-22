@@ -124,6 +124,11 @@ async def get_or_create_webhook(
                 app_id = str(getattr(bot, "application_id", None) or "")
                 for wh in webhooks:
                     if wh.name == WEBHOOK_NAME:
+                        # NOTE: Multiple bridge instances will find and share the same
+                        # webhook (same WEBHOOK_NAME). This is safe for read/send but
+                        # means webhook edits/deletes from one instance affect others.
+                        # Single-instance deployments are assumed; multi-instance use
+                        # would require per-instance webhook names.
                         webhook = wh
                         logger.debug("Reusing webhook '{}' for channel {}", wh.name, channel_id)
                         break
