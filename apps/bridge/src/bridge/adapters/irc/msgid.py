@@ -15,8 +15,12 @@ class MessageMapping(NamedTuple):
 
 
 def _is_discord_snowflake(value: str) -> bool:
-    """Return True if value looks like a Discord snowflake (numeric)."""
-    return value.isdigit()
+    """Return True if value looks like a Discord snowflake (17-20 digit numeric string).
+
+    Discord snowflakes are 17-19 digits long (allowing 20 for future growth).
+    Short numeric strings (e.g. IRC numeric msgids) are not snowflakes.
+    """
+    return value.isdigit() and 17 <= len(value) <= 20
 
 
 class MessageIDTracker:
@@ -105,6 +109,17 @@ class MessageIDTracker:
             discord_id for discord_id, mapping in self._discord_to_irc.items() if mapping.timestamp < cutoff
         ]
         for discord_id in expired_discord:
+            del self._discord_to_irc[discord_id]
+
+        # Remove dangling reverse entries whose forward (IRC -> Discord) entry no longer exists.
+        # These can accumulate when add_discord_id_alias creates extra reverse entries that
+        # don't correspond to a live forward entry (e.g. after TTL expiry of forward map).
+        dangling = [
+            discord_id
+            for discord_id, mapping in self._discord_to_irc.items()
+            if mapping.irc_msgid not in self._irc_to_discord
+        ]
+        for discord_id in dangling:
             del self._discord_to_irc[discord_id]
 
 
