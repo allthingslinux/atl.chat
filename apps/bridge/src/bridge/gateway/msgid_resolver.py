@@ -61,6 +61,12 @@ class MessageIDResolver(Protocol):
         ...
 
 
+_VALID_PROTOCOLS: frozenset[str] = frozenset({"discord", "irc", "xmpp"})
+
+_IRC_XMPP_PENDING_MAXSIZE = 10000
+_IRC_XMPP_PENDING_WARN_THRESHOLD = 0.8
+
+
 class DefaultMessageIDResolver:
     """Implementation that delegates to IRC and XMPP trackers."""
 
@@ -70,7 +76,7 @@ class DefaultMessageIDResolver:
         # Pending irc_msgid → (xmpp_id, muc_jid) for IRC-origin messages relayed to XMPP.
         # Resolved when the Discord adapter gets the webhook discord_id.
         # TTLCache prevents unbounded growth if the Discord webhook never fires.
-        self._irc_xmpp_pending: TTLCache[str, tuple[str, str]] = TTLCache(maxsize=2000, ttl=3600)
+        self._irc_xmpp_pending: TTLCache[str, tuple[str, str]] = TTLCache(maxsize=_IRC_XMPP_PENDING_MAXSIZE, ttl=3600)
 
     def register_irc(self, tracker: MessageIDTracker) -> None:
         """Register IRC message ID tracker (called by IRCAdapter)."""
@@ -83,6 +89,8 @@ class DefaultMessageIDResolver:
         logger.debug("msgid resolver: XMPP component registered")
 
     def get_discord_id(self, source: str, source_id: str) -> str | None:
+        if source not in _VALID_PROTOCOLS:
+            raise ValueError(f"Unknown protocol {source!r}; expected one of {sorted(_VALID_PROTOCOLS)}")
         if source == "irc" and self._irc_tracker:
             return self._irc_tracker.get_discord_id(source_id)
         if source == "xmpp" and self._xmpp_component:
@@ -133,6 +141,14 @@ class DefaultMessageIDResolver:
         stanza-id (Gajim/Dino ignore those).
         """
         self._irc_xmpp_pending[irc_msgid] = (xmpp_id, muc_jid)
+        fill = len(self._irc_xmpp_pending) / _IRC_XMPP_PENDING_MAXSIZE
+        if fill >= _IRC_XMPP_PENDING_WARN_THRESHOLD:
+            logger.warning(
+                "irc_xmpp_pending cache is {:.0%} full ({}/{}); consider increasing maxsize",
+                fill,
+                len(self._irc_xmpp_pending),
+                _IRC_XMPP_PENDING_MAXSIZE,
+            )
         if self._xmpp_component:
             self._xmpp_component._msgid_tracker.store(xmpp_id, irc_msgid, muc_jid)
 
