@@ -54,6 +54,8 @@ class DiscordAdapter(AdapterBase):
         # Message IDs we deleted (relaying from XMPP/IRC) — skip publishing on_raw_message_delete
         self._recently_deleted_by_us: TTLCache[str, None] = TTLCache(maxsize=500, ttl=5)
         self._channel_locks: dict[str, asyncio.Lock] = {}
+        # Per-channel locks for webhook cache-check + create (prevents concurrent creation races)
+        self._webhook_create_locks: dict[str, asyncio.Lock] = {}
         self._bot: commands.Bot | None = None
         self._session: aiohttp.ClientSession | None = None
         self._consumer_task: asyncio.Task | None = None
@@ -208,7 +210,9 @@ class DiscordAdapter(AdapterBase):
     async def _get_or_create_webhook(self, channel_id: str) -> Webhook | None:
         if not self._bot:
             return None
-        return await discord_webhook.get_or_create_webhook(self._bot, channel_id, self._webhook_cache)
+        return await discord_webhook.get_or_create_webhook(
+            self._bot, channel_id, self._webhook_cache, self._webhook_create_locks
+        )
 
     async def _webhook_send(
         self,
@@ -236,6 +240,7 @@ class DiscordAdapter(AdapterBase):
             reply_author=reply_author,
             reply_content=reply_content,
             file=file,
+            webhook_cache=self._webhook_cache,
         )
 
     async def _webhook_edit(self, channel_id: str, discord_message_id: int, content: str) -> bool:
@@ -378,7 +383,13 @@ class DiscordAdapter(AdapterBase):
                         with contextlib.suppress(OSError):
                             os.unlink(temp_path)
 
-                # Store XMPP->Discord mapping for retraction, reaction, and edit routing
+                # Store XMPP->Discord mapping for retraction, reaction, and edit routing.
+                # KNOWN LIMITATION (race): the mapping is stored after the webhook send returns.
+                # If a reaction or retraction arrives from XMPP between the send completing and
+                # this store, the discord_msg_id will not yet be in the resolver and the event
+                # will be silently lost. Eliminating this race would require pre-registering a
+                # placeholder before the send and updating it with the real discord_msg_id in the
+                # webhook echo, which is not currently implemented.
                 origin = (evt.raw or {}).get("origin")
                 if discord_msg_id and origin == "xmpp" and self._msgid_resolver:
                     mapping = self._router.get_mapping_for_discord(evt.channel_id)
@@ -423,6 +434,12 @@ class DiscordAdapter(AdapterBase):
             except asyncio.CancelledError:
                 break
             except Exception as exc:
+                logger.warning(
+                    "Webhook send failed; message dropped (channel={} author={}): {}",
+                    getattr(evt, "channel_id", "unknown"),
+                    getattr(evt, "author_display", "unknown"),
+                    exc,
+                )
                 logger.exception("Webhook send failed: {}", exc)
 
     # ------------------------------------------------------------------
@@ -529,3 +546,4 @@ class DiscordAdapter(AdapterBase):
         self._session = None
         self._bot_task = None
         self._channel_locks.clear()
+        self._webhook_create_locks.clear()
