@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING, Any
 
 from loguru import logger
 
+from bridge.config import cfg
 from bridge.events import message_in
 
 if TYPE_CHECKING:
@@ -90,11 +91,11 @@ def decode_irc_bytes(data: bytes) -> str:
 # ``time`` tag in ISO 8601 format. 30 seconds is generous enough to handle
 # clock skew and network latency while still filtering out genuine replays
 # (which are typically minutes to hours old).
-_HISTORY_REPLAY_THRESHOLD_SECONDS = 30
+# Configurable via irc_history_replay_threshold_seconds in config.yaml.
 
 
 def is_history_replay(tags: dict) -> bool:
-    """Return True if the message has a server-time timestamp older than _HISTORY_REPLAY_THRESHOLD_SECONDS.
+    """Return True if the message has a server-time timestamp older than irc_history_replay_threshold_seconds.
 
     IRC servers with +H (history replay) send old messages on join with a
     ``time`` tag in ISO 8601 format.  We discard these to avoid re-relaying
@@ -107,7 +108,7 @@ def is_history_replay(tags: dict) -> bool:
         msg_time = datetime.fromisoformat(time_str.replace("Z", "+00:00"))
         now = datetime.now(UTC)
         age = (now - msg_time).total_seconds()
-        return age > _HISTORY_REPLAY_THRESHOLD_SECONDS
+        return age > cfg.irc_history_replay_threshold_seconds
     except (ValueError, TypeError):
         return False
 
