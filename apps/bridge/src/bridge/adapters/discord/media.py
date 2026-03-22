@@ -112,28 +112,41 @@ async def fetch_media_to_temp(session: aiohttp.ClientSession | None, url: str) -
         return None
     fetch_url = rewrite_upload_url_for_fetch(url)
     path: str | None = None
+    # Track whether we have already unlinked the file on an early-exit path so
+    # the outer except block does not attempt a second unlink of the same path.
+    _unlinked = False
     try:
         fd, path = tempfile.mkstemp(suffix=".media")
-        os.close(fd)
-        total = 0
-        async with session.get(fetch_url, timeout=aiohttp.ClientTimeout(total=MEDIA_FETCH_TIMEOUT)) as resp:
-            if resp.status != 200:
-                logger.debug("media fetch failed: {} status={}", url[:80], resp.status)
+        # Close the raw fd immediately; open() below reopens the path by name.
+        # The try/finally guarantees the fd is released even if the subsequent
+        # network request or file open raises before we return.
+        try:
+            total = 0
+            async with session.get(fetch_url, timeout=aiohttp.ClientTimeout(total=MEDIA_FETCH_TIMEOUT)) as resp:
+                if resp.status != 200:
+                    logger.debug("media fetch failed: {} status={}", url[:80], resp.status)
+                    os.unlink(path)
+                    _unlinked = True
+                    return None
+                with open(path, "wb") as f:
+                    async for chunk in resp.content.iter_chunked(8192):
+                        total += len(chunk)
+                        if total > MEDIA_SIZE_LIMIT:
+                            # Break immediately on size exceeded — do not write this chunk.
+                            logger.debug("media fetch truncated: {} exceeded {} bytes", url[:80], MEDIA_SIZE_LIMIT)
+                            break
+                        f.write(chunk)
+            if total > MEDIA_SIZE_LIMIT:
+                # Clean up and signal failure after exiting the response context.
                 os.unlink(path)
+                _unlinked = True
                 return None
-            with open(path, "wb") as f:
-                async for chunk in resp.content.iter_chunked(8192):
-                    total += len(chunk)
-                    if total > MEDIA_SIZE_LIMIT:
-                        logger.debug("media fetch truncated: {} exceeded {} bytes", url[:80], MEDIA_SIZE_LIMIT)
-                        f.close()
-                        os.unlink(path)
-                        return None
-                    f.write(chunk)
-        return path
+            return path
+        finally:
+            os.close(fd)
     except Exception as exc:
         logger.debug("Failed to fetch media from {}: {}", url, exc)
-        if path and os.path.exists(path):
+        if not _unlinked and path and os.path.exists(path):
             with contextlib.suppress(OSError):
                 os.unlink(path)
         return None
