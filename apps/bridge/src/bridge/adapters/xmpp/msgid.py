@@ -23,6 +23,7 @@ class XMPPMessageIDTracker:
         self._xmpp_to_discord: dict[str, XMPPMessageMapping] = {}
         self._discord_to_xmpp: dict[str, XMPPMessageMapping] = {}
         self._discord_to_stanza_id: dict[str, str] = {}  # discord_id -> stanza_id (for reactions)
+        self._last_cleanup: float = 0.0  # monotonic timestamp of last full cleanup scan
 
     def store(self, xmpp_id: str, discord_id: str, room_jid: str):
         """Store bidirectional mapping."""
@@ -146,7 +147,11 @@ class XMPPMessageIDTracker:
             room_jid=mapping.room_jid,
             timestamp=mapping.timestamp,
         )
-        # Update all keys pointing to the old mapping (xmpp_id + aliases like stanza_id)
+        # Update all keys pointing to the old mapping (xmpp_id + aliases like stanza_id).
+        # Identity check (`is`) is intentional: multiple keys (origin-id, stanza-id) may map
+        # to the *same* XMPPMessageMapping object (set by add_stanza_id_alias / add_alias).
+        # Using `is` instead of `==` ensures we update every aliased key in one pass without
+        # having to maintain a separate reverse-alias index.
         for key in list(self._xmpp_to_discord.keys()):
             if self._xmpp_to_discord[key] is mapping:
                 self._xmpp_to_discord[key] = new_mapping
@@ -158,9 +163,13 @@ class XMPPMessageIDTracker:
         return True
 
     def _cleanup(self):
-        """Remove expired entries."""
-        now = time.time()
-        cutoff = now - self._ttl
+        """Remove expired entries (throttled: runs at most once per second)."""
+        now = time.monotonic()
+        if now - self._last_cleanup < 1.0:
+            return
+        self._last_cleanup = now
+        now_wall = time.time()
+        cutoff = now_wall - self._ttl
 
         # Clean XMPP -> Discord
         expired_xmpp = [xmpp_id for xmpp_id, mapping in self._xmpp_to_discord.items() if mapping.timestamp < cutoff]
