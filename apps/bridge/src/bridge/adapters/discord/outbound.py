@@ -113,7 +113,14 @@ async def handle_attachments(
 
     # Send to XMPP via HTTP upload if configured
     if mapping.xmpp and msgid_resolver:
-        nick = await identity.discord_to_xmpp(discord_id)
+        try:
+            nick = await asyncio.wait_for(identity.discord_to_xmpp(discord_id), timeout=5.0)
+        except TimeoutError:
+            logger.warning(
+                "Identity lookup timed out for discord_id={}; proceeding without XMPP nick",
+                discord_id,
+            )
+            nick = None
         # DevIdentityResolver returns None; use display name as fallback for dev without Portal
         if not nick:
             nick = (message.author.display_name or message.author.name or "user")[:20]
@@ -123,6 +130,11 @@ async def handle_attachments(
             if xmpp_component:
                 for attachment in message.attachments:
                     if attachment.size > 10 * 1024 * 1024:
+                        logger.warning(
+                            "Attachment {} ({} bytes) exceeds 10 MB size limit; skipping",
+                            attachment.filename,
+                            attachment.size,
+                        )
                         continue
 
                     try:

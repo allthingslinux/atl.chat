@@ -45,7 +45,16 @@ async def setup_reply_emojis(bot: commands.Bot) -> None:
                 _cache[name] = existing_by_name[name]
                 logger.debug("reply emoji {} already exists (id={})", name, _cache[name])
             else:
-                data = (_ASSETS_DIR / f"{name}.png").read_bytes()
+                asset_path = _ASSETS_DIR / f"{name}.png"
+                try:
+                    data = asset_path.read_bytes()
+                except (FileNotFoundError, OSError) as exc:
+                    logger.warning(
+                        "Reply emoji asset not found at {}; skipping upload (will use ↪ fallback): {}",
+                        asset_path,
+                        exc,
+                    )
+                    continue
                 emoji = await bot.create_application_emoji(name=name, image=data)
                 _cache[name] = str(emoji.id)
                 logger.info("uploaded reply emoji {} (id={})", name, _cache[name])

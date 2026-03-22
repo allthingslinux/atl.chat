@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
+
+import discord
 from discord import AllowedMentions, File, TextChannel
 from discord.ext import commands
 from discord.webhook import Webhook
@@ -77,6 +80,7 @@ async def get_or_create_webhook(
     bot: commands.Bot,
     channel_id: str,
     webhook_cache: dict,
+    webhook_create_locks: dict[str, asyncio.Lock] | None = None,
 ) -> Webhook | None:
     """Get or create one webhook per channel (matterbridge pattern).
 
@@ -86,51 +90,68 @@ async def get_or_create_webhook(
     per channel (named "ATL Bridge") to stay within Discord's 10-webhook
     limit per channel.
 
-    Caller must hold the per-channel send lock to prevent race conditions
-    when multiple messages target the same channel simultaneously.
+    A per-channel lock (webhook_create_locks) serializes the cache-check +
+    webhook-create operation so that two concurrent callers cannot both see
+    a cache miss and both independently create a new webhook for the same channel.
     """
-    channel = bot.get_channel(int(channel_id))
-    if not channel:
-        # get_channel uses cache; cache can be empty on connect/reconnect. Fallback to API.
-        try:
-            channel = await bot.fetch_channel(int(channel_id))
-        except Exception as exc:
-            logger.warning("channel {} not found (get_channel and fetch_channel): {}", channel_id, exc)
-            return None
-    if not channel or not isinstance(channel, TextChannel):
-        logger.warning("channel {} not found or not a text channel", channel_id)
-        return None
+    # Acquire (or create) a per-channel lock to prevent concurrent cache-miss
+    # races where multiple tasks each see an empty cache entry and each try to
+    # create a new webhook for the same channel.
+    if webhook_create_locks is not None:
+        if channel_id not in webhook_create_locks:
+            webhook_create_locks[channel_id] = asyncio.Lock()
+        lock: asyncio.Lock | None = webhook_create_locks[channel_id]
+    else:
+        lock = None
 
-    webhook = webhook_cache.get(channel_id)
-    if not webhook:
-        try:
-            webhooks = await channel.webhooks()
-            app_id = str(getattr(bot, "application_id", None) or "")
-            for wh in webhooks:
-                if wh.name == WEBHOOK_NAME:
-                    webhook = wh
-                    logger.debug("Reusing webhook '{}' for channel {}", wh.name, channel_id)
-                    break
-            if not webhook and app_id and len(webhooks) >= DISCORD_WEBHOOKS_PER_CHANNEL:
-                for wh in webhooks:
-                    if str(getattr(wh, "application_id", None) or "") == app_id:
-                        webhook = wh
-                        logger.info("Reusing app-owned webhook for channel {} (limit reached)", channel_id)
-                        break
-            if not webhook and len(webhooks) < DISCORD_WEBHOOKS_PER_CHANNEL:
-                webhook = await channel.create_webhook(name=WEBHOOK_NAME, reason="ATL Bridge relay")
-            if webhook:
-                webhook_cache[channel_id] = webhook
-        except Exception as exc:
-            logger.exception("Failed to get/create webhook for channel {}: {}", channel_id, exc)
+    async def _do_get_or_create() -> Webhook | None:
+        channel = bot.get_channel(int(channel_id))
+        if not channel:
+            # get_channel uses cache; cache can be empty on connect/reconnect. Fallback to API.
+            try:
+                channel = await bot.fetch_channel(int(channel_id))
+            except Exception as exc:
+                logger.warning("channel {} not found (get_channel and fetch_channel): {}", channel_id, exc)
+                return None
+        if not channel or not isinstance(channel, TextChannel):
+            logger.warning("channel {} not found or not a text channel", channel_id)
             return None
-    if not webhook:
-        logger.warning(
-            "No webhook available for channel {}: Discord allows {} webhooks/channel.",
-            channel_id,
-            DISCORD_WEBHOOKS_PER_CHANNEL,
-        )
-    return webhook
+
+        webhook = webhook_cache.get(channel_id)
+        if not webhook:
+            try:
+                webhooks = await channel.webhooks()
+                app_id = str(getattr(bot, "application_id", None) or "")
+                for wh in webhooks:
+                    if wh.name == WEBHOOK_NAME:
+                        webhook = wh
+                        logger.debug("Reusing webhook '{}' for channel {}", wh.name, channel_id)
+                        break
+                if not webhook and app_id and len(webhooks) >= DISCORD_WEBHOOKS_PER_CHANNEL:
+                    for wh in webhooks:
+                        if str(getattr(wh, "application_id", None) or "") == app_id:
+                            webhook = wh
+                            logger.info("Reusing app-owned webhook for channel {} (limit reached)", channel_id)
+                            break
+                if not webhook and len(webhooks) < DISCORD_WEBHOOKS_PER_CHANNEL:
+                    webhook = await channel.create_webhook(name=WEBHOOK_NAME, reason="ATL Bridge relay")
+                if webhook:
+                    webhook_cache[channel_id] = webhook
+            except Exception as exc:
+                logger.exception("Failed to get/create webhook for channel {}: {}", channel_id, exc)
+                return None
+        if not webhook:
+            logger.warning(
+                "No webhook available for channel {}: Discord allows {} webhooks/channel.",
+                channel_id,
+                DISCORD_WEBHOOKS_PER_CHANNEL,
+            )
+        return webhook
+
+    if lock is not None:
+        async with lock:
+            return await _do_get_or_create()
+    return await _do_get_or_create()
 
 
 async def webhook_send(
@@ -145,11 +166,15 @@ async def webhook_send(
     reply_author: str | None = None,
     reply_content: str | None = None,
     file: File | None = None,
+    webhook_cache: dict | None = None,
 ) -> int | None:
     """Send message via webhook with optional file attachment.
 
     When reply_to_id is set, prepends an OOYE-style -# > subtext line above
     the message instead of a button, matching Discord's native reply appearance.
+
+    If the webhook returns 404 (stale/deleted), the cache entry for channel_id
+    is evicted so the next send will create a fresh webhook.
     """
     send_avatar_url = avatar_url if _avatar_url_ok_for_discord(avatar_url) else None
 
@@ -171,7 +196,17 @@ async def webhook_send(
     }
     if file is not None:
         send_kw["file"] = file
-    msg = await webhook.send(**send_kw)
+    try:
+        msg = await webhook.send(**send_kw)
+    except discord.NotFound:
+        # Stale or deleted webhook — evict from cache so the next send recreates it.
+        if webhook_cache is not None and channel_id in webhook_cache:
+            del webhook_cache[channel_id]
+            logger.warning(
+                "Webhook for channel {} returned 404 (deleted/stale); evicted from cache",
+                channel_id,
+            )
+        raise
     return int(msg.id) if msg else None
 
 
