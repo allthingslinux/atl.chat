@@ -15,6 +15,7 @@ def _get_cache() -> TTLCache[tuple[str, str], str | None]:
     """Return the module-level avatar URL cache (lazy TTL refresh from config)."""
     global _avatar_url_cache  # noqa: PLW0603
     if _avatar_url_cache.ttl != cfg.avatar_cache_ttl_seconds:
+        # Single assignment is atomic under CPython's GIL; safe for concurrent reads.
         _avatar_url_cache = TTLCache(maxsize=500, ttl=cfg.avatar_cache_ttl_seconds)
     return _avatar_url_cache
 
@@ -47,7 +48,7 @@ async def resolve_xmpp_avatar_url(base_domain: str, node: str) -> str | None:
     public_base = cfg.xmpp_avatar_public_url
     public_base = public_base.rstrip("/") if public_base else f"https://{base_domain}"
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=httpx.Timeout(3.0)) as client:
         for path in (f"/pep_avatar/{node}", f"/avatar/{node}"):
             probe_url = f"{probe_base}{path}"
             try:
@@ -56,7 +57,7 @@ async def resolve_xmpp_avatar_url(base_domain: str, node: str) -> str | None:
                     public_url = f"{public_base}{path}"
                     cache[cache_key] = public_url
                     return public_url
-            except Exception as exc:
+            except (httpx.HTTPError, OSError, ValueError) as exc:
                 logger.debug("avatar probe failed for {}@{} ({}): {}", node, base_domain, path, exc)
                 continue
 
