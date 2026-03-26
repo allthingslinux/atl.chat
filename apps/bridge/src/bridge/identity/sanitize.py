@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import os
 import re
 
 # ---------------------------------------------------------------------------
@@ -76,3 +77,37 @@ def sanitize_nick(nick: str, max_len: int = 23) -> str:
         cleaned = _DEFAULT_NICK
 
     return cleaned
+
+
+def xmpp_jid_or_plain_to_muc_nick(value: str, *, max_len: int = 23) -> str:
+    """Turn Portal ``xmpp_jid`` or a plain display string into a MUC occupant nick.
+
+    ``discord_to_xmpp`` returns a bare JID (e.g. ``alice@chat.example``). Using that
+    full string as the MUC nick breaks join and echo matching: the server applies
+    its own escaping for the resource, so ``mucnick`` may not match what we store
+    in ``_recent_sent_nicks``. We always use the JID's local part, then
+    :func:`sanitize_nick`.
+    """
+    value = str(value).strip()
+    if not value:
+        return sanitize_nick("", max_len=max_len)
+    if "@" in value:
+        local_part = value.split("@", 1)[0]
+        if local_part:
+            return sanitize_nick(local_part, max_len=max_len)
+    return sanitize_nick(value, max_len=max_len)
+
+
+def puppet_muc_nick_from_base(sanitized_nick: str, *, max_len: int = 23) -> str:
+    """Append optional suffix to the MUC occupant nick (e.g. ``_bridge``).
+
+    XEP-0045 requires nick uniqueness per room; two occupants cannot share the
+    same nickname. If you need the bridge puppet to differ from a human's nick,
+    set env ``BRIDGE_XMPP_PUPPET_NICK_SUFFIX`` (default: empty — no suffix).
+    """
+    suf = os.environ.get("BRIDGE_XMPP_PUPPET_NICK_SUFFIX", "")
+    if not suf:
+        return sanitized_nick
+    if len(sanitized_nick) + len(suf) <= max_len:
+        return sanitized_nick + suf
+    return sanitized_nick[: max_len - len(suf)] + suf

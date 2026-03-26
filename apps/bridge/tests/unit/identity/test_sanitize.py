@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
-from bridge.identity.sanitize import ensure_valid_username, sanitize_nick
+from bridge.identity.sanitize import (
+    ensure_valid_username,
+    puppet_muc_nick_from_base,
+    sanitize_nick,
+    xmpp_jid_or_plain_to_muc_nick,
+)
 
 # ---------------------------------------------------------------------------
 # ensure_valid_username
@@ -111,3 +116,46 @@ class TestSanitizeNick:
     def test_result_never_empty(self):
         result = sanitize_nick("\x00\r\n")
         assert len(result) > 0
+
+
+# ---------------------------------------------------------------------------
+# xmpp_jid_or_plain_to_muc_nick
+# ---------------------------------------------------------------------------
+
+
+class TestXmppJidOrPlainToMucNick:
+    def test_bare_jid_uses_localpart(self):
+        assert xmpp_jid_or_plain_to_muc_nick("alice@xmpp.example") == "alice"
+
+    def test_plain_string_unchanged_when_safe(self):
+        assert xmpp_jid_or_plain_to_muc_nick("kaizen") == "kaizen"
+
+    def test_plain_applies_sanitize(self):
+        assert xmpp_jid_or_plain_to_muc_nick("a b") == "ab"
+
+    def test_empty_returns_user(self):
+        assert xmpp_jid_or_plain_to_muc_nick("") == "user"
+
+    def test_strips_whitespace(self):
+        assert xmpp_jid_or_plain_to_muc_nick("  bob@host  ") == "bob"
+
+
+# ---------------------------------------------------------------------------
+# puppet_muc_nick_from_base
+# ---------------------------------------------------------------------------
+
+
+class TestPuppetMucNickFromBase:
+    def test_default_no_suffix(self):
+        assert puppet_muc_nick_from_base("kaizen") == "kaizen"
+
+    def test_suffix_from_env(self, monkeypatch):
+        monkeypatch.setenv("BRIDGE_XMPP_PUPPET_NICK_SUFFIX", "_b")
+        assert puppet_muc_nick_from_base("kaizen") == "kaizen_b"
+
+    def test_suffix_truncates_to_max_len(self, monkeypatch):
+        monkeypatch.setenv("BRIDGE_XMPP_PUPPET_NICK_SUFFIX", "_bridge")
+        long_base = "a" * 23
+        out = puppet_muc_nick_from_base(long_base)
+        assert len(out) == 23
+        assert out.endswith("_bridge")

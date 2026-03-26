@@ -33,7 +33,14 @@ async def send_file_as_user(
     """Send file via IBB stream from a specific Discord user's JID."""
     escaped_nick = _escape_jid_node(nick)
     user_jid = f"{escaped_nick}@{comp._component_jid}"
-    await comp._ensure_puppet_joined(peer_jid, user_jid, nick)
+    if not await comp._ensure_puppet_joined(peer_jid, user_jid, nick):
+        logger.warning(
+            "skip IBB send: puppet not in MUC {} as {} (nick {!r})",
+            peer_jid,
+            user_jid,
+            nick,
+        )
+        return
 
     ibb = comp.plugin.get("xep_0047", None)
     if not ibb:

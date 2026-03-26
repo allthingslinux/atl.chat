@@ -108,6 +108,9 @@ def _muc_nick_to_bare_jid(nick: str, room_jid: str) -> str | None:
 
 SID_NS = "urn:xmpp:sid:0"
 
+# Puppet MUC join: join_muc_wait blocks the XMPP outbound queue until it returns.
+MUC_JOIN_WAIT_S = 25
+
 # Bare URL pattern: body is *only* a URL (no other text)
 _BARE_URL_RE = re.compile(r"^https?://\S+$", re.IGNORECASE)
 
@@ -247,7 +250,8 @@ class XMPPComponent(ComponentXMPP):
         # Dedupe: MUC delivers same message to each occupant (listener + puppets) — process once
         self._seen_msg_ids: TTLCache[tuple[str, str], None] = TTLCache(maxsize=500, ttl=60)
         # Fallback echo detection when get_jid_property returns None (MUC may not expose real JID)
-        self._recent_sent_nicks: TTLCache[tuple[str, str], None] = TTLCache(maxsize=200, ttl=10)
+        # Must cover MUC_JOIN_WAIT_S + queue delay so echo suppression never expires mid-send.
+        self._recent_sent_nicks: TTLCache[tuple[str, str], None] = TTLCache(maxsize=200, ttl=90)
         # XEP-0444: track per-user reaction sets to detect removals (full set sent each update)
         self._reactions_by_user: TTLCache[tuple[str, str], frozenset[str]] = TTLCache(maxsize=2000, ttl=3600)
         # Dedupe moderation: MUC delivers to each occupant + multiple handlers fire per stanza
@@ -398,58 +402,56 @@ class XMPPComponent(ComponentXMPP):
     # MUC joining (kept in component.py)
     # ===================================================================
 
-    async def _ensure_puppet_joined(self, muc_jid: str, user_jid: str, nick: str) -> None:
-        """Join MUC as puppet if not already joined (required before sending)."""
+    async def _ensure_puppet_joined(self, muc_jid: str, user_jid: str, nick: str) -> bool:
+        """Join MUC as puppet if not already joined.
+
+        Returns True if the occupant is in the room (already tracked or join succeeded).
+        On False, callers must not send groupchat stanzas as that JID.
+        """
         key = (muc_jid, user_jid)
         if key in self._puppets_joined:
-            return
-        await self.join_muc_as_user(muc_jid, nick)
-        self._puppets_joined[key] = None
+            return True
+        if await self.join_muc_as_user(muc_jid, nick):
+            self._puppets_joined[key] = None
+            return True
+        return False
 
-    async def join_muc_as_user(self, muc_jid: str, nick: str) -> None:
-        """Join MUC as a specific user JID. Retries with nick_bridge if primary nick conflicts."""
+    async def join_muc_as_user(self, muc_jid: str, nick: str) -> bool:
+        """Join MUC as a specific user JID (puppet presence). Returns True on success."""
         escaped_nick = _escape_jid_node(nick)
         user_jid = f"{escaped_nick}@{self._component_jid}"
 
         muc_plugin = self.plugin.get("xep_0045", None)
         if not muc_plugin:
             logger.error("XEP-0045 plugin not available")
-            return
+            return False
 
-        for attempt, join_nick in enumerate([nick, f"{nick}_bridge"]):
-            try:
-                await muc_plugin.join_muc_wait(  # type: ignore[misc,call-arg]
-                    JID(muc_jid),
-                    join_nick,
-                    presence_options={"pfrom": JID(user_jid)},
-                    timeout=30,
-                    maxchars=0,  # Requirement 10.11 / 18.1: suppress MUC history replay
-                )
-                if attempt > 0:
-                    logger.info("Joined MUC {} as {} (fallback nick, primary '{}' conflicted)", muc_jid, user_jid, nick)
-                else:
-                    logger.info("Joined MUC {} as {}", muc_jid, user_jid)
-                return
-            except TimeoutError as exc:
-                if attempt == 0:
-                    logger.warning(
-                        "Join MUC {} as {} (nick '{}') timed out; retrying with '{}_bridge'",
-                        muc_jid,
-                        user_jid,
-                        nick,
-                        nick,
-                    )
-                else:
-                    logger.exception("Join MUC {} as {} failed after retry: {}", muc_jid, user_jid, exc)
-                    return  # Don't raise; caller continues without this puppet
-            except XMPPError as exc:
-                if attempt == 0:
-                    logger.warning(
-                        "Join MUC {} as {} failed: {}; retrying with '{}_bridge'", muc_jid, user_jid, exc, nick
-                    )
-                else:
-                    logger.warning("Failed to join MUC {} as {}: {}", muc_jid, user_jid, exc)
-                    return  # Don't raise; preserve original behavior (log only)
+        try:
+            await muc_plugin.join_muc_wait(  # type: ignore[misc,call-arg]
+                JID(muc_jid),
+                nick,
+                presence_options={"pfrom": JID(user_jid)},
+                timeout=MUC_JOIN_WAIT_S,
+                maxchars=0,  # Requirement 10.11 / 18.1: suppress MUC history replay
+            )
+            # Echo suppression: inbound groupchat uses this occupant nick for is_recent_echo.
+            self._recent_sent_nicks[(muc_jid, nick)] = None
+            logger.info("Joined MUC {} as {}", muc_jid, user_jid)
+            return True
+        except TimeoutError as exc:
+            logger.warning(
+                "Join MUC {} as {} (nick {!r}) timed out: {}. "
+                "If a real XMPP user is already in this room with the same nick, set "
+                "BRIDGE_XMPP_PUPPET_NICK_SUFFIX (e.g. _d) to avoid collision.",
+                muc_jid,
+                user_jid,
+                nick,
+                exc,
+            )
+            return False
+        except XMPPError as exc:
+            logger.warning("Failed to join MUC {} as {}: {}", muc_jid, user_jid, exc)
+            return False
 
     # ===================================================================
     # Thin delegation stubs — backward compatibility for existing callers

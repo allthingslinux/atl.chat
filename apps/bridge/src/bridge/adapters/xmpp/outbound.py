@@ -53,7 +53,14 @@ async def send_message_as_user(
     user_jid = f"{escaped_nick}@{comp._component_jid}"
     # Record before send for echo detection fallback (when get_jid_property returns None)
     comp._recent_sent_nicks[(muc_jid, nick)] = None
-    await comp._ensure_puppet_joined(muc_jid, user_jid, nick)
+    if not await comp._ensure_puppet_joined(muc_jid, user_jid, nick):
+        logger.warning(
+            "skip groupchat message: puppet not in MUC {} as {} (nick {!r})",
+            muc_jid,
+            user_jid,
+            nick,
+        )
+        return ""
 
     try:
         # XEP-0382 spoiler: use pipeline flag (content already stripped) or detect inline ||markers||
@@ -183,6 +190,8 @@ async def send_message_as_user(
             except Exception as exc:
                 logger.debug("XEP-0394 markup attach failed: {}", exc)
 
+        # Refresh TTL after join (join may exceed the original pre-seed window).
+        comp._recent_sent_nicks[(muc_jid, nick)] = None
         msg.send()
 
         logger.debug("sent message {} from {} to {}", msg_id, user_jid, muc_jid)
@@ -211,7 +220,14 @@ async def send_reaction_as_user(
     escaped_nick = _escape_jid_node(nick)
     user_jid = f"{escaped_nick}@{comp._component_jid}"
     comp._recent_sent_nicks[(muc_jid, nick)] = None
-    await comp._ensure_puppet_joined(muc_jid, user_jid, nick)
+    if not await comp._ensure_puppet_joined(muc_jid, user_jid, nick):
+        logger.warning(
+            "skip reaction: puppet not in MUC {} as {} (nick {!r})",
+            muc_jid,
+            user_jid,
+            nick,
+        )
+        return
 
     reactions_plugin = comp.plugin.get("xep_0444", None)
     if not reactions_plugin:
@@ -236,6 +252,7 @@ async def send_reaction_as_user(
         )
         reactions_plugin.set_reactions(msg, target_msg_id, prev_set)
         msg.enable("no-store")
+        comp._recent_sent_nicks[(muc_jid, nick)] = None
         msg.send()
         logger.info(
             "sent reaction {} (full set: {}) to message {} in room {} (from IRC/Discord)",
@@ -267,7 +284,14 @@ async def send_retraction_as_user(
     escaped_nick = _escape_jid_node(nick)
     user_jid = f"{escaped_nick}@{comp._component_jid}"
     comp._recent_sent_nicks[(muc_jid, nick)] = None
-    await comp._ensure_puppet_joined(muc_jid, user_jid, nick)
+    if not await comp._ensure_puppet_joined(muc_jid, user_jid, nick):
+        logger.warning(
+            "skip retraction: puppet not in MUC {} as {} (nick {!r})",
+            muc_jid,
+            user_jid,
+            nick,
+        )
+        return
 
     try:
         msg = comp.make_message(
@@ -281,6 +305,7 @@ async def send_retraction_as_user(
         fb = msg.enable("fallback")
         fb["for"] = "urn:xmpp:message-retract:1"
         msg.enable("store")
+        comp._recent_sent_nicks[(muc_jid, nick)] = None
         msg.send()
         logger.info("sent retraction for message {} to room {} (from IRC/Discord)", target_msg_id, muc_jid)
     except Exception as exc:
@@ -333,7 +358,14 @@ async def send_correction_as_user(
     escaped_nick = _escape_jid_node(nick)
     user_jid = f"{escaped_nick}@{comp._component_jid}"
     comp._recent_sent_nicks[(muc_jid, nick)] = None
-    await comp._ensure_puppet_joined(muc_jid, user_jid, nick)
+    if not await comp._ensure_puppet_joined(muc_jid, user_jid, nick):
+        logger.warning(
+            "skip correction: puppet not in MUC {} as {} (nick {!r})",
+            muc_jid,
+            user_jid,
+            nick,
+        )
+        return
 
     try:
         xep_0308 = comp.plugin.get("xep_0308", None)
@@ -355,6 +387,7 @@ async def send_correction_as_user(
             msg["id"] = f"bridge-correct-{uuid.uuid4().hex}"
             msg.enable("replace")
             msg["replace"]["id"] = original_xmpp_id
+        comp._recent_sent_nicks[(muc_jid, nick)] = None
         msg.send()
         logger.debug(
             "sent correction: replace_id={} from={} to={} body_len={}",

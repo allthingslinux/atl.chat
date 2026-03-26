@@ -9,7 +9,7 @@ Verifies that retraction stanzas include:
 from __future__ import annotations
 
 from typing import Any
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from bridge.adapters.xmpp.component import XMPPComponent
@@ -51,9 +51,17 @@ def _mock_jid_escape_plugin(escaped: str = "escapednick") -> MagicMock:
     return plugin
 
 
+def _mock_xep_0045() -> MagicMock:
+    plugin = MagicMock()
+    plugin.join_muc_wait = AsyncMock(return_value=None)
+    return plugin
+
+
 def _make_plugin_registry(**plugins: Any) -> MagicMock:
+    merged = {"xep_0045": _mock_xep_0045()}
+    merged.update(plugins)
     registry = MagicMock()
-    registry.get.side_effect = lambda name, default=None: plugins.get(name, default)
+    registry.get.side_effect = lambda name, default=None: merged.get(name, default)
     return registry
 
 

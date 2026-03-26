@@ -16,6 +16,7 @@ from bridge.adapters.base import AdapterBase
 from bridge.adapters.xmpp.component import XMPPComponent, _escape_jid_node
 from bridge.events import MessageDeleteOut, MessageOut, ReactionOut, TypingOut
 from bridge.gateway import Bus, ChannelRouter
+from bridge.identity.sanitize import puppet_muc_nick_from_base, xmpp_jid_or_plain_to_muc_nick
 
 if TYPE_CHECKING:
     from bridge.gateway.msgid_resolver import MessageIDResolver
@@ -127,15 +128,16 @@ class XMPPAdapter(AdapterBase):
         author = getattr(evt, "author_id", None) or ""
         display = getattr(evt, "author_display", None) or ""
         # Prefer display (e.g. "kaizen") over raw author_id (e.g. Discord snowflake)
-        return (display or author)[:20] or "bridge"
+        raw = (display or author)[:20] or "bridge"
+        return puppet_muc_nick_from_base(xmpp_jid_or_plain_to_muc_nick(raw))
 
     async def _resolve_nick_async(self, evt: MessageOut | MessageDeleteOut | ReactionOut) -> str:
-        """Resolve XMPP nick from identity or fallback (dev mode without Portal)."""
+        """Resolve XMPP MUC nick from identity (Portal returns bare JID) or display fallback."""
         if self._identity and getattr(evt, "author_id", None):
             try:
-                nick = await self._identity.discord_to_xmpp(evt.author_id)
-                if nick:
-                    return nick
+                jid_or_nick = await self._identity.discord_to_xmpp(evt.author_id)
+                if jid_or_nick:
+                    return puppet_muc_nick_from_base(xmpp_jid_or_plain_to_muc_nick(jid_or_nick))
             except Exception as exc:
                 logger.warning(
                     "Identity lookup failed for {}: {}; falling back to display name",

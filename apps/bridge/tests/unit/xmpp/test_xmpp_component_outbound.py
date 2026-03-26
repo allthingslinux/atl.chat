@@ -109,10 +109,19 @@ def _mock_jid_escape_plugin(escaped="escapednick"):
     return plugin
 
 
+def _mock_xep_0045():
+    """MUC join — outbound paths call join_muc_wait before sending."""
+    plugin = MagicMock()
+    plugin.join_muc_wait = AsyncMock(return_value=None)
+    return plugin
+
+
 def _make_plugin_registry(**plugins):
     """Return a plugin MagicMock where plugin.get(name) returns the given mock (or None)."""
+    merged = {"xep_0045": _mock_xep_0045()}
+    merged.update(plugins)
     registry = MagicMock()
-    registry.get.side_effect = lambda name, default=None: plugins.get(name, default)
+    registry.get.side_effect = lambda name, default=None: merged.get(name, default)
     return registry
 
 
@@ -443,6 +452,21 @@ class TestJoinMucAsUser:
 
         # Act / Assert — must not raise
         await comp.join_muc_as_user("room@conf.example.com", "Nick")
+
+    @pytest.mark.asyncio
+    async def test_successful_join_registers_nick_for_echo_suppression(self):
+        """After join, _recent_sent_nicks must include (muc, occupant nick) for echo detection."""
+        comp = make_component()
+        muc_plugin = AsyncMock()
+        muc_plugin.join_muc_wait.return_value = None
+        comp.plugin = _make_plugin_registry(
+            xep_0106=_mock_jid_escape_plugin(),
+            xep_0045=muc_plugin,
+        )
+
+        await comp.join_muc_as_user("room@conf.example.com", "kaizen")
+
+        assert ("room@conf.example.com", "kaizen") in comp._recent_sent_nicks
 
 
 # ---------------------------------------------------------------------------
