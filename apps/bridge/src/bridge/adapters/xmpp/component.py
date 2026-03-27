@@ -17,6 +17,7 @@ from __future__ import annotations
 import asyncio
 import re
 from typing import TYPE_CHECKING, Any
+from xml.etree import ElementTree as ET
 
 import aiohttp
 from cachetools import TTLCache
@@ -27,6 +28,7 @@ from slixmpp.exceptions import XMPPError
 
 from bridge.adapters.xmpp.msgid import XMPPMessageIDTracker
 from bridge.gateway import Bus, ChannelRouter
+from bridge.identity.sanitize import puppet_muc_xep0172_display_nick
 
 # ---------------------------------------------------------------------------
 # XEP-0106 JID escape map: chars disallowed by nodeprep -> escape sequence.
@@ -238,6 +240,7 @@ class XMPPComponent(ComponentXMPP):
         self._avatar_cache: TTLCache[str, str] = TTLCache(
             maxsize=1000, ttl=86400
         )  # discord_id -> avatar_hash (24h TTL)
+        self._puppet_origins: dict[str, str] = {}  # user_jid -> origin ("discord", "irc", "xmpp")
         self._session: aiohttp.ClientSession | None = None
         self._ibb_streams: dict[str, asyncio.Task] = {}  # sid -> handler task
         self._msgid_tracker = XMPPMessageIDTracker()  # Track message IDs for edits
@@ -279,6 +282,9 @@ class XMPPComponent(ComponentXMPP):
         self.register_plugin(
             "xep_0045", {"multi_from": True}
         )  # MUC: multi_from enables per-user JIDs (component simulates multiple entities)
+        # XEP-0172 User Nickname on <presence>: required for make_presence(pnick=…) to emit
+        # <nick xmlns="http://jabber.org/protocol/nick"/> on MUC joins (bridge suffix + display nick).
+        self.register_plugin("xep_0172")
         self.register_plugin("xep_0198")  # Stream Management
         self.register_plugin("xep_0199")  # XMPP Ping
         self.register_plugin("xep_0203")  # Delayed Delivery
@@ -316,6 +322,9 @@ class XMPPComponent(ComponentXMPP):
                 itype="discord",
                 name="Bridge",
             )
+            # Advertise vCard support so clients know to query us
+            disco.add_feature("vcard-temp")  # XEP-0054
+            disco.add_feature("urn:ietf:params:xml:ns:vcard-4.0")  # XEP-0292
 
         # -------------------------------------------------------------------
         # Event handler registration — delegates to extracted modules
@@ -332,6 +341,9 @@ class XMPPComponent(ComponentXMPP):
         self.add_event_handler("chatstate_inactive", self._on_chatstate_paused)  # inactive = user switched away
         self.add_event_handler("session_start", self._on_session_start)
         self.add_event_handler("disconnected", self._on_disconnected)
+
+        # Debug: log all incoming IQs to see what clients are sending
+        self.add_event_handler("iq", self._debug_iq_received)
         self.add_event_handler(f"muc::{'*'}::got_online", self._on_muc_presence)
         self.add_event_handler(f"muc::{'*'}::got_offline", self._on_muc_presence)
 
@@ -345,6 +357,7 @@ class XMPPComponent(ComponentXMPP):
         # otherwise be silently dropped.
         from slixmpp.xmlstream.handler import Callback as _Callback
         from slixmpp.xmlstream.matcher import MatchXMLMask as _MatchXMLMask
+        from slixmpp.xmlstream.matcher import StanzaPath as _StanzaPath
 
         self.register_handler(
             _Callback(
@@ -354,10 +367,89 @@ class XMPPComponent(ComponentXMPP):
             )
         )
 
+        # PubSub vCard4 handler: Gajim only queries XEP-0292 (vCard4 via PubSub),
+        # never falling back to XEP-0054. Intercept PubSub items requests for the
+        # vCard4 node and respond from our xep_0054 vcard cache.
+        self.register_handler(
+            _Callback(
+                "PubSubVCard4",
+                _StanzaPath("iq@type=get/pubsub/items"),
+                self._on_pubsub_items_get,
+            )
+        )
+
         logger.debug(
             "MUCModeration handler registered (default_ns={})",
             self.default_ns,
         )
+
+    # ===================================================================
+    # Debug: log all incoming IQs
+    # ===================================================================
+
+    def _debug_iq_received(self, iq: Any) -> None:
+        logger.debug("IQ received: type={} from={} to={} id={}", iq["type"], iq["from"], iq["to"], iq["id"])
+
+    # ===================================================================
+    # Debug: log all incoming IQs
+    # ===================================================================
+
+    def _debug_iq_received(self, iq: Any) -> None:
+        logger.debug("IQ received: type={} from={} to={} id={}", iq["type"], iq["from"], iq["to"], iq["id"])
+
+    # ===================================================================
+    # PubSub vCard4 handler (Gajim compatibility)
+    # ===================================================================
+
+    _NS_PUBSUB = "http://jabber.org/protocol/pubsub"
+    _NS_VCARD4_NODE = "urn:xmpp:vcard4"  # PubSub node name (what clients request)
+    _NS_VCARD4_XML = "urn:ietf:params:xml:ns:vcard-4.0"  # XML namespace (stanza elements)
+
+    def _on_pubsub_items_get(self, iq: Any) -> None:
+        """Serve vCard4 via PubSub for clients like Gajim that only use XEP-0292.
+
+        Reads from the xep_0054 vcard cache and translates FN/NICKNAME into
+        a vCard4 PubSub items response.
+        """
+        logger.info("PubSub items IQ received: from={} to={} xml={}", iq["from"], iq["to"], iq)
+        items_el = iq.xml.find(f"{{{self._NS_PUBSUB}}}pubsub/{{{self._NS_PUBSUB}}}items")
+        if items_el is None or items_el.get("node") != self._NS_VCARD4_NODE:
+            logger.debug("PubSub items IQ not for vCard4 node, ignoring")
+            return  # Not a vCard4 request — let other handlers deal with it
+
+        target = str(iq["to"]).split("/")[0]
+        vcard_plugin = self.plugin.get("xep_0054", None)
+        cached = vcard_plugin._vcard_cache.get(target) if vcard_plugin else None
+
+        if not cached:
+            iq.reply()
+            iq["type"] = "error"
+            iq.enable("error")
+            iq["error"]["type"] = "cancel"
+            iq["error"]["condition"] = "item-not-found"
+            iq.send()
+            return
+
+        # Extract FN and NICKNAME from the vcard-temp cache
+        fn = cached.get("FN", "") or ""
+        nickname = cached.get("NICKNAME", "") or fn
+
+        reply = iq.reply()
+        pubsub = ET.SubElement(reply.xml, f"{{{self._NS_PUBSUB}}}pubsub")
+        items = ET.SubElement(pubsub, f"{{{self._NS_PUBSUB}}}items", node=self._NS_VCARD4_NODE)
+        item = ET.SubElement(items, f"{{{self._NS_PUBSUB}}}item", id="current")
+        vcard4 = ET.SubElement(item, f"{{{self._NS_VCARD4_XML}}}vcard")
+        if fn:
+            fn_el = ET.SubElement(vcard4, f"{{{self._NS_VCARD4_XML}}}fn")
+            ET.SubElement(fn_el, f"{{{self._NS_VCARD4_XML}}}text").text = fn
+        if nickname:
+            nick_el = ET.SubElement(vcard4, f"{{{self._NS_VCARD4_XML}}}nickname")
+            ET.SubElement(nick_el, f"{{{self._NS_VCARD4_XML}}}text").text = nickname
+        note_el = ET.SubElement(vcard4, f"{{{self._NS_VCARD4_XML}}}note")
+        origin = self._puppet_origins.get(target, "unknown")
+        ET.SubElement(note_el, f"{{{self._NS_VCARD4_XML}}}text").text = f"Bridged from {origin} (via atl.chat bridge)"
+        reply.send()
+        logger.debug("Served vCard4 PubSub for {} (from={})", target, iq["from"])
 
     # ===================================================================
     # Connection & session management (kept in component.py)
@@ -427,16 +519,29 @@ class XMPPComponent(ComponentXMPP):
             return False
 
         try:
+            presence_options: dict[str, Any] = {"pfrom": JID(user_jid)}
+            display_nick = puppet_muc_xep0172_display_nick(nick)
+            if display_nick:
+                presence_options["pnick"] = display_nick
+
             await muc_plugin.join_muc_wait(  # type: ignore[misc,call-arg]
                 JID(muc_jid),
                 nick,
-                presence_options={"pfrom": JID(user_jid)},
+                presence_options=presence_options,
                 timeout=MUC_JOIN_WAIT_S,
                 maxchars=0,  # Requirement 10.11 / 18.1: suppress MUC history replay
             )
             # Echo suppression: inbound groupchat uses this occupant nick for is_recent_echo.
             self._recent_sent_nicks[(muc_jid, nick)] = None
-            logger.info("Joined MUC {} as {}", muc_jid, user_jid)
+            if display_nick:
+                logger.info(
+                    "Joined MUC {} as {} (XEP-0172 display nick: {})",
+                    muc_jid,
+                    user_jid,
+                    display_nick,
+                )
+            else:
+                logger.info("Joined MUC {} as {}", muc_jid, user_jid)
             return True
         except TimeoutError as exc:
             logger.warning(
@@ -638,10 +743,12 @@ class XMPPComponent(ComponentXMPP):
 
         return await fetch_avatar_bytes(self, avatar_url)
 
-    async def set_avatar_for_user(self, discord_id: str, nick: str, avatar_url: str | None) -> str | None:
+    async def set_avatar_for_user(
+        self, discord_id: str, nick: str, avatar_url: str | None, *, display_name: str | None = None, origin: str = ""
+    ) -> str | None:
         from bridge.adapters.xmpp.avatar import set_avatar_for_user
 
-        return await set_avatar_for_user(self, discord_id, nick, avatar_url)
+        return await set_avatar_for_user(self, discord_id, nick, avatar_url, display_name=display_name, origin=origin)
 
     async def _broadcast_avatar_presence(self, user_jid: str, avatar_hash: str) -> None:
         from bridge.adapters.xmpp.avatar import broadcast_avatar_presence
