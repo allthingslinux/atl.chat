@@ -1,7 +1,18 @@
 # Bridge (Discord↔IRC↔XMPP) - loaded via root: mod bridge './apps/bridge'
+# Rebuild uses same compose + env as `just dev` (project root compose.yaml).
+
+compose := "docker compose --env-file ../../.env --env-file ../../.env.dev -f ../../compose.yaml -p atl-chat"
 
 default:
     @just --list
+
+# Rebuild bridge image (does not restart containers)
+rebuild:
+    {{ compose }} build atl-bridge
+
+# Rebuild without Docker cache
+rebuild-clean:
+    {{ compose }} build --no-cache atl-bridge
 
 lint:
     uv run ruff check src tests
@@ -13,7 +24,7 @@ typecheck:
     uv run basedpyright
 
 test *args:
-    uv run pytest tests {{args}}
+    uv run pytest tests {{ args }}
 
 check:
     uv run ruff check src tests

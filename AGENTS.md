@@ -115,6 +115,7 @@ Docker daemon must be started manually: `sudo dockerd &>/tmp/dockerd.log &`. For
 | XMPP C2S | 5222 | Prosody client-to-server |
 | XMPP HTTP | 5280 | Prosody BOSH/WebSocket |
 | XMPP HTTPS | 5281 | Prosody (via nginx) |
+| XMPP HTTPS (default URL) | 443 | Same nginx; `127.0.0.1:443` only — `https://xmpp.localhost/…` without `:5281` (Fluux) |
 | The Lounge | 9000 | Web IRC client (private mode; needs user created via `just lounge add`) |
 | Fluux messenger | 8091 / 8443 | XMPP web client (HTTP / HTTPS host ports → nginx in container) |
 | Dozzle | 8082 | Docker log viewer (dev profile only) |

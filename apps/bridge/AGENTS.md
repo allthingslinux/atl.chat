@@ -144,9 +144,11 @@ Outbound MUC messages use a **per-Discord-user puppet** joined with `join_muc_wa
 
 1. **Portal / mapping:** `IdentityResolver.discord_to_xmpp` returns a **bare JID** (e.g. `alice@chat.example`). The bridge does **not** use the full string as the nick: it takes the **local part** only, then applies `sanitize_nick` (Prosody `muc_max_nick_length`, forbidden IRC/MUC characters). See `identity/sanitize.py` — `xmpp_jid_or_plain_to_muc_nick`.
 2. **Dev / no XMPP mapping:** `discord_to_xmpp` is `None`; fallback is Discord **display name** (or author id slice), same sanitize path.
-3. **Collision with a human:** XEP-0045 allows only one occupant per nick. If a real user is already in the room with the same nick, `join_muc_wait` can time out. Set env **`BRIDGE_XMPP_PUPPET_NICK_SUFFIX`** (e.g. `_d`) so the puppet nick differs; `puppet_muc_nick_from_base` appends it after sanitization. Documented in `.env.example` next to other bridge vars.
+3. **Collision with a human:** XEP-0045 allows only one occupant per nick. If a real user is already in the room with the same nick, `join_muc_wait` can time out. Set env **`BRIDGE_XMPP_PUPPET_NICK_SUFFIX`** (e.g. `_d`) so the puppet nick differs; `puppet_muc_nick_from_base` appends it after sanitization. When a suffix is set, the bridge passes **`pnick`** into `join_muc_wait` / `make_presence`; the component registers slixmpp **`xep_0172`** so that becomes XEP-0172 `<nick xmlns="http://jabber.org/protocol/nick"/>` on join presence (unsuffixed base label). Client support for display vs resource nick varies. Documented in `.env.example` next to other bridge vars.
 
 Echo suppression and stanza routing key off the same **nick string** passed to send and join; using the JID local part keeps server escaping consistent with `_recent_sent_nicks`.
+
+If it looked like “multiple kaizens” in the MUC: one occupant nick repeats on every line; bridge legs (IRC vs Discord) do not create a second occupant — see [xmpp-muc-nick-findings.md](docs/xmpp-muc-nick-findings.md) § “Multiple kaizens”.
 
 ## Critical Rules
 
