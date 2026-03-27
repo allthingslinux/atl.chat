@@ -16,6 +16,30 @@ if TYPE_CHECKING:
     from bridge.adapters.discord.adapter import DiscordAdapter
 
 
+def relay_author_display(canonical_username: str | None, author: object) -> str:
+    """Label for relay / RELAYMSG / MUC nick derivation.
+
+    Order: Portal *canonical_username* (if any), then Discord username handle
+    (``author.name``), then ``global_name``, then ``display_name``, then user id.
+
+    Prefer the handle over display names — display names are often long or contain
+    characters that are awkward for IRC/XMPP.
+    """
+    if canonical_username:
+        return canonical_username
+    name = (getattr(author, "name", None) or "").strip()
+    if name:
+        return name
+    for attr in ("global_name", "display_name"):
+        v = (getattr(author, attr, None) or "").strip()
+        if v:
+            return v
+    uid = getattr(author, "id", None)
+    if uid is not None:
+        return str(uid)
+    return "user"
+
+
 def should_relay_message(message_type: MessageType) -> bool:
     """Return True if *message_type* should be relayed by the bridge.
 
@@ -89,7 +113,7 @@ async def on_message(adapter: DiscordAdapter, message: Message) -> None:
     if adapter._identity:
         with contextlib.suppress(Exception):
             canonical_username = await adapter._identity.username_for_discord(str(message.author.id))
-    author_display = canonical_username or message.author.display_name or message.author.name
+    author_display = relay_author_display(canonical_username, message.author)
 
     # Voice messages: relay the audio attachment URL or a placeholder.
     if _is_voice_message(message):
@@ -109,11 +133,7 @@ async def on_message(adapter: DiscordAdapter, message: Message) -> None:
             is_action=False,
             avatar_url=avatar_url,
         )
-        logger.info(
-            "voice message bridged: channel={} author={}",
-            channel_id,
-            message.author.display_name or message.author.name,
-        )
+        logger.info("voice message bridged: channel={} author={}", channel_id, author_display)
         adapter._bus.publish("discord", evt)
         return
 
@@ -150,7 +170,7 @@ async def on_message(adapter: DiscordAdapter, message: Message) -> None:
             logger.info(
                 "attachment bridged: channel={} author={} file={}",
                 channel_id,
-                message.author.display_name or message.author.name,
+                author_display,
                 attachment.filename,
             )
             adapter._bus.publish("discord", att_evt)
@@ -168,20 +188,12 @@ async def on_message(adapter: DiscordAdapter, message: Message) -> None:
         resolved = getattr(message.reference, "resolved", None)
         if resolved is not None:
             ref_content = getattr(resolved, "content", None) or ""
-            ref_author = (
-                getattr(resolved.author, "display_name", None)
-                or getattr(resolved.author, "name", None)
-                or str(getattr(resolved.author, "id", ""))
-            )
+            ref_author = relay_author_display(None, resolved.author)
         elif adapter._bot:
             try:
                 ref_msg = await message.channel.fetch_message(message.reference.message_id)
                 ref_content = ref_msg.content or ""
-                ref_author = (
-                    getattr(ref_msg.author, "display_name", None)
-                    or getattr(ref_msg.author, "name", None)
-                    or str(getattr(ref_msg.author, "id", ""))
-                )
+                ref_author = relay_author_display(None, ref_msg.author)
             except Exception:
                 pass
         if ref_content:
@@ -208,11 +220,7 @@ async def on_message(adapter: DiscordAdapter, message: Message) -> None:
         avatar_url=avatar_url,
         raw=raw,
     )
-    logger.info(
-        "message bridged: channel={} author={}",
-        channel_id,
-        message.author.display_name or message.author.name,
-    )
+    logger.info("message bridged: channel={} author={}", channel_id, author_display)
     adapter._bus.publish("discord", evt)
 
 
@@ -263,7 +271,7 @@ async def on_raw_message_edit(adapter: DiscordAdapter, payload) -> None:
     if adapter._identity:
         with contextlib.suppress(Exception):
             canonical_username = await adapter._identity.username_for_discord(str(message.author.id))
-    author_display = canonical_username or message.author.display_name or message.author.name
+    author_display = relay_author_display(canonical_username, message.author)
 
     avatar_url = str(message.author.display_avatar.url) if message.author.display_avatar else None
 
@@ -307,12 +315,11 @@ async def on_reaction_add(adapter: DiscordAdapter, payload) -> None:
     user = payload.member
     if not user and adapter._bot:
         user = await fetch_user(adapter, payload.user_id)
-    author_display = user.display_name if user else str(payload.user_id)
-    if adapter._identity:
+    canonical_username: str | None = None
+    if adapter._identity and user:
         with contextlib.suppress(Exception):
             canonical_username = await adapter._identity.username_for_discord(str(payload.user_id))
-            if canonical_username:
-                author_display = canonical_username
+    author_display = relay_author_display(canonical_username, user) if user else str(payload.user_id)
 
     from bridge.events import reaction_in
 
@@ -356,12 +363,11 @@ async def on_reaction_remove(adapter: DiscordAdapter, payload) -> None:
         return
 
     user = await fetch_user(adapter, payload.user_id)
-    author_display = user.display_name if user else str(payload.user_id)
-    if adapter._identity:
+    canonical_username = None
+    if adapter._identity and user:
         with contextlib.suppress(Exception):
             canonical_username = await adapter._identity.username_for_discord(str(payload.user_id))
-            if canonical_username:
-                author_display = canonical_username
+    author_display = relay_author_display(canonical_username, user) if user else str(payload.user_id)
 
     from bridge.events import reaction_in
 
@@ -419,15 +425,7 @@ async def on_raw_message_delete(adapter: DiscordAdapter, payload: RawMessageDele
     author_display = ""
     if payload.cached_message:
         author_id = str(payload.cached_message.author.id)
-        author_display = (
-            getattr(
-                payload.cached_message.author,
-                "global_name",
-                None,
-            )
-            or getattr(payload.cached_message.author, "name", "")
-            or ""
-        )
+        author_display = relay_author_display(None, payload.cached_message.author)
 
     _, evt = message_delete(
         origin="discord",
@@ -465,7 +463,7 @@ async def on_raw_bulk_message_delete(adapter: DiscordAdapter, payload: RawBulkMe
         if message_id in cached:
             a = cached[message_id].author
             author_id = str(a.id)
-            author_display = getattr(a, "global_name", None) or getattr(a, "name", "") or ""
+            author_display = relay_author_display(None, a)
         _, evt = message_delete(
             origin="discord",
             channel_id=channel_id,

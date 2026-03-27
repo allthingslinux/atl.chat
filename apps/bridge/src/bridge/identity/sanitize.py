@@ -111,3 +111,18 @@ def puppet_muc_nick_from_base(sanitized_nick: str, *, max_len: int = 23) -> str:
     if len(sanitized_nick) + len(suf) <= max_len:
         return sanitized_nick + suf
     return sanitized_nick[: max_len - len(suf)] + suf
+
+
+def puppet_muc_xep0172_display_nick(occupant_nick: str) -> str | None:
+    """XEP-0172 User Nickname for MUC join when a puppet suffix is used.
+
+    The occupant resource stays unique (e.g. ``kaizen_d``); clients that support
+    XEP-0172 can show the unsuffixed label (``kaizen``). Returns ``None`` when
+    no suffix is configured or *occupant_nick* does not end with it — omit
+    ``pnick`` from join presence in that case.
+    """
+    suf = os.environ.get("BRIDGE_XMPP_PUPPET_NICK_SUFFIX", "")
+    if not suf or not occupant_nick.endswith(suf):
+        return None
+    base = occupant_nick[: -len(suf)]
+    return base if base else None

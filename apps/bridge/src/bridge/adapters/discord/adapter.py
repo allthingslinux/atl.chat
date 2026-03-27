@@ -262,7 +262,7 @@ class DiscordAdapter(AdapterBase):
             return ("Unknown", None)
         try:
             ref_msg = await channel.fetch_message(int(reply_to_id))
-            author = ref_msg.author.display_name or getattr(ref_msg.author, "name", "Unknown")
+            author = discord_handlers.relay_author_display(None, ref_msg.author)
             content = ref_msg.content or None
             if not content and ref_msg.attachments:
                 # Media-only message: show a representative emoji as preview

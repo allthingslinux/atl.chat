@@ -73,6 +73,17 @@ def is_listener_nick(nick: str) -> bool:
     return nick == "bridge"
 
 
+def _groupchat_dedupe_id(msg: Any) -> str | None:
+    """Message id for deduping duplicate MUC deliveries (origin-id preferred, then stanza id)."""
+    xml = getattr(msg, "xml", None)
+    if xml is not None:
+        origin_id_elem = xml.find(f".//{{{SID_NS}}}origin-id")
+        if origin_id_elem is not None and origin_id_elem.get("id"):
+            return str(origin_id_elem.get("id"))
+    mid = msg.get("id")
+    return str(mid) if mid else None
+
+
 def should_suppress_echo(comp: XMPPComponent, room_jid: str, nick: str) -> bool:
     """Return True if the message from *nick* in *room_jid* should be suppressed.
 
@@ -150,20 +161,28 @@ async def on_groupchat_message(comp: XMPPComponent, msg: Any) -> None:
         return
 
     # Skip our own echoed messages (from puppets or listener) to prevent doubling
-    if is_xmpp_echo(comp, room_jid, nick):
+    if is_listener_nick(nick):
+        return  # Listener nick; we never send from it but skip for safety
+
+    real_jid_echo = is_xmpp_echo(comp, room_jid, nick)
+    recent_echo = is_recent_echo(comp, room_jid, nick)
+    if real_jid_echo or recent_echo:
+        # MUC may deliver the same reflection twice (e.g. multiple local handlers); dedupe
+        dedupe_id = _groupchat_dedupe_id(msg)
+        if dedupe_id:
+            dedupe_key = (room_jid, dedupe_id)
+            if dedupe_key in comp._seen_msg_ids:
+                return
+            comp._seen_msg_ids[dedupe_key] = None
+        echo_via = "real JID" if real_jid_echo else "recent-send fallback"
         logger.debug(
-            "Echo from our puppet {} in {}; capturing stanza-id for correction mapping",
+            "Echo from bridge (nick={}) in {} ({}); capturing stanza-id",
             nick,
             room_jid,
+            echo_via,
         )
         _capture_stanza_id_from_echo(comp._msgid_tracker, msg, room_jid)
         return
-    if is_recent_echo(comp, room_jid, nick):
-        logger.debug("Echo from recent send {} in {} (jid lookup returned None); capturing stanza-id", nick, room_jid)
-        _capture_stanza_id_from_echo(comp._msgid_tracker, msg, room_jid)
-        return
-    if is_listener_nick(nick):
-        return  # Listener nick; we never send from it but skip for safety
 
     # Dedupe: MUC delivers same message to each occupant (listener + puppets)
     msg_id = msg.get("id")

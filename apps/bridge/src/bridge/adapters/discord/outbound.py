@@ -11,6 +11,7 @@ from discord import Message, TextChannel
 from discord.ext import commands
 from loguru import logger
 
+from bridge.adapters.discord.handlers import relay_author_display
 from bridge.events import MessageDeleteOut, ReactionOut, TypingOut, message_in
 
 if TYPE_CHECKING:
@@ -121,9 +122,9 @@ async def handle_attachments(
                 discord_id,
             )
             nick = None
-        # DevIdentityResolver returns None; use display name as fallback for dev without Portal
+        # DevIdentityResolver returns None; prefer username handle for dev without Portal
         if not nick:
-            nick = (message.author.display_name or message.author.name or "user")[:20]
+            nick = relay_author_display(None, message.author)[:20]
         if nick:
             xmpp_component = msgid_resolver.get_xmpp_component()
 
@@ -164,7 +165,7 @@ async def handle_attachments(
                 origin="discord",
                 channel_id=channel_id,
                 author_id=discord_id,
-                author_display=message.author.display_name or message.author.name,
+                author_display=relay_author_display(None, message.author),
                 content=file_info,
                 message_id=f"{message.id}_attachment_{attachment.id}",
                 is_action=False,
