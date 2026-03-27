@@ -1,3 +1,20 @@
+# [1.13.0](https://github.com/allthingslinux/atl.chat/compare/v1.12.0...v1.13.0) (2026-03-27)
+
+
+### Bug Fixes
+
+* **fluux-messenger:** update nginx config, entrypoint, AGENTS.md ([3ee0699](https://github.com/allthingslinux/atl.chat/commit/3ee06996670f432d491710fa4c4c7dc17074a037))
+* **prosody:** fix MUC owner affiliation config for bridge ([839bd7e](https://github.com/allthingslinux/atl.chat/commit/839bd7e91e5725ef296c9b576807d4c9abfc5fbd))
+
+
+### Features
+
+* **bridge/xmpp:** add PubSub vCard4 handler and disco features for Gajim ([c9e5029](https://github.com/allthingslinux/atl.chat/commit/c9e502990024d39c5b321c810f5dedabeb00d957))
+* **bridge/xmpp:** add rich vCard fields (FN, NICKNAME) to puppet profiles ([75219c7](https://github.com/allthingslinux/atl.chat/commit/75219c7a48ad092e11d5b68368cfa81d57a0fb6c))
+* **bridge/xmpp:** pass display_name and origin to vCard publisher ([f929e35](https://github.com/allthingslinux/atl.chat/commit/f929e35513127896157f90007767cd0e7d679c2f))
+* **bridge:** discord voice message handling, XMPP handler improvements, nick sanitization ([44d6ae5](https://github.com/allthingslinux/atl.chat/commit/44d6ae5765c3dc002e7121c6883579e2d55178d4))
+* **xmpp:** derive MUC puppet nick from JID local part; optional suffix ([734717a](https://github.com/allthingslinux/atl.chat/commit/734717a144eedaf7445e559fb1069e0159fbe836))
+
 # [1.12.0](https://github.com/allthingslinux/atl.chat/compare/v1.11.0...v1.12.0) (2026-03-22)
 
 
