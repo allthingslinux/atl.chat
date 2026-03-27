@@ -194,9 +194,9 @@ class XMPPAdapter(AdapterBase):
                                 pass
                         avatar_url = avatar_url or evt.avatar_url
 
-                        # Publish vCard avatar if provided (returns hash when changed).
-                        # Broadcast happens AFTER the message send because
-                        # send_message_as_user calls _ensure_puppet_joined first.
+                        # Publish vCard (avatar + FN/NICKNAME) if avatar URL available.
+                        # Returns hash when changed; broadcast happens AFTER message
+                        # send because send_message_as_user calls _ensure_puppet_joined first.
                         avatar_hash: str | None = None
                         if avatar_url:
                             avatar_hash = await self._component.set_avatar_for_user(

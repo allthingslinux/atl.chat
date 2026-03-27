@@ -71,7 +71,10 @@ async def set_avatar_for_user(
     display_name: str | None = None,
     origin: str = "",
 ) -> str | None:
-    """Set vCard for Discord user's puppet JID (avatar, name, nickname).
+    """Set vCard for a puppet JID (avatar, FN, NICKNAME).
+
+    Publishes vCard-temp with PHOTO, FN, and NICKNAME fields. Stores the
+    bridged origin (discord/irc) for the PubSub vCard4 note field.
 
     Returns the avatar SHA-1 hash (from cache or freshly published) so the
     caller can broadcast it via ``broadcast_avatar_presence`` *after* the

@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
 
 class IRCPuppet(pydle.Client):
-    """Single IRC puppet connection for a Discord user. Uses METADATA for avatar sync."""
+    """Single IRC puppet connection for a bridged user. Uses METADATA for avatar sync."""
 
     def __init__(
         self,
