@@ -4,7 +4,10 @@
 # Rendered by envsubst; requires XMPP_DOMAIN, CERT_DIR.
 
 server {
+    # 5281 — explicit port (docs, curl, PROSODY_HTTPS_PORT).
+    # 443 — default HTTPS; Fluux and other clients request https://<jid-domain>/… without a port.
     listen 5281 ssl;
+    listen 443 ssl;
     http2 on;
     server_name ${XMPP_DOMAIN};
 
@@ -18,6 +21,19 @@ server {
     add_header X-Content-Type-Options nosniff always;
     add_header X-Frame-Options DENY always;
     add_header X-XSS-Protection "1; mode=block" always;
+
+    # XMPP discovery (altconnect) — Fluux fetches https://<jid-domain>/.well-known/… (implicit :443).
+    # Public metadata; allow any origin so Fluux at https://localhost:8443 can read responses.
+    location ^~ /.well-known/ {
+        proxy_pass http://atl-xmpp-server:5280;
+        proxy_http_version 1.1;
+        proxy_set_header Host ${XMPP_DOMAIN};
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_buffering off;
+        add_header Access-Control-Allow-Origin "*" always;
+        add_header Access-Control-Allow-Methods "GET, OPTIONS" always;
+    }
 
     # Upload (XEP-0363) - primary use case for HTTPS in dev
     # Host must match Prosody http_host (xmpp.localhost) without port for upload component routing
@@ -48,8 +64,22 @@ server {
         proxy_redirect off;
     }
 
-    # WebSocket upgrade
+    # WebSocket (RFC 7395) — canonical path on Prosody is /xmpp-websocket
+    # Fluux SDK fallback is wss://<domain>/ws — alias /ws to the same upstream
     location /xmpp-websocket {
+        proxy_pass http://atl-xmpp-server:5280/xmpp-websocket;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "Upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 900s;
+        proxy_send_timeout 900s;
+        proxy_buffering off;
+    }
+
+    location = /ws {
         proxy_pass http://atl-xmpp-server:5280/xmpp-websocket;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;

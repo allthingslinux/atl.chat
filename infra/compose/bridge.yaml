@@ -21,6 +21,7 @@ services:
       - ALL
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    # Wait until IRC + Prosody report healthy (Prosody: HTTP /status + component :5347 for XEP-0114).
     depends_on:
       atl-irc-server:
         condition: service_healthy

@@ -35,6 +35,7 @@ Defined in `infra/compose/xmpp.yaml`.
 | `5280` | `PROSODY_HTTP_PORT` | Prosody | TCP | HTTP — BOSH and WebSocket endpoints |
 | `5000` | `PROSODY_PROXY65_PORT` | Prosody | TCP | SOCKS5 bytestream proxy for file transfers |
 | `5281` | `PROSODY_HTTPS_PORT` | Nginx (XMPP) | TCP | HTTPS reverse proxy for Prosody |
+| `443` | _(see note)_ | Nginx (XMPP) | TCP | `127.0.0.1:443` only — same vhost/certs as `5281`; clients that use `https://<XMPP_DOMAIN>/…` with no port (e.g. Fluux discovery, `wss://<domain>/ws`) hit this |
 
 ## Web clients
 

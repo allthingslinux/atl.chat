@@ -155,6 +155,7 @@ RUN apt-get update && \
     curl \
     dumb-init \
     gosu \
+    netcat-openbsd \
     openssl \
     rsync \
     wget \
@@ -187,7 +188,8 @@ COPY custom_plugins/ /var/lib/prosody/custom_plugins/
 EXPOSE 5222 5223 5269 5270 5280 5281 5347 5000
 
 # --- Healthcheck, volumes, and final setup ---
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 CMD curl -sf http://localhost:5280/status || exit 1
+# HTTP + component port (5347): bridge waits on service_healthy and connects via XEP-0114.
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 CMD sh -c 'curl -sf http://localhost:5280/status >/dev/null && nc -z 127.0.0.1 5347' || exit 1
 
 # Set Lua paths for modules and C libraries
 ENV LUA_PATH="/usr/local/lib/prosody/?.lua;/usr/local/lib/prosody/?/init.lua;/usr/local/lib/prosody/prosody-modules-enabled/?.lua;/usr/local/lib/prosody/prosody-modules-enabled/?/init.lua;/var/lib/prosody/custom_plugins/?.lua;/var/lib/prosody/custom_plugins/?/init.lua;;" \

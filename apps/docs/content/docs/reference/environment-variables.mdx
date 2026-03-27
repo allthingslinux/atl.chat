@@ -457,7 +457,9 @@ These environment variables override the corresponding fields in the bridge’s 
 | Variable | Description | Default (`.env.example`) |
 |---|---|---|
 | `NEXT_PUBLIC_IRC_WS_URL` | Browser → IRC WebSocket | `wss://irc.localhost/ws` |
-| `NEXT_PUBLIC_XMPP_BOSH_URL` | Browser → XMPP BOSH / WS entry | `https://xmpp.localhost/http-bind` |
+| `NEXT_PUBLIC_XMPP_BOSH_URL` | Browser → XMPP BOSH (`/http-bind` on Prosody HTTP) | `https://xmpp.localhost:5281/http-bind` (TLS via `atl-xmpp-nginx`; use `http://localhost:5280/http-bind` for plain HTTP to Prosody, e.g. `just web dev`) |
+
+**XMPP WebSocket (RFC 7395)** is served at path **`/xmpp-websocket`** on Prosody’s HTTP stack. With the dockerized nginx sidecar, use **`wss://<XMPP_DOMAIN>:5281/xmpp-websocket`** (or **`wss://…/ws`**, which nginx proxies to the same upstream). Do not confuse with BOSH at **`/http-bind`**.
 
 `NEXT_PUBLIC_*` values are baked in at **build** time for the web app — set them before `pnpm build` / image build for your domain.
 
@@ -470,6 +472,9 @@ These environment variables override the corresponding fields in the bridge’s 
 | `FLUUX_CERT_DOMAIN` | Cert / TLS identity helper | `atl.chat` |
 | `FLUUX_MESSENGER_PORT` | HTTP port | `8091` |
 | `FLUUX_MESSENGER_HTTPS_PORT` | HTTPS port | `8443` |
+| `XMPP_DOMAIN` | Prosody host header for Fluux’s `/ws` → Prosody proxy | Same as `XMPP_DOMAIN` / JID domain (e.g. `xmpp.localhost`) |
+
+Fluux’s default URLs use **port 443** (`https://<jid-domain>/.well-known/…`, **`wss://<jid-domain>/ws`**). **`atl-xmpp-nginx`** publishes **`127.0.0.1:443` → :443** (same TLS as **5281**) so those defaults work. If you cannot bind **127.0.0.1:443**, drop that mapping and set **Server (optional)** to **`wss://<XMPP_DOMAIN>:5281/ws`** or **`wss://localhost:8443/ws`** (Fluux-side proxy after rebuild).
 
 ## Docs (Cloudflare Workers via Alchemy)
 

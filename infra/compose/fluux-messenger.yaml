@@ -46,6 +46,7 @@ services:
       - FLUUX_DOMAIN=${FLUUX_DOMAIN:-webxmpp.atl.chat}
       - FLUUX_CERT_DOMAIN=${FLUUX_CERT_DOMAIN:-atl.chat}
       - CERT_DIR=/etc/nginx/certs
+      - XMPP_DOMAIN=${XMPP_DOMAIN:-xmpp.localhost}
 
     env_file:
       - path: ../../.env

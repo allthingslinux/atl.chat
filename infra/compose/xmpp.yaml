@@ -70,8 +70,15 @@ services:
       - ../../data/xmpp/uploads:/var/lib/prosody/uploads
       - ../../data/certs:/etc/prosody/certs
 
+    # HTTP status only — avoid probing :5347 with nc/tcp (spurious "component disconnected" in Prosody logs).
     healthcheck:
-      test: ["CMD", "curl", "-sf", "http://localhost:5280/status"]
+      test:
+        [
+          "CMD",
+          "sh",
+          "-c",
+          "curl -sf http://localhost:5280/status >/dev/null",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -113,6 +120,9 @@ services:
 
     ports:
       - "${PROSODY_HTTPS_PORT:-5281}:5281"
+      # Default HTTPS (443) so clients using https://<XMPP_DOMAIN>/… without a port (Fluux host-meta, wss) work.
+      # Loopback-only to avoid stealing 0.0.0.0:443 from other host services.
+      - "127.0.0.1:443:443"
 
     volumes:
       - ../../data/certs:/etc/nginx/certs:ro

@@ -21,7 +21,9 @@ mod obsidianirc './apps/obsidianirc'
 
 set export := true
 
-
+# Same compose project + env as `just dev` — use for down/logs/status/build so the
+# merged stack matches (compose.dev-override.yaml is not applied by default).
+dev_compose := '-f compose.yaml -f compose.dev-override.yaml --env-file .env --env-file .env.dev'
 
 # Initialize project: create data/ dirs, generate config, dev certs
 # Run before first docker compose up. data/ is gitignored.
@@ -33,16 +35,16 @@ init:
 # Spin up the local development stack
 [group('Orchestration')]
 dev:
-    @if docker compose -f compose.yaml -f compose.dev-override.yaml --env-file .env --env-file .env.dev ps --services --status running | rg -q "."; then \
+    @if docker compose {{dev_compose}} ps --services --status running | rg -q "."; then \
         echo "Error: atl.chat containers are already running."; \
         echo "Run 'just down' (and/or 'just down-prod') before running 'just dev' again."; \
         echo "Running services:"; \
-        docker compose -f compose.yaml -f compose.dev-override.yaml --env-file .env --env-file .env.dev ps --services --status running | sed 's/^/  - /'; \
+        docker compose {{dev_compose}} ps --services --status running | sed 's/^/  - /'; \
         exit 1; \
     fi
     @echo "Initializing Development Environment..."
     ./scripts/init.sh dev
-    docker compose -f compose.yaml -f compose.dev-override.yaml --env-file .env --env-file .env.dev --profile dev up -d
+    docker compose {{dev_compose}} --profile dev up -d
 
 # Spin up the production stack
 [group('Orchestration')]
@@ -54,7 +56,7 @@ prod:
 # Stop all services
 [group('Orchestration')]
 down:
-    docker compose --profile dev down
+    docker compose {{dev_compose}} --profile dev down
 
 # Stop production services
 [group('Orchestration')]
@@ -64,12 +66,12 @@ down-prod:
 # View logs (follow)
 [group('Orchestration')]
 logs service="":
-    docker compose logs -f ${service:+"$service"}
+    docker compose {{dev_compose}} logs -f ${service:+"$service"}
 
 # Show status of all services
 [group('Orchestration')]
 status:
-    docker compose ps
+    docker compose {{dev_compose}} ps
 
 # Run all linters via pre-commit
 [group('Verification')]
@@ -90,10 +92,10 @@ scan:
     # Placeholder for actual scan commands
     just --groups Verification
 
-# Build all services (delegates to docker compose)
+# Build all services (same compose + env as `just dev` so build-time args match dev)
 [group('Build')]
 build:
-    docker compose build
+    docker compose {{dev_compose}} build
 
 # Run tests (atl.chat root tests)
 [group('Build')]
