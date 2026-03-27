@@ -34,7 +34,7 @@ adapters/
     ├── handlers.py     # Inbound handlers (on_groupchat_message, echo suppression, MUC presence)
     ├── outbound.py     # Outbound sending (send_message_as_user, corrections, retractions, reactions)
     ├── media.py        # Media/file transfer (HTTP Upload, IBB)
-    ├── avatar.py       # Avatar management (vCard, PEP)
+    ├── avatar.py       # Avatar management (vCard-temp with FN/NICKNAME, XEP-0153 broadcast, origin tracking)
     └── msgid.py        # XMPPMessageIDTracker, XMPPMessageMapping
 ```
 
@@ -116,9 +116,14 @@ Env: `BRIDGE_XMPP_COMPONENT_JID`, `BRIDGE_XMPP_COMPONENT_SECRET`, `BRIDGE_XMPP_C
 
 **component.py** — `XMPPComponent` (slixmpp `ComponentXMPP`):
 
-- XEPs: 0030, 0045, 0047 (IBB), 0054 (vCard), 0106 (JID Escaping), 0198, 0199, 0203, 0308, 0363, 0372, 0382, 0422, 0424, 0444, 0461.
+- XEPs: 0030, 0045, 0047 (IBB), 0054 (vCard-temp), 0066, 0085, 0106 (JID Escaping), 0172, 0198, 0199, 0203, 0308, 0334, 0359, 0363, 0372, 0382, 0394, 0421, 0422, 0424, 0425, 0428, 0444, 0461.
+- Disco features: `vcard-temp`, `urn:ietf:params:xml:ns:vcard-4.0` (advertised for client discovery).
 - `send_message_as_user`, `send_correction_as_user`, `send_retraction_as_user`, `send_reaction_as_user`, `send_file_with_fallback`, `set_avatar_for_user`, `join_muc_as_user`.
-- Inbound: `_on_groupchat_message`, `_on_reactions`, `_on_retraction`.
+- **vCard handling**: `set_avatar_for_user` publishes vCard-temp (XEP-0054) with PHOTO, FN, NICKNAME via slixmpp's `_vcard_cache`. Accepts `display_name` and `origin` kwargs. The plugin's built-in IQ handler serves vCard-temp gets from cache.
+- **PubSub vCard4 handler** (`_on_pubsub_items_get`): Intercepts PubSub items requests for `urn:xmpp:vcard4` node (XEP-0292) and responds with vCard4 XML (`urn:ietf:params:xml:ns:vcard-4.0` namespace) translated from the vCard-temp cache. Required for Gajim, which only queries VCard4 via PubSub for contact profiles.
+- **Avatar broadcast**: XEP-0153 presence with vCard avatar hash sent to all MUCs the puppet is in.
+- `_puppet_origins` dict tracks origin protocol per puppet JID for vCard4 note field.
+- Inbound: `_on_groupchat_message`, `_on_reactions`, `_on_retraction`, `_on_moderated_message`, `_on_raw_groupchat`, `_debug_iq_received`.
 
 **msgid.py** — `XMPPMessageIDTracker`, `XMPPMessageMapping`:
 

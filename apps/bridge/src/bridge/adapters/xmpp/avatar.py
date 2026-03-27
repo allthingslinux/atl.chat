@@ -1,6 +1,9 @@
-"""XMPP avatar management — PEP and vCard avatar handling.
+"""XMPP avatar and vCard management — vCard-temp publishing with rich fields.
 
-All functions receive the component instance as the first parameter.
+Publishes vCard-temp (XEP-0054) with PHOTO, FN, NICKNAME for puppet JIDs.
+Broadcasts XEP-0153 avatar hash in MUC presence. Stores origin protocol
+per puppet for vCard4 note field. All functions receive the component
+instance as the first parameter.
 """
 
 from __future__ import annotations

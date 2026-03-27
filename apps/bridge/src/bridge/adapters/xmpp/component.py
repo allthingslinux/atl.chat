@@ -2,8 +2,9 @@
 
 After decomposition (Phase 4), this module contains only:
 - Connection and session management
-- XEP plugin registration
+- XEP plugin registration and disco feature advertisement
 - MUC joining logic
+- vCard IQ handling (XEP-0054 via slixmpp cache) and PubSub vCard4 (XEP-0292) for Gajim
 - Utility functions shared across submodules
 
 Inbound handlers → handlers.py
