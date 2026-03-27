@@ -64,8 +64,11 @@ async def set_avatar_for_user(
     discord_id: str,
     nick: str,
     avatar_url: str | None,
+    *,
+    display_name: str | None = None,
+    origin: str = "",
 ) -> str | None:
-    """Set vCard avatar for Discord user's puppet JID.
+    """Set vCard for Discord user's puppet JID (avatar, name, nickname).
 
     Returns the avatar SHA-1 hash (from cache or freshly published) so the
     caller can broadcast it via ``broadcast_avatar_presence`` *after* the
@@ -101,12 +104,21 @@ async def set_avatar_for_user(
         vcard["PHOTO"]["TYPE"] = "image/png"
         vcard["PHOTO"]["BINVAL"] = avatar_bytes
 
+        # Rich vCard fields: FN and NICKNAME so XMPP clients show
+        # meaningful puppet profiles beyond just the avatar.
+        label = display_name or nick
+        vcard["FN"] = label
+        vcard["NICKNAME"] = label
+
         await vcard_plugin.publish_vcard(  # type: ignore[misc]
             jid=JID(user_jid),
             vcard=vcard,
         )
 
         comp._avatar_cache[discord_id] = avatar_hash
+        # Store origin per puppet JID so vCard4 PubSub handler can include it
+        if origin:
+            comp._puppet_origins[user_jid] = origin
         # Avatar changed — clear broadcast tracker so all MUCs get the new hash
         stale = [k for k in comp._avatar_broadcast_done if k[1] == user_jid]
         for k in stale:
