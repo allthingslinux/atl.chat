@@ -155,7 +155,13 @@ pidfile = "/var/run/prosody/prosody.pid"
 user = "prosody"
 group = "prosody"
 
-admins = { Lua.os.getenv("PROSODY_ADMIN_JID") or "admin@xmpp.localhost" }
+-- Global admins (server-wide privileges). Bridge listener JID must match BRIDGE_XMPP_COMPONENT_JID / Component("bridge."..domain).
+local _xmpp_domain_admins = Lua.os.getenv("PROSODY_DOMAIN") or Lua.os.getenv("XMPP_DOMAIN") or "xmpp.localhost"
+local _bridge_component_host = Lua.os.getenv("BRIDGE_XMPP_COMPONENT_JID") or ("bridge." .. _xmpp_domain_admins)
+admins = {
+    Lua.os.getenv("PROSODY_ADMIN_JID") or ("admin@" .. _xmpp_domain_admins),
+    Lua.os.getenv("PROSODY_BRIDGE_ADMIN_JID") or ("bridge@" .. _bridge_component_host),
+}
 
 -- ===============================================
 -- DATA STORAGE
@@ -671,13 +677,12 @@ muc_inject_mentions_reserved_nicks = true  -- also match nicks of offline/regist
 -- mod_muc_defaults: rooms created at Prosody startup
 local admin_jid_muc = Lua.os.getenv("PROSODY_ADMIN_JID") or ("admin@" .. domain)
 -- Bridge component JID: admin affiliation so it can send XEP-0425 moderation (Dino/Fluux retraction hack)
-local bridge_jid_muc = Lua.os.getenv("PROSODY_BRIDGE_MUC_JID") or ("bridge." .. domain)
+local bridge_jid_muc = Lua.os.getenv("PROSODY_BRIDGE_MUC_JID") or ("bridge@bridge." .. domain)
 default_mucs = {
     {
         jid_node = "general",
         affiliations = {
-            owner = { admin_jid_muc },
-            admin = { bridge_jid_muc },
+            owner = { admin_jid_muc, bridge_jid_muc },
         },
         config = {
             name = "General",
@@ -689,7 +694,7 @@ default_mucs = {
             logging = true,
             members_only = false,
             moderated = false,
-            persistent = true,
+            persistent = false,
             public = true,
             public_jids = true,
             slow_mode_duration = 3,
