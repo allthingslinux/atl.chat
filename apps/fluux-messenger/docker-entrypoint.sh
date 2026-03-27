@@ -4,6 +4,8 @@ set -e
 export FLUUX_DOMAIN="${FLUUX_DOMAIN:-webxmpp.localhost}"
 export FLUUX_CERT_DOMAIN="${FLUUX_CERT_DOMAIN:-${FLUUX_DOMAIN}}"
 export CERT_DIR="${CERT_DIR:-/etc/nginx/certs}"
+# Prosody HTTP vhost; forwarded as Host so mod_http routes BOSH/WebSocket correctly.
+export XMPP_DOMAIN="${XMPP_DOMAIN:-xmpp.localhost}"
 
 rm -f /etc/nginx/conf.d/default.conf
 
@@ -19,7 +21,7 @@ else
 fi
 
 # shellcheck disable=SC2016
-envsubst '${FLUUX_DOMAIN} ${FLUUX_CERT_DOMAIN} ${CERT_DIR}' \
+envsubst '${FLUUX_DOMAIN} ${FLUUX_CERT_DOMAIN} ${CERT_DIR} ${XMPP_DOMAIN}' \
     < "/etc/nginx/templates/${TEMPLATE}" \
     > /etc/nginx/conf.d/fluux.conf
 

@@ -8,6 +8,20 @@ server {
         return 200 "ok\n";
     }
 
+    # Allow ws://<host>:8091/ws without forcing redirect to https (dev).
+    location = /ws {
+        proxy_pass http://atl-xmpp-server:5280/xmpp-websocket;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "Upgrade";
+        proxy_set_header Host ${XMPP_DOMAIN};
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 900s;
+        proxy_send_timeout 900s;
+        proxy_buffering off;
+    }
+
     location / {
         return 301 https://$host$request_uri;
     }
@@ -45,6 +59,22 @@ server {
     location = /health {
         default_type text/plain;
         return 200 "ok\n";
+    }
+
+    # XMPP WebSocket (RFC 7395): Fluux defaults to wss://<jid-domain>/ws (port 443).
+    # Our Prosody edge is on 5281; proxy here so "Server (optional)" can be
+    # wss://<this-host>:<https-port>/ws (e.g. wss://localhost:8443/ws).
+    location = /ws {
+        proxy_pass http://atl-xmpp-server:5280/xmpp-websocket;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "Upgrade";
+        proxy_set_header Host ${XMPP_DOMAIN};
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 900s;
+        proxy_send_timeout 900s;
+        proxy_buffering off;
     }
 
     gzip on;
