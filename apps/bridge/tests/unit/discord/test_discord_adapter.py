@@ -5,10 +5,12 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import tempfile
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import discord
 import pytest
+from bridge.adapters.discord.handlers import relay_author_display
 from bridge.events import (
     MessageDeleteOut,
     MessageIn,
@@ -19,6 +21,30 @@ from bridge.events import (
 from bridge.gateway import Bus, ChannelRouter
 from hypothesis import given
 from hypothesis import strategies as st
+
+
+class TestRelayAuthorDisplay:
+    """relay_author_display prefers Portal username, then Discord handle (name)."""
+
+    def test_prefers_canonical_over_discord_fields(self) -> None:
+        a = SimpleNamespace(name="discord_handle", display_name="Display", id=1)
+        assert relay_author_display("portal_u", a) == "portal_u"
+
+    def test_prefers_name_over_display_name(self) -> None:
+        a = SimpleNamespace(name="handle", display_name="Long Display Name!", id=1)
+        assert relay_author_display(None, a) == "handle"
+
+    def test_falls_back_to_global_name(self) -> None:
+        a = SimpleNamespace(name="", global_name="G", display_name="D", id=1)
+        assert relay_author_display(None, a) == "G"
+
+    def test_falls_back_to_display_name(self) -> None:
+        a = SimpleNamespace(name="", display_name="OnlyDisplay", id=1)
+        assert relay_author_display(None, a) == "OnlyDisplay"
+
+    def test_falls_back_to_user_id(self) -> None:
+        a = SimpleNamespace(name="", display_name="", id=999001)
+        assert relay_author_display(None, a) == "999001"
 
 
 @pytest.fixture
@@ -726,6 +752,7 @@ async def test_on_reaction_add_publishes_unicode_emoji(bus: Bus, router: Channel
     payload.message_id = 456
     payload.user_id = 789
     payload.member = MagicMock()
+    payload.member.name = "alice_handle"
     payload.member.display_name = "Alice"
     payload.type = discord.enums.ReactionType.normal
 
@@ -737,7 +764,7 @@ async def test_on_reaction_add_publishes_unicode_emoji(bus: Bus, router: Channel
     assert evt.channel_id == "123"
     assert evt.message_id == "456"
     assert evt.emoji == "👍"
-    assert evt.author_display == "Alice"
+    assert evt.author_display == "alice_handle"
 
 
 @pytest.mark.asyncio

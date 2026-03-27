@@ -137,6 +137,7 @@ class TestVoiceMessageWithAttachment:
         assert len(published) == 1
         _, evt = published[0]
         assert evt.content == "https://cdn.discord.com/attachments/123/voice-message.ogg"
+        assert evt.author_display == "testuser"
 
 
 # ---------------------------------------------------------------------------
@@ -160,6 +161,7 @@ class TestVoiceMessageWithoutAttachment:
         assert len(published) == 1
         _, evt = published[0]
         assert evt.content == "[voice message]"
+        assert evt.author_display == "testuser"
 
 
 # ---------------------------------------------------------------------------

@@ -5,6 +5,7 @@ from __future__ import annotations
 from bridge.identity.sanitize import (
     ensure_valid_username,
     puppet_muc_nick_from_base,
+    puppet_muc_xep0172_display_nick,
     sanitize_nick,
     xmpp_jid_or_plain_to_muc_nick,
 )
@@ -159,3 +160,28 @@ class TestPuppetMucNickFromBase:
         out = puppet_muc_nick_from_base(long_base)
         assert len(out) == 23
         assert out.endswith("_bridge")
+
+
+# ---------------------------------------------------------------------------
+# puppet_muc_xep0172_display_nick
+# ---------------------------------------------------------------------------
+
+
+class TestPuppetMucXep0172DisplayNick:
+    def test_no_suffix_env_returns_none(self, monkeypatch):
+        monkeypatch.delenv("BRIDGE_XMPP_PUPPET_NICK_SUFFIX", raising=False)
+        assert puppet_muc_xep0172_display_nick("kaizen_d") is None
+
+    def test_suffix_strips_for_display(self, monkeypatch):
+        monkeypatch.setenv("BRIDGE_XMPP_PUPPET_NICK_SUFFIX", "_d")
+        assert puppet_muc_xep0172_display_nick("kaizen_d") == "kaizen"
+
+    def test_no_match_without_suffix_on_occupant(self, monkeypatch):
+        monkeypatch.setenv("BRIDGE_XMPP_PUPPET_NICK_SUFFIX", "_d")
+        assert puppet_muc_xep0172_display_nick("kaizen") is None
+
+    def test_truncated_base_still_strips_suffix(self, monkeypatch):
+        monkeypatch.setenv("BRIDGE_XMPP_PUPPET_NICK_SUFFIX", "_bridge")
+        occupant = "a" * 16 + "_bridge"  # 23 chars total per puppet_muc_nick_from_base
+        assert len(occupant) == 23
+        assert puppet_muc_xep0172_display_nick(occupant) == "a" * 16
