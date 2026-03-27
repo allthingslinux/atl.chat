@@ -431,7 +431,9 @@ class TestOutboundConsumer:
         )
         await _run_consumer_once(adapter, evt)
 
-        comp.set_avatar_for_user.assert_awaited_once_with("u1", "xmpp_nick", "https://cdn.example.com/avatar.png")
+        comp.set_avatar_for_user.assert_awaited_once_with(
+            "u1", "xmpp_nick", "https://cdn.example.com/avatar.png", display_name="U", origin=""
+        )
 
     @pytest.mark.asyncio
     async def test_message_no_identity_nick_uses_display_then_author_fallback(self):

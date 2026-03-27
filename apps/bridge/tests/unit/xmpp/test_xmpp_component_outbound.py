@@ -17,6 +17,7 @@ from bridge.adapters.xmpp import (
 )
 from bridge.adapters.xmpp.outbound import RETRACTION_FALLBACK_BODY
 from cachetools import TTLCache
+from slixmpp import JID
 
 pytestmark = pytest.mark.filterwarnings("ignore::pytest.PytestUnraisableExceptionWarning")
 
@@ -467,6 +468,40 @@ class TestJoinMucAsUser:
         await comp.join_muc_as_user("room@conf.example.com", "kaizen")
 
         assert ("room@conf.example.com", "kaizen") in comp._recent_sent_nicks
+
+    @pytest.mark.asyncio
+    async def test_join_with_puppet_suffix_sets_xep0172_pnick(self, monkeypatch):
+        """When BRIDGE_XMPP_PUPPET_NICK_SUFFIX is set, join presence includes pnick (unsuffixed)."""
+        monkeypatch.setenv("BRIDGE_XMPP_PUPPET_NICK_SUFFIX", "_d")
+        comp = make_component()
+        muc_plugin = AsyncMock()
+        muc_plugin.join_muc_wait.return_value = None
+        comp.plugin = _make_plugin_registry(
+            xep_0106=_mock_jid_escape_plugin(),
+            xep_0045=muc_plugin,
+        )
+
+        await comp.join_muc_as_user("room@conf.example.com", "kaizen_d")
+
+        muc_plugin.join_muc_wait.assert_awaited_once()
+        call_kw = muc_plugin.join_muc_wait.call_args[1]
+        assert call_kw["presence_options"]["pnick"] == "kaizen"
+        assert call_kw["presence_options"]["pfrom"] == JID("kaizen_d@bridge.example.com")
+
+    @pytest.mark.asyncio
+    async def test_join_without_suffix_omits_pnick(self, monkeypatch):
+        monkeypatch.delenv("BRIDGE_XMPP_PUPPET_NICK_SUFFIX", raising=False)
+        comp = make_component()
+        muc_plugin = AsyncMock()
+        muc_plugin.join_muc_wait.return_value = None
+        comp.plugin = _make_plugin_registry(
+            xep_0106=_mock_jid_escape_plugin(),
+            xep_0045=muc_plugin,
+        )
+
+        await comp.join_muc_as_user("room@conf.example.com", "kaizen")
+
+        assert "pnick" not in muc_plugin.join_muc_wait.call_args[1]["presence_options"]
 
 
 # ---------------------------------------------------------------------------
