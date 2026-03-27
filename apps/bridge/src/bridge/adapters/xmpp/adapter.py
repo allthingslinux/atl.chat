@@ -176,9 +176,9 @@ class XMPPAdapter(AdapterBase):
 
                         # Resolve avatar: prefer Portal, then evt.avatar_url
                         avatar_url: str | None = None
+                        origin = (evt.raw or {}).get("origin", "")
                         if self._identity and evt.author_id:
                             try:
-                                origin = (evt.raw or {}).get("origin", "")
                                 if origin == "discord":
                                     avatar_url = await self._identity.avatar_for_discord(evt.author_id)
                                 elif origin == "irc":
@@ -199,7 +199,9 @@ class XMPPAdapter(AdapterBase):
                         # send_message_as_user calls _ensure_puppet_joined first.
                         avatar_hash: str | None = None
                         if avatar_url:
-                            avatar_hash = await self._component.set_avatar_for_user(evt.author_id, nick, avatar_url)
+                            avatar_hash = await self._component.set_avatar_for_user(
+                                evt.author_id, nick, avatar_url, display_name=evt.author_display, origin=origin
+                            )
 
                         # Check if this is an edit
                         is_edit = evt.raw.get("is_edit", False)
